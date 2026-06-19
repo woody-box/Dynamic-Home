@@ -1,6 +1,6 @@
 """Dynamic Climate (DC) — pure decision engine (no Home Assistant dependencies).
 
-Faithful port of the DC target pipeline (see ../../SPEC_DC.md):
+Faithful port of the DC target pipeline (see ../../docs/SPEC_DC.md):
 
     target_final = quantize( clamp( base + clamp(Σ biases, ±lim) + sdhb_bias,
                                     [min, max] ),

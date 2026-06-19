@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dynamic Home",
+        "description": "Which module do you want to add?",
+        "menu_options": {
+          "vmc": "Ventilation (VMC)",
+          "shutter": "Shutter",
+          "climate": "Climate (zone)"
+        }
+      },
+      "vmc": {
+        "title": "Dynamic Ventilation (VMC)",
+        "description": "Select your VMC entities. Optional fields enable free-cooling (temperatures) and the outdoor-AQI cap.",
+        "data": {
+          "name": "Name",
+          "sw_pwr": "Power relay",
+          "sw_v2": "Speed 2 relay",
+          "sw_v3": "Speed 3 relay",
+          "co2": "CO₂ sensor",
+          "pm25": "PM2.5 sensor",
+          "t_in": "Indoor temperature (optional)",
+          "t_ext": "Outdoor temperature (optional)",
+          "outdoor_aqi_entity": "Outdoor AQI (optional)",
+          "hum_bath": "Bathroom humidity (optional, shower boost)",
+          "hum_ext": "Outdoor humidity (optional, shower boost)"
+        }
+      },
+      "shutter": {
+        "title": "Dynamic Shutter",
+        "description": "Select the shutter and its orientation. Climate and sensors are optional (enable solar shield, free-cooling and weather protection).",
+        "data": {
+          "name": "Name",
+          "cover": "Shutter (cover)",
+          "facade_azimuth_deg": "Facade orientation (° azimuth, 0=N 90=E 180=S 270=W)",
+          "climate": "Climate (optional, cool/heat mode)",
+          "ds_t_in": "Indoor temperature (optional)",
+          "ds_t_out": "Outdoor temperature (optional)",
+          "wind": "Wind km/h (optional)",
+          "rain": "Rain (optional)"
+        }
+      },
+      "climate": {
+        "title": "Dynamic Climate (Zone)",
+        "description": "Climate zone. Publishes solar-gain (heat) / solar-shield (cool) intents to the configured shutters.",
+        "data": {
+          "name": "Name",
+          "dc_t_int": "Indoor temperature",
+          "dc_t_ext": "Outdoor temperature (optional)",
+          "ds_target": "Shutter target on the bus (e.g. ds)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This module is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "IAQ thresholds",
+        "data": {
+          "co2_v2": "CO₂ → V2 threshold (ppm)",
+          "co2_v3": "CO₂ → V3 threshold (ppm)",
+          "pm_v2": "PM2.5 → V2 threshold (µg/m³)",
+          "pm_v3": "PM2.5 → V3 threshold (µg/m³)"
+        }
+      }
+    }
+  }
+}

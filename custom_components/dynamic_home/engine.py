@@ -1,7 +1,7 @@
 """Dynamic Ventilation — pure decision engine (no Home Assistant dependencies).
 
 Faithful port of the DV ``control_principal`` YAML pipeline plus the gating /
-failsafe / shower / adaptive layers (see ../../SPEC.md). No Home Assistant
+failsafe / shower / adaptive layers (see ../../docs/SPEC_DV.md). No Home Assistant
 imports on purpose: unit-testable in isolation and reused by the HA wrappers.
 
 Logical speed returned by :func:`decide`: 0 = OFF, 1/2/3 = V1/V2/V3.

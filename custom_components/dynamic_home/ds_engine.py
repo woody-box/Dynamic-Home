@@ -1,6 +1,6 @@
 """Dynamic Shutter (DS) — pure decision engine (no Home Assistant dependencies).
 
-Faithful port of the DS ``target_decision`` YAML cascade (see ../../SPEC_DS.md):
+Faithful port of the DS ``target_decision`` YAML cascade (see ../../docs/SPEC_DS.md):
 a single priority cascade that yields a target cover position 0..100 (% open)
 and a reason code, followed by caps (wind / SDHB bus / slew).
 
