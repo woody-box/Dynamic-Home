@@ -27,9 +27,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hub: SdhbHub = hass.data.setdefault(const.DOMAIN, {}).setdefault(
         "_hub", SdhbHub())
 
+    facades: dict = hass.data[const.DOMAIN].setdefault("_facades", {})
+
     module = entry.data.get(const.CONF_MODULE)
     if module == const.MODULE_SHUTTER:
         coordinator = DsCoordinator(hass, entry, hub)
+        # Register this shutter's facade so climate zones can target it.
+        facades[entry.entry_id] = {
+            "key": coordinator.facade_key,
+            "az": float(entry.data.get(const.CONF_FACADE_AZIMUTH, 0)),
+        }
     elif module == const.MODULE_CLIMATE:
         coordinator = DcCoordinator(hass, entry, hub)
     else:
@@ -50,6 +57,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry, _platforms(entry))
     if unloaded:
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
+        hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
     return unloaded
 
 

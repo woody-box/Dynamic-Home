@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
 
 from dc_engine import (  # noqa: E402
     DcConfig, DcInputs, decide, base_active, bias_exterior, sdhb_self_bias,
-    assemble_target, quantize_step, publish_intent, is_night,
+    assemble_target, quantize_step, publish_intent, is_night, sunlit_facades,
     INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
 )
 
@@ -84,6 +84,31 @@ def test_publish_intent_by_mode():
     assert publish_intent("heat") == INTENT_SOLAR_GAIN
     assert publish_intent("cool") == INTENT_SOLAR_SHIELD
     assert publish_intent("off") == "none"
+
+
+# --------------------------------------------------------------------------- #
+# sunlit_facades — dynamic facade targeting
+# --------------------------------------------------------------------------- #
+_FACADES = {"ds_f180": 180.0, "ds_f000": 0.0, "ds_f090": 90.0}
+
+
+def test_sunlit_due_south_lights_south_not_north():
+    lit = sunlit_facades(180, 30, _FACADES)
+    assert "ds_f180" in lit
+    assert "ds_f000" not in lit
+
+
+def test_sunlit_southeast_lights_south_and_east():
+    lit = sunlit_facades(135, 30, _FACADES)
+    assert lit == {"ds_f180", "ds_f090"}
+
+
+def test_sunlit_below_horizon_lights_nothing():
+    assert sunlit_facades(180, -5, _FACADES) == set()
+
+
+def test_sunlit_no_sun_data_lights_nothing():
+    assert sunlit_facades(None, None, _FACADES) == set()
 
 
 # --------------------------------------------------------------------------- #

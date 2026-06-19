@@ -14,9 +14,9 @@ from custom_components.dynamic_home import const
 def _seed(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.salon_temp", "27")
     hass.states.async_set("sensor.ext_temp", "33")
-    # Sun below horizon -> shutters' own solar impact is 0 (default fully open).
-    hass.states.async_set("sun.sun", "below_horizon",
-                          {"azimuth": 180, "elevation": -10})
+    # Sun due south, above the horizon -> only the south facade is lit.
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180, "elevation": 30})
     hass.states.async_set("cover.south_real", "open", {"supported_features": 15})
     hass.states.async_set("cover.north_real", "open", {"supported_features": 15})
 
@@ -32,13 +32,14 @@ async def _add(hass: HomeAssistant, data: dict, title: str) -> MockConfigEntry:
 async def test_facade_targeted_multi_instance(hass: HomeAssistant) -> None:
     _seed(hass)
 
-    # DC targets only the south facade (ds_f180).
+    # DC targets all shutters ("ds"); dynamic sun-aware targeting narrows it to
+    # the facade actually lit by the sun.
     dc = await _add(hass, {
         const.CONF_NAME: "Zona",
         const.CONF_MODULE: const.MODULE_CLIMATE,
         const.CONF_DC_T_INT: "sensor.salon_temp",
         const.CONF_DC_T_EXT: "sensor.ext_temp",
-        const.CONF_DC_TARGET: "ds_f180",
+        const.CONF_DC_TARGET: "ds",
     }, "Zona")
 
     south = await _add(hass, {
@@ -78,3 +79,17 @@ async def test_facade_targeted_multi_instance(hass: HomeAssistant) -> None:
     assert south_co.data.pos == 30
     assert north_co.data.pos == 100
     assert north_co.data.reason != "sdhb_solar_shield"
+
+    # --- Sun moves to the north-west: DC re-targets dynamically. ---
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 300, "elevation": 30})
+    await dc_co.async_refresh()
+    await south_co.async_refresh()
+    await north_co.async_refresh()
+    await hass.async_block_till_done()
+
+    # Now the north facade is lit: it clamps and the south one reopens.
+    assert north_co.data.reason == "sdhb_solar_shield"
+    assert north_co.data.pos == 30
+    assert south_co.data.pos == 100
+    assert south_co.data.reason != "sdhb_solar_shield"

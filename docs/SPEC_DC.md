@@ -57,6 +57,16 @@ Según el modo activo, DC publica a su `target` de persianas (`ds` por defecto):
 DV también respeta intenciones del bus (`request_quiet`, etc.). Así un solo
 `DcCoordinator` coordina los tres módulos.
 
+### 4.1 Targeting solar dinámico
+
+En vez de un target fijo, DC calcula con `sunlit_facades(sun_az, sun_el,
+facades)` qué fachadas ilumina el sol (sol sobre el horizonte y dentro del span
+de la fachada) y publica la intención **solo a esas fachadas**. Cada persiana
+registra su fachada (`ds_fXXX`) en `hass.data`. Al moverse el sol, DC reconcilia
+los slots del bus: limpia las fachadas que dejan de estar soleadas (se reabren)
+y publica en las nuevas. Sin datos de sol/fachadas, hace fallback al target
+configurado.
+
 ## 5. Implementación
 
 | Hoy (YAML) | Integración |

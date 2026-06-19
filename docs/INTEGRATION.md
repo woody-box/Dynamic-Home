@@ -51,19 +51,26 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **81/81 verde** (29 DV + 21 DS + 16 DC + 5 bus engine · 3 DV +
+Estado actual: **85/85 verde** (29 DV + 21 DS + 20 DC + 5 bus engine · 3 DV +
 3 DS + 4 DC + 1 multi-instancia integración). Los tests verifican que la
 integración **se carga en HA**, crea `fan` / `cover` / `climate` + helpers, el
-**triángulo completo** (DC en cool → bus → DS se clampa) y el **targeting por
-fachada**: con varias persianas, DC puede pedir protección solar solo a la
-fachada objetivo (`ds_f180`) y el resto no se mueve.
+**triángulo completo** (DC en cool → bus → DS se clampa) y el **targeting solar
+dinámico**: DC calcula qué fachadas ilumina el sol y dirige la intención solo
+ahí; al moverse el sol, re-dirige (la persiana protegida se reabre y la nueva
+fachada soleada se protege).
 
 ## Multi-instancia y bus
 
 Cada instancia es un config entry y todas comparten el `SdhbHub`. El bus
 (`bus.py`, puro) arbitra por prioridad y soporta **targets de fachada**: cada
 persiana escucha en `ds` (broadcast) y en su fachada `ds_fXXX` (azimut a 3
-dígitos); DC publica a `ds` (todas) o a una fachada concreta.
+dígitos) y se registra en `hass.data`.
+
+**Targeting solar dinámico:** DC, en cada ciclo, calcula con
+`dc_engine.sunlit_facades()` qué fachadas están soleadas (sol sobre el horizonte
+y dentro del span de la fachada) y publica la intención a esas fachadas,
+reconciliando los slots del bus (limpia las que dejan de estar soleadas). Si no
+hay datos de sol/fachadas, hace fallback al target configurado.
 
 ## Qué cubre
 

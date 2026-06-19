@@ -166,6 +166,25 @@ def publish_intent(action: str) -> str:
     return "none"
 
 
+def sunlit_facades(sun_azimuth: Optional[float], sun_elevation: Optional[float],
+                   facades: dict, span_deg: float = 180.0) -> set:
+    """Facade keys currently lit by the sun.
+
+    ``facades`` maps facade key (e.g. ``ds_f180``) to its azimuth. A facade is
+    lit when the sun is above the horizon and within ``span_deg/2`` of the facade
+    orientation. With no sun data, nothing is lit.
+    """
+    if sun_azimuth is None or sun_elevation is None or sun_elevation <= 0:
+        return set()
+    half = span_deg / 2.0
+    out = set()
+    for key, az in facades.items():
+        diff = ((sun_azimuth - az + 540) % 360) - 180
+        if abs(diff) <= half:
+            out.add(key)
+    return out
+
+
 # --------------------------------------------------------------------------- #
 # Main decision
 # --------------------------------------------------------------------------- #

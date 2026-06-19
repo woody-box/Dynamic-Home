@@ -24,7 +24,9 @@ from . import const
 from .bus import SdhbHub
 from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
-from .dc_engine import DcConfig, DcInputs, DcDecision, decide as decide_climate
+from .dc_engine import (
+    DcConfig, DcInputs, DcDecision, decide as decide_climate, sunlit_facades,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -271,6 +273,7 @@ class DcCoordinator(DataUpdateCoordinator):
         self.override_active = False
         self.override_temp: float | None = None
         self._source = f"dc_{entry.entry_id[:8]}"
+        self._active_sources: set[str] = set()  # bus slots this DC currently owns
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
@@ -287,28 +290,54 @@ class DcCoordinator(DataUpdateCoordinator):
         except (TypeError, ValueError):
             return None
 
-    def _sun_elevation(self) -> float | None:
+    def _sun(self) -> tuple[float | None, float | None]:
         st = self.hass.states.get("sun.sun")
-        return st.attributes.get("elevation") if st else None
+        if st is None:
+            return None, None
+        return st.attributes.get("azimuth"), st.attributes.get("elevation")
+
+    def _registered_facades(self) -> dict:
+        """{facade_key: azimuth} of all shutters currently configured."""
+        reg = self.hass.data.get(const.DOMAIN, {}).get("_facades", {})
+        return {v["key"]: v["az"] for v in reg.values()}
+
+    def _publish(self, desired: dict) -> None:
+        """Reconcile the bus slots this DC owns with ``desired`` (key->(intent,target))."""
+        for stale in self._active_sources - set(desired):
+            self.hub.clear(stale)
+        for src, (intent, target) in desired.items():
+            self.hub.publish(source=src, intent=intent, target=target,
+                             priority=70)
+        self._active_sources = set(desired)
 
     async def _async_update_data(self) -> DcDecision:
+        sun_az, sun_el = self._sun()
         ins = DcInputs(
             hvac_mode=self.hvac_mode,
             t_int=self._num(const.CONF_DC_T_INT),
             t_ext=self._num(const.CONF_DC_T_EXT),
-            sun_elevation=self._sun_elevation(),
+            sun_elevation=sun_el,
             sdhb_intent=self.hub.winner("dc"),
             override_active=self.override_active,
             override_temp=self.override_temp,
         )
         decision = decide_climate(DcConfig(), ins)
 
-        # Publish the resulting intent to the shutter target (or clear it).
-        target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
-        if decision.published_intent != "none":
-            self.hub.publish(source=self._source,
-                             intent=decision.published_intent,
-                             target=target, priority=70)
+        intent = decision.published_intent
+        if intent == "none":
+            desired = {}
         else:
-            self.hub.clear(self._source)
+            facades = self._registered_facades()
+            lit = sunlit_facades(sun_az, sun_el, facades)
+            if lit:
+                # Dynamic: target only the sunlit facades.
+                desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}
+            elif facades and sun_el is not None:
+                # Facades known but none sunlit -> publish nothing.
+                desired = {}
+            else:
+                # Fallback: broadcast to the configured target.
+                target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
+                desired = {self._source: (intent, target)}
+        self._publish(desired)
         return decision
