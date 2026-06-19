@@ -50,6 +50,7 @@ class CoordNumberDesc:
     icon: str
     getter: Callable[[DsCoordinator], float]
     setter: Callable[[DsCoordinator, float], None]
+    unit: str = "%"
 
 
 _SHUTTER_NUMBERS: tuple[CoordNumberDesc, ...] = (
@@ -62,6 +63,15 @@ _SHUTTER_NUMBERS: tuple[CoordNumberDesc, ...] = (
 )
 
 
+_VMC_NUMBERS: tuple[CoordNumberDesc, ...] = (
+    CoordNumberDesc(
+        "override_minutes", "Override timer", const.OVERRIDE_MIN_DEFAULT,
+        0, const.OVERRIDE_MIN_MAX, 5, "mdi:timer-cog-outline",
+        lambda c: c.override_minutes,
+        lambda c, v: setattr(c, "override_minutes", int(v)), unit="min"),
+)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
@@ -69,8 +79,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         async_add_entities(
             CoordNumber(coordinator, entry, d) for d in _SHUTTER_NUMBERS)
     else:
-        async_add_entities(
-            ThresholdNumber(coordinator, entry, d) for d in THRESHOLDS)
+        entities: list[NumberEntity] = [
+            ThresholdNumber(coordinator, entry, d) for d in THRESHOLDS]
+        entities += [CoordNumber(coordinator, entry, d) for d in _VMC_NUMBERS]
+        async_add_entities(entities)
 
 
 class ThresholdNumber(NumberEntity):
@@ -123,7 +135,9 @@ class CoordNumber(NumberEntity, RestoreEntity):
         self._attr_native_min_value = desc.min_v
         self._attr_native_max_value = desc.max_v
         self._attr_native_step = desc.step
-        self._attr_native_unit_of_measurement = "%"
+        self._attr_native_unit_of_measurement = desc.unit
+        if desc.unit != "%":
+            self._attr_mode = NumberMode.BOX
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)})
 

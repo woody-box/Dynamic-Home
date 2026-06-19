@@ -62,12 +62,23 @@ OPT_PM_V3 = "pm_v3"
 # How often the coordinator re-evaluates the control pipeline (seconds).
 UPDATE_INTERVAL_S = 60
 
-# Fan preset modes.
+# Fan preset modes. "off" is a manual stop that the engine will NOT override
+# (unlike turning the power switch off while still in auto).
 PRESET_AUTO = "auto"
 PRESET_V1 = "v1"
 PRESET_V2 = "v2"
 PRESET_V3 = "v3"
-PRESET_MODES = [PRESET_AUTO, PRESET_V1, PRESET_V2, PRESET_V3]
+PRESET_OFF = "off"
+PRESET_MODES = [PRESET_AUTO, PRESET_V1, PRESET_V2, PRESET_V3, PRESET_OFF]
 
 # 3 logical speeds -> percentage steps for the fan entity.
 SPEED_COUNT = 3
+
+# Break-before-make settle time between speed relays (s): never energise V2 and
+# V3 at once. Drop both, wait, then close only the wanted one.
+RELAY_SETTLE_S = 0.3
+
+# Manual override: minutes after which a manual preset auto-reverts to auto
+# (0 disables the timer). Bounds for the configuring number entity.
+OVERRIDE_MIN_DEFAULT = 0
+OVERRIDE_MIN_MAX = 480

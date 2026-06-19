@@ -16,6 +16,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import const
@@ -51,10 +52,41 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
             model="Dynamic Shutter",
         )
 
+    async def async_added_to_hass(self) -> None:
+        """Reflect the underlying cover's real position promptly when it moves."""
+        await super().async_added_to_hass()
+        target = self._entry.data.get(const.CONF_COVER)
+        if target:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, [target], self._on_real_cover_change))
+
+    @callback
+    def _on_real_cover_change(self, _event) -> None:
+        self.async_write_ha_state()
+
+    def _real_position(self) -> int | None:
+        """Actual position reported by the physical cover (None if unknown)."""
+        target = self._entry.data.get(const.CONF_COVER)
+        if not target:
+            return None
+        st = self.hass.states.get(target)
+        if st is None:
+            return None
+        pos = st.attributes.get("current_position")
+        return int(pos) if pos is not None else None
+
     @property
-    def current_cover_position(self) -> int | None:
+    def _target_position(self) -> int | None:
         data = self.coordinator.data
         return data.pos if data else None
+
+    @property
+    def current_cover_position(self) -> int | None:
+        # Report the REAL physical position; only fall back to the computed
+        # target when the underlying cover gives no position feedback.
+        real = self._real_position()
+        return real if real is not None else self._target_position
 
     @property
     def is_closed(self) -> bool | None:
@@ -63,7 +95,8 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        attrs = {"facade": self.coordinator.facade_key}
+        attrs = {"facade": self.coordinator.facade_key,
+                 "target_position": self._target_position}
         data = self.coordinator.data
         if data:
             attrs["reason"] = data.reason

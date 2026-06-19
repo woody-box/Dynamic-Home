@@ -20,6 +20,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import const
 from .coordinator import DvCoordinator
@@ -67,6 +68,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(SpeedSensor(coordinator, entry))
     entities.append(ReasonSensor(coordinator, entry))
     entities.append(ModeSensor(coordinator, entry))
+    entities.append(StateSensor(coordinator, entry))
+    entities.append(OverrideRemainingSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -142,6 +145,47 @@ class ModeSensor(_Base):
     @property
     def native_value(self) -> str:
         return self.coordinator.preset
+
+
+class StateSensor(_Base):
+    """Operational state: boot (not evaluated) / grace (startup) / active."""
+
+    _attr_name = "State"
+    _attr_icon = "mdi:state-machine"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "state")
+
+    @property
+    def native_value(self) -> str:
+        if self.coordinator.data is None:
+            return "boot"
+        if self.coordinator.in_grace:
+            return "grace"
+        if self.coordinator.preset == "off":
+            return "off"
+        return "manual" if self.coordinator.preset != "auto" else "active"
+
+
+class OverrideRemainingSensor(_Base):
+    """Minutes left before a manual override auto-reverts to auto (0 if none)."""
+
+    _attr_name = "Override remaining"
+    _attr_icon = "mdi:timer-sand"
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "override_remaining")
+
+    @property
+    def native_value(self) -> int:
+        until = self.coordinator.override_until
+        if not until:
+            return 0
+        remaining = until - dt_util.utcnow().timestamp()
+        return max(0, round(remaining / 60))
 
 
 # --------------------------------------------------------------------------- #

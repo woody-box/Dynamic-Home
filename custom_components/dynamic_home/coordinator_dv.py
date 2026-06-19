@@ -43,6 +43,10 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.current_speed = 1
         self.auto_mode = True
         self.preset = "auto"            # mirrored from the fan, for the mode sensor
+        self.in_grace = False           # within startup grace (observability)
+        # Manual-override auto-revert: minutes (0 disables) + expiry timestamp.
+        self.override_minutes = const.OVERRIDE_MIN_DEFAULT
+        self.override_until: float | None = None
         self._iaq_dirty = False
         self._setup_ts = dt_util.utcnow().timestamp()
         # Telemetry (hours), accumulated between updates; persisted by sensors.
@@ -189,6 +193,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         now_ts = now.timestamp()
         self._accumulate(now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
+        self.in_grace = grace_active
 
         co2_raw = self._num(const.CONF_CO2)
         pm_raw = self._num(const.CONF_PM25)

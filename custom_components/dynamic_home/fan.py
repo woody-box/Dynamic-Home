@@ -14,8 +14,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
@@ -53,6 +55,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         self._attr_unique_id = f"{entry.entry_id}_fan"
         self._preset = const.PRESET_AUTO
         self._bootstrapped = False
+        self._override_unsub = None     # cancels a pending auto-revert to auto
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -79,6 +82,8 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         if self._preset == const.PRESET_AUTO:
             data = self.coordinator.data
             return data.speed if data else self.coordinator.current_speed
+        if self._preset == const.PRESET_OFF:
+            return 0
         return {const.PRESET_V1: 1, const.PRESET_V2: 2,
                 const.PRESET_V3: 3}[self._preset]
 
@@ -104,26 +109,55 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
                 "base_target": data.base_target if data else None,
                 **(data.details if data else {})}
 
+    # --- manual-override auto-revert ---
+    def _cancel_override(self) -> None:
+        if self._override_unsub is not None:
+            self._override_unsub()
+            self._override_unsub = None
+        self.coordinator.override_until = None
+
+    def _arm_override(self) -> None:
+        """Schedule a revert to auto if a manual preset and the timer is set."""
+        self._cancel_override()
+        if self._preset == const.PRESET_AUTO:
+            return
+        minutes = self.coordinator.override_minutes
+        if not minutes or minutes <= 0:
+            return
+        self.coordinator.override_until = (
+            dt_util.utcnow().timestamp() + minutes * 60)
+        self._override_unsub = async_call_later(
+            self.hass, minutes * 60, self._override_expired)
+
+    @callback
+    def _override_expired(self, _now) -> None:
+        self._override_unsub = None
+        self.hass.async_create_task(
+            self.async_set_preset_mode(const.PRESET_AUTO))
+
+    async def _select_preset(self, preset: str) -> None:
+        """Common path for any preset change: pin it, drive relays, arm timer."""
+        self._preset = preset
+        self.coordinator.preset = preset
+        if preset == const.PRESET_AUTO:
+            self._cancel_override()
+            await self.coordinator.async_request_refresh()
+        else:
+            await self._apply_speed(self._logical_speed)
+            self._arm_override()
+        self.async_write_ha_state()
+
     # --- commands ---
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        self._preset = preset_mode
-        self.coordinator.preset = preset_mode
-        if preset_mode != const.PRESET_AUTO:
-            await self._apply_speed(self._logical_speed)
-        else:
-            await self.coordinator.async_request_refresh()
-        self.async_write_ha_state()
+        await self._select_preset(preset_mode)
 
     async def async_set_percentage(self, percentage: int) -> None:
         if percentage == 0:
             await self.async_turn_off()
             return
         speed = math.ceil(percentage_to_ranged_value(_SPEED_RANGE, percentage))
-        self._preset = {1: const.PRESET_V1, 2: const.PRESET_V2,
-                        3: const.PRESET_V3}[speed]
-        self.coordinator.preset = self._preset
-        await self._apply_speed(speed)
-        self.async_write_ha_state()
+        await self._select_preset({1: const.PRESET_V1, 2: const.PRESET_V2,
+                                   3: const.PRESET_V3}[speed])
 
     async def async_turn_on(self, percentage=None, preset_mode=None,
                             **kwargs) -> None:
@@ -135,11 +169,13 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
             await self.async_set_preset_mode(const.PRESET_AUTO)
 
     async def async_turn_off(self, **kwargs) -> None:
-        sw_pwr = self._entry.data.get(const.CONF_SW_PWR)
-        if sw_pwr:
-            await self.hass.services.async_call(
-                "switch", "turn_off", {"entity_id": sw_pwr}, blocking=True)
-        self.async_write_ha_state()
+        # A real OFF the engine won't undo: pin the manual "off" preset (so auto
+        # doesn't re-apply a speed next cycle) and stop the relays + power.
+        await self._select_preset(const.PRESET_OFF)
+
+    async def async_will_remove_from_hass(self) -> None:
+        self._cancel_override()
+        await super().async_will_remove_from_hass()
 
     # --- hardware driver (SPEC §5) ---
     async def _apply_speed(self, speed: int) -> None:
@@ -148,7 +184,11 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
                                 d.get(const.CONF_SW_V2),
                                 d.get(const.CONF_SW_V3))
         if speed <= 0:
+            # Full stop: drop the speed relays first, then cut power.
+            await self._switch(sw_v2, False)
+            await self._switch(sw_v3, False)
             await self._switch(sw_pwr, False)
+            self.coordinator.current_speed = 0
             return
         await self._switch(sw_pwr, True)
         # Bootstrap kick: pulse V2 ~800 ms once after startup so the motor
@@ -158,9 +198,14 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
             await self._switch(sw_v2, True)
             await asyncio.sleep(0.8)
             await self._switch(sw_v2, False)
-        # Never V2 and V3 at once.
-        await self._switch(sw_v2, speed == 2)
-        await self._switch(sw_v3, speed == 3)
+        # Break-before-make: never energise V2 and V3 at once. Drop both, let the
+        # relays settle, then close only the wanted one (V1 = both open).
+        await self._switch(sw_v2, False)
+        await self._switch(sw_v3, False)
+        if speed in (2, 3):
+            await asyncio.sleep(const.RELAY_SETTLE_S)
+            await self._switch(sw_v2, speed == 2)
+            await self._switch(sw_v3, speed == 3)
         self.coordinator.current_speed = speed
 
     async def _switch(self, entity_id: str | None, on: bool) -> None:
