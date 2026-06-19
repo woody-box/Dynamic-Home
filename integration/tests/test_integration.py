@@ -46,14 +46,20 @@ async def _setup_entry(hass: HomeAssistant) -> MockConfigEntry:
 async def test_config_flow_creates_entry(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": "user"})
+    assert result["type"] == FlowResultType.MENU
+
+    # pick the VMC module from the menu
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "vmc"})
     assert result["type"] == FlowResultType.FORM
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "vmc"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], user_input=HW)
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["title"] == "VMC"
     assert result["data"][const.CONF_CO2] == "sensor.co2"
+    assert result["data"][const.CONF_MODULE] == const.MODULE_VMC
 
 
 async def test_setup_creates_fan_and_numbers(hass: HomeAssistant) -> None:

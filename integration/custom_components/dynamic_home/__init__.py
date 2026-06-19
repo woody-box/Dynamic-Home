@@ -1,7 +1,7 @@
-"""Dynamic Home — Home Assistant integration (DV ventilation PoC).
+"""Dynamic Home — Home Assistant integration (DV ventilation + DS shutter).
 
-Sets up one VMC instance per config entry: a shared SDHB hub + a coordinator
-driving a ``fan`` entity (and a few ``number`` tunables).
+Each config entry is one module instance (a VMC or a shutter), all sharing a
+single in-memory SDHB hub so they can coordinate (e.g. a solar-shield intent).
 """
 
 from __future__ import annotations
@@ -10,7 +10,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from . import const
-from .coordinator import DvCoordinator, SdhbHub
+from .coordinator import DvCoordinator, DsCoordinator, SdhbHub
+
+
+def _platforms(entry: ConfigEntry) -> list[str]:
+    if entry.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER:
+        return const.PLATFORMS_SHUTTER
+    return const.PLATFORMS_VMC
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -18,13 +24,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hub: SdhbHub = hass.data.setdefault(const.DOMAIN, {}).setdefault(
         "_hub", SdhbHub())
 
-    coordinator = DvCoordinator(hass, entry, hub)
-    coordinator.async_setup_listeners()
+    if entry.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER:
+        coordinator = DsCoordinator(hass, entry, hub)
+    else:
+        coordinator = DvCoordinator(hass, entry, hub)
+        coordinator.async_setup_listeners()
     await coordinator.async_config_entry_first_refresh()
 
     hass.data[const.DOMAIN][entry.entry_id] = coordinator
 
-    await hass.config_entries.async_forward_entry_setups(entry, const.PLATFORMS)
+    await hass.config_entries.async_forward_entry_setups(entry, _platforms(entry))
     entry.async_on_unload(entry.add_update_listener(_async_reload))
     return True
 
@@ -32,7 +41,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     unloaded = await hass.config_entries.async_unload_platforms(
-        entry, const.PLATFORMS)
+        entry, _platforms(entry))
     if unloaded:
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
     return unloaded

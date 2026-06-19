@@ -1,13 +1,19 @@
-"""Constants for the Dynamic Home integration (DV PoC)."""
+"""Constants for the Dynamic Home integration (DV + DS)."""
 
 from __future__ import annotations
 
 DOMAIN = "dynamic_home"
 
-# Platforms forwarded from a config entry.
-PLATFORMS: list[str] = ["fan", "number"]
+# Module discriminator stored in each config entry.
+CONF_MODULE = "module"
+MODULE_VMC = "vmc"
+MODULE_SHUTTER = "shutter"
 
-# --- Config entry keys: hardware map (HAL) ---
+# Platforms forwarded per module.
+PLATFORMS_VMC: list[str] = ["fan", "number"]
+PLATFORMS_SHUTTER: list[str] = ["cover"]
+
+# --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"
 CONF_SW_PWR = "sw_pwr"
 CONF_SW_V2 = "sw_v2"
@@ -22,6 +28,15 @@ CONF_HUM_EXT = "hum_ext"
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
 OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT)
+
+# --- Config entry keys: Shutter (DS) ---
+CONF_COVER = "cover"
+CONF_CLIMATE = "climate"          # optional: source of hvac mode (cool/heat)
+CONF_DS_T_IN = "ds_t_in"
+CONF_DS_T_OUT = "ds_t_out"
+CONF_WIND = "wind"
+CONF_RAIN = "rain"
+CONF_FACADE_AZIMUTH = "facade_azimuth_deg"
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

@@ -2,6 +2,14 @@
   "config": {
     "step": {
       "user": {
+        "title": "Dynamic Home",
+        "description": "¿Qué módulo quieres añadir?",
+        "menu_options": {
+          "vmc": "Ventilación (VMC)",
+          "shutter": "Persiana"
+        }
+      },
+      "vmc": {
         "title": "Dynamic Ventilation (VMC)",
         "description": "Selecciona las entidades de tu VMC. Los campos opcionales habilitan free-cooling (temperaturas) y el cap por AQI exterior.",
         "data": {
@@ -17,10 +25,24 @@
           "hum_bath": "Humedad baño (opcional, boost ducha)",
           "hum_ext": "Humedad exterior (opcional, boost ducha)"
         }
+      },
+      "shutter": {
+        "title": "Dynamic Shutter (Persiana)",
+        "description": "Selecciona la persiana y su orientación. El clima y los sensores son opcionales (habilitan solar shield, free-cooling y protección meteo).",
+        "data": {
+          "name": "Nombre",
+          "cover": "Persiana (cover)",
+          "facade_azimuth_deg": "Orientación de la fachada (° azimut, 0=N 90=E 180=S 270=O)",
+          "climate": "Climatización (opcional, modo cool/heat)",
+          "ds_t_in": "Temperatura interior (opcional)",
+          "ds_t_out": "Temperatura exterior (opcional)",
+          "wind": "Viento km/h (opcional)",
+          "rain": "Lluvia (opcional)"
+        }
       }
     },
     "abort": {
-      "already_configured": "Esta VMC ya está configurada."
+      "already_configured": "Este módulo ya está configurado."
     }
   },
   "options": {

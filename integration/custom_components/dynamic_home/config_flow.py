@@ -47,6 +47,20 @@ STEP_USER_SCHEMA = vol.Schema(
     }
 )
 
+STEP_SHUTTER_SCHEMA = vol.Schema(
+    {
+        vol.Required(const.CONF_NAME, default="Persiana"): str,
+        vol.Required(const.CONF_COVER): _entity("cover"),
+        vol.Required(const.CONF_FACADE_AZIMUTH, default=180): vol.All(
+            vol.Coerce(float), vol.Range(min=0, max=359)),
+        vol.Optional(const.CONF_CLIMATE): _entity("climate"),
+        vol.Optional(const.CONF_DS_T_IN): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_DS_T_OUT): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_WIND): _entity("sensor"),
+        vol.Optional(const.CONF_RAIN): _entity(["binary_sensor", "sensor"]),
+    }
+)
+
 
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
@@ -54,15 +68,28 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
-        errors: dict[str, str] = {}
+        """Entry point: choose which module to add."""
+        return self.async_show_menu(
+            step_id="user", menu_options=["vmc", "shutter"])
+
+    async def async_step_vmc(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
-            await self.async_set_unique_id(
-                f"dv_{user_input[const.CONF_SW_PWR]}")
+            await self.async_set_unique_id(f"vmc_{user_input[const.CONF_SW_PWR]}")
             self._abort_if_unique_id_configured()
+            data = {**user_input, const.CONF_MODULE: const.MODULE_VMC}
             return self.async_create_entry(
-                title=user_input[const.CONF_NAME], data=user_input)
+                title=user_input[const.CONF_NAME], data=data)
+        return self.async_show_form(step_id="vmc", data_schema=STEP_USER_SCHEMA)
+
+    async def async_step_shutter(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            await self.async_set_unique_id(f"ds_{user_input[const.CONF_COVER]}")
+            self._abort_if_unique_id_configured()
+            data = {**user_input, const.CONF_MODULE: const.MODULE_SHUTTER}
+            return self.async_create_entry(
+                title=user_input[const.CONF_NAME], data=data)
         return self.async_show_form(
-            step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors)
+            step_id="shutter", data_schema=STEP_SHUTTER_SCHEMA)
 
     @staticmethod
     @callback

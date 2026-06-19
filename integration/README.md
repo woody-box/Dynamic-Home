@@ -1,8 +1,13 @@
 # Dynamic Home — port a integración (PoC)
 
-Prueba de concepto del port de la suite YAML (`../Dynamic_Suite_v4_2_WOODBOX_FINAL/`)
-a una **integración de Home Assistant**. Primera pieza: **Dynamic Ventilation (DV)**,
-el VMC de doble flujo, expuesto como una entidad `fan`.
+Port de la suite YAML (`../Dynamic_Suite_v4_2_WOODBOX_FINAL/`) a una
+**integración de Home Assistant**. Módulos portados:
+- **DV** (ventilación / VMC) → entidad `fan` — ver `SPEC.md`.
+- **DS** (persianas) → entidad `cover` — ver `SPEC_DS.md`.
+
+Ambos comparten un **bus SDHB en memoria** (`SdhbHub`): cuando un módulo publica
+una intención (p.ej. `request_solar_shield`), los demás la consumen y coordinan.
+El config flow ofrece un **menú** para añadir una VMC o una persiana.
 
 ## Estructura
 
@@ -44,10 +49,10 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **32/32 verde** (29 engine + 3 integración). Los tests de
-integración verifican que la integración **se carga en HA**, crea `fan.vmc` +
-los `number`, y que al subir el CO₂ del sensor la velocidad pasa a V3 y se
-conmuta el relé correcto.
+Estado actual: **56/56 verde** (29 DV + 21 DS engine + 3 DV + 3 DS integración).
+Los tests de integración verifican que la integración **se carga en HA**, crea
+`fan.vmc` / `cover.*` + helpers, que la velocidad sube a V3 con CO₂ alto, y que
+una intención `request_solar_shield` en el bus compartido **clampa la persiana**.
 
 ## Qué cubre
 
