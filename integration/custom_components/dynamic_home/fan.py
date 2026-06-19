@@ -24,6 +24,11 @@ from .coordinator import DvCoordinator
 
 _SPEED_RANGE = (1, const.SPEED_COUNT)  # (1, 3)
 
+# TURN_ON/TURN_OFF feature flags were added in HA 2024.8; guard for older cores.
+_SUPPORTED_FEATURES = FanEntityFeature.SET_SPEED | FanEntityFeature.PRESET_MODE
+if hasattr(FanEntityFeature, "TURN_ON"):
+    _SUPPORTED_FEATURES |= FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
@@ -38,12 +43,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
     _attr_name = None
     _attr_speed_count = const.SPEED_COUNT
     _attr_preset_modes = const.PRESET_MODES
-    _attr_supported_features = (
-        FanEntityFeature.SET_SPEED
-        | FanEntityFeature.PRESET_MODE
-        | FanEntityFeature.TURN_ON
-        | FanEntityFeature.TURN_OFF
-    )
+    _attr_supported_features = _SUPPORTED_FEATURES
 
     def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)

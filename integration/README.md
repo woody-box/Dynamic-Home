@@ -29,11 +29,25 @@ es Python puro, lo que permite probarla en CI sin levantar HA. Los wrappers
 (`coordinator`, `fan`, `number`) solo traducen estado de HA a `engine.DvInputs`
 y aplican el resultado a los relés.
 
-## Probar el engine
+## Probar
 
+**Engine (lógica pura, sin dependencias):**
 ```bash
-python integration/tests/test_engine.py      # o: python -m pytest integration/tests/ -q
+python integration/tests/test_engine.py
 ```
+
+**Integración completa dentro de un Home Assistant simulado** (config flow,
+coordinator, fan, number — carga la integración en un HA real de test):
+```bash
+python -m venv .venv && source .venv/bin/activate
+pip install -r integration/requirements-test.txt
+cd integration && python -m pytest tests/ -q
+```
+
+Estado actual: **19/19 verde** (16 engine + 3 integración). Los tests de
+integración verifican que la integración **se carga en HA**, crea `fan.vmc` +
+los `number`, y que al subir el CO₂ del sensor la velocidad pasa a V3 y se
+conmuta el relé correcto.
 
 ## Qué cubre el PoC
 
@@ -49,5 +63,7 @@ Adaptive thresholds, programación semanal, failsafe/trip-counter, boost por
 ducha (ΔRH), telemetría (horas/consumo/filtros), y portar DC y DS sobre el
 mismo `SdhbHub`. Ver `SPEC.md §7`.
 
-> ⚠️ Estado: esqueleto/PoC. El `engine.py` está validado con tests; los wrappers
-> de HA compilan pero aún no se han ejecutado dentro de una instancia HA real.
+> Estado: PoC validado. El `engine.py` está cubierto por tests unitarios y los
+> wrappers de HA se han ejecutado y verificado dentro de un Home Assistant de
+> test (HA 2024.3.x vía harness). Falta la prueba en una instancia HA real con
+> hardware (Opción B): usa switches de juguete antes que la VMC real.
