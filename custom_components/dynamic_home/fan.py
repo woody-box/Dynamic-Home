@@ -6,6 +6,7 @@ Preset modes: auto (engine decides) / v1 / v2 / v3 (manual). The logical speed
 
 from __future__ import annotations
 
+import asyncio
 import math
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
@@ -51,6 +52,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_fan"
         self._preset = const.PRESET_AUTO
+        self._bootstrapped = False
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -146,6 +148,13 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
             await self._switch(sw_pwr, False)
             return
         await self._switch(sw_pwr, True)
+        # Bootstrap kick: pulse V2 ~800 ms once after startup so the motor
+        # "wakes up" before settling on the target speed (opt-in, hardware quirk).
+        if self.coordinator.bootstrap_enabled and not self._bootstrapped:
+            self._bootstrapped = True
+            await self._switch(sw_v2, True)
+            await asyncio.sleep(0.8)
+            await self._switch(sw_v2, False)
         # Never V2 and V3 at once.
         await self._switch(sw_v2, speed == 2)
         await self._switch(sw_v3, speed == 3)

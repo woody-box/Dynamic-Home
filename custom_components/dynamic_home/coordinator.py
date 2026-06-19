@@ -57,6 +57,8 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.machine_hours = 0.0
         self.filter_hours = 0.0
         self._accum_ts: float | None = None
+        # Startup bootstrap kick (opt-in, hardware quirk).
+        self.bootstrap_enabled = False
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)

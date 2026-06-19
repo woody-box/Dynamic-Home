@@ -46,6 +46,10 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
         "adaptive", "Adaptive thresholds", "mdi:brain",
         lambda c: c.adaptive_enabled,
         lambda c, v: setattr(c, "adaptive_enabled", v)),
+    _ToggleDesc(
+        "bootstrap", "Startup kick", "mdi:fan-auto",
+        lambda c: c.bootstrap_enabled,
+        lambda c, v: setattr(c, "bootstrap_enabled", v)),
 )
 
 
