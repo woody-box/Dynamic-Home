@@ -51,6 +51,8 @@
           "dc_t_ext": "Outdoor temperature (optional)",
           "dc_climate": "Thermostat to drive (optional; advisory if empty)",
           "dc_vmc": "VMC fan/sensor (optional, VMC compensation bias)",
+          "dc_humidity": "Indoor humidity (optional, dew-point protection)",
+          "dc_weather": "Weather (optional, forecast bias)",
           "ds_target": "Shutter target on the bus (e.g. ds)"
         }
       }

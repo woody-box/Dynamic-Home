@@ -51,6 +51,8 @@
           "dc_t_ext": "Temperatura exterior (opcional)",
           "dc_climate": "Termostato a controlar (opcional; solo informa si se deja vacío)",
           "dc_vmc": "VMC fan/sensor (opcional, bias de compensación VMC)",
+          "dc_humidity": "Humedad interior (opcional, protección antirrocío)",
+          "dc_weather": "Meteo/weather (opcional, bias por previsión)",
           "ds_target": "Target de persianas en el bus (p.ej. ds)"
         }
       }

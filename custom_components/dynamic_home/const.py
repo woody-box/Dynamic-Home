@@ -47,6 +47,8 @@ CONF_DC_T_EXT = "dc_t_ext"        # optional: outdoor temperature sensor
 CONF_DC_TARGET = "ds_target"      # shutter target the zone drives (default "ds")
 CONF_DC_CLIMATE = "dc_climate"    # optional: real thermostat DC drives
 CONF_DC_VMC = "dc_vmc"            # optional: VMC fan/sensor for the VMC bias
+CONF_DC_HUMIDITY = "dc_humidity"  # optional: indoor RH for dew-point protection
+CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

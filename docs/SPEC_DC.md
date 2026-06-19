@@ -27,8 +27,8 @@ target_final = quantize( clamp( base + clamp(Σ biases, ±lim) + sdhb_bias,
   - `bias_vmc` — compensación por la VMC (velocidad + delta T). ✅
   - `trend` (tendencia) — anticipa por la deriva de T interior (°C/h). ✅
   - `brake` (freno) — frena el overshoot cuando la tendencia ya ayuda al modo. ✅
-  - `forecast` — anticipa por la previsión (fórmula portada; alimentada por
-    entrada opcional, pendiente cablear un `weather`). ⏳
+  - `forecast` — anticipa por la previsión (cableado a un `weather` opcional vía
+    `weather.get_forecasts`; extremo en la ventana de N horas). ✅
   - `fachadas` — ganancia solar por fachada (muy dependiente de hardware:
     lux + persiana por fachada); entra como `extra_bias`. ⏳
 - **sdhb_bias**: corrección por consumir una intención dirigida a DC
@@ -46,7 +46,7 @@ cool:  t_ext ≥ u_calor       → +strong
 
 ## 3. Decisión de modo (rama)
 
-Precedencia: **override** → **dew_risk** (OFF) → **window_lockout** (OFF) →
+Precedencia: **override** → **dew_risk** (rocío real, Magnus; OFF) → **window_lockout** (OFF) →
 **heat/cool** (según demanda) → **off**. Override fija el target manual.
 
 ## 4. Publicación al bus (lo que hace de DC el cerebro)

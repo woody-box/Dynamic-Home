@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
 from dc_engine import (  # noqa: E402
     DcConfig, DcInputs, decide, base_active, bias_exterior, sdhb_self_bias,
     assemble_target, quantize_step, publish_intent, is_night, sunlit_facades,
-    bias_vmc, trend_bias, brake_bias, forecast_bias,
+    bias_vmc, trend_bias, brake_bias, forecast_bias, dew_point, dew_risk,
     INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
 )
 
@@ -117,6 +117,31 @@ def test_forecast_bias_brake_only():
     assert forecast_bias(cfg, "heat", 0, 20) == -0.5
     # no forecast data -> 0
     assert forecast_bias(cfg, "heat", 5, None) == 0.0
+
+
+def test_dew_point_magnus():
+    # 25°C / 50% RH -> ~13.9°C dew point
+    dp = dew_point(25, 50)
+    assert 13.5 < dp < 14.3
+    assert dew_point(None, 50) is None
+    assert dew_point(25, 0) is None
+
+
+def test_dew_risk_only_in_cool_and_near_dewpoint():
+    cfg = _cfg(dew_spread_min=2.0)
+    # cool, indoor 24 with dew point ~22.5 (90% RH) -> spread 1.5 < 2 -> risk
+    assert dew_risk(cfg, "cool", 24, 90) is True
+    # cool, dry air -> low dew point -> no risk
+    assert dew_risk(cfg, "cool", 24, 40) is False
+    # heat -> never dew risk
+    assert dew_risk(cfg, "heat", 24, 95) is False
+
+
+def test_decide_dew_risk_forces_off_via_engine():
+    # cool with high humidity -> engine off_dew when caller passes dew_risk
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="cool", t_int=24, dew_risk=True))
+    assert d.action == "off" and d.reason == "off_dew"
 
 
 def test_decide_combines_biases():

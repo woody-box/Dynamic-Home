@@ -27,6 +27,7 @@ from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
 from .dc_engine import (
     DcConfig, DcInputs, DcDecision, decide as decide_climate, sunlit_facades,
+    dew_risk,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -369,10 +370,35 @@ class DcCoordinator(DataUpdateCoordinator):
         self._prev_tint, self._prev_ts = t_int, now_ts
         return 0.0 if abs(self._cph) < cfg.trend_deadband_cph else self._cph
 
+    async def _forecast_temp(self, cfg: DcConfig, hvac: str) -> float | None:
+        """Extreme forecast temp in the look-ahead window (max heat / min cool)."""
+        ent = self._hw(const.CONF_DC_WEATHER)
+        if not ent or hvac not in ("heat", "cool"):
+            return None
+        try:
+            resp = await self.hass.services.async_call(
+                "weather", "get_forecasts",
+                {"entity_id": ent, "type": "hourly"},
+                blocking=True, return_response=True)
+        except Exception:  # noqa: BLE001 — weather entity may not support it
+            return None
+        forecasts = (resp or {}).get(ent, {}).get("forecast", [])
+        end = dt_util.utcnow() + timedelta(hours=cfg.forecast_window_h)
+        temps = []
+        for f in forecasts:
+            ts = dt_util.parse_datetime(f.get("datetime", "")) if f.get("datetime") else None
+            t = f.get("temperature")
+            if ts is not None and t is not None and ts <= end:
+                temps.append(float(t))
+        if not temps:
+            return None
+        return max(temps) if hvac == "heat" else min(temps)
+
     async def _async_update_data(self) -> DcDecision:
         cfg = DcConfig()
         sun_az, sun_el = self._sun()
         t_int = self._num(const.CONF_DC_T_INT)
+        rh = self._num(const.CONF_DC_HUMIDITY)
         now_ts = dt_util.utcnow().timestamp()
         ins = DcInputs(
             hvac_mode=self.hvac_mode,
@@ -384,6 +410,8 @@ class DcCoordinator(DataUpdateCoordinator):
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
             trend_cph=self._update_trend(cfg, t_int, now_ts),
+            dew_risk=dew_risk(cfg, self.hvac_mode, t_int, rh),
+            forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
         )
         decision = decide_climate(cfg, ins)
 

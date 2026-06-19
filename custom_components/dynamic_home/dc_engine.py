@@ -74,6 +74,11 @@ class DcConfig:
     # Forecast anticipation
     forecast_gain: float = 0.1
     forecast_cap: float = 0.5
+    forecast_window_h: float = 6.0
+
+    # Dew-point protection (radiant cooling): risk when indoor temp is within
+    # this margin of the dew point.
+    dew_spread_min: float = 2.0
 
 
 @dataclass
@@ -152,6 +157,28 @@ def bias_exterior(cfg: DcConfig, hvac: str, t_ext: Optional[float]) -> float:
             return cfg.bias_ext_cool_mild * ais
         return 0.0
     return 0.0
+
+
+def dew_point(t_c: Optional[float], rh: Optional[float]) -> Optional[float]:
+    """Dew point (°C) via the Magnus formula. None if inputs missing."""
+    if t_c is None or rh is None or rh <= 0:
+        return None
+    a, b = 17.27, 237.7
+    rh = min(100.0, max(1.0, rh))
+    gamma = (a * t_c) / (b + t_c) + math.log(rh / 100.0)
+    return round((b * gamma) / (a - gamma), 2)
+
+
+def dew_risk(cfg: DcConfig, hvac: str, t_int: Optional[float],
+             rh: Optional[float]) -> bool:
+    """Condensation risk for radiant cooling: only in cool, when the indoor
+    temperature is within ``dew_spread_min`` of the dew point."""
+    if hvac != "cool":
+        return False
+    dp = dew_point(t_int, rh)
+    if dp is None or t_int is None:
+        return False
+    return (t_int - dp) < cfg.dew_spread_min
 
 
 def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],
