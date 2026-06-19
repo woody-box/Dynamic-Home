@@ -1,0 +1,12 @@
+# Ruff configuration for the Dynamic Home integration.
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    "B008",  # function calls in argument defaults (HA voluptuous schemas)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E501"]

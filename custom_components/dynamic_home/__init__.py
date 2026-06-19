@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from . import const
-from .coordinator import DvCoordinator, DsCoordinator, DcCoordinator, SdhbHub
+from .coordinator import DcCoordinator, DsCoordinator, DvCoordinator, SdhbHub
 
 
 def _platforms(entry: ConfigEntry) -> list[str]:

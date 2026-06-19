@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 # Intents DC publishes to the shutters depending on its mode.
 INTENT_SOLAR_GAIN = "request_solar_gain"
@@ -94,23 +93,23 @@ class DcConfig:
 @dataclass
 class DcInputs:
     hvac_mode: str = "off"          # heat | cool | off (demanded mode)
-    t_int: Optional[float] = None
-    t_ext: Optional[float] = None
-    sun_elevation: Optional[float] = None
+    t_int: float | None = None
+    t_ext: float | None = None
+    sun_elevation: float | None = None
     vacation: bool = False
 
     # Catch-all for biases not yet wired (e.g. per-facade solar gain), in °C.
     extra_bias: float = 0.0
 
     # VMC speed (1/2/3) for the VMC compensation bias; None disables it.
-    vmc_speed: Optional[int] = None
+    vmc_speed: int | None = None
     # Indoor temperature rate of change (°C/h), EMA-smoothed by the caller.
     trend_cph: float = 0.0
     # Forecast extreme temperature in the look-ahead window (max for heat, min
     # for cool); None disables the forecast bias.
-    forecast_temp: Optional[float] = None
+    forecast_temp: float | None = None
     # Outdoor wind (km/h) for the lead model; None ignores the wind term.
-    wind: Optional[float] = None
+    wind: float | None = None
 
     # Bus intent targeted at DC (consumed -> self bias).
     sdhb_intent: str = "none"
@@ -121,13 +120,13 @@ class DcInputs:
 
     # Manual override
     override_active: bool = False
-    override_temp: Optional[float] = None
+    override_temp: float | None = None
 
 
 @dataclass
 class DcDecision:
     action: str          # heat | cool | off
-    target: Optional[float]
+    target: float | None
     reason: str
     published_intent: str  # what DC publishes to the shutters (or "none")
     details: dict = field(default_factory=dict)  # pipeline breakdown (observability)
@@ -136,7 +135,7 @@ class DcDecision:
 # --------------------------------------------------------------------------- #
 # Pure helpers
 # --------------------------------------------------------------------------- #
-def is_night(sun_elevation: Optional[float]) -> bool:
+def is_night(sun_elevation: float | None) -> bool:
     """Conservative degradation: unknown elevation -> day."""
     return sun_elevation is not None and sun_elevation <= NIGHT_ELEVATION_DEG
 
@@ -152,7 +151,7 @@ def base_active(cfg: DcConfig, hvac: str, night: bool, vacation: bool) -> float:
     return base_day - cfg.delta_night if hvac == "heat" else base_day + cfg.delta_night
 
 
-def bias_exterior(cfg: DcConfig, hvac: str, t_ext: Optional[float]) -> float:
+def bias_exterior(cfg: DcConfig, hvac: str, t_ext: float | None) -> float:
     """Outdoor-temperature compensation bias (°C)."""
     if t_ext is None:
         return 0.0
@@ -172,7 +171,7 @@ def bias_exterior(cfg: DcConfig, hvac: str, t_ext: Optional[float]) -> float:
     return 0.0
 
 
-def dew_point(t_c: Optional[float], rh: Optional[float]) -> Optional[float]:
+def dew_point(t_c: float | None, rh: float | None) -> float | None:
     """Dew point (°C) via the Magnus formula. None if inputs missing."""
     if t_c is None or rh is None or rh <= 0:
         return None
@@ -182,8 +181,8 @@ def dew_point(t_c: Optional[float], rh: Optional[float]) -> Optional[float]:
     return round((b * gamma) / (a - gamma), 2)
 
 
-def dew_risk(cfg: DcConfig, hvac: str, t_int: Optional[float],
-             rh: Optional[float]) -> bool:
+def dew_risk(cfg: DcConfig, hvac: str, t_int: float | None,
+             rh: float | None) -> bool:
     """Condensation risk for radiant cooling: only in cool, when the indoor
     temperature is within ``dew_spread_min`` of the dew point."""
     if hvac != "cool":
@@ -210,8 +209,8 @@ def facade_bias(cfg: DcConfig, hvac: str, openness: float) -> float:
     return 0.0
 
 
-def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],
-             t_int: Optional[float], t_ext: Optional[float]) -> float:
+def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: int | None,
+             t_int: float | None, t_ext: float | None) -> float:
     """VMC compensation bias (°C). Port of ``dc_bias_vmc``."""
     if vmc_speed not in (1, 2, 3) or t_int is None or t_ext is None:
         return 0.0
@@ -227,8 +226,8 @@ def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],
     return 0.0
 
 
-def compute_lead(cfg: DcConfig, t_int: Optional[float], t_ext: Optional[float],
-                 wind: Optional[float] = None) -> float:
+def compute_lead(cfg: DcConfig, t_int: float | None, t_ext: float | None,
+                 wind: float | None = None) -> float:
     """Anticipation horizon (hours): grows with the indoor/outdoor gap (inertia)
     and with wind (higher heat losses)."""
     if t_int is None or t_ext is None:
@@ -241,7 +240,7 @@ def compute_lead(cfg: DcConfig, t_int: Optional[float], t_ext: Optional[float],
 
 
 def trend_bias(cfg: DcConfig, cph: float,
-               lead_h: Optional[float] = None) -> float:
+               lead_h: float | None = None) -> float:
     """Anticipation by indoor-temperature trend (°C). Port of ``tendencia_efectiva``.
 
     Rising indoor temp (cph>0) shifts the target down (and vice versa), scaled by
@@ -274,8 +273,8 @@ def brake_bias(cfg: DcConfig, hvac: str, cph: float) -> float:
     return sign * mag
 
 
-def forecast_bias(cfg: DcConfig, hvac: str, t_ext: Optional[float],
-                  forecast_temp: Optional[float]) -> float:
+def forecast_bias(cfg: DcConfig, hvac: str, t_ext: float | None,
+                  forecast_temp: float | None) -> float:
     """Forecast anticipation (°C). Port of ``bias_forecast``.
 
     Eases the setpoint when the forecast says the outside will help the active
@@ -330,8 +329,8 @@ def publish_intent(action: str) -> str:
     return "none"
 
 
-def sunlit_facades(sun_azimuth: Optional[float], sun_elevation: Optional[float],
-                   facades: dict, spans: Optional[dict] = None,
+def sunlit_facades(sun_azimuth: float | None, sun_elevation: float | None,
+                   facades: dict, spans: dict | None = None,
                    default_span: float = 180.0) -> set:
     """Facade keys currently lit by the sun.
 

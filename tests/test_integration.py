@@ -5,9 +5,8 @@ These exercise the real HA wrappers (config_flow, coordinator, fan), unlike
 test_engine.py which tests the pure logic.
 """
 
-import pytest
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,

@@ -5,10 +5,10 @@ multi-module triangle: DC in cool mode publishes ``request_solar_shield`` to the
 shared SDHB hub, and a DS shutter sharing that hub clamps its cover.
 """
 
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntryState
 from homeassistant.components.climate import HVACMode
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import ATTR_TEMPERATURE
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 

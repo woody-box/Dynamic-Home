@@ -10,7 +10,6 @@ Logical speed returned by :func:`decide`: 0 = OFF, 1/2/3 = V1/V2/V3.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Optional
 
 # Intents understood from the SDHB bus (subset relevant to DV).
 INTENT_QUIET = {"request_quiet", "request_eco", "request_weather_protect"}
@@ -104,17 +103,17 @@ class DvState:
 class DvInputs:
     """Live readings + mode flags for a single decision cycle."""
 
-    co2_raw: Optional[float] = None
-    pm_raw: Optional[float] = None
-    t_in: Optional[float] = None
-    t_ext: Optional[float] = None
-    aqi: Optional[float] = None
+    co2_raw: float | None = None
+    pm_raw: float | None = None
+    t_in: float | None = None
+    t_ext: float | None = None
+    aqi: float | None = None
 
     current_speed: int = 1
 
     # Gating. ``permitida`` left as None means "compute it from the inputs
     # below"; set a bool to force it (used by tests / manual gating).
-    permitida: Optional[bool] = None
+    permitida: bool | None = None
     auto_mode: bool = True
     permiso_extra: bool = False
 
@@ -123,12 +122,12 @@ class DvInputs:
 
     # Explicit shower override (timer/UI). If None, shower is derived from RH.
     shower_override: bool = False
-    shower_level: Optional[str] = None  # "v2" | "v3" | None
+    shower_level: str | None = None  # "v2" | "v3" | None
 
     dry_mode: bool = False
     dew_risk: bool = False
     dew_prerisk: bool = False
-    dp_diff: Optional[float] = None
+    dp_diff: float | None = None
 
     sdhb_intent: str = "none"
 
@@ -144,27 +143,27 @@ class DvInputs:
     startup_grace_active: bool = False
 
     # Shower humidity delta (bath RH rise). None disables RH-derived shower.
-    rh_delta: Optional[float] = None
+    rh_delta: float | None = None
 
     # Adaptive thresholds (only used when cfg.adaptive_enabled and provided).
-    adaptive_co2_v2: Optional[float] = None
-    adaptive_co2_v3: Optional[float] = None
-    adaptive_pm_v2: Optional[float] = None
-    adaptive_pm_v3: Optional[float] = None
+    adaptive_co2_v2: float | None = None
+    adaptive_co2_v3: float | None = None
+    adaptive_pm_v2: float | None = None
+    adaptive_pm_v3: float | None = None
 
 
 @dataclass
 class DvDecision:
     speed: int
     reason: str
-    base_target: Optional[int] = None
+    base_target: int | None = None
     details: dict = field(default_factory=dict)
 
 
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
-def _validate(value: Optional[float], lo: float, hi: float) -> Optional[float]:
+def _validate(value: float | None, lo: float, hi: float) -> float | None:
     """Range-validate a reading; out-of-range / None -> None (SPEC §2)."""
     if value is None:
         return None
@@ -233,7 +232,7 @@ def update_failsafe(state: DvState, cfg: DvConfig, now_ts: float,
 
 
 def update_shower(state: DvState, cfg: DvConfig, now_ts: float,
-                  rh_delta: Optional[float]) -> bool:
+                  rh_delta: float | None) -> bool:
     """Shower detection via ΔRH with hysteresis + hold (SPEC §7)."""
     if not cfg.shower_enabled or rh_delta is None:
         # keep holding if within hold window, else clear

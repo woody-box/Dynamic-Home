@@ -8,8 +8,9 @@ Both feed the DS engine inputs and are restored across restarts.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
@@ -19,6 +20,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import const
+
+if TYPE_CHECKING:
+    from .coordinator import DsCoordinator
 
 
 @dataclass(frozen=True)

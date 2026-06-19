@@ -6,9 +6,8 @@ updates the config entry options, which reloads the coordinator.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
@@ -18,7 +17,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import const
-from .coordinator import DvCoordinator, DsCoordinator
+from .coordinator import DsCoordinator, DvCoordinator
 
 
 @dataclass(frozen=True)

@@ -4,8 +4,8 @@
 - The options flow only applies to the VMC module.
 """
 
-from homeassistant.core import HomeAssistant
 from homeassistant.components.climate import HVACMode
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,

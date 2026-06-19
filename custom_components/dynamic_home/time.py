@@ -6,9 +6,9 @@ Two times (on / off) applied every day; the schedule gate is enabled by the
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import time as dtime
-from collections.abc import Callable
 
 from homeassistant.components.time import TimeEntity
 from homeassistant.config_entries import ConfigEntry
