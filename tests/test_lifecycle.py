@@ -7,7 +7,10 @@
 from homeassistant.core import HomeAssistant
 from homeassistant.components.climate import HVACMode
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_mock_service,
+)
 
 from custom_components.dynamic_home import const
 
@@ -59,3 +62,36 @@ async def test_options_flow_aborts_for_shutter(hass: HomeAssistant) -> None:
     result = await hass.config_entries.options.async_init(entry.entry_id)
     assert result["type"] == FlowResultType.ABORT
     assert result["reason"] == "no_options"
+
+
+async def test_option_change_does_not_reload_or_reset_state(hass: HomeAssistant) -> None:
+    """Changing a VMC threshold must refresh, not reload (preserves EMA state)."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    hass.states.async_set("switch.pwr", "off")
+    hass.states.async_set("switch.v2", "off")
+    hass.states.async_set("switch.v3", "off")
+    hass.states.async_set("sensor.co2", "500")
+    hass.states.async_set("sensor.pm25", "5")
+
+    entry = await _add(hass, {
+        const.CONF_NAME: "VMC", const.CONF_MODULE: const.MODULE_VMC,
+        const.CONF_SW_PWR: "switch.pwr", const.CONF_SW_V2: "switch.v2",
+        const.CONF_SW_V3: "switch.v3", const.CONF_CO2: "sensor.co2",
+        const.CONF_PM25: "sensor.pm25",
+    }, "VMC")
+
+    coordinator = hass.data[const.DOMAIN][entry.entry_id]
+    coordinator.state_data.co2_ema = 1234.0  # runtime state we must not lose
+
+    numbers = [s.entity_id for s in hass.states.async_all("number")]
+    assert numbers
+    await hass.services.async_call(
+        "number", "set_value",
+        {"entity_id": numbers[0], "value": 1000}, blocking=True)
+    await hass.async_block_till_done()
+
+    # Same coordinator object (a reload would create a new one) and the EMA
+    # kept its 1234 baseline (it evolved, it did NOT bootstrap from ~500).
+    assert hass.data[const.DOMAIN][entry.entry_id] is coordinator
+    assert coordinator.state_data.co2_ema > 700

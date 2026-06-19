@@ -22,10 +22,15 @@ target_final = quantize( clamp( base + clamp(Σ biases, ±lim) + sdhb_bias,
 - **base** (`base_active`): consigna base según modo y día/noche
   (noche = elevación solar ≤ −3°; en calor baja `delta_night`, en frío sube).
   Variantes de vacaciones.
-- **Σ biases**: suma de 6 correcciones en °C:
-  `exterior + fachadas + vmc + forecast + tendencia + freno`. Se **limita** a
-  `±max_mods` (0.8 por defecto). En el port, `bias_exterior` se calcula en el
-  engine; el resto se agrega como `extra_bias` (calculado por el coordinator).
+- **Σ biases**: suma de correcciones en °C, **limitada** a `±max_mods` (0.8 def):
+  - `bias_exterior` — compensación por temperatura exterior. ✅
+  - `bias_vmc` — compensación por la VMC (velocidad + delta T). ✅
+  - `trend` (tendencia) — anticipa por la deriva de T interior (°C/h). ✅
+  - `brake` (freno) — frena el overshoot cuando la tendencia ya ayuda al modo. ✅
+  - `forecast` — anticipa por la previsión (fórmula portada; alimentada por
+    entrada opcional, pendiente cablear un `weather`). ⏳
+  - `fachadas` — ganancia solar por fachada (muy dependiente de hardware:
+    lux + persiana por fachada); entra como `extra_bias`. ⏳
 - **sdhb_bias**: corrección por consumir una intención dirigida a DC
   (`solar_gain` en calor → −0.5; `solar_shield` en frío → +0.5).
 - **clamp** a `[min, max]` (heat/cool, variantes vacaciones).

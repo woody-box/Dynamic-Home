@@ -9,6 +9,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
 from dc_engine import (  # noqa: E402
     DcConfig, DcInputs, decide, base_active, bias_exterior, sdhb_self_bias,
     assemble_target, quantize_step, publish_intent, is_night, sunlit_facades,
+    bias_vmc, trend_bias, brake_bias, forecast_bias,
     INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
 )
 
@@ -68,6 +69,62 @@ def test_assemble_target_clamps_mods_and_range():
     assert assemble_target(cfg, "heat", 22.5, 5.0, 0.0, False) == 23.5
     # range clamp: huge base
     assert assemble_target(cfg, "heat", 40, 0, 0, False) == 26.0
+
+
+def test_bias_vmc_heat_only_when_outside_colder():
+    cfg = _cfg(vmc_bias_heat=(0.1, 0.2, 0.3))
+    # outside colder (delta<0) at V2 -> +0.2
+    assert bias_vmc(cfg, "heat", 2, 21, 5) == 0.2
+    # outside warmer (delta>0) -> 0 in heat
+    assert bias_vmc(cfg, "heat", 2, 21, 25) == 0.0
+    # speed off -> 0
+    assert bias_vmc(cfg, "heat", None, 21, 5) == 0.0
+
+
+def test_bias_vmc_cool_sign():
+    cfg = _cfg(vmc_bias_cool=(0.1, 0.2, 0.3))
+    # outside hotter (delta>0) -> more cooling (negative)
+    assert bias_vmc(cfg, "cool", 3, 26, 33) == -0.3
+    # outside colder (delta<0) -> ease cooling (positive)
+    assert bias_vmc(cfg, "cool", 3, 26, 20) == 0.3
+
+
+def test_trend_bias_anticipates_and_clamps():
+    cfg = _cfg(trend_lead_h=1.0, trend_max_shift=0.25)
+    # rising 0.2 °C/h -> shift -0.2
+    assert trend_bias(cfg, 0.2) == -0.2
+    # rising fast -> clamped to -0.25
+    assert trend_bias(cfg, 5.0) == -0.25
+
+
+def test_brake_bias_only_when_trend_helps_mode():
+    cfg = _cfg(brake_thresholds=(0.3, 0.6, 1.0), brake_biases=(0.1, 0.2, 0.3))
+    # heating and warming fast (>=th3) -> brake down 0.3
+    assert brake_bias(cfg, "heat", 1.2) == -0.3
+    # heating but cooling -> no brake
+    assert brake_bias(cfg, "heat", -1.2) == 0.0
+    # cooling and cooling (cph<0) at th2 -> +0.2
+    assert brake_bias(cfg, "cool", -0.7) == 0.2
+
+
+def test_forecast_bias_brake_only():
+    cfg = _cfg(forecast_gain=0.1, forecast_cap=0.5)
+    # heating, forecast warmer than now (dT=+4) -> ease -0.4
+    assert forecast_bias(cfg, "heat", 5, 9) == -0.4
+    # heating, forecast colder -> no ease
+    assert forecast_bias(cfg, "heat", 5, 2) == 0.0
+    # clamp at cap
+    assert forecast_bias(cfg, "heat", 0, 20) == -0.5
+    # no forecast data -> 0
+    assert forecast_bias(cfg, "heat", 5, None) == 0.0
+
+
+def test_decide_combines_biases():
+    cfg = _cfg(base_heat_day=22.0, vmc_bias_heat=(0, 0.5, 0), step=0.5)
+    # base 22.0 + vmc bias 0.5 (V2, outside colder) -> 22.5
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=21, t_ext=5,
+                             sun_elevation=20, vmc_speed=2))
+    assert d.target == 22.5
 
 
 def test_sdhb_self_bias():

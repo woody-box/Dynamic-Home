@@ -50,6 +50,7 @@
           "dc_t_int": "Temperatura interior",
           "dc_t_ext": "Temperatura exterior (opcional)",
           "dc_climate": "Termostato a controlar (opcional; solo informa si se deja vacío)",
+          "dc_vmc": "VMC fan/sensor (opcional, bias de compensación VMC)",
           "ds_target": "Target de persianas en el bus (p.ej. ds)"
         }
       }

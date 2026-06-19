@@ -64,6 +64,10 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         last = await self.async_get_last_state()
         if last and last.attributes.get("preset_mode") in const.PRESET_MODES:
             self._preset = last.attributes["preset_mode"]
+            # In a manual preset, re-assert the speed on the relays so the
+            # hardware matches the restored state (auto self-heals on its own).
+            if self._preset != const.PRESET_AUTO:
+                await self._apply_speed(self._logical_speed)
 
     # --- derived state ---
     @property

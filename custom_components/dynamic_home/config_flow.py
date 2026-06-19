@@ -69,6 +69,7 @@ STEP_CLIMATE_SCHEMA = vol.Schema(
         vol.Required(const.CONF_DC_T_INT): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_DC_T_EXT): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_DC_CLIMATE): _entity("climate"),
+        vol.Optional(const.CONF_DC_VMC): _entity(["fan", "sensor"]),
         vol.Optional(const.CONF_DC_TARGET, default="ds"): str,
     }
 )

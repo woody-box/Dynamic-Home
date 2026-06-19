@@ -12,6 +12,7 @@ holds the winning intent for the ``dv`` target.
 from __future__ import annotations
 
 import logging
+import math
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
@@ -280,6 +281,10 @@ class DcCoordinator(DataUpdateCoordinator):
         self.override_temp: float | None = None
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
+        # Trend (indoor temp derivative) state.
+        self._prev_tint: float | None = None
+        self._prev_ts: float | None = None
+        self._cph: float = 0.0
 
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
@@ -328,18 +333,59 @@ class DcCoordinator(DataUpdateCoordinator):
                              priority=70)
         self._active_sources = set(desired)
 
+    def _vmc_speed(self) -> int | None:
+        """VMC speed 1/2/3 from the configured entity (fan percentage or sensor)."""
+        ent = self._hw(const.CONF_DC_VMC)
+        if not ent:
+            return None
+        st = self.hass.states.get(ent)
+        if st is None or st.state in ("unknown", "unavailable", "none", ""):
+            return None
+        if ent.startswith("fan."):
+            if st.state != "on":
+                return None
+            pct = st.attributes.get("percentage")
+            if not pct:
+                return None
+            return min(3, max(1, math.ceil(pct / (100 / 3))))
+        try:
+            v = int(float(st.state))
+            return v if v in (1, 2, 3) else None
+        except (TypeError, ValueError):
+            return None
+
+    def _update_trend(self, cfg: DcConfig, t_int: float | None,
+                      now_ts: float) -> float:
+        """EMA-smoothed indoor-temp derivative (°C/h), with a deadband."""
+        if t_int is None:
+            self._prev_tint, self._prev_ts = None, None
+            return self._cph
+        if self._prev_tint is not None and self._prev_ts is not None:
+            dt_h = (now_ts - self._prev_ts) / 3600.0
+            if dt_h > 0:
+                raw = (t_int - self._prev_tint) / dt_h
+                a = cfg.trend_ema_alpha
+                self._cph = a * raw + (1 - a) * self._cph
+        self._prev_tint, self._prev_ts = t_int, now_ts
+        return 0.0 if abs(self._cph) < cfg.trend_deadband_cph else self._cph
+
     async def _async_update_data(self) -> DcDecision:
+        cfg = DcConfig()
         sun_az, sun_el = self._sun()
+        t_int = self._num(const.CONF_DC_T_INT)
+        now_ts = dt_util.utcnow().timestamp()
         ins = DcInputs(
             hvac_mode=self.hvac_mode,
-            t_int=self._num(const.CONF_DC_T_INT),
+            t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,
             sdhb_intent=self.hub.winner("dc"),
             override_active=self.override_active,
             override_temp=self.override_temp,
+            vmc_speed=self._vmc_speed(),
+            trend_cph=self._update_trend(cfg, t_int, now_ts),
         )
-        decision = decide_climate(DcConfig(), ins)
+        decision = decide_climate(cfg, ins)
 
         intent = decision.published_intent
         if intent == "none":

@@ -70,5 +70,8 @@ class ThresholdNumber(NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         options = dict(self._entry.options)
         options[self._desc.key] = value
+        # Updating the entry options fires the update listener, which refreshes
+        # the coordinator (no reload -> EMA/failsafe state preserved).
         self.hass.config_entries.async_update_entry(
             self._entry, options=options)
+        self.async_write_ha_state()
