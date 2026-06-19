@@ -50,6 +50,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.state_data = DvState()
         self.current_speed = 1
         self.auto_mode = True
+        self.preset = "auto"            # mirrored from the fan, for the mode sensor
         self._iaq_dirty = False
         self._setup_ts = dt_util.utcnow().timestamp()
         # Telemetry (hours), accumulated between updates; persisted by sensors.

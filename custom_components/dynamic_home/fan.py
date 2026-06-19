@@ -66,6 +66,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         last = await self.async_get_last_state()
         if last and last.attributes.get("preset_mode") in const.PRESET_MODES:
             self._preset = last.attributes["preset_mode"]
+            self.coordinator.preset = self._preset
             # In a manual preset, re-assert the speed on the relays so the
             # hardware matches the restored state (auto self-heals on its own).
             if self._preset != const.PRESET_AUTO:
@@ -106,6 +107,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     # --- commands ---
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         self._preset = preset_mode
+        self.coordinator.preset = preset_mode
         if preset_mode != const.PRESET_AUTO:
             await self._apply_speed(self._logical_speed)
         else:
@@ -119,6 +121,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         speed = math.ceil(percentage_to_ranged_value(_SPEED_RANGE, percentage))
         self._preset = {1: const.PRESET_V1, 2: const.PRESET_V2,
                         3: const.PRESET_V3}[speed]
+        self.coordinator.preset = self._preset
         await self._apply_speed(speed)
         self.async_write_ha_state()
 

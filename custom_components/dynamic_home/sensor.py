@@ -63,6 +63,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                                     for d in _HOURS]
     entities.append(SpeedSensor(coordinator, entry))
     entities.append(ReasonSensor(coordinator, entry))
+    entities.append(ModeSensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -128,6 +129,18 @@ class ReasonSensor(_Base):
         return data.reason if data else None
 
 
+class ModeSensor(_Base):
+    _attr_name = "Mode"
+    _attr_icon = "mdi:fan-auto"
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "mode")
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.preset
+
+
 # --------------------------------------------------------------------------- #
 # DC (climate) diagnostic sensors — expose the pipeline for dashboards
 # --------------------------------------------------------------------------- #
@@ -162,10 +175,35 @@ _DC_SENSORS: tuple[_DcDesc, ...] = (
             lambda c: _detail(c, "target_raw"), UnitOfTemperature.CELSIUS),
     _DcDesc("dew_point", "Temperatura de condensación", "mdi:thermometer-water",
             lambda c: c.dew_point_c, UnitOfTemperature.CELSIUS),
+    _DcDesc("mods_total", "Mods total", "mdi:sigma",
+            lambda c: _detail(c, "mods_total"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
     _DcDesc("lead", "Lead", "mdi:clock-fast",
             lambda c: _detail(c, "lead_h"), "h", diagnostic=True),
     _DcDesc("reason", "Rama de decisión", "mdi:directions-fork",
             lambda c: c.data.reason if c.data else None, diagnostic=True),
+    # One dedicated sensor per bias (1:1 with dashboard chips).
+    _DcDesc("bias_exterior", "Bias exterior", "mdi:home-thermometer-outline",
+            lambda c: _detail(c, "bias_exterior"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("bias_vmc", "Bias VMC", "mdi:fan",
+            lambda c: _detail(c, "bias_vmc"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("bias_trend", "Bias tendencia", "mdi:trending-up",
+            lambda c: _detail(c, "bias_trend"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("bias_brake", "Bias freno", "mdi:car-brake-alert",
+            lambda c: _detail(c, "bias_brake"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("bias_forecast", "Bias forecast", "mdi:weather-partly-cloudy",
+            lambda c: _detail(c, "bias_forecast"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("bias_facade", "Bias fachadas", "mdi:window-shutter",
+            lambda c: _detail(c, "bias_facade"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("sdhb_bias", "Bias bus", "mdi:transit-connection-variant",
+            lambda c: _detail(c, "sdhb_bias"), UnitOfTemperature.CELSIUS,
+            diagnostic=True),
 )
 
 

@@ -158,7 +158,9 @@ async def test_observability_sensors(hass: HomeAssistant) -> None:
     co = hass.data[const.DOMAIN][entry.entry_id]
 
     reg = er.async_get(hass)
-    for key in ("target", "base", "target_raw", "dew_point", "reason"):
+    for key in ("target", "base", "target_raw", "dew_point", "reason",
+                "bias_exterior", "bias_vmc", "bias_trend", "bias_brake",
+                "bias_forecast", "bias_facade", "sdhb_bias", "mods_total"):
         assert reg.async_get_entity_id(
             "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is not None, key
     assert reg.async_get_entity_id(
