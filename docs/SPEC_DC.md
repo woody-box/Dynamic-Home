@@ -29,8 +29,8 @@ target_final = quantize( clamp( base + clamp(Σ biases, ±lim) + sdhb_bias,
   - `brake` (freno) — frena el overshoot cuando la tendencia ya ayuda al modo. ✅
   - `forecast` — anticipa por la previsión (cableado a un `weather` opcional vía
     `weather.get_forecasts`; extremo en la ventana de N horas). ✅
-  - `fachadas` — ganancia solar por fachada (muy dependiente de hardware:
-    lux + persiana por fachada); entra como `extra_bias`. ⏳
+  - `fachadas` — ganancia solar por fachada: la apertura de las persianas
+    soleadas modula la demanda (el sol entrando alivia calefacción/refrigeración). ✅
 - **sdhb_bias**: corrección por consumir una intención dirigida a DC
   (`solar_gain` en calor → −0.5; `solar_shield` en frío → +0.5).
 - **clamp** a `[min, max]` (heat/cool, variantes vacaciones).

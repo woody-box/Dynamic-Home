@@ -27,7 +27,7 @@ from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
 from .dc_engine import (
     DcConfig, DcInputs, DcDecision, decide as decide_climate, sunlit_facades,
-    dew_risk,
+    dew_risk, facade_bias,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -423,12 +423,28 @@ class DcCoordinator(DataUpdateCoordinator):
             return None
         return max(temps) if hvac == "heat" else min(temps)
 
+    def _facade_openness(self, lit: set) -> float:
+        """Mean 0..1 shutter opening of the sunlit facades (0 if none)."""
+        reg = self.hass.data.get(const.DOMAIN, {}).get("_facades", {})
+        vals = []
+        for eid, fac in reg.items():
+            if fac["key"] in lit:
+                ds = self.hass.data[const.DOMAIN].get(eid)
+                if ds is not None and ds.data is not None:
+                    vals.append(ds.data.pos / 100.0)
+        return sum(vals) / len(vals) if vals else 0.0
+
     async def _async_update_data(self) -> DcDecision:
         cfg = DcConfig()
         sun_az, sun_el = self._sun()
         t_int = self._num(const.CONF_DC_T_INT)
         rh = self._num(const.CONF_DC_HUMIDITY)
         now_ts = dt_util.utcnow().timestamp()
+
+        facades, spans = self._registered_facades()
+        lit = sunlit_facades(sun_az, sun_el, facades, spans)
+        facade_b = facade_bias(cfg, self.hvac_mode, self._facade_openness(lit))
+
         ins = DcInputs(
             hvac_mode=self.hvac_mode,
             t_int=t_int,
@@ -441,24 +457,22 @@ class DcCoordinator(DataUpdateCoordinator):
             trend_cph=self._update_trend(cfg, t_int, now_ts),
             dew_risk=dew_risk(cfg, self.hvac_mode, t_int, rh),
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
+            extra_bias=facade_b,
         )
         decision = decide_climate(cfg, ins)
 
         intent = decision.published_intent
         if intent == "none":
             desired = {}
+        elif lit:
+            # Dynamic: target only the sunlit facades.
+            desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}
+        elif facades and sun_el is not None:
+            # Facades known but none sunlit -> publish nothing.
+            desired = {}
         else:
-            facades, spans = self._registered_facades()
-            lit = sunlit_facades(sun_az, sun_el, facades, spans)
-            if lit:
-                # Dynamic: target only the sunlit facades.
-                desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}
-            elif facades and sun_el is not None:
-                # Facades known but none sunlit -> publish nothing.
-                desired = {}
-            else:
-                # Fallback: broadcast to the configured target.
-                target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
-                desired = {self._source: (intent, target)}
+            # Fallback: broadcast to the configured target.
+            target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
+            desired = {self._source: (intent, target)}
         self._publish(desired)
         return decision

@@ -80,6 +80,10 @@ class DcConfig:
     # this margin of the dew point.
     dew_spread_min: float = 2.0
 
+    # Facade solar-gain bias: max °C correction at full openness on sunlit facades.
+    facade_gain_heat: float = 0.3
+    facade_gain_cool: float = 0.3
+
 
 @dataclass
 class DcInputs:
@@ -179,6 +183,22 @@ def dew_risk(cfg: DcConfig, hvac: str, t_int: Optional[float],
     if dp is None or t_int is None:
         return False
     return (t_int - dp) < cfg.dew_spread_min
+
+
+def facade_bias(cfg: DcConfig, hvac: str, openness: float) -> float:
+    """Solar-gain bias from sunlit, open facades (°C).
+
+    ``openness`` is the 0..1 aggregate shutter opening of the sunlit facades.
+    Solar gain through open sunlit windows eases the demand: it lowers the
+    setpoint pressure both when heating (sun warms -> heat less) and when cooling
+    (sun heats -> cool more). Bounded by the per-mode gain.
+    """
+    openness = max(0.0, min(1.0, openness))
+    if hvac == "heat":
+        return -cfg.facade_gain_heat * openness
+    if hvac == "cool":
+        return -cfg.facade_gain_cool * openness
+    return 0.0
 
 
 def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],

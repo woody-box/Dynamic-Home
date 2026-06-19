@@ -10,7 +10,7 @@ from dc_engine import (  # noqa: E402
     DcConfig, DcInputs, decide, base_active, bias_exterior, sdhb_self_bias,
     assemble_target, quantize_step, publish_intent, is_night, sunlit_facades,
     bias_vmc, trend_bias, brake_bias, forecast_bias, dew_point, dew_risk,
-    INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
+    facade_bias, INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
 )
 
 
@@ -142,6 +142,14 @@ def test_decide_dew_risk_forces_off_via_engine():
     cfg = _cfg()
     d = decide(cfg, DcInputs(hvac_mode="cool", t_int=24, dew_risk=True))
     assert d.action == "off" and d.reason == "off_dew"
+
+
+def test_facade_bias_eases_demand_with_open_sunlit_facades():
+    cfg = _cfg(facade_gain_heat=0.3, facade_gain_cool=0.3)
+    assert facade_bias(cfg, "heat", 1.0) == -0.3   # fully open & sunlit
+    assert facade_bias(cfg, "heat", 0.5) == -0.15
+    assert facade_bias(cfg, "cool", 1.0) == -0.3
+    assert facade_bias(cfg, "off", 1.0) == 0.0
 
 
 def test_decide_combines_biases():
