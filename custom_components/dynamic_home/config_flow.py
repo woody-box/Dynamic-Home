@@ -73,6 +73,7 @@ STEP_CLIMATE_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_DC_HUMIDITY): _entity("sensor", "humidity"),
         vol.Optional(const.CONF_DC_WEATHER): _entity("weather"),
         vol.Optional(const.CONF_DC_WIND): _entity("sensor"),
+        vol.Optional(const.CONF_DC_WINDOW): _entity(["binary_sensor", "input_boolean"]),
         vol.Optional(const.CONF_DC_TARGET, default="ds"): str,
     }
 )

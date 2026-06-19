@@ -108,3 +108,36 @@ async def test_climate_manual_setpoint_is_override(hass: HomeAssistant) -> None:
     state = hass.states.get("climate.salon")
     assert state.attributes["temperature"] == 21.0
     assert state.attributes["reason"] == "override"
+
+
+async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
+    """An open window forces OFF; vacation switch feeds the engine."""
+    _seed(hass)
+    hass.states.async_set("binary_sensor.ventana", "off")
+    entry = await _add(hass, {
+        const.CONF_NAME: "Salon", const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.salon_temp",
+        const.CONF_DC_WINDOW: "binary_sensor.ventana",
+        const.CONF_DC_TARGET: "ds",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"
+
+    # Open the window -> lockout -> OFF.
+    hass.states.async_set("binary_sensor.ventana", "on")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "off" and co.data.reason == "off_window"
+
+    # Vacation switch exists and feeds the engine.
+    assert hass.states.get("switch.salon_vacation") is not None
+    co.vacation_enabled = True
+    hass.states.async_set("binary_sensor.ventana", "off")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"  # vacation uses the vacation base setpoint

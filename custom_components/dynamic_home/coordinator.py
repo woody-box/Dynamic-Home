@@ -349,6 +349,7 @@ class DcCoordinator(DataUpdateCoordinator):
         self.hvac_mode = "off"          # desired mode, set from the climate entity
         self.override_active = False
         self.override_temp: float | None = None
+        self.vacation_enabled = False
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
         # Trend (indoor temp derivative) state.
@@ -376,6 +377,10 @@ class DcCoordinator(DataUpdateCoordinator):
             return float(st.state)
         except (TypeError, ValueError):
             return None
+
+    def _is_on(self, key: str) -> bool:
+        ent = self._hw(key)
+        return bool(ent) and self.hass.states.is_state(ent, "on")
 
     def indoor_temperature(self) -> float | None:
         """Current indoor temperature of the zone (for the climate entity)."""
@@ -499,6 +504,8 @@ class DcCoordinator(DataUpdateCoordinator):
             dew_risk=dew_risk(cfg, self.hvac_mode, t_int, rh),
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
             wind=self._num(const.CONF_DC_WIND),
+            vacation=self.vacation_enabled,
+            window_lockout=self._is_on(const.CONF_DC_WINDOW),
             extra_bias=facade_b,
         )
         decision = decide_climate(cfg, ins)

@@ -13,7 +13,7 @@ MODULE_CLIMATE = "climate_zone"
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch"]
 PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number"]
-PLATFORMS_CLIMATE: list[str] = ["climate"]
+PLATFORMS_CLIMATE: list[str] = ["climate", "switch"]
 
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"
@@ -50,6 +50,7 @@ CONF_DC_VMC = "dc_vmc"            # optional: VMC fan/sensor for the VMC bias
 CONF_DC_HUMIDITY = "dc_humidity"  # optional: indoor RH for dew-point protection
 CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
 CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
+CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

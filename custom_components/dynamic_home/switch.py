@@ -53,12 +53,24 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
 )
 
 
+_CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
+    _ToggleDesc(
+        "vacation", "Vacation", "mdi:bag-suitcase",
+        lambda c: c.vacation_enabled,
+        lambda c, v: setattr(c, "vacation_enabled", v)),
+)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
     module = entry.data.get(const.CONF_MODULE)
-    descs = (_SHUTTER_SWITCHES if module == const.MODULE_SHUTTER
-             else _VMC_SWITCHES)
+    if module == const.MODULE_SHUTTER:
+        descs = _SHUTTER_SWITCHES
+    elif module == const.MODULE_CLIMATE:
+        descs = _CLIMATE_SWITCHES
+    else:
+        descs = _VMC_SWITCHES
     async_add_entities(DsToggle(coordinator, entry, d) for d in descs)
 
 
