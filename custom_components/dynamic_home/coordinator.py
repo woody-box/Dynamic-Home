@@ -14,7 +14,7 @@ from __future__ import annotations
 import logging
 import math
 from collections import deque
-from datetime import timedelta
+from datetime import time as dtime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -61,6 +61,10 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.bootstrap_enabled = False
         # Dry-mode (anti-condensation ventilation) toggle.
         self.dry_mode_enabled = False
+        # Weekly schedule (same daily window every day).
+        self.schedule_enabled = False
+        self.schedule_on = dtime(7, 0)
+        self.schedule_off = dtime(23, 0)
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)
@@ -97,6 +101,11 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
                                   self._hw(const.CONF_HUM_EXT))
         cfg.adaptive_enabled = self.adaptive_enabled
+        if self.schedule_enabled and self.schedule_on and self.schedule_off:
+            on_m = self.schedule_on.hour * 60 + self.schedule_on.minute
+            off_m = self.schedule_off.hour * 60 + self.schedule_off.minute
+            cfg.schedule_enabled = True
+            cfg.schedule = {d: (on_m, off_m) for d in range(7)}
         return cfg
 
     def _update_adaptive(self, cfg: DvConfig, co2: float | None,

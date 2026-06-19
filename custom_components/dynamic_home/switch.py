@@ -54,6 +54,10 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
         "dry_mode", "Dry mode", "mdi:water-percent",
         lambda c: c.dry_mode_enabled,
         lambda c, v: setattr(c, "dry_mode_enabled", v)),
+    _ToggleDesc(
+        "schedule", "Schedule", "mdi:calendar-clock",
+        lambda c: c.schedule_enabled,
+        lambda c, v: setattr(c, "schedule_enabled", v)),
 )
 
 

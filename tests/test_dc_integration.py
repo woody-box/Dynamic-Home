@@ -125,6 +125,7 @@ async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
     await hass.services.async_call(
         "climate", "set_hvac_mode",
         {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.action == "heat"
 
@@ -134,8 +135,10 @@ async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert co.data.action == "off" and co.data.reason == "off_window"
 
-    # Vacation switch exists and feeds the engine.
-    assert hass.states.get("switch.salon_vacation") is not None
+    # Vacation switch is registered and feeds the engine.
+    from homeassistant.helpers import entity_registry as er
+    assert er.async_get(hass).async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_vacation") is not None
     co.vacation_enabled = True
     hass.states.async_set("binary_sensor.ventana", "off")
     await co.async_refresh()

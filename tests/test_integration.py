@@ -167,3 +167,23 @@ async def test_dry_mode_anticondensation(hass: HomeAssistant) -> None:
     # Stage-3 dry mode active -> ventilates (drier outside air).
     assert co.data.reason == "dry_mode"
     assert co.data.speed >= 2
+
+
+async def test_weekly_schedule_builds_cfg(hass: HomeAssistant) -> None:
+    from datetime import time as dtime
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Disabled -> engine schedule off.
+    assert co._cfg().schedule_enabled is False
+    # Enable with an 08:00-22:00 window -> applied to all 7 days.
+    co.schedule_enabled = True
+    co.schedule_on = dtime(8, 0)
+    co.schedule_off = dtime(22, 0)
+    cfg = co._cfg()
+    assert cfg.schedule_enabled is True
+    assert len(cfg.schedule) == 7
+    assert cfg.schedule[0] == (8 * 60, 22 * 60)

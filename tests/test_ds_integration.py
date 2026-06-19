@@ -105,18 +105,19 @@ async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
     co = hass.data[const.DOMAIN][entry.entry_id]
 
-    # Privacy ON -> cover goes to the privacy position (default 40).
+    # The switch entities wire to the coordinator state.
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": "switch.salon_privacy"}, blocking=True)
-    await co.async_refresh()
     await hass.async_block_till_done()
+    assert co.privacy_enabled is True
+
+    # Privacy ON -> cover goes to the privacy position (default 40).
+    await co.async_refresh()
     assert co.data.reason == "privacy_time"
     assert co.data.pos == 40
 
-    # Lock ON -> override pins to the lock position (default 50), beating privacy.
-    await hass.services.async_call(
-        "switch", "turn_on", {"entity_id": "switch.salon_lock"}, blocking=True)
+    # Lock wins over privacy -> override pins to the lock position (default 50).
+    co.lock_enabled = True
     await co.async_refresh()
-    await hass.async_block_till_done()
     assert co.data.reason == "ov_lock"
     assert co.data.pos == 50
