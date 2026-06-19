@@ -209,7 +209,8 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         self.coordinator.current_speed = speed
 
     async def _switch(self, entity_id: str | None, on: bool) -> None:
-        if not entity_id:
+        # Observe (dry-run): compute the decision but never touch the relays.
+        if not entity_id or self.coordinator.observe_enabled:
             return
         await self.hass.services.async_call(
             "switch", "turn_on" if on else "turn_off",

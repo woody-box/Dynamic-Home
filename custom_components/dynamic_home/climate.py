@@ -112,7 +112,9 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
     # --- drive the real thermostat (if configured) ---
     async def _apply(self) -> None:
         real = self._entry.data.get(const.CONF_DC_CLIMATE)
-        if not real:
+        # Observe (dry-run): compute + publish to the bus, but never drive the
+        # real thermostat.
+        if not real or self.coordinator.observe_enabled:
             return
         data = self.coordinator.data
         mode = self.coordinator.hvac_mode

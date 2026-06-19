@@ -60,6 +60,7 @@ class DcCoordinator(DataUpdateCoordinator):
         self.override_active = False
         self.override_temp: float | None = None
         self.vacation_enabled = False
+        self.observe_enabled = False    # dry-run: compute but do not act on hw
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
         self.dew_point_c: float | None = None   # observability

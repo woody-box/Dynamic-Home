@@ -34,6 +34,14 @@ class _ToggleDesc:
     setter: Callable
 
 
+# Observe (dry-run): compute decisions but never touch hardware. Shared by all
+# three module types.
+_OBSERVE = _ToggleDesc(
+    "observe", "Observe only", "mdi:eye-outline",
+    lambda c: c.observe_enabled,
+    lambda c, v: setattr(c, "observe_enabled", v))
+
+
 _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
     _ToggleDesc(
         "privacy", "Privacy", "mdi:blinds-horizontal",
@@ -43,6 +51,7 @@ _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
         "lock", "Lock", "mdi:lock",
         lambda c: c.lock_enabled,
         lambda c, v: setattr(c, "lock_enabled", v)),
+    _OBSERVE,
 )
 
 _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
@@ -62,6 +71,7 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
         "schedule", "Schedule", "mdi:calendar-clock",
         lambda c: c.schedule_enabled,
         lambda c, v: setattr(c, "schedule_enabled", v)),
+    _OBSERVE,
 )
 
 
@@ -74,6 +84,7 @@ _CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
         "adaptive_lead", "Adaptive lead", "mdi:brain",
         lambda c: c.adaptive_enabled,
         lambda c, v: setattr(c, "adaptive_enabled", v)),
+    _OBSERVE,
 )
 
 

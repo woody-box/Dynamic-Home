@@ -41,6 +41,7 @@ class DsCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.hub = hub
         self.ds_state = DsState()
+        self.observe_enabled = False    # dry-run: compute but do not act on hw
         # UI-controlled state (set by the shutter's switch/number entities).
         self.privacy_enabled = False
         self.privacy_pct = 40

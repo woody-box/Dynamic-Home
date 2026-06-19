@@ -77,6 +77,33 @@ async def test_setup_creates_fan_and_numbers(hass: HomeAssistant) -> None:
     assert len(numbers) >= 4
 
 
+async def test_observe_mode_computes_but_does_not_touch_relays(
+        hass: HomeAssistant) -> None:
+    """Dry-run: the decision is still computed, but no relay service is called."""
+    on_calls = async_mock_service(hass, "switch", "turn_on")
+    off_calls = async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass, co2="500", pm="5")
+
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.observe_enabled = True            # enter observe (dry-run) mode
+    co.state_data.co2_ema = 0
+    co.state_data.pm_ema = 0
+    n_on, n_off = len(on_calls), len(off_calls)
+
+    hass.states.async_set("sensor.co2", "1500")
+    await hass.async_block_till_done()
+    await co.async_request_refresh()
+    await hass.async_block_till_done()
+
+    # Decision still reaches V3 (and current_speed tracks it)...
+    assert co.data.speed == 3
+    assert co.current_speed == 3
+    # ...but no new relay calls were issued while observing.
+    assert len(on_calls) == n_on
+    assert len(off_calls) == n_off
+
+
 async def test_auto_raises_speed_on_high_co2(hass: HomeAssistant) -> None:
     async_mock_service(hass, "switch", "turn_on")
     async_mock_service(hass, "switch", "turn_off")

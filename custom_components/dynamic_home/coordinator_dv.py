@@ -44,6 +44,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.auto_mode = True
         self.preset = "auto"            # mirrored from the fan, for the mode sensor
         self.in_grace = False           # within startup grace (observability)
+        self.observe_enabled = False    # dry-run: compute but do not act on hw
         # Manual-override auto-revert: minutes (0 disables) + expiry timestamp.
         self.override_minutes = const.OVERRIDE_MIN_DEFAULT
         self.override_until: float | None = None
