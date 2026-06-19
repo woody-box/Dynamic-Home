@@ -51,8 +51,7 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **106/106 verde** (35 DV + 24 DS + 35 DC + 5 bus engine · 3 DV +
-3 DS + 4 DC + 2 multi-instancia + 3 ciclo de vida integración). Los tests verifican que la
+Estado actual: **112/112 verde** (engine/bus + integración). Los tests verifican que la
 integración **se carga en HA**, crea `fan` / `cover` / `climate` + helpers, el
 **triángulo completo** (DC en cool → bus → DS se clampa) y el **targeting solar
 dinámico**: DC calcula qué fachadas ilumina el sol y dirige la intención solo

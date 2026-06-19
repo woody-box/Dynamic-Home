@@ -16,7 +16,7 @@ No Home Assistant imports: unit-testable and reused by the HA climate wrapper.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 # Intents DC publishes to the shutters depending on its mode.
@@ -130,6 +130,7 @@ class DcDecision:
     target: Optional[float]
     reason: str
     published_intent: str  # what DC publishes to the shutters (or "none")
+    details: dict = field(default_factory=dict)  # pipeline breakdown (observability)
 
 
 # --------------------------------------------------------------------------- #
@@ -374,16 +375,29 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
     night = is_night(ins.sun_elevation)
     base = base_active(cfg, ins.hvac_mode, night, ins.vacation)
     lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
-    mods = (
-        bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
-        + bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
-        + trend_bias(cfg, ins.trend_cph, lead)
-        + brake_bias(cfg, ins.hvac_mode, ins.trend_cph)
-        + forecast_bias(cfg, ins.hvac_mode, ins.t_ext, ins.forecast_temp)
-        + ins.extra_bias
-    )
+    b_ext = bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
+    b_vmc = bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
+    b_trend = trend_bias(cfg, ins.trend_cph, lead)
+    b_brake = brake_bias(cfg, ins.hvac_mode, ins.trend_cph)
+    b_forecast = forecast_bias(cfg, ins.hvac_mode, ins.t_ext, ins.forecast_temp)
+    mods = b_ext + b_vmc + b_trend + b_brake + b_forecast + ins.extra_bias
     self_bias = sdhb_self_bias(cfg, ins.sdhb_intent, ins.hvac_mode)
     target = assemble_target(cfg, ins.hvac_mode, base, mods, self_bias,
                              ins.vacation)
+    target_raw = round(base + mods + self_bias, 2)
+    details = {
+        "base": round(base, 2),
+        "target_raw": target_raw,
+        "mods_total": round(mods, 2),
+        "lead_h": round(lead, 2),
+        "night": night,
+        "bias_exterior": round(b_ext, 2),
+        "bias_vmc": round(b_vmc, 2),
+        "bias_trend": round(b_trend, 2),
+        "bias_brake": round(b_brake, 2),
+        "bias_forecast": round(b_forecast, 2),
+        "bias_facade": round(ins.extra_bias, 2),
+        "sdhb_bias": round(self_bias, 2),
+    }
     return DcDecision(ins.hvac_mode, target, ins.hvac_mode,
-                      publish_intent(ins.hvac_mode))
+                      publish_intent(ins.hvac_mode), details=details)

@@ -378,6 +378,8 @@ class DcCoordinator(DataUpdateCoordinator):
         self.vacation_enabled = False
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
+        self.dew_point_c: float | None = None   # observability
+        self.dew_risk_active = False
         # Trend (indoor temp derivative) state.
         self._prev_tint: float | None = None
         self._prev_ts: float | None = None
@@ -513,6 +515,9 @@ class DcCoordinator(DataUpdateCoordinator):
         rh = self._num(const.CONF_DC_HUMIDITY)
         now_ts = dt_util.utcnow().timestamp()
 
+        self.dew_point_c = dew_point(t_int, rh)
+        self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
+
         facades, spans = self._registered_facades()
         lit = sunlit_facades(sun_az, sun_el, facades, spans)
         facade_b = facade_bias(cfg, self.hvac_mode, self._facade_openness(lit))
@@ -527,11 +532,11 @@ class DcCoordinator(DataUpdateCoordinator):
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
             trend_cph=self._update_trend(cfg, t_int, now_ts),
-            dew_risk=dew_risk(cfg, self.hvac_mode, t_int, rh),
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
             wind=self._num(const.CONF_DC_WIND),
             vacation=self.vacation_enabled,
             window_lockout=self._is_on(const.CONF_DC_WINDOW),
+            dew_risk=self.dew_risk_active,
             extra_bias=facade_b,
         )
         decision = decide_climate(cfg, ins)

@@ -144,3 +144,30 @@ async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.action == "heat"  # vacation uses the vacation base setpoint
+
+
+async def test_observability_sensors(hass: HomeAssistant) -> None:
+    """DC exposes pipeline values as diagnostic sensors for dashboards."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, {
+        const.CONF_NAME: "Salon", const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.salon_temp",
+        const.CONF_DC_T_EXT: "sensor.ext_temp", const.CONF_DC_TARGET: "ds",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    reg = er.async_get(hass)
+    for key in ("target", "base", "target_raw", "dew_point", "reason"):
+        assert reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is not None, key
+    assert reg.async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_dew_risk") is not None
+
+    # In heat the pipeline breakdown is populated.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
+    assert "bias_exterior" in co.data.details
+    assert co.data.details["base"] is not None
