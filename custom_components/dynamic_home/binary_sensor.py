@@ -7,6 +7,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
 )
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -19,7 +20,8 @@ from .coordinator import DcCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator: DcCoordinator = hass.data[const.DOMAIN][entry.entry_id]
-    async_add_entities([DewRiskBinarySensor(coordinator, entry)])
+    async_add_entities([DewRiskBinarySensor(coordinator, entry),
+                        DegradedBinarySensor(coordinator, entry)])
 
 
 class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
@@ -39,3 +41,23 @@ class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return self.coordinator.dew_risk_active
+
+
+class DegradedBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
+    """Zone health: ON when a core source is missing (learning is paused)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Degradado"
+    _attr_icon = "mdi:alert-circle-outline"
+    _attr_device_class = BinarySensorDeviceClass.PROBLEM
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_degraded"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.degraded

@@ -57,7 +57,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
     if entry.data.get(const.CONF_MODULE) == const.MODULE_CLIMATE:
-        async_add_entities(DcSensor(coordinator, entry, d) for d in _DC_SENSORS)
+        ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
+                                    for d in _DC_SENSORS]
+        ents += [DcLearnSensor(coordinator, entry, d) for d in _DC_LEARN]
+        async_add_entities(ents)
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
                                     for d in _HOURS]
@@ -206,6 +209,66 @@ _DC_SENSORS: tuple[_DcDesc, ...] = (
             lambda c: _detail(c, "sdhb_bias"), UnitOfTemperature.CELSIUS,
             diagnostic=True),
 )
+
+
+@dataclass(frozen=True)
+class _DcLearnDesc:
+    key: str
+    name: str
+    icon: str
+    getter: Callable[[DcCoordinator], float]
+    setter: Callable[[DcCoordinator, float], None]
+    unit: str | None = None
+    as_int: bool = False
+
+
+_DC_LEARN: tuple[_DcLearnDesc, ...] = (
+    _DcLearnDesc("lead_gain_adaptive", "Lead adaptativo", "mdi:brain",
+                 lambda c: c.lead_gain_adaptive,
+                 lambda c, v: setattr(c, "lead_gain_adaptive", v), "h"),
+    _DcLearnDesc("learn_rate", "Tasa aprendida", "mdi:speedometer",
+                 lambda c: c.learn_rate_ema,
+                 lambda c, v: setattr(c, "learn_rate_ema", v), "°C/h"),
+    _DcLearnDesc("learn_overshoot", "Overshoot aprendido", "mdi:arrow-expand-up",
+                 lambda c: c.learn_overshoot_ema,
+                 lambda c, v: setattr(c, "learn_overshoot_ema", v),
+                 UnitOfTemperature.CELSIUS),
+    _DcLearnDesc("learned_lag", "Retardo térmico", "mdi:timer-sand",
+                 lambda c: c.learned_lag_h,
+                 lambda c, v: setattr(c, "learned_lag_h", v), "h"),
+    _DcLearnDesc("adapt_ok_count", "Ciclos aprendidos", "mdi:counter",
+                 lambda c: c.adapt_ok_count,
+                 lambda c, v: setattr(c, "adapt_ok_count", int(v)), as_int=True),
+    _DcLearnDesc("adapt_abort_count", "Ciclos abortados", "mdi:cancel",
+                 lambda c: c.adapt_abort_count,
+                 lambda c, v: setattr(c, "adapt_abort_count", int(v)), as_int=True),
+)
+
+
+class DcLearnSensor(_Base, RestoreSensor):
+    """Learned adaptive-lead value, restored across restarts (diagnostic)."""
+
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry,
+                 desc: _DcLearnDesc) -> None:
+        super().__init__(coordinator, entry, desc.key)
+        self._desc = desc
+        self._attr_name = desc.name
+        self._attr_icon = desc.icon
+        self._attr_native_unit_of_measurement = desc.unit
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_sensor_data()
+        if last is not None and last.native_value is not None:
+            self._desc.setter(self.coordinator, float(last.native_value))
+
+    @property
+    def native_value(self):
+        v = self._desc.getter(self.coordinator)
+        return int(v) if self._desc.as_int else round(float(v), 3)
 
 
 class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):

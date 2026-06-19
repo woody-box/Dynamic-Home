@@ -22,9 +22,13 @@ from .dc_engine import (
     DcConfig,
     DcDecision,
     DcInputs,
+    adaptive_lead_target,
     dew_point,
     dew_risk,
+    ema,
     facade_bias,
+    on_rate_cph,
+    step_toward,
     sunlit_facades,
 )
 from .dc_engine import (
@@ -64,6 +68,89 @@ class DcCoordinator(DataUpdateCoordinator):
         self._prev_tint: float | None = None
         self._prev_ts: float | None = None
         self._cph: float = 0.0
+        # Adaptive lead (learned). Opt-in via the "Adaptive Lead" switch.
+        self.adaptive_enabled = False
+        self.degraded = False
+        self.learn_rate_ema = 0.0        # learned heating/cooling rate (°C/h)
+        self.learn_overshoot_ema = 0.0   # learned overshoot beyond setpoint (°C)
+        self.learned_lag_h = 0.0         # learned thermal lag OFF->peak (h)
+        self.lead_gain_adaptive = 0.0    # learned anticipation horizon (h)
+        self.adapt_ok_count = 0
+        self.adapt_abort_count = 0
+        # Cycle state machine (ON capture -> OFF settling -> peak).
+        self._valve_open = False
+        self._on_t0: float | None = None
+        self._on_t0_ts: float | None = None
+        self._settling = False
+        self._off_sp: float | None = None
+        self._off_peak: float | None = None
+        self._off_peak_ts: float | None = None
+        self._off_ts: float | None = None
+        self._off_hvac: str | None = None
+
+    # --- adaptive lead learning (port of "Adaptive Lead v2.6.1") ---
+    def _valve_demand(self, hvac: str, t_int: float | None,
+                      target: float | None) -> bool:
+        """Whether the zone is actively calling for heat/cool (our 'valve open')."""
+        if hvac not in ("heat", "cool") or t_int is None or target is None:
+            return False
+        return t_int < target if hvac == "heat" else t_int > target
+
+    def _finalize_cycle(self, cfg: DcConfig) -> None:
+        """Settling window elapsed: learn overshoot, lag and step the lead gain."""
+        if self._off_peak is None or self._off_sp is None or self._off_ts is None:
+            return
+        overshoot = self._off_peak - self._off_sp
+        self.learn_overshoot_ema = ema(self.learn_overshoot_ema, overshoot,
+                                       cfg.adapt_alpha)
+        lag_h = (max(0.0, (self._off_peak_ts - self._off_ts) / 3600.0)
+                 if self._off_peak_ts else 0.0)
+        self.learned_lag_h = ema(self.learned_lag_h, lag_h, cfg.adapt_alpha)
+        target_lead = adaptive_lead_target(cfg, self.learn_overshoot_ema,
+                                           self.learned_lag_h, self.learn_rate_ema)
+        self.lead_gain_adaptive = step_toward(self.lead_gain_adaptive, target_lead,
+                                              cfg.adapt_gain_lr)
+        self.adapt_ok_count += 1
+
+    def _learn_step(self, cfg: DcConfig, now_ts: float, hvac: str,
+                    t_int: float | None, target: float | None,
+                    window_open: bool, override: bool) -> None:
+        """Drive the ON/OFF cycle state machine for one coordinator tick."""
+        valve = self._valve_demand(hvac, t_int, target)
+        rising = valve and not self._valve_open
+        falling = (not valve) and self._valve_open
+
+        # Settling window in progress (between valve OFF and the temperature peak).
+        if self._settling:
+            if rising or hvac != self._off_hvac or window_open or override:
+                self.adapt_abort_count += 1   # cycle disturbed -> no learning
+                self._settling = False
+            else:
+                if t_int is not None and self._off_peak is not None:
+                    peak = (max(self._off_peak, t_int) if self._off_hvac == "heat"
+                            else min(self._off_peak, t_int))
+                    if peak != self._off_peak:
+                        self._off_peak, self._off_peak_ts = peak, now_ts
+                if now_ts - self._off_ts >= cfg.adapt_off_window_h * 3600:
+                    self._finalize_cycle(cfg)
+                    self._settling = False
+
+        # Edges: capture ON baseline / learn the ON-rate and open a settling window.
+        if rising:
+            self._on_t0, self._on_t0_ts = t_int, now_ts
+        elif falling and hvac in ("heat", "cool"):
+            if self._on_t0_ts is not None:
+                dt_h = (now_ts - self._on_t0_ts) / 3600.0
+                rate = on_rate_cph(self._on_t0, t_int, dt_h, cfg)
+                if rate is not None:
+                    self.learn_rate_ema = ema(self.learn_rate_ema, rate,
+                                              cfg.adapt_alpha)
+            self._settling = True
+            self._off_sp, self._off_peak = target, t_int
+            self._off_peak_ts = self._off_ts = now_ts
+            self._off_hvac = hvac
+
+        self._valve_open = valve
 
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
@@ -198,9 +285,20 @@ class DcCoordinator(DataUpdateCoordinator):
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
 
+        # Degraded when a core source is missing while a mode is demanded; this
+        # pauses learning so stale readings don't poison the EMAs.
+        self.degraded = self.hvac_mode in ("heat", "cool") and t_int is None
+
         facades, spans = self._registered_facades()
         lit = sunlit_facades(sun_az, sun_el, facades, spans)
         facade_b = facade_bias(cfg, self.hvac_mode, self._facade_openness(lit))
+
+        # Feed the learned lead only once the loop is enabled, healthy and has
+        # completed at least one cycle; otherwise the engine uses its physical model.
+        adaptive_lead = (self.lead_gain_adaptive
+                         if (self.adaptive_enabled and self.adapt_ok_count > 0
+                             and not self.degraded)
+                         else None)
 
         ins = DcInputs(
             hvac_mode=self.hvac_mode,
@@ -218,8 +316,18 @@ class DcCoordinator(DataUpdateCoordinator):
             window_lockout=self._is_on(const.CONF_DC_WINDOW),
             dew_risk=self.dew_risk_active,
             extra_bias=facade_b,
+            adaptive_lead_h=adaptive_lead,
         )
         decision = decide_climate(cfg, ins)
+
+        # Learn from real cycles (paused while disabled or degraded).
+        if self.adaptive_enabled and not self.degraded:
+            self._learn_step(cfg, now_ts, self.hvac_mode, t_int, decision.target,
+                             self._is_on(const.CONF_DC_WINDOW), self.override_active)
+        else:
+            self._valve_open = self._valve_demand(self.hvac_mode, t_int,
+                                                  decision.target)
+            self._settling = False
 
         intent = decision.published_intent
         if intent == "none":

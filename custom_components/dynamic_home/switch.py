@@ -70,6 +70,10 @@ _CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
         "vacation", "Vacation", "mdi:bag-suitcase",
         lambda c: c.vacation_enabled,
         lambda c, v: setattr(c, "vacation_enabled", v)),
+    _ToggleDesc(
+        "adaptive_lead", "Adaptive lead", "mdi:brain",
+        lambda c: c.adaptive_enabled,
+        lambda c, v: setattr(c, "adaptive_enabled", v)),
 )
 
 

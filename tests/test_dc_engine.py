@@ -11,6 +11,7 @@ from dc_engine import (  # noqa: E402
     INTENT_SOLAR_SHIELD,
     DcConfig,
     DcInputs,
+    adaptive_lead_target,
     assemble_target,
     base_active,
     bias_exterior,
@@ -20,12 +21,15 @@ from dc_engine import (  # noqa: E402
     decide,
     dew_point,
     dew_risk,
+    ema,
     facade_bias,
     forecast_bias,
     is_night,
+    on_rate_cph,
     publish_intent,
     quantize_step,
     sdhb_self_bias,
+    step_toward,
     sunlit_facades,
     trend_bias,
 )
@@ -292,6 +296,56 @@ def test_decide_override_uses_manual_temp():
     d = decide(_cfg(), DcInputs(hvac_mode="heat", override_active=True,
                                 override_temp=21.0))
     assert d.target == 21.0 and d.reason == "override"
+
+
+# --------------------------------------------------------------------------- #
+# Adaptive lead (learned anticipation)
+# --------------------------------------------------------------------------- #
+def test_ema_blends_toward_new():
+    assert ema(0.0, 1.0, 0.5) == 0.5
+    assert ema(2.0, 2.0, 0.2) == 2.0
+
+
+def test_on_rate_gates_short_or_tiny_cycles():
+    c = _cfg()
+    # 2°C over 1h -> 2°C/h, trusted.
+    assert on_rate_cph(18.0, 20.0, 1.0, c) == 2.0
+    # Too short (< min_dt_h) -> rejected.
+    assert on_rate_cph(18.0, 20.0, 0.1, c) is None
+    # Too small a move (< min_dt) -> rejected.
+    assert on_rate_cph(20.0, 20.02, 1.0, c) is None
+    # Bad inputs -> None.
+    assert on_rate_cph(None, 20.0, 1.0, c) is None
+
+
+def test_adaptive_lead_target_from_overshoot_and_lag():
+    c = _cfg(adapt_overshoot_target=0.1, adapt_rate_floor_cph=0.1, adapt_lag_k=1.0)
+    # No excess overshoot, no lag -> zero lead.
+    assert adaptive_lead_target(c, 0.1, 0.0, 1.0) == 0.0
+    # Excess overshoot 0.4°C at 1°C/h -> 0.4h from overshoot term.
+    assert adaptive_lead_target(c, 0.5, 0.0, 1.0) == 0.4
+    # Lag dominates when larger.
+    assert adaptive_lead_target(c, 0.1, 1.2, 1.0) == 1.2
+    # Clamped to lead_adaptive_max_h.
+    assert adaptive_lead_target(_cfg(lead_adaptive_max_h=2.0), 0.1, 5.0, 1.0) == 2.0
+
+
+def test_step_toward_is_a_partial_gradient_step():
+    assert step_toward(1.0, 2.0, 0.1) == 1.1
+    assert step_toward(2.0, 2.0, 0.5) == 2.0
+
+
+def test_adaptive_lead_overrides_physical_model_in_decide():
+    c = _cfg()
+    base = decide(c, DcInputs(hvac_mode="heat", t_int=19.0, t_ext=5.0,
+                              trend_cph=0.1))
+    adapt = decide(c, DcInputs(hvac_mode="heat", t_int=19.0, t_ext=5.0,
+                               trend_cph=0.1, adaptive_lead_h=3.0))
+    assert base.details["lead_source"] == "physical"
+    assert adapt.details["lead_source"] == "adaptive"
+    # A bigger lead means a stronger trend anticipation (different target/bias).
+    assert adapt.details["lead_h"] == 3.0
+    assert adapt.details["bias_trend"] != base.details["bias_trend"]
 
 
 if __name__ == "__main__":
