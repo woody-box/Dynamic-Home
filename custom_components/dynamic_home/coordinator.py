@@ -51,6 +51,25 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.auto_mode = True
         self._iaq_dirty = False
         self._setup_ts = dt_util.utcnow().timestamp()
+        # Telemetry (hours), accumulated between updates; persisted by sensors.
+        self.speed_hours = {1: 0.0, 2: 0.0, 3: 0.0}
+        self.machine_hours = 0.0
+        self.filter_hours = 0.0
+        self._accum_ts: float | None = None
+
+    def _accumulate(self, now_ts: float) -> None:
+        """Add elapsed time to the running-hours counters."""
+        if self._accum_ts is not None:
+            dt_h = (now_ts - self._accum_ts) / 3600.0
+            spd = self.current_speed
+            if spd in (1, 2, 3) and dt_h > 0:
+                self.speed_hours[spd] += dt_h
+                self.machine_hours += dt_h
+                self.filter_hours += dt_h
+        self._accum_ts = now_ts
+
+    def reset_filter_hours(self) -> None:
+        self.filter_hours = 0.0
 
     # --- config helpers ---
     def _hw(self, key: str) -> str | None:
@@ -123,6 +142,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
         now = dt_util.now()  # local time for the weekly schedule
         now_ts = now.timestamp()
+        self._accumulate(now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
 
         ins = DvInputs(

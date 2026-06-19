@@ -98,3 +98,24 @@ async def test_auto_raises_speed_on_high_co2(hass: HomeAssistant) -> None:
     assert coordinator.data.speed == 3
     # The driver should have switched a relay on (V3).
     assert any(c.data.get("entity_id") == "switch.vmc_v3" for c in on_calls)
+
+
+async def test_vmc_telemetry_entities(hass: HomeAssistant) -> None:
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Telemetry sensors exist.
+    for eid in ("sensor.vmc_machine_hours", "sensor.vmc_hours_v1",
+                "sensor.vmc_filter_hours", "sensor.vmc_speed"):
+        assert hass.states.get(eid) is not None, eid
+
+    # Filter reset button zeroes the counter.
+    co.filter_hours = 12.0
+    await hass.services.async_call(
+        "button", "press",
+        {"entity_id": "button.vmc_reset_filter_hours"}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.filter_hours == 0.0
