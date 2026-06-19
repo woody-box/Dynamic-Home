@@ -191,7 +191,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             current_speed=self.current_speed,
             permitida=None,  # computed by the engine (schedule + failsafe gate)
             auto_mode=self.auto_mode,
-            sdhb_intent=self.hub.winner("dv"),
+            sdhb_intent=self.hub.winner("dv", now_ts),
             trigger_is_iaq=trigger_is_iaq,
             now_ts=now_ts,
             weekday=now.weekday(),
@@ -300,7 +300,8 @@ class DsCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> DsDecision:
         cfg = self._cfg()
         cfg.privacy_pos_pct = int(self.privacy_pct)
-        winner = self.hub.winner(self._listen_targets())
+        now_ts = dt_util.utcnow().timestamp()
+        winner = self.hub.winner(self._listen_targets(), now_ts)
         sun_az, sun_el, sun_above = self._sun()
 
         ins = DsInputs(
@@ -391,13 +392,14 @@ class DcCoordinator(DataUpdateCoordinator):
         spans = {v["key"]: v.get("span", 180.0) for v in reg.values()}
         return facades, spans
 
-    def _publish(self, desired: dict) -> None:
+    def _publish(self, desired: dict, now_ts: float | None = None) -> None:
         """Reconcile the bus slots this DC owns with ``desired`` (key->(intent,target))."""
         for stale in self._active_sources - set(desired):
             self.hub.clear(stale)
         for src, (intent, target) in desired.items():
+            # TTL so a stale zone's intent expires on its own (matches the YAML).
             self.hub.publish(source=src, intent=intent, target=target,
-                             priority=70)
+                             priority=70, ttl_s=1800, now_ts=now_ts)
         self._active_sources = set(desired)
 
     def _vmc_speed(self) -> int | None:
@@ -487,7 +489,7 @@ class DcCoordinator(DataUpdateCoordinator):
             t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,
-            sdhb_intent=self.hub.winner("dc"),
+            sdhb_intent=self.hub.winner("dc", now_ts),
             override_active=self.override_active,
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
@@ -512,5 +514,5 @@ class DcCoordinator(DataUpdateCoordinator):
             # Fallback: broadcast to the configured target.
             target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
             desired = {self._source: (intent, target)}
-        self._publish(desired)
+        self._publish(desired, now_ts)
         return decision
