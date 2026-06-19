@@ -17,9 +17,10 @@ calentar pide a las persianas *ganancia solar* y al enfriar pide *protección
 solar*; DS y DV reaccionan. Todo esto antes vivía en miles de *helpers* YAML;
 ahora es una integración nativa que se añade desde la interfaz.
 
-> Este repositorio contiene dos cosas:
-> - `custom_components/dynamic_home/` — **la integración** (lo que instala HACS).
-> - `Dynamic_Suite_v4_2_WOODBOX_FINAL/` — la suite YAML original (referencia/legado).
+> Este repositorio contiene **la integración** en `custom_components/dynamic_home/`
+> (lo que instala HACS). La suite YAML original v4.2 (referencia/legado) vive en la
+> rama [`archive/v4.2-source`](https://github.com/woody-box/Dynamic-Home/tree/archive/v4.2-source),
+> fuera de `main` para mantener el repo ligero.
 
 ---
 
@@ -81,4 +82,4 @@ traducen estado. CI ejecuta toda la batería en cada push.
 
 ## Licencia
 
-Ver [`Dynamic_Suite_v4_2_WOODBOX_FINAL/LICENSE.txt`](Dynamic_Suite_v4_2_WOODBOX_FINAL/LICENSE.txt).
+MIT — ver [`LICENSE`](LICENSE).

@@ -1,6 +1,6 @@
 # Dynamic Home — port a integración (PoC)
 
-Port de la suite YAML (`../Dynamic_Suite_v4_2_WOODBOX_FINAL/`) a una
+Port de la suite YAML original (rama `archive/v4.2-source`) a una
 **integración de Home Assistant**. Módulos portados:
 - **DV** (ventilación / VMC) → entidad `fan` — ver `SPEC.md`.
 - **DS** (persianas) → entidad `cover` — ver `SPEC_DS.md`.
