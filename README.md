@@ -51,7 +51,9 @@ Al añadir la integración eliges el módulo (un asistente por instancia):
   al que publica en el bus.
 
 Puedes añadir varias instancias (varias zonas, varias persianas). Todas
-comparten el bus y se coordinan automáticamente.
+comparten el bus y se coordinan automáticamente. Cada persiana escucha en su
+**fachada** (`ds_f<azimut>`), así que una zona de clima puede pedir protección
+solar solo a la fachada soleada y dejar el resto sin tocar.
 
 > ⚠️ Pruébalo primero contra interruptores de prueba antes que contra el
 > hardware real, hasta validar el comportamiento en tu instalación.

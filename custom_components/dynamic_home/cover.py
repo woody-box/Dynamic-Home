@@ -62,10 +62,12 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
+        attrs = {"facade": self.coordinator.facade_key}
         data = self.coordinator.data
-        if not data:
-            return {}
-        return {"reason": data.reason, **data.details}
+        if data:
+            attrs["reason"] = data.reason
+            attrs.update(data.details)
+        return attrs
 
     # --- commands pass through to the underlying cover ---
     async def async_set_cover_position(self, **kwargs) -> None:

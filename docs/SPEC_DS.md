@@ -63,5 +63,7 @@ impact = (in_front y sun_effective) ? exposed : 0   → cuantizado a 10%
 
 - ✅ Cascada completa + caps + slew + impacto solar (con tests).
 - ✅ Consumo del bus compartido (demo cross-módulo: DC→`request_solar_shield`→DS clampa).
+- ✅ Multi-instancia con targeting por fachada: cada persiana escucha en `ds`
+  (broadcast) y en su fachada `ds_fXXX`; DC dirige intents a una fachada concreta.
 - ⏳ Override/privacidad/hold por UI (timers), facade span/voladizo en el flow,
-  detección de lluvia por umbral analógico, y multi-ventana (`ds_w2..w8`).
+  detección de lluvia por umbral analógico.

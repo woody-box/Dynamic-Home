@@ -51,11 +51,19 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **75/75 verde** (29 DV + 21 DS + 16 DC engine · 3 DV + 3 DS + 4 DC
-integración). Los tests verifican que la integración **se carga en HA**, crea
-`fan` / `cover` / `climate` + helpers, y el **triángulo completo**: una zona DC
-en modo cool publica al bus y la persiana DS se clampa a 30% — coordinación
-multi-módulo end-to-end.
+Estado actual: **81/81 verde** (29 DV + 21 DS + 16 DC + 5 bus engine · 3 DV +
+3 DS + 4 DC + 1 multi-instancia integración). Los tests verifican que la
+integración **se carga en HA**, crea `fan` / `cover` / `climate` + helpers, el
+**triángulo completo** (DC en cool → bus → DS se clampa) y el **targeting por
+fachada**: con varias persianas, DC puede pedir protección solar solo a la
+fachada objetivo (`ds_f180`) y el resto no se mueve.
+
+## Multi-instancia y bus
+
+Cada instancia es un config entry y todas comparten el `SdhbHub`. El bus
+(`bus.py`, puro) arbitra por prioridad y soporta **targets de fachada**: cada
+persiana escucha en `ds` (broadcast) y en su fachada `ds_fXXX` (azimut a 3
+dígitos); DC publica a `ds` (todas) o a una fachada concreta.
 
 ## Qué cubre
 

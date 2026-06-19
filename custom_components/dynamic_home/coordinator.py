@@ -21,41 +21,12 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
 from . import const
+from .bus import SdhbHub
 from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
 from .dc_engine import DcConfig, DcInputs, DcDecision, decide as decide_climate
 
 _LOGGER = logging.getLogger(__name__)
-
-
-class SdhbHub:
-    """Tiny in-memory intent bus (PoC stand-in for the SDHB package).
-
-    Replaces ~2500 lines of input_text "slots" + template arbitration with a
-    dict and a resolver. Intents carry a priority; the highest wins per target.
-    """
-
-    def __init__(self) -> None:
-        self._slots: dict[str, dict] = {}
-
-    def publish(self, source: str, intent: str, target: str,
-                priority: int = 50) -> None:
-        self._slots[source] = {"intent": intent, "target": target,
-                               "priority": priority}
-
-    def clear(self, source: str) -> None:
-        """Remove a source's intent from the bus."""
-        self._slots.pop(source, None)
-
-    def winner(self, target: str) -> str:
-        """Highest-priority intent whose target matches ``target`` or is broadcast."""
-        candidates = [
-            s for s in self._slots.values()
-            if s["target"] in (target, "")
-        ]
-        if not candidates:
-            return "none"
-        return max(candidates, key=lambda s: s["priority"])["intent"]
 
 
 class DvCoordinator(DataUpdateCoordinator[DvDecision]):
@@ -218,6 +189,16 @@ class DsCoordinator(DataUpdateCoordinator):
             cfg.facade_azimuth_deg = float(az)
         return cfg
 
+    @property
+    def facade_key(self) -> str:
+        """Bus target for this shutter's facade, e.g. ``ds_f180`` (3-digit azimuth)."""
+        az = int(round(self.entry.data.get(const.CONF_FACADE_AZIMUTH, 0))) % 360
+        return f"ds_f{az:03d}"
+
+    def _listen_targets(self) -> set[str]:
+        """Targets this shutter consumes: broadcast ``ds`` plus its facade."""
+        return {"ds", self.facade_key}
+
     def _hvac_mode(self) -> str:
         ent = self._hw(const.CONF_CLIMATE)
         if not ent:
@@ -246,7 +227,7 @@ class DsCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> DsDecision:
         cfg = self._cfg()
-        winner = self.hub.winner("ds")
+        winner = self.hub.winner(self._listen_targets())
         sun_az, sun_el, sun_above = self._sun()
 
         ins = DsInputs(
