@@ -1,0 +1,168 @@
+# DV optional tests: backup-save-restore cycle (v4.2)
+#
+# Requires python_scripts installed:
+# - dv_vmc_backup_save.py / dv_vmc_backup_restore.py
+#
+input_boolean:
+  dv_backup_cycle_tests_enabled:
+    name: dv_backup_cycle_tests_enabled
+    icon: mdi:clipboard-check
+    initial: false
+
+input_select:
+  dv_backup_cycle_test_scenario:
+    name: dv_backup_cycle_test_scenario
+    options:
+      - none
+      - t_vmc_backup_restore_cycle
+    initial: none
+
+input_boolean:
+  dv_backup_cycle_test_pass:
+    name: dv_backup_cycle_test_pass
+    initial: false
+
+input_text:
+  dv_backup_cycle_test_last_result:
+    name: dv_backup_cycle_test_last_result
+    initial: ""
+
+timer:
+  dv_backup_cycle_tests_auto_off:
+    name: dv_backup_cycle_tests_auto_off
+    duration: "02:00:00"
+
+automation:
+  - id: dv_backup_cycle_tests_auto_off_start
+    alias: dv_backup_cycle_tests_auto_off_start
+    trigger:
+      - platform: state
+        entity_id: input_boolean.dv_backup_cycle_tests_enabled
+        to: "on"
+    action:
+      - service: timer.start
+        target:
+          entity_id: timer.dv_backup_cycle_tests_auto_off
+
+  - id: dv_backup_cycle_tests_auto_off_apply
+    alias: dv_backup_cycle_tests_auto_off_apply
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.dv_backup_cycle_tests_auto_off
+    condition:
+      - condition: state
+        entity_id: input_boolean.dv_backup_cycle_tests_enabled
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dv_backup_cycle_tests_enabled
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.dv_backup_cycle_test_scenario
+        data:
+          option: none
+
+  - id: dv_backup_cycle_tests_run_on_scenario
+    alias: dv_backup_cycle_tests_run_on_scenario
+    trigger:
+      - platform: state
+        entity_id: input_select.dv_backup_cycle_test_scenario
+    condition:
+      - condition: state
+        entity_id: input_boolean.dv_backup_cycle_tests_enabled
+        state: "on"
+      - condition: template
+        value_template: "{{ trigger.to_state.state not in ['none','unknown','unavailable'] }}"
+    action:
+      - service: script.dv_run_backup_cycle_test
+        data:
+          scenario: "{{ trigger.to_state.state }}"
+
+script:
+  dv_run_backup_cycle_test:
+    alias: dv_run_backup_cycle_test
+    mode: queued
+    fields:
+      scenario:
+        description: scenario key
+    sequence:
+      - variables:
+          scen: "{{ scenario }}"
+          e1: input_boolean.dv_vmc_auto
+          e2: input_number.dv_vmc_target_flow_m3h
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dv_backup_cycle_test_pass
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.dv_backup_cycle_test_last_result
+        data:
+          value: "RUN {{ scen }} @ {{ now() }}"
+      - choose:
+          - conditions: "{{ scen == 't_vmc_backup_restore_cycle' }}"
+            sequence:
+              - variables:
+                  v1_init: "{{ states(e1) }}"
+                  v2_init: "{{ states(e2) }}"
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: "{{ e1 }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: "{{ e2 }}"
+                data:
+                  value: 100
+              - service: script.dv_vmc_backup_save
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: "{{ e1 }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: "{{ e2 }}"
+                data:
+                  value: 80
+              - service: script.dv_vmc_backup_restore
+              - delay: "00:00:01"
+              - choose:
+                  - conditions: "{{ is_state(e1,'on') and (states(e2)|int(0) == 100) }}"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.dv_backup_cycle_test_pass
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.dv_backup_cycle_test_last_result
+                        data:
+                          value: "PASS: DV backup-save-restore restored values"
+                  - conditions: []
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.dv_backup_cycle_test_last_result
+                        data:
+                          value: "FAIL: expected e1=on e2=100 after restore; got e1={{ states(e1) }} e2={{ states(e2) }}"
+              # restore initial
+              - choose:
+                  - conditions: "{{ v1_init == 'on' }}"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target: {entity_id: "{{ e1 }}"}
+                  - conditions: []
+                    sequence:
+                      - service: input_boolean.turn_off
+                        target: {entity_id: "{{ e1 }}"}
+              - choose:
+                  - conditions: "{{ v2_init not in ['unknown','unavailable','none',''] }}"
+                    sequence:
+                      - service: input_number.set_value
+                        target: {entity_id: "{{ e2 }}"}
+                        data:
+                          value: "{{ v2_init|int(0) }}"
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.dv_backup_cycle_test_scenario
+        data:
+          option: none

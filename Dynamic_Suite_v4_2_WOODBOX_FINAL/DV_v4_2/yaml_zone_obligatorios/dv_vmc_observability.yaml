@@ -1,0 +1,403 @@
+# ============================================================================
+# Dynamic Ventilation · DV VMC · Observability + health
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction into inputs/logic/automations/sdhb/observability)
+# ============================================================================
+
+template:
+- sensor:
+  - name: dv_vmc_addon_observability_version
+    unique_id: dv_vmc_addon_observability_version
+    state: '4.2'
+  - name: dv_vmc_health_summary
+    unique_id: dv_vmc_health_summary
+    icon: mdi:heart-pulse
+    state: >-
+      {% set en = is_state('input_boolean.dv_vmc_enabled','on') %}
+      {% set ok = is_state('binary_sensor.dv_vmc_hw_contract_ok','on') %}
+      {% set rep = states('sensor.dv_vmc_hw_replace_count')|int(0) %}
+      {% if not en %}
+        OFF
+      {% elif not ok %}
+        HW_CONTRACT_FAIL
+      {% elif rep > 0 %}
+        WARN_REPLACE_PLACEHOLDERS
+      {% else %}
+        OK
+      {% endif %}
+
+  - name: dv_vmc_health_code
+    unique_id: dv_vmc_health_code
+    icon: mdi:shield-check
+    state: >-
+      {% set en = is_state('input_boolean.dv_vmc_enabled','on') %}
+      {% set ok = is_state('binary_sensor.dv_vmc_hw_contract_ok','on') %}
+      {% set rep = states('sensor.dv_vmc_hw_replace_count')|int(0) %}
+      {% if not en %} 0
+      {% elif not ok %} 2
+      {% elif rep > 0 %} 1
+      {% else %} 3
+      {% endif %}
+
+- sensor:
+  - name: dv_vmc_pipeline_summary
+    unique_id: dv_vmc_pipeline_summary
+    icon: mdi:clipboard-text-outline
+    state: >-
+      {% set en = is_state('input_boolean.dv_vmc_enabled','on') %}
+      {% set hw = is_state('binary_sensor.dv_vmc_hw_contract_ok','on') %}
+      {% set cap = states('sensor.dv_vmc_hostile_outside_cap')|int(3) %}
+      {% if not en %} OFF
+      {% elif not hw %} HW_FAIL
+      {% elif cap == 0 %} OUT_OFF
+      {% else %} OK
+      {% endif %}
+    attributes:
+      target_final: "{{ state_attr('sensor.dv_vmc_decision_reason','speed_cmd') | default('') }}"
+      reason: "{{ state_attr('sensor.dv_vmc_decision_reason','reason_slug') | default(states('sensor.dv_vmc_decision_reason')) }}"
+      stage_winner: "{{ states('input_text.dv_vmc_stage_winner') }}"
+      stage_winner_detail: "{{ states('input_text.dv_vmc_stage_winner_detail') }}"
+      co2: "{{ states('sensor.dv_vmc_co2_safe') }}"
+      pm25: "{{ states('sensor.dv_vmc_pm25_safe') }}"
+      hostile_enabled: "{{ is_state('input_boolean.dv_vmc_hostile_outside_enabled','on') }}"
+      hostile_cap: "{{ states('sensor.dv_vmc_hostile_outside_cap') }}"
+      outdoor_aqi: "{{ states('sensor.dv_vmc_outdoor_aqi_safe') }}"
+
+  - name: dv_vmc_health
+    unique_id: dv_vmc_health
+    icon: mdi:heart-pulse
+    state: "{# Core contract + onboarding #} {% set core_ok = is_state('binary_sensor.dv_vmc_hw_contract_ok','on')\n\
+      \                  and (states('sensor.dv_vmc_hw_missing_count')|int(0) == 0)\n\
+      \                  and is_state('binary_sensor.dv_vmc_onboarding_ok','on') %}\n\
+      \n{# Sensor health is optional: if addon not loaded, treat as OK #} {% set sh_state\
+      \ = states('binary_sensor.dv_vmc_sensor_health_ok') %} {% set sh_ok = (sh_state\
+      \ in ['unknown','unavailable']) or is_state('binary_sensor.dv_vmc_sensor_health_ok','on')\
+      \ %}\n{# Golden regression is optional: if addon not loaded / never run, treat\
+      \ as OK #} {% set gl = states('input_text.dv_vmc_golden_last') %} {% set golden_ok\
+      \ = (gl in ['unknown','unavailable','']) or (gl|lower).startswith('pass') %}\n\
+      {% if core_ok and sh_ok and golden_ok %}\n  ok\n{% else %}\n  warn\n{% endif\
+      \ %}"
+    attributes:
+      hw_contract_ok: '{{ is_state(''binary_sensor.dv_vmc_hw_contract_ok'',''on'')
+        }}'
+      hw_missing_count: '{{ states(''sensor.dv_vmc_hw_missing_count'')|int(0) }}'
+      onboarding_ok: '{{ is_state(''binary_sensor.dv_vmc_onboarding_ok'',''on'') }}'
+      auto_lock: '{{ is_state(''input_boolean.dv_vmc_auto_lock'',''on'') }}'
+      driver_busy: '{{ is_state(''input_boolean.dv_vmc_driver_busy'',''on'') }}'
+      any_speed_on: "{{ is_state('input_boolean.dv_vmc_v1','on')\n   or is_state('input_boolean.dv_vmc_v2','on')\n\
+        \   or is_state('input_boolean.dv_vmc_v3','on') }}"
+      bus_degraded: '{{ is_state(''binary_sensor.dv_vmc_bus_degraded'',''on'') if
+        states(''binary_sensor.dv_vmc_bus_degraded'') not in [''unknown'',''unavailable'']
+        else false }}'
+      sensor_health_ok: "{{ is_state('binary_sensor.dv_vmc_sensor_health_ok','on')\n\
+        \   if states('binary_sensor.dv_vmc_sensor_health_ok') not in ['unknown','unavailable']\
+        \ else none }}"
+      golden_last: "{{ states('input_text.dv_vmc_golden_last')\n   if states('input_text.dv_vmc_golden_last')\
+        \ not in ['unknown','unavailable',''] else none }}"
+      golden_ok: "{{ (states('input_text.dv_vmc_golden_last')|lower).startswith('pass')\n\
+        \   if states('input_text.dv_vmc_golden_last') not in ['unknown','unavailable','']\
+        \ else none }}"
+- sensor:
+  - name: dv_vmc_addon_sensor_health_version
+    unique_id: dv_vmc_addon_sensor_health_version
+    state: '4.2'
+- sensor:
+  - name: dv_vmc_sensor_health
+    unique_id: dv_vmc_sensor_health
+    icon: mdi:heart-pulse
+    state: '{% set ok = is_state(''binary_sensor.dv_vmc_sensor_health_ok'',''on'')
+      %} {{ ''ok'' if ok else ''fail'' }}'
+    attributes:
+      checked:
+      - sensor.dv_vmc_co2_safe
+      - sensor.dv_vmc_pm25_safe
+      - sensor.dv_vmc_hum_exterior_safe
+      - sensor.dv_vmc_dp_exterior_safe
+      - sensor.dv_vmc_dp_casa_safe
+      - sensor.dv_vmc_hum_bano_pasillo_safe
+      - sensor.dv_vmc_hum_bano_dormitorio_safe
+      - sensor.dv_vmc_dp_bano_pasillo_safe
+      - sensor.dv_vmc_dp_bano_dormitorio_safe
+      max_age_s: '{{ states(''input_number.dv_vmc_health_max_age_s'')|int(1800) }}'
+      failed: "{% set max_age = states('input_number.dv_vmc_health_max_age_s')|int(1800)\
+        \ %} {% set ns = namespace(f=[]) %} {% set s = 'sensor.dv_vmc_co2_safe' %}\
+        \ {% set v = states(s) %} {% if v in ['unknown','unavailable','none',''] %}{%\
+        \ set ns.f = ns.f + [s ~ ':na'] %}{% endif %} {% if v not in ['unknown','unavailable','none','']\
+        \ %}\n  {% set x = v|float(none) %}\n  {% if x is none or x < 0 or x > 5000\
+        \ %}{% set ns.f = ns.f + [s ~ ':range'] %}{% endif %}\n{% endif %} {% if (as_timestamp(now())\
+        \ - as_timestamp(states[s].last_updated)) > max_age %}{% set ns.f = ns.f +\
+        \ [s ~ ':stale'] %}{% endif %}\n{% set s = 'sensor.dv_vmc_pm25_safe' %} {%\
+        \ set v = states(s) %} {% if v in ['unknown','unavailable','none',''] %}{%\
+        \ set ns.f = ns.f + [s ~ ':na'] %}{% endif %} {% if v not in ['unknown','unavailable','none','']\
+        \ %}\n  {% set x = v|float(none) %}\n  {% if x is none or x < 0 or x > 1000\
+        \ %}{% set ns.f = ns.f + [s ~ ':range'] %}{% endif %}\n{% endif %} {% if (as_timestamp(now())\
+        \ - as_timestamp(states[s].last_updated)) > max_age %}{% set ns.f = ns.f +\
+        \ [s ~ ':stale'] %}{% endif %}\n{% for s, lo, hi in [\n  ('sensor.dv_vmc_hum_exterior_safe',0,100),\n\
+        \  ('sensor.dv_vmc_hum_bano_pasillo_safe',0,100),\n  ('sensor.dv_vmc_hum_bano_dormitorio_safe',0,100)\n\
+        ] %}\n  {% set v = states(s) %}\n  {% if v in ['unknown','unavailable','none','']\
+        \ %}{% set ns.f = ns.f + [s ~ ':na'] %}{% endif %}\n  {% if v not in ['unknown','unavailable','none','']\
+        \ %}\n    {% set x = v|float(none) %}\n    {% if x is none or x < lo or x\
+        \ > hi %}{% set ns.f = ns.f + [s ~ ':range'] %}{% endif %}\n  {% endif %}\n\
+        \  {% if (as_timestamp(now()) - as_timestamp(states[s].last_updated)) > max_age\
+        \ %}{% set ns.f = ns.f + [s ~ ':stale'] %}{% endif %}\n{% endfor %}\n{% for\
+        \ s, lo, hi in [\n  ('sensor.dv_vmc_dp_exterior_safe',-40,50),\n  ('sensor.dv_vmc_dp_casa_safe',-10,40),\n\
+        \  ('sensor.dv_vmc_dp_bano_pasillo_safe',-10,40),\n  ('sensor.dv_vmc_dp_bano_dormitorio_safe',-10,40)\n\
+        ] %}\n  {% set v = states(s) %}\n  {% if v in ['unknown','unavailable','none','']\
+        \ %}{% set ns.f = ns.f + [s ~ ':na'] %}{% endif %}\n  {% if v not in ['unknown','unavailable','none','']\
+        \ %}\n    {% set x = v|float(none) %}\n    {% if x is none or x < lo or x\
+        \ > hi %}{% set ns.f = ns.f + [s ~ ':range'] %}{% endif %}\n  {% endif %}\n\
+        \  {% if (as_timestamp(now()) - as_timestamp(states[s].last_updated)) > max_age\
+        \ %}{% set ns.f = ns.f + [s ~ ':stale'] %}{% endif %}\n{% endfor %}\n{{ ns.f\
+        \ }}"
+- binary_sensor:
+  - name: dv_vmc_sensor_health_ok
+    unique_id: dv_vmc_sensor_health_ok
+    icon: mdi:check-decagram
+    state: '{% set f = state_attr(''sensor.dv_vmc_sensor_health'',''failed'') %} {{
+      f is not none and (f|length == 0) }}'
+- binary_sensor:
+  - name: dv_vmc_fallo_sensores_vitales
+    unique_id: dv_vmc_fallo_sensores_vitales
+    icon: mdi:alert-octagon
+    availability: '{{ true }}'
+    state: "{% set failed = [] %} {% set lst = ['sensor.dv_vmc_co2_safe','sensor.dv_vmc_pm25_safe','sensor.dv_vmc_hum_exterior_safe']\
+      \ %} {% for e in lst %}\n  {% if states(e) in ['unknown','unavailable','none','']\
+      \ %}\n    {% set failed = failed + [e] %}\n  {% endif %}\n{% endfor %} {{ failed\
+      \ | length > 0 }}"
+    attributes:
+      failed: "{% set failed = [] %} {% set lst = ['sensor.dv_vmc_co2_safe','sensor.dv_vmc_pm25_safe','sensor.dv_vmc_hum_exterior_safe']\
+        \ %} {% for e in lst %}\n  {% if states(e) in ['unknown','unavailable','none','']\
+        \ %}\n    {% set failed = failed + [e] %}\n  {% endif %}\n{% endfor %} {{\
+        \ failed | tojson }}"
+      failed_count: "{% set failed = [] %} {% set lst = ['sensor.dv_vmc_co2_safe','sensor.dv_vmc_pm25_safe','sensor.dv_vmc_hum_exterior_safe']\
+        \ %} {% for e in lst %}\n  {% if states(e) in ['unknown','unavailable','none','']\
+        \ %}\n    {% set failed = failed + [e] %}\n  {% endif %}\n{% endfor %} {{\
+        \ failed | length }}"
+- sensor:
+  - name: dv_vmc_addon_modules_loaded_version
+    unique_id: dv_vmc_addon_modules_loaded_version
+    state: '4.2'
+  - name: dv_vmc_modules_catalog
+    unique_id: dv_vmc_modules_catalog
+    state: ok
+    attributes:
+      mods:
+      - dv_vmc_addon_adaptive
+      - dv_vmc_addon_bus
+      - dv_vmc_addon_golden_regression
+      - dv_vmc_addon_guardrails
+      - dv_vmc_addon_hwmap_startup_check
+      - dv_vmc_addon_modules_loaded
+      - dv_vmc_addon_observability
+      - dv_vmc_addon_onboarding
+      - dv_vmc_addon_runtime_contracts
+      - dv_vmc_addon_sdhb
+      - dv_vmc_addon_sensor_health
+      - dv_vmc_addon_simulator
+      - dv_vmc_addon_test
+      - dv_vmc_main_automations
+      - dv_vmc_main_core
+      - dv_vmc_main_defaults
+      - dv_vmc_main_inputs
+      - dv_vmc_main_safe_sensors
+      - dv_vmc_main_scripts
+      - dv_vmc_user
+      total: 20
+  - name: dv_vmc_modules_loaded
+    unique_id: dv_vmc_modules_loaded
+    icon: mdi:format-list-checks
+    state: "{% set mods = state_attr('sensor.dv_vmc_modules_catalog','mods') or []\
+      \ %} {% set n = 0 %} {% for m in mods %}\n  {% set ent = 'sensor.' ~ m ~ '_version'\
+      \ %}\n  {% if states(ent) not in ['unknown','unavailable',''] %}\n    {% set\
+      \ n = n + 1 %}\n  {% endif %}\n{% endfor %} {{ n }}"
+    attributes:
+      total: '{{ state_attr(''sensor.dv_vmc_modules_catalog'',''total'') | int(0)
+        }}'
+      loaded_count: "{% set mods = state_attr('sensor.dv_vmc_modules_catalog','mods')\
+        \ or [] %} {% set n = 0 %} {% for m in mods %}\n  {% set ent = 'sensor.' ~\
+        \ m ~ '_version' %}\n  {% if states(ent) not in ['unknown','unavailable','']\
+        \ %}\n    {% set n = n + 1 %}\n  {% endif %}\n{% endfor %} {{ n }}"
+      missing_count: "{% set mods = state_attr('sensor.dv_vmc_modules_catalog','mods')\
+        \ or [] %} {% set t = state_attr('sensor.dv_vmc_modules_catalog','total')\
+        \ | int(0) %} {% set l = 0 %} {% for m in mods %}\n  {% set ent = 'sensor.'\
+        \ ~ m ~ '_version' %}\n  {% if states(ent) not in ['unknown','unavailable','']\
+        \ %}\n    {% set l = l + 1 %}\n  {% endif %}\n{% endfor %} {{ [0, (t - l)]\
+        \ | max }}"
+      loaded: "{% set mods = state_attr('sensor.dv_vmc_modules_catalog','mods') or\
+        \ [] %} {% set out = [] %} {% for m in mods %}\n  {% set ent = 'sensor.' ~\
+        \ m ~ '_version' %}\n  {% if states(ent) not in ['unknown','unavailable','']\
+        \ %}\n    {% set out = out + [m] %}\n  {% endif %}\n{% endfor %} {{ out |\
+        \ to_json }}"
+      missing: "{% set mods = state_attr('sensor.dv_vmc_modules_catalog','mods') or\
+        \ [] %} {% set out = [] %} {% for m in mods %}\n  {% set ent = 'sensor.' ~\
+        \ m ~ '_version' %}\n  {% if states(ent) in ['unknown','unavailable',''] %}\n\
+        \    {% set out = out + [m] %}\n  {% endif %}\n{% endfor %} {{ out | to_json\
+        \ }}"
+      versions: "{% set mods = state_attr('sensor.dv_vmc_modules_catalog','mods')\
+        \ or [] %} {% set ns = namespace(v={}) %} {% for m in mods %}\n  {% set ent\
+        \ = 'sensor.' ~ m ~ '_version' %}\n  {% set ns.v = dict(ns.v, **{m: states(ent)})\
+        \ %}\n{% endfor %} {{ ns.v | to_json }}"
+- binary_sensor:
+  - name: dv_vmc_modules_loaded_ok
+    unique_id: dv_vmc_modules_loaded_ok
+    icon: mdi:check-circle
+    state: '{{ (state_attr(''sensor.dv_vmc_modules_loaded'',''missing_count'') | int(0))
+      == 0 }}'
+    availability: '{{ states(''sensor.dv_vmc_modules_loaded'') not in [''unknown'',''unavailable'']
+      }}'
+- sensor:
+  - name: dv_vmc_addon_bus_version
+    unique_id: dv_vmc_addon_bus_version
+    state: '4.2'
+- sensor:
+  - name: dv_vmc_bus
+    unique_id: dv_vmc_bus
+    icon: mdi:bus
+    state: ok
+    availability: '{{ states(''sensor.dv_vmc_hw_missing_count'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    attributes:
+      hw_missing_count: '{{ states(''sensor.dv_vmc_hw_missing_count'')|int(999) }}'
+      hw_contract_ok: '{{ is_state(''binary_sensor.dv_vmc_hw_contract_ok'',''on'')
+        }}'
+      degraded: '{{ (states(''sensor.dv_vmc_hw_missing_count'')|int(999)) != 0 }}'
+      degraded_reason: "{% set m = states('sensor.dv_vmc_hw_missing_count')|int(999)\
+        \ %} {% if m == 0 %}\n  ok\n{% else %}\n  hw_missing\n{% endif %}"
+      mode: "{% if is_state('input_boolean.dv_vmc_auto','on') %}\n  auto\n{% elif\
+        \ is_state('input_boolean.dv_vmc_override_v3','on') or is_state('input_boolean.dv_vmc_override_v2','on')\
+        \ %}\n  manual_override\n{% else %}\n  manual\n{% endif %}"
+      speed_cmd: "{% if is_state('input_boolean.dv_vmc_v3','on') %}\n  3\n{% elif\
+        \ is_state('input_boolean.dv_vmc_v2','on') %}\n  2\n{% elif is_state('input_boolean.dv_vmc_v1','on')\
+        \ %}\n  1\n{% else %}\n  0\n{% endif %}"
+      speed_actual: "{% if is_state('binary_sensor.dv_vmc_hw_v3','on') %}\n  3\n{%\
+        \ elif is_state('binary_sensor.dv_vmc_hw_v2','on') %}\n  2\n{% elif is_state('binary_sensor.dv_vmc_hw_pwr','on')\
+        \ %}\n  1\n{% else %}\n  0\n{% endif %}"
+      co2_ppm: '{{ states(''sensor.dv_vmc_co2_safe'')|float(none) }}'
+      pm25_ugm3: '{{ states(''sensor.dv_vmc_pm25_safe'')|float(none) }}'
+      hum_exterior_pct: '{{ states(''sensor.dv_vmc_hum_exterior_safe'')|float(none)
+        }}'
+      hum_bano_pasillo_pct: '{{ states(''sensor.dv_vmc_hum_bano_pasillo_safe'')|float(none)
+        }}'
+      hum_bano_dormitorio_pct: '{{ states(''sensor.dv_vmc_hum_bano_dormitorio_safe'')|float(none)
+        }}'
+      dp_exterior_c: '{{ states(''sensor.dv_vmc_dp_exterior_safe'')|float(none) }}'
+      dp_casa_c: '{{ states(''sensor.dv_vmc_dp_casa_safe'')|float(none) }}'
+      hw_map_entity: sensor.dv_vmc_hw_map
+- sensor:
+  - name: dv_vmc_decision_reason
+    unique_id: dv_vmc_decision_reason
+    icon: mdi:comment-alert-outline
+    availability: '{{ states(''sensor.dv_vmc_hw_missing_count'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    state: "{% set co2 = states('sensor.dv_vmc_co2_safe')|float(none) %} {% set pm25\
+      \ = states('sensor.dv_vmc_pm25_safe')|float(none) %} {% set co2_v2 = states('input_number.dv_vmc_co2_v2_threshold')|float(none)\
+      \ %} {% set co2_v3 = states('input_number.dv_vmc_co2_v3_threshold')|float(none)\
+      \ %} {% set pm_v2  = states('input_number.dv_vmc_pm25_v2_threshold')|float(none)\
+      \ %} {% set pm_v3  = states('input_number.dv_vmc_pm25_v3_threshold')|float(none)\
+      \ %}\n{% if is_state('binary_sensor.dv_vmc_failsafe_lockout_active','on') %}\n\
+      \  lockout\n{% elif state_attr('sensor.dv_vmc_bus','degraded') %}\n  degraded{%\
+      \ if state_attr('sensor.dv_vmc_bus','degraded_reason') %}:{{ state_attr('sensor.dv_vmc_bus','degraded_reason')\
+      \ }}{% endif %}\n{% elif is_state('input_boolean.dv_vmc_override_v3','on') %}\n\
+      \  override_v3\n{% elif is_state('input_boolean.dv_vmc_override_v2','on') %}\n\
+      \  override_v2\n{% elif is_state('timer.dv_vmc_ducha_override','active') %}\n\
+      \  shower_override\n{% elif co2 is not none and co2_v3 is not none and co2 >=\
+      \ co2_v3 %}\n  co2_v3\n{% elif co2 is not none and co2_v2 is not none and co2\
+      \ >= co2_v2 %}\n  co2_v2\n{% elif pm25 is not none and pm_v3 is not none and\
+      \ pm25 >= pm_v3 %}\n  pm25_v3\n{% elif pm25 is not none and pm_v2 is not none\
+      \ and pm25 >= pm_v2 %}\n  pm25_v2\n{% elif is_state('input_boolean.dv_vmc_auto','on')\
+      \ %}\n  auto_idle\n{% else %}\n  manual\n{% endif %}"
+    attributes:
+      mode: '{{ state_attr(''sensor.dv_vmc_bus'',''mode'') }}'
+      speed_cmd: '{{ state_attr(''sensor.dv_vmc_bus'',''speed_cmd'') }}'
+      speed_actual: '{{ state_attr(''sensor.dv_vmc_bus'',''speed_actual'') }}'
+      degraded_reason: '{{ state_attr(''sensor.dv_vmc_bus'',''degraded_reason'') }}'
+      reason_slug: "{% if is_state('binary_sensor.dv_vmc_failsafe_lockout_active','on')\
+        \ %}\n  lockout\n{% elif state_attr('sensor.dv_vmc_bus','degraded') %}\n \
+        \ sensor_ko_hard\n{% elif is_state('input_boolean.dv_vmc_override_v3','on')\
+        \ %}\n  override_v3\n{% elif is_state('input_boolean.dv_vmc_override_v2','on')\
+        \ %}\n  override_v2\n{% elif is_state('timer.dv_vmc_ducha_override','active')\
+        \ %}\n  shower_override\n{% else %}\n  {% set co2 = states('sensor.dv_vmc_co2_safe')|float(none)\
+        \ %}\n  {% set pm25 = states('sensor.dv_vmc_pm25_safe')|float(none) %}\n \
+        \ {% set co2_v2 = states('input_number.dv_vmc_co2_v2_threshold')|float(none)\
+        \ %}\n  {% set co2_v3 = states('input_number.dv_vmc_co2_v3_threshold')|float(none)\
+        \ %}\n  {% set pm_v2  = states('input_number.dv_vmc_pm25_v2_threshold')|float(none)\
+        \ %}\n  {% set pm_v3  = states('input_number.dv_vmc_pm25_v3_threshold')|float(none)\
+        \ %}\n\n  {% if co2 is not none and co2_v3 is not none and co2 >= co2_v3 %}\n\
+        \    co2_v3\n  {% elif co2 is not none and co2_v2 is not none and co2 >= co2_v2\
+        \ %}\n    co2_v2\n  {% elif pm25 is not none and pm_v3 is not none and pm25\
+        \ >= pm_v3 %}\n    pm25_v3\n  {% elif pm25 is not none and pm_v2 is not none\
+        \ and pm25 >= pm_v2 %}\n    pm25_v2\n  {% elif is_state('input_boolean.dv_vmc_auto','on')\
+        \ %}\n    auto_idle\n  {% else %}\n    manual\n  {% endif %}\n{% endif %}"
+      lockout_active: '{{ is_state(''binary_sensor.dv_vmc_failsafe_lockout_active'',''on'')
+        }}'
+      failsafe_trips_2h: '{{ states(''input_number.dv_vmc_failsafe_trip_count'')|int(0)
+        }}'
+      adaptive_enabled: '{{ is_state(''input_boolean.dv_vmc_adaptive_thresholds_enabled'',''on'')
+        }}'
+      adaptive_ready: '{{ (states(''sensor.dv_vmc_adaptive_ready'')|lower) == ''true''
+        }}'
+      adaptive_active: '{{ is_state(''input_boolean.dv_vmc_adaptive_thresholds_enabled'',''on'')
+        and ((states(''sensor.dv_vmc_adaptive_ready'')|lower) == ''true'') }}'
+      thresholds_source: ''
+      freecool_enabled: '{{ is_state(''input_boolean.dv_vmc_freecool_enabled'',''on'')
+        }}'
+      freecool_active: '{{ is_state(''binary_sensor.dv_vmc_freecool_active'',''on'')
+        }}'
+      freecool_delta_c: '{% set ti = state_attr(''sensor.dv_vmc_hw_map'',''t_in'')
+        %} {% set te = state_attr(''sensor.dv_vmc_hw_map'',''t_ext'') %} {% set t_in
+        = (states(ti)|float(none)) if ti not in [none,'''',''unknown'',''unavailable'']
+        else none %} {% set t_ext = (states(te)|float(none)) if te not in [none,'''',''unknown'',''unavailable'']
+        else none %} {% if t_in is none or t_ext is none %}none{% else %}{{ (t_in
+        - t_ext)|round(2) }}{% endif %} {{ ''adaptive'' if (is_state(''input_boolean.dv_vmc_adaptive_thresholds_enabled'',''on'')
+        and ((states(''sensor.dv_vmc_adaptive_ready'')|lower) == ''true'')) else ''static''
+        }}'
+      freecool_reason: "{% if not is_state('input_boolean.dv_vmc_freecool_enabled','on')\
+        \ %}\n  disabled\n{% elif is_state('binary_sensor.dv_vmc_freecool_active','on')\
+        \ %}\n  active\n{% else %}\n  inactive\n{% endif %}"
+      golden_last: '{{ state_attr(''sensor.dv_vmc_health'',''golden_last'') if states(''sensor.dv_vmc_health'')
+        not in [''unknown'',''unavailable'',''none'',''''] else none }}'
+- sensor:
+  - name: dv_vmc_decision_debug
+    unique_id: dv_vmc_decision_debug
+    icon: mdi:bug-outline
+    availability: '{{ states(''sensor.dv_vmc_hw_missing_count'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    state: '{{ states(''sensor.dv_vmc_decision_reason'') }}'
+    attributes:
+      co2_ppm: '{{ state_attr(''sensor.dv_vmc_bus'',''co2_ppm'') }}'
+      pm25_ugm3: '{{ state_attr(''sensor.dv_vmc_bus'',''pm25_ugm3'') }}'
+      hum_exterior_pct: '{{ state_attr(''sensor.dv_vmc_bus'',''hum_exterior_pct'')
+        }}'
+      hum_bano_pasillo_pct: '{{ state_attr(''sensor.dv_vmc_bus'',''hum_bano_pasillo_pct'')
+        }}'
+      hum_bano_dormitorio_pct: '{{ state_attr(''sensor.dv_vmc_bus'',''hum_bano_dormitorio_pct'')
+        }}'
+      dp_exterior_c: '{{ state_attr(''sensor.dv_vmc_bus'',''dp_exterior_c'') }}'
+      dp_casa_c: '{{ state_attr(''sensor.dv_vmc_bus'',''dp_casa_c'') }}'
+      hw_missing_count: '{{ state_attr(''sensor.dv_vmc_bus'',''hw_missing_count'')
+        }}'
+      hw_contract_ok: '{{ state_attr(''sensor.dv_vmc_bus'',''hw_contract_ok'') }}'
+      onboarding_ok: '{{ is_state(''binary_sensor.dv_vmc_onboarding_ok'',''on'') }}'
+      sensor_health_ok: '{{ is_state(''binary_sensor.dv_vmc_sensor_health_ok'',''on'')
+        }}'
+      freecool_delta_c: '{{ state_attr(''sensor.dv_vmc_bus'',''freecool_delta_c'')
+        }}'
+      freecool_reason: '{{ state_attr(''sensor.dv_vmc_bus'',''freecool_reason'') }}'
+- binary_sensor:
+  - name: dv_vmc_bus_degraded
+    unique_id: dv_vmc_bus_degraded
+    icon: mdi:alert-circle-outline
+    availability: '{{ states(''sensor.dv_vmc_hw_missing_count'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    state: '{{ (states(''sensor.dv_vmc_hw_missing_count'')|int(999)) != 0 }}'
+input_number:
+  dv_vmc_health_max_age_s:
+    name: dv_vmc_health_max_age_s
+    min: 60
+    max: 7200
+    step: 30
+    mode: box
+    unit_of_measurement: s
+    icon: mdi:timer-outline
+    initial: 1800

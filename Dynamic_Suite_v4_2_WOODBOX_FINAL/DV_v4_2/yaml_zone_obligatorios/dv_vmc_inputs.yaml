@@ -1,0 +1,1326 @@
+# ============================================================================
+# Dynamic Ventilation · DV VMC · Inputs + defaults + contracts
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 hotfix p7 (startup grace 120s for hw_contract_ok)
+# ============================================================================
+
+input_number:
+  dv_vmc_hostile_outside_t3:
+    name: dv_vmc_hostile_outside_t3
+    icon: mdi:chart-bar
+    min: 0
+    max: 500
+    step: 1
+    mode: box
+    initial: 150
+
+  dv_vmc_hostile_outside_t2:
+    name: dv_vmc_hostile_outside_t2
+    icon: mdi:chart-bar
+    min: 0
+    max: 500
+    step: 1
+    mode: box
+    initial: 100
+
+  dv_vmc_hostile_outside_t1:
+    name: dv_vmc_hostile_outside_t1
+    icon: mdi:chart-bar
+    min: 0
+    max: 500
+    step: 1
+    mode: box
+    initial: 50
+
+  dv_vmc_precio_kwh:
+    name: dv_vmc_precio_luz_kwh
+    min: 0
+    max: 1
+    step: 0.001
+    unit_of_measurement: €/kWh
+    icon: mdi:currency-eur
+  dv_vmc_freecool_delta_on_c:
+    name: dv_vmc_freecool_delta_on_c
+    min: 0
+    max: 10
+    step: 0.5
+    unit_of_measurement: °C
+    icon: mdi:swap-vertical
+    initial: 2.0
+  dv_vmc_freecool_delta_off_c:
+    name: dv_vmc_freecool_delta_off_c
+    min: 0
+    max: 10
+    step: 0.5
+    unit_of_measurement: °C
+    icon: mdi:swap-vertical
+    initial: 1.0
+  dv_vmc_freecool_t_ext_min_c:
+    name: dv_vmc_freecool_t_ext_min_c
+    min: -10
+    max: 30
+    step: 0.5
+    unit_of_measurement: °C
+    icon: mdi:thermometer
+    initial: 5.0
+  dv_vmc_notif_min_interval_s:
+    name: dv_vmc_notif_min_interval_s
+    icon: mdi:timer-outline
+    min: 0
+    max: 86400
+    step: 10
+    unit_of_measurement: s
+    mode: box
+    initial: 900
+  dv_vmc_override_min:
+    name: dv_vmc_override_manual_min
+    min: 1
+    max: 180
+    step: 1
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:timer
+  dv_vmc_permiso_extra_min:
+    name: dv_vmc_permiso_extra_min
+    min: 5
+    max: 360
+    step: 5
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:timer-plus
+  dv_vmc_ducha_v3_min:
+    name: dv_vmc_ducha_v3_min_exterior_favorable
+    min: 1
+    max: 120
+    step: 1
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:timer
+  dv_vmc_ducha_v2_min:
+    name: dv_vmc_ducha_v2_min_exterior_desfavorable
+    min: 1
+    max: 60
+    step: 1
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:timer
+  dv_vmc_co2_v2_threshold:
+    name: dv_vmc_co2_v2_threshold
+    min: 700
+    max: 1200
+    step: 25
+    mode: box
+    unit_of_measurement: ppm
+    icon: mdi:molecule-co2
+  dv_vmc_co2_v3_threshold:
+    name: dv_vmc_co2_v3_threshold
+    min: 1000
+    max: 1600
+    step: 25
+    mode: box
+    unit_of_measurement: ppm
+    icon: mdi:molecule-co2
+  dv_vmc_pm25_v2_threshold:
+    name: dv_vmc_pm25_v2_threshold
+    min: 5
+    max: 25
+    step: 1
+    mode: box
+    unit_of_measurement: µg/m³
+    icon: mdi:air-filter
+  dv_vmc_pm25_v3_threshold:
+    name: dv_vmc_pm25_v3_threshold
+    min: 20
+    max: 60
+    step: 5
+    mode: box
+    unit_of_measurement: µg/m³
+    icon: mdi:air-filter
+  dv_vmc_co2_hysteresis:
+    name: dv_vmc_co2_histeresis
+    min: 50
+    max: 200
+    step: 10
+    mode: box
+    unit_of_measurement: ppm
+    icon: mdi:chart-bell-curve
+  dv_vmc_co2_ema_alpha:
+    name: dv_vmc_co2_ema_alpha
+    icon: mdi:chart-line
+    min: 0.05
+    max: 0.50
+    step: 0.01
+    mode: box
+    initial: 0.20
+  dv_vmc_co2_ema_value:
+    name: dv_vmc_co2_ema_value
+    icon: mdi:molecule-co2
+    unit_of_measurement: ppm
+    min: 0
+    max: 5000
+    step: 1
+    mode: box
+    initial: 0
+
+  dv_vmc_pm25_ema_alpha:
+    name: dv_vmc_pm25_ema_alpha
+    icon: mdi:chart-line
+    min: 0.05
+    max: 0.50
+    step: 0.01
+    mode: box
+    initial: 0.20
+  dv_vmc_pm25_ema_value:
+    name: dv_vmc_pm25_ema_value
+    icon: mdi:blur
+    unit_of_measurement: µg/m³
+    min: 0
+    max: 1000
+    step: 0.1
+    mode: box
+    initial: 0
+
+  dv_vmc_pm25_hysteresis:
+    name: dv_vmc_pm2_5_histeresis
+    min: 2
+    max: 10
+    step: 1
+    mode: box
+    unit_of_measurement: µg/m³
+    icon: mdi:chart-bell-curve
+  dv_vmc_filtros_intervalo_horas:
+    name: dv_vmc_filtros_intervalo_h
+    min: 500
+    max: 10000
+    step: 10
+    mode: box
+    unit_of_measurement: h
+    icon: mdi:filter-clock-outline
+  dv_vmc_filtros_horas_offset:
+    name: dv_vmc_filtros_offset_horas_interno
+    min: 0
+    max: 100000
+    step: 0.1
+    mode: box
+    unit_of_measurement: h
+    icon: mdi:counter
+  dv_vmc_ducha_rh_delta_on:
+    name: dv_vmc_ducha_rh_on
+    min: 1
+    max: 30
+    step: 0.5
+    mode: box
+  dv_vmc_ducha_rh_delta_off:
+    name: dv_vmc_ducha_rh_off
+    min: 0
+    max: 30
+    step: 0.5
+    mode: box
+  dv_vmc_ducha_rh_window_min:
+    name: dv_vmc_ducha_ventana_min
+    min: 1
+    max: 30
+    step: 1
+    mode: box
+  dv_vmc_ducha_hold_min:
+    name: dv_vmc_ducha_hold_off_min
+    min: 0
+    max: 60
+    step: 1
+    mode: box
+  dv_vmc_dry_dp_v3_delta:
+    name: dv_vmc_dry_dp_para_v3
+    min: 0
+    max: 10
+    step: 0.1
+    unit_of_measurement: °C
+    mode: box
+    initial: 1.0
+  dv_vmc_dry_dp_v2_delta:
+    name: dv_vmc_dry_dp_para_v2
+    min: -5
+    max: 10
+    step: 0.1
+    unit_of_measurement: °C
+    mode: box
+    initial: 0.2
+  dv_vmc_failsafe_trip_window_h:
+    name: dv_vmc_failsafe_trip_window_h
+    min: 0.5
+    max: 12
+    step: 0.5
+    mode: box
+    unit_of_measurement: h
+    icon: mdi:timer-outline
+    initial: 2
+  dv_vmc_failsafe_trip_limit:
+    name: dv_vmc_failsafe_trip_limit
+    min: 1
+    max: 10
+    step: 1
+    mode: box
+    icon: mdi:counter
+    initial: 3
+  dv_vmc_failsafe_lockout_min:
+    name: dv_vmc_failsafe_lockout_min
+    min: 5
+    max: 180
+    step: 5
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:lock-clock
+    initial: 30
+  dv_vmc_failsafe_trip_count:
+    name: dv_vmc_failsafe_trip_count
+    min: 0
+    max: 50
+    step: 1
+    mode: box
+    icon: mdi:counter
+    initial: 0
+
+  dv_vmc_startup_grace_s:
+    name: dv_vmc_startup_grace_s
+    icon: mdi:timer-sand
+    min: 30
+    max: 600
+    step: 10
+    mode: box
+    unit_of_measurement: s
+    initial: 120
+template:
+- sensor:
+  - name: dv_vmc_user_version
+    unique_id: dv_vmc_user_version
+    state: '4.2'
+- sensor:
+  - name: dv_vmc_rendimiento
+    unique_id: dv_vmc_rendimiento
+    unit_of_measurement: '%'
+    icon: mdi:heat-exchange
+    availability: "{% set e_asp = state_attr('sensor.dv_vmc_hw_map','t_asp') %} {%\
+      \ set e_ins = state_attr('sensor.dv_vmc_hw_map','t_ins') %} {% set e_ext = state_attr('sensor.dv_vmc_hw_map','t_ext')\
+      \ %} {{ e_asp is not none and e_ins is not none and e_ext is not none and states(e_asp)\
+      \ not in ['unknown','unavailable','none',''] and\n   states(e_ins) not in ['unknown','unavailable','none','']\
+      \ and\n   states(e_ext) not in ['unknown','unavailable','none',''] }}"
+    state: "{% set T_asp = states(state_attr('sensor.dv_vmc_hw_map','t_asp'))  | float(none)\
+      \ %} {% set T_ins = states(state_attr('sensor.dv_vmc_hw_map','t_ins')) | float(none)\
+      \ %} {% set T_ext = states(state_attr('sensor.dv_vmc_hw_map','t_ext'))  | float(none)\
+      \ %} {% if T_asp is none or T_ins is none or T_ext is none %}\n  {{ none }}\n\
+      {% else %}\n  {% set denom = (T_ext - T_asp) %}\n  {% if denom | abs < 0.2 %}\n\
+      \    {{ none }}\n  {% else %}\n    {{ ((T_ins - T_asp) / denom * 100) | round(1)\
+      \ }}\n  {% endif %}\n{% endif %}"
+  - name: dv_vmc_potencia_actual
+    unique_id: dv_vmc_potencia_actual
+    unit_of_measurement: W
+    icon: mdi:flash
+    availability: '{{ states(''sensor.dv_vmc_pwr_power_safe'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    state: '{{ states(''sensor.dv_vmc_pwr_power_safe'') | float(none) }}'
+  - name: dv_vmc_gasto_hoy
+    unique_id: dv_vmc_gasto_hoy
+    unit_of_measurement: €
+    icon: mdi:currency-eur
+    state: '{% set p = states(''input_number.dv_vmc_precio_kwh'')|float(0) %} {{ (states(''sensor.dv_vmc_consumo_diario'')|float(0)
+      * p) | round(2) }}'
+  - name: dv_vmc_gasto_mes
+    unique_id: dv_vmc_gasto_mes
+    unit_of_measurement: €
+    icon: mdi:currency-eur
+    state: '{% set p = states(''input_number.dv_vmc_precio_kwh'')|float(0) %} {{ (states(''sensor.dv_vmc_consumo_mensual'')|float(0)
+      * p) | round(2) }}'
+- binary_sensor:
+  - name: dv_vmc_dew_risk_zone01
+    unique_id: dv_vmc_dew_risk_zone01
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone01_dew_risk'') not in
+      [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone01_dew_risk'',''on'') }}'
+  - name: dv_vmc_dew_prerisk_zone01
+    unique_id: dv_vmc_dew_prerisk_zone01
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone01_dew_prerisk'') not
+      in [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone01_dew_prerisk'',''on'')
+      }}'
+  - name: dv_vmc_dew_risk_hm
+    unique_id: dv_vmc_dew_risk_hm
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone02_dew_risk'') not in
+      [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone02_dew_risk'',''on'') }}'
+  - name: dv_vmc_dew_prerisk_hm
+    unique_id: dv_vmc_dew_prerisk_hm
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone02_dew_prerisk'') not
+      in [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone02_dew_prerisk'',''on'')
+      }}'
+  - name: dv_vmc_dew_risk_h1
+    unique_id: dv_vmc_dew_risk_h1
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone03_dew_risk'') not in
+      [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone03_dew_risk'',''on'') }}'
+  - name: dv_vmc_dew_prerisk_h1
+    unique_id: dv_vmc_dew_prerisk_h1
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone03_dew_prerisk'') not
+      in [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone03_dew_prerisk'',''on'')
+      }}'
+  - name: dv_vmc_dew_risk_h2
+    unique_id: dv_vmc_dew_risk_h2
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone04_dew_risk'') not in
+      [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone04_dew_risk'',''on'') }}'
+  - name: dv_vmc_dew_prerisk_h2
+    unique_id: dv_vmc_dew_prerisk_h2
+    device_class: moisture
+    availability: '{{ states(''input_boolean.sdhb_flag_dc_zone04_dew_prerisk'') not
+      in [''unknown'',''unavailable'',''none'',''''] }}'
+    state: '{{ is_state(''input_boolean.sdhb_flag_dc_zone04_dew_prerisk'',''on'')
+      }}'
+- sensor:
+  - name: dv_vmc_main_inputs_version
+    unique_id: dv_vmc_main_inputs_version
+    state: '4.2'
+- sensor:
+  - name: dv_vmc_main_defaults_version
+    unique_id: dv_vmc_main_defaults_version
+    state: '4.2'
+- trigger:
+  - platform: event
+    event_type: dv_vmc_save_backup_event
+  sensor:
+  - name: dv_vmc_backup_storage
+    unique_id: dv_vmc_backup_storage
+    icon: mdi:database
+    state: OK
+    availability: '{{ trigger is defined and trigger.event is defined and trigger.event.data.payload
+      is defined }}'
+    attributes:
+      backup_json: '{{ trigger.event.data.payload }}'
+      last_updated: '{{ now().isoformat() }}'
+- sensor:
+  - name: dv_vmc_fabrica
+    unique_id: dv_vmc_fabrica
+    state: OK
+    attributes:
+      dv_vmc_co2_hysteresis: 100
+      dv_vmc_co2_v2_threshold: 900
+      dv_vmc_co2_v3_threshold: 1300
+      dv_vmc_pm25_hysteresis: 5
+      dv_vmc_pm25_v2_threshold: 15
+      dv_vmc_pm25_v3_threshold: 40
+      dv_vmc_ducha_v2_min: 10
+      dv_vmc_ducha_v3_min: 20
+      dv_vmc_override_manual_min: 30
+      dv_vmc_permiso_extra_min: 120
+      dv_vmc_ducha_nivel: none
+      dv_vmc_prev_modo: auto
+      dv_vmc_prev_speed: v1
+      dv_vmc_ducha_rh_delta_on: 7
+      dv_vmc_ducha_rh_delta_off: 4
+      dv_vmc_ducha_rh_window_min: 5
+      dv_vmc_ducha_hold_min: 20
+      dv_vmc_programacion_semanal: false
+      dv_vmc_filtros_intervalo_horas: 3650
+      dv_vmc_filtros_horas_offset: 0
+      dv_vmc_filtros_aviso_enviado: false
+      dv_vmc_dry_mode: false
+      dv_vmc_dry_dp_v3_delta: 1.0
+      dv_vmc_dry_dp_v2_delta: 0.2
+  - name: dv_vmc_fabrica_keys
+    unique_id: dv_vmc_fabrica_keys
+    state: OK
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    attributes:
+      keys_json: '{% set st = states[''sensor.dv_vmc_fabrica''] | default(none, true)
+        %} {% set attrs = st.attributes if st else {} %} {{ (attrs.keys() | select(''match'',''^dv_vmc_'')
+        | list | sort) | tojson }}'
+  - name: dv_vmc_co2_hysteresis_fabrica
+    unique_id: dv_vmc_co2_hysteresis_fabrica
+    unit_of_measurement: ppm
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_co2_hysteresis'') | float(100)
+      }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_co2_v2_threshold_fabrica
+    unique_id: dv_vmc_co2_v2_threshold_fabrica
+    unit_of_measurement: ppm
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_co2_v2_threshold'') |
+      float(900) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_co2_v3_threshold_fabrica
+    unique_id: dv_vmc_co2_v3_threshold_fabrica
+    unit_of_measurement: ppm
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_co2_v3_threshold'') |
+      float(1300) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_pm25_hysteresis_fabrica
+    unique_id: dv_vmc_pm25_hysteresis_fabrica
+    unit_of_measurement: µg/m³
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_pm25_hysteresis'') |
+      float(5) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_pm25_v2_threshold_fabrica
+    unique_id: dv_vmc_pm25_v2_threshold_fabrica
+    unit_of_measurement: µg/m³
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_pm25_v2_threshold'')
+      | float(15) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_pm25_v3_threshold_fabrica
+    unique_id: dv_vmc_pm25_v3_threshold_fabrica
+    unit_of_measurement: µg/m³
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_pm25_v3_threshold'')
+      | float(40) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_ducha_v2_min_fabrica
+    unique_id: dv_vmc_ducha_v2_min_fabrica
+    unit_of_measurement: min
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_ducha_v2_min'') | float(10)
+      }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_ducha_v3_min_fabrica
+    unique_id: dv_vmc_ducha_v3_min_fabrica
+    unit_of_measurement: min
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_ducha_v3_min'') | float(20)
+      }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_override_manual_min_fabrica
+    unique_id: dv_vmc_override_manual_min_fabrica
+    unit_of_measurement: min
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_override_manual_min'')
+      | float(30) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  - name: dv_vmc_permiso_extra_min_fabrica
+    unique_id: dv_vmc_permiso_extra_min_fabrica
+    unit_of_measurement: min
+    state: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_permiso_extra_min'')
+      | float(120) }}'
+    availability: '{{ states(''sensor.dv_vmc_fabrica'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+- sensor:
+  - name: dv_vmc_v1_on
+    unique_id: dv_vmc_v1_on
+    state: '{{ 1 if is_state(''input_boolean.dv_vmc_v1'',''on'') else 0 }}'
+    unit_of_measurement: '1'
+    state_class: measurement
+    availability: '{{ states(''input_boolean.dv_vmc_v1'') not in [''unknown'',''unavailable'']
+      }}'
+  - name: dv_vmc_v2_on
+    unique_id: dv_vmc_v2_on
+    state: '{{ 1 if is_state(''input_boolean.dv_vmc_v2'',''on'') else 0 }}'
+    unit_of_measurement: '1'
+    state_class: measurement
+    availability: '{{ states(''input_boolean.dv_vmc_v2'') not in [''unknown'',''unavailable'']
+      }}'
+  - name: dv_vmc_v3_on
+    unique_id: dv_vmc_v3_on
+    state: '{{ 1 if is_state(''input_boolean.dv_vmc_v3'',''on'') else 0 }}'
+    unit_of_measurement: '1'
+    state_class: measurement
+    availability: '{{ states(''input_boolean.dv_vmc_v3'') not in [''unknown'',''unavailable'']
+      }}'
+  - name: dv_vmc_machine_on
+    unique_id: dv_vmc_machine_on
+    state: "{{ 1 if (is_state('input_boolean.dv_vmc_v1','on')\n         or is_state('input_boolean.dv_vmc_v2','on')\n\
+      \         or is_state('input_boolean.dv_vmc_v3','on')) else 0 }}"
+    unit_of_measurement: '1'
+    state_class: measurement
+    availability: "{{ states('input_boolean.dv_vmc_v1') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_v2') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_v3') not in ['unknown','unavailable'] }}"
+- sensor:
+  - name: dv_vmc_addon_onboarding_version
+    unique_id: dv_vmc_addon_onboarding_version
+    state: '4.2'
+- sensor:
+  - name: dv_vmc_onboarding_missing_keys
+    unique_id: dv_vmc_onboarding_missing_keys
+    icon: mdi:playlist-remove
+    state: "{% set req_raw = state_attr('sensor.dv_vmc_hw_contract','required') %}\
+      \ {% set req = (req_raw | from_json) if (req_raw is string) else (req_raw or\
+      \ []) %} {% set ns = namespace(m=[]) %} {% for k in req %}\n  {% set ent = state_attr('sensor.dv_vmc_hw_map',\
+      \ k) %}\n  {% if ent in [none,'','unknown','unavailable'] %}\n    {% set ns.m\
+      \ = ns.m + [k] %}\n  {% else %}\n    {% if states(ent) in ['unknown','unavailable','none','']\
+      \ %}\n      {% set ns.m = ns.m + [k] %}\n    {% endif %}\n  {% endif %}\n{%\
+      \ endfor %} {{ ns.m | tojson }}"
+  - name: dv_vmc_onboarding_missing_runtime
+    unique_id: dv_vmc_onboarding_missing_runtime
+    icon: mdi:alert-circle-outline
+    state: "{% set required = [\n  'binary_sensor.dv_vmc_permitida',\n  'binary_sensor.dv_vmc_en_horario',\n\
+      \  'sensor.dv_vmc_override_activo',\n  'sensor.dv_vmc_velocidad_real',\n  'sensor.dv_vmc_filtros_horas_desde_reset'\n\
+      ] %} {% set ns = namespace(m=[]) %} {% for ent in required %}\n  {% if states(ent)\
+      \ in ['unknown','unavailable','none',''] %}\n    {% set ns.m = ns.m + [ent]\
+      \ %}\n  {% endif %}\n{% endfor %} {{ ns.m | tojson }}"
+  - name: dv_vmc_onboarding_status
+    unique_id: dv_vmc_onboarding_status
+    icon: mdi:clipboard-text-outline
+    state: '{% set n = states(''sensor.dv_vmc_hw_missing_count'')|int(999) %} {% set
+      r = states(''sensor.dv_vmc_onboarding_missing_runtime'') %} {% set rm = (r |
+      from_json) if (r is string) else (r or []) %} {{ ''ok'' if (n == 0 and (rm|length)==0)
+      else ''missing'' }}'
+    attributes:
+      hw_missing_count: '{{ states(''sensor.dv_vmc_hw_missing_count'')|int(999) }}'
+      missing_keys: '{{ states(''sensor.dv_vmc_onboarding_missing_keys'') }}'
+      runtime_missing: '{{ states(''sensor.dv_vmc_onboarding_missing_runtime'') }}'
+      runtime_missing_count: '{% set r = states(''sensor.dv_vmc_onboarding_missing_runtime'')
+        %} {% set rm = (r | from_json) if (r is string) else (r or []) %} {{ rm |
+        length }}'
+      onboarding_hint: |
+        is loaded.
+        If hw_missing_count>0, edit sensor.dv_vmc_hw_map attributes (REPLACE_*).
+      hw_map_entity: sensor.dv_vmc_hw_map
+      contract_entity: sensor.dv_vmc_hw_contract
+      hint: Edit attributes in sensor.dv_vmc_hw_map (DV core) to point to your physical
+        entities.
+- binary_sensor:
+  - name: dv_vmc_onboarding_ok
+    unique_id: dv_vmc_onboarding_ok
+    icon: mdi:check-decagram
+    state: '{% set n = states(''sensor.dv_vmc_hw_missing_count'')|int(999) %} {% set
+      r = states(''sensor.dv_vmc_onboarding_missing_runtime'') %} {% set rm = (r |
+      from_json) if (r is string) else (r or []) %} {{ n == 0 and (rm|length)==0 }}'
+    availability: '{{ states(''sensor.dv_vmc_hw_missing_count'') not in [''unknown'',''unavailable'',''none'','''']
+      and states(''sensor.dv_vmc_onboarding_missing_runtime'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+- sensor:
+  - name: dv_vmc_addon_runtime_contracts_version
+    unique_id: dv_vmc_addon_runtime_contracts_version
+    state: '4.2'
+  - name: dv_vmc_override_activo
+    unique_id: dv_vmc_override_activo
+    state: '{% set o2 = is_state(''input_boolean.dv_vmc_override_v2'',''on'') %} {%
+      set o3 = is_state(''input_boolean.dv_vmc_override_v3'',''on'') %} {% set m2
+      = is_state(''input_boolean.dv_vmc_override_manual_v2_estado'',''on'') %} {%
+      set m3 = is_state(''input_boolean.dv_vmc_override_manual_v3_estado'',''on'')
+      %} {{ (o2 or o3 or m2 or m3) | bool }}'
+    availability: "{{ states('input_boolean.dv_vmc_override_v2') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_override_v3') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_override_manual_v2_estado') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_override_manual_v3_estado') not in ['unknown','unavailable']\
+      \ }}"
+  - name: dv_vmc_velocidad_real
+    unique_id: dv_vmc_velocidad_real
+    unit_of_measurement: lvl
+    state: "{% set e = state_attr('sensor.dv_vmc_hw_map','speed_actual_entity') %}\
+      \ {% if e %}\n  {{ states(e) | int(0) }}\n{% else %}\n  {% if is_state('input_boolean.dv_vmc_velocidad_3','on')\
+      \ %}3\n  {% elif is_state('input_boolean.dv_vmc_velocidad_2','on') %}2\n  {%\
+      \ elif is_state('input_boolean.dv_vmc_velocidad_1','on') %}1\n  {% else %}0\n\
+      \  {% endif %}\n{% endif %}"
+    availability: "{{ states('sensor.dv_vmc_hw_map') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_velocidad_1') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_velocidad_2') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_velocidad_3') not in ['unknown','unavailable']\
+      \ }}"
+  - name: dv_vmc_velocidad_actual
+    unique_id: dv_vmc_velocidad_actual
+    unit_of_measurement: lvl
+    availability: '{{ is_number(states(''sensor.dv_vmc_velocidad_real'')) }}'
+    state: '{{ states(''sensor.dv_vmc_velocidad_real'') | int(none) }}'
+  - name: dv_vmc_filtros_horas_desde_reset
+    unique_id: dv_vmc_filtros_horas_desde_reset
+    unit_of_measurement: h
+    state: "{% set total = states('sensor.dv_vmc_maquina_horas_total') | float(none)\
+      \ %} {% set off = states('input_number.dv_vmc_filtros_horas_offset') | float(none)\
+      \ %} {% if total is none or off is none %}\n  {{ none }}\n{% else %}\n  {{ [0,\
+      \ (total - off)] | max | round(2) }}\n{% endif %}"
+    availability: "{{ states('sensor.dv_vmc_maquina_horas_total') not in ['unknown','unavailable']\n\
+      \   and states('input_number.dv_vmc_filtros_horas_offset') not in ['unknown','unavailable']\
+      \ }}"
+  - name: dv_vmc_degradation_events
+    unique_id: dv_vmc_degradation_events
+    state: '{# 0/1 gate for adaptive learning: 1 when degraded/lockout/failsafe. #}
+      {% set degraded = is_state(''binary_sensor.dv_vmc_bus_degraded'',''on'') %}
+      {% set lockout  = is_state(''binary_sensor.dv_vmc_failsafe_lockout_active'',''on'')
+      %} {% set vital_ko = is_state(''binary_sensor.dv_vmc_fallo_sensores_vitales'',''on'')
+      %} {{ 1 if (degraded or lockout or vital_ko) else 0 }}'
+- binary_sensor:
+  - name: dv_vmc_en_horario
+    unique_id: dv_vmc_en_horario
+    state: "{% if not is_state('input_boolean.dv_vmc_programacion_semanal','on') %}\n\
+      \  true\n{% else %}\n  {% set wd = now().weekday() %}\n  {% set map = {\n  \
+      \  0: ['input_datetime.dv_vmc_hora_encendido_lunes','input_datetime.dv_vmc_hora_apagado_lunes'],\n\
+      \    1: ['input_datetime.dv_vmc_hora_encendido_martes','input_datetime.dv_vmc_hora_apagado_martes'],\n\
+      \    2: ['input_datetime.dv_vmc_hora_encendido_miercoles','input_datetime.dv_vmc_hora_apagado_miercoles'],\n\
+      \    3: ['input_datetime.dv_vmc_hora_encendido_jueves','input_datetime.dv_vmc_hora_apagado_jueves'],\n\
+      \    4: ['input_datetime.dv_vmc_hora_encendido_viernes','input_datetime.dv_vmc_hora_apagado_viernes'],\n\
+      \    5: ['input_datetime.dv_vmc_hora_encendido_sabado','input_datetime.dv_vmc_hora_apagado_sabado'],\n\
+      \    6: ['input_datetime.dv_vmc_hora_encendido_domingo','input_datetime.dv_vmc_hora_apagado_domingo']\n\
+      \  } %}\n  {% set on_e  = map.get(wd)[0] %}\n  {% set off_e = map.get(wd)[1]\
+      \ %}\n  {% set on_s  = states(on_e) %}\n  {% set off_s = states(off_e) %}\n\
+      \  {% if on_s in ['unknown','unavailable',''] or off_s in ['unknown','unavailable','']\
+      \ %}\n    true\n  {% else %}\n    {% set now_m = now().hour*60 + now().minute\
+      \ %}\n    {% set on_m  = (on_s[0:2]|int)*60 + (on_s[3:5]|int) %}\n    {% set\
+      \ off_m = (off_s[0:2]|int)*60 + (off_s[3:5]|int) %}\n    {% if on_m == off_m\
+      \ %}\n      true\n    {% elif on_m < off_m %}\n      {{ (now_m >= on_m) and\
+      \ (now_m < off_m) }}\n    {% else %}\n      {{ (now_m >= on_m) or (now_m < off_m)\
+      \ }}\n    {% endif %}\n  {% endif %}\n{% endif %}"
+    availability: '{{ states(''input_boolean.dv_vmc_programacion_semanal'') not in
+      [''unknown'',''unavailable''] }}'
+  - name: dv_vmc_permitida
+    unique_id: dv_vmc_permitida
+    state: '{% set auto = is_state(''input_boolean.dv_vmc_modo_automatico'',''on'')
+      %} {% set lock = is_state(''binary_sensor.dv_vmc_failsafe_lockout_active'',''on'')
+      %} {% set sch  = is_state(''binary_sensor.dv_vmc_en_horario'',''on'') %} {%
+      set extra = is_state(''input_boolean.dv_vmc_permiso_extra'',''on'') %} {{ (auto
+      and (not lock) and (sch or extra)) | bool }}'
+    availability: "{{ states('input_boolean.dv_vmc_modo_automatico') not in ['unknown','unavailable']\n\
+      \   and states('binary_sensor.dv_vmc_failsafe_lockout_active') not in ['unknown','unavailable']\n\
+      \   and states('binary_sensor.dv_vmc_en_horario') not in ['unknown','unavailable']\n\
+      \   and states('input_boolean.dv_vmc_permiso_extra') not in ['unknown','unavailable']\
+      \ }}"
+- binary_sensor:
+  - name: dv_vmc_dew_risk_any
+    unique_id: dv_vmc_dew_risk_any
+    device_class: moisture
+    availability: '{{ true }}'
+    state: "{# If simulator is enabled, allow forcing dew risk for tests. #} {% if\
+      \ is_state('input_boolean.dv_vmc_sim_enabled','on') and is_state('input_boolean.dv_vmc_dew_risk_sim','on')\
+      \ %}\n  true\n{% else %}\n  {# Prefer the USER group if present; otherwise default\
+      \ to false. #}\n  {% set g = states('binary_sensor.dv_vmc_dew_risk_any_group')\
+      \ %}\n  {% if g in ['on','off'] %}\n    {{ g == 'on' }}\n  {% else %}\n    false\n\
+      \  {% endif %}\n{% endif %}"
+- binary_sensor:
+  - name: dv_vmc_dew_prerisk_any
+    unique_id: dv_vmc_dew_prerisk_any
+    device_class: moisture
+    availability: '{{ true }}'
+    state: "{# Prefer the USER group if present; otherwise default to false. #} {%\
+      \ set g = states('binary_sensor.dv_vmc_dew_prerisk_any_group') %} {% if g in\
+      \ ['on','off'] %}\n  {{ is_state('binary_sensor.dv_vmc_dew_prerisk_any_group','on')\
+      \ }}\n{% else %}\n  false\n{% endif %}"
+  - name: dv_vmc_freecool_active
+    unique_id: dv_vmc_freecool_active
+    icon: mdi:snowflake
+    state: "{% set en = is_state('input_boolean.dv_vmc_freecool_enabled','on') %}\
+      \ {% set t_in_ent  = state_attr('sensor.dv_vmc_hw_map','t_in') %} {% set t_ext_ent\
+      \ = state_attr('sensor.dv_vmc_hw_map','t_ext') %} {% set t_in  = (states(t_in_ent)\
+      \  | float(none)) if t_in_ent  not in [none,'','unknown','unavailable'] else\
+      \ none %} {% set t_ext = (states(t_ext_ent) | float(none)) if t_ext_ent not\
+      \ in [none,'','unknown','unavailable'] else none %} {% set min_ext = states('input_number.dv_vmc_freecool_t_ext_min_c')\
+      \ | float(5) %} {% set on_d  = states('input_number.dv_vmc_freecool_delta_on_c')\
+      \  | float(2) %} {% set off_d = states('input_number.dv_vmc_freecool_delta_off_c')\
+      \ | float(1) %} {% set prev = is_state('binary_sensor.dv_vmc_freecool_active','on')\
+      \ %} {% if not en or t_in is none or t_ext is none or t_ext < min_ext %}\n \
+      \ false\n{% else %}\n  {% set delta = (t_in - t_ext) %}\n  {% if prev %}\n \
+      \   {{ delta >= off_d }}\n  {% else %}\n    {{ delta >= on_d }}\n  {% endif\
+      \ %}\n{% endif %}"
+    availability: "{{ states('input_boolean.dv_vmc_freecool_enabled') not in ['unknown','unavailable']\n\
+      \   and states('input_number.dv_vmc_freecool_t_ext_min_c') not in ['unknown','unavailable']\n\
+      \   and states('input_number.dv_vmc_freecool_delta_on_c') not in ['unknown','unavailable']\n\
+      \   and states('input_number.dv_vmc_freecool_delta_off_c') not in ['unknown','unavailable']\
+      \ }}"
+- sensor:
+  - name: dv_vmc_addon_hwmap_startup_check_version
+    unique_id: dv_vmc_addon_hwmap_startup_check_version
+    state: '4.2'
+utility_meter:
+  dv_vmc_consumo_diario:
+    source: sensor.dv_vmc_pwr_energy_safe
+    cycle: daily
+  dv_vmc_consumo_mensual:
+    source: sensor.dv_vmc_pwr_energy_safe
+    cycle: monthly
+  dv_vmc_consumo_anual:
+    source: sensor.dv_vmc_pwr_energy_safe
+    cycle: yearly
+  dv_vmc_v1_horas_diarias:
+    source: sensor.dv_vmc_v1_horas_total
+    cycle: daily
+  dv_vmc_v2_horas_diarias:
+    source: sensor.dv_vmc_v2_horas_total
+    cycle: daily
+  dv_vmc_v3_horas_diarias:
+    source: sensor.dv_vmc_v3_horas_total
+    cycle: daily
+  dv_vmc_v1_horas_mensuales:
+    source: sensor.dv_vmc_v1_horas_total
+    cycle: monthly
+  dv_vmc_v2_horas_mensuales:
+    source: sensor.dv_vmc_v2_horas_total
+    cycle: monthly
+  dv_vmc_v3_horas_mensuales:
+    source: sensor.dv_vmc_v3_horas_total
+    cycle: monthly
+  dv_vmc_v1_horas_anuales:
+    source: sensor.dv_vmc_v1_horas_total
+    cycle: yearly
+  dv_vmc_v2_horas_anuales:
+    source: sensor.dv_vmc_v2_horas_total
+    cycle: yearly
+  dv_vmc_v3_horas_anuales:
+    source: sensor.dv_vmc_v3_horas_total
+    cycle: yearly
+  dv_vmc_maquina_horas_diarias:
+    source: sensor.dv_vmc_maquina_horas_total
+    cycle: daily
+  dv_vmc_maquina_horas_mensuales:
+    source: sensor.dv_vmc_maquina_horas_total
+    cycle: monthly
+  dv_vmc_maquina_horas_anuales:
+    source: sensor.dv_vmc_maquina_horas_total
+    cycle: yearly
+binary_sensor:
+- platform: group
+  name: dv_vmc_dew_risk_any_group
+  unique_id: dv_vmc_dew_risk_any_group
+  device_class: moisture
+  entities:
+  - binary_sensor.dv_vmc_dew_risk_zone01
+  - binary_sensor.dv_vmc_dew_risk_hm
+  - binary_sensor.dv_vmc_dew_risk_h1
+  - binary_sensor.dv_vmc_dew_risk_h2
+- platform: group
+  name: dv_vmc_dew_prerisk_any_group
+  unique_id: dv_vmc_dew_prerisk_any_group
+  device_class: moisture
+  entities:
+  - binary_sensor.dv_vmc_dew_prerisk_zone01
+  - binary_sensor.dv_vmc_dew_prerisk_hm
+  - binary_sensor.dv_vmc_dew_prerisk_h1
+  - binary_sensor.dv_vmc_dew_prerisk_h2
+input_boolean:
+  dv_vmc_hostile_outside_enabled:
+    name: dv_vmc_hostile_outside_enabled
+    icon: mdi:weather-hazy
+
+  dv_vmc_ducha_bano_pasillo:
+    name: dv_vmc_ducha_bano_pasillo
+    icon: mdi:shower
+  dv_vmc_co2_ema_enabled:
+    name: dv_vmc_co2_ema_enabled
+    icon: mdi:molecule-co2
+
+  dv_vmc_pm25_ema_enabled:
+    name: dv_vmc_pm25_ema_enabled
+    icon: mdi:chart-line
+
+  dv_vmc_ducha_bano_dormitorio:
+    name: dv_vmc_ducha_bano_dormitorio
+    icon: mdi:shower
+  dv_vmc_dew_risk_sim:
+    name: dv_vmc_dew_risk_sim
+    icon: mdi:water-alert
+  dv_vmc_auto:
+    name: dv_vmc_modo_automatico
+    icon: mdi:autorenew
+  dv_vmc_programacion_semanal:
+    name: dv_vmc_programacion_semanal
+    icon: mdi:calendar-week
+  dv_vmc_driver_busy:
+    name: dv_vmc_driver_ocupado
+    icon: mdi:progress-wrench
+  dv_vmc_bootstrap_done:
+    name: dv_vmc_bootstrap_hecho
+    icon: mdi:check-circle
+  dv_vmc_auto_lock:
+    name: dv_vmc_failsafe_auto_bloqueado
+    icon: mdi:alert-octagon
+  dv_vmc_v1:
+    name: dv_vmc_velocidad_1
+    icon: mdi:fan-speed-1
+  dv_vmc_v2:
+    name: dv_vmc_velocidad_2
+    icon: mdi:fan-speed-2
+  dv_vmc_v3:
+    name: dv_vmc_velocidad_3
+    icon: mdi:fan-speed-3
+  dv_vmc_override_v2:
+    name: dv_vmc_flag_override_v2
+    icon: mdi:fan-speed-2
+  dv_vmc_override_v3:
+    name: dv_vmc_flag_override_v3
+    icon: mdi:fan-speed-3
+  dv_vmc_notif_persistente:
+    name: dv_vmc_notificaciones_persistentes
+    icon: mdi:message-alert-outline
+  dv_vmc_notif_telegram:
+    name: dv_vmc_notificaciones_telegram
+    icon: mdi:send-circle-outline
+  dv_vmc_backup_restore_timers:
+    name: dv_vmc_backup_restaurar_timers_override
+    icon: mdi:timer-sync-outline
+  dv_vmc_filtros_aviso_enviado:
+    name: dv_vmc_filtros_aviso_enviado
+    icon: mdi:bell-check-outline
+  dv_vmc_dry_mode:
+    name: dv_vmc_dry_mode_stage_3
+    icon: mdi:water-off
+  dv_vmc_modo_automatico:
+    name: dv_vmc_modo_automatico
+    icon: mdi:autorenew
+    initial: 'on'
+  dv_vmc_permiso_extra:
+    name: dv_vmc_permiso_extra
+    icon: mdi:alarm
+    initial: 'off'
+  dv_vmc_freecool_enabled:
+    name: dv_vmc_freecool_enabled
+    icon: mdi:snowflake
+    initial: 'off'
+  dv_vmc_velocidad_1:
+    name: dv_vmc_velocidad_1
+    icon: mdi:fan-speed-1
+    initial: 'off'
+  dv_vmc_velocidad_2:
+    name: dv_vmc_velocidad_2
+    icon: mdi:fan-speed-2
+    initial: 'off'
+  dv_vmc_velocidad_3:
+    name: dv_vmc_velocidad_3
+    icon: mdi:fan-speed-3
+    initial: 'off'
+  dv_vmc_override_manual_v2_estado:
+    name: dv_vmc_override_manual_v2_estado
+    icon: mdi:hand-back-right
+    initial: 'off'
+  dv_vmc_override_manual_v3_estado:
+    name: dv_vmc_override_manual_v3_estado
+    icon: mdi:hand-back-right
+    initial: 'off'
+  dv_vmc_sdhb_export_enabled:
+    name: dv_vmc_sdhb_export_enabled
+    icon: mdi:transit-connection-variant
+input_button:
+  dv_vmc_propagar_horario_lunes_resto:
+    name: dv_vmc_propagar_horario_del_lunes_al_resto_de_dias
+    icon: mdi:content-copy
+  dv_vmc_override_btn_v2:
+    name: dv_vmc_btn_activar_v2
+    icon: mdi:fan-speed-2
+  dv_vmc_override_btn_v3:
+    name: dv_vmc_btn_activar_v3
+    icon: mdi:fan-speed-3
+  dv_vmc_permiso_extra_btn:
+    name: dv_vmc_permiso_extra
+    icon: mdi:timer-plus
+  dv_vmc_reset_fabrica_btn:
+    name: dv_vmc_reset_valores_fabrica
+    icon: mdi:backup-restore
+  dv_vmc_cancel_override_btn:
+    name: dv_vmc_cancelar_override
+    icon: mdi:cancel
+  dv_vmc_filtros_reset_btn:
+    name: dv_vmc_reset_filtros
+    icon: mdi:air-filter
+  dv_vmc_self_test_btn:
+    name: dv_vmc_self_test
+    icon: mdi:checkbox-marked-circle-outline
+  dv_vmc_freecool_enabled:
+    name: dv_vmc_freecool_enabled
+    icon: mdi:snowflake
+input_select:
+  dv_vmc_ducha_nivel:
+    name: dv_vmc_ducha_nivel
+    options:
+    - none
+    - v2
+    - v3
+    icon: mdi:shower
+  dv_vmc_prev_modo:
+    name: dv_vmc_prev_modo
+    options:
+    - auto
+    - manual
+    icon: mdi:toggle-switch
+  dv_vmc_prev_speed:
+    name: dv_vmc_prev_speed
+    options:
+    - false
+    - v1
+    - v2
+    - v3
+    icon: mdi:fan-speed-1
+input_datetime:
+  dv_vmc_notif_last_ts:
+    name: dv_vmc_notif_last_ts
+    icon: mdi:clock-check-outline
+    has_date: true
+    has_time: true
+  dv_vmc_hora_encendido:
+    name: dv_vmc_hora_encendido
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado:
+    name: dv_vmc_hora_apagado
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_lunes:
+    name: dv_vmc_hora_encendido_lunes
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_lunes:
+    name: dv_vmc_hora_apagado_lunes
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_martes:
+    name: dv_vmc_hora_encendido_martes
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_martes:
+    name: dv_vmc_hora_apagado_martes
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_miercoles:
+    name: dv_vmc_hora_encendido_miercoles
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_miercoles:
+    name: dv_vmc_hora_apagado_miercoles
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_jueves:
+    name: dv_vmc_hora_encendido_jueves
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_jueves:
+    name: dv_vmc_hora_apagado_jueves
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_viernes:
+    name: dv_vmc_hora_encendido_viernes
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_viernes:
+    name: dv_vmc_hora_apagado_viernes
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_sabado:
+    name: dv_vmc_hora_encendido_sabado
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_sabado:
+    name: dv_vmc_hora_apagado_sabado
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_hora_encendido_domingo:
+    name: dv_vmc_hora_encendido_domingo
+    has_date: false
+    has_time: true
+    icon: mdi:clock-start
+  dv_vmc_hora_apagado_domingo:
+    name: dv_vmc_hora_apagado_domingo
+    has_date: false
+    has_time: true
+    icon: mdi:clock-end
+  dv_vmc_last_speed_change:
+    name: dv_vmc_last_speed_change
+    has_date: true
+    has_time: true
+  dv_vmc_failsafe_last_trip:
+    name: dv_vmc_failsafe_last_trip
+    has_date: true
+    has_time: true
+  dv_vmc_failsafe_lockout_until:
+    name: dv_vmc_failsafe_lockout_until
+    has_date: true
+    has_time: true
+input_text:
+  dv_vmc_outdoor_aqi_entity_override:
+    name: dv_vmc_outdoor_aqi_entity_override
+    icon: mdi:target
+    max: 128
+    initial: ""
+
+  # Debug/observability: último "stage" que ganó la decisión de velocidad en el
+  # control principal (sin tener que mirar logs).
+  dv_vmc_stage_winner:
+    name: dv_vmc_stage_winner
+    icon: mdi:trophy-outline
+    max: 64
+    initial: ""
+
+  dv_vmc_stage_winner_detail:
+    name: dv_vmc_stage_winner_detail
+    icon: mdi:information-outline
+    max: 128
+    initial: ""
+
+  dv_vmc_notify_target:
+    name: dv_vmc_notify_target
+    initial: notify.notify
+    icon: mdi:send-circle-outline
+timer:
+  dv_vmc_override:
+    name: dv_vmc_override_manual
+    icon: mdi:timer
+  dv_vmc_permiso_extra:
+    name: dv_vmc_permiso_extra
+    icon: mdi:timer-plus
+  dv_vmc_ducha_override:
+    name: dv_vmc_override_ducha
+    icon: mdi:timer
+  dv_vmc_bootstrap_guard:
+    name: dv_vmc_bootstrap_guard
+    duration: 00:05:00
+  dv_vmc_startup_grace:
+    name: dv_vmc_startup_grace
+    duration: 00:02:00
+sensor:
+- platform: integration
+  source: sensor.dv_vmc_v1_on
+  name: dv_vmc_v1_horas_total
+  unique_id: dv_vmc_v1_horas_total
+  unit_time: h
+  method: trapezoidal
+  round: 2
+- platform: integration
+  source: sensor.dv_vmc_v2_on
+  name: dv_vmc_v2_horas_total
+  unique_id: dv_vmc_v2_horas_total
+  unit_time: h
+  method: trapezoidal
+  round: 2
+- platform: integration
+  source: sensor.dv_vmc_v3_on
+  name: dv_vmc_v3_horas_total
+  unique_id: dv_vmc_v3_horas_total
+  unit_time: h
+  method: trapezoidal
+  round: 2
+- platform: integration
+  source: sensor.dv_vmc_machine_on
+  name: dv_vmc_maquina_horas_total
+  unique_id: dv_vmc_maquina_horas_total
+  unit_time: h
+  method: trapezoidal
+  round: 2
+script:
+  dv_vmc_init_fabrica:
+    alias: dv_vmc_fabrica_aplicar_valores_iniciales
+    mode: single
+    sequence:
+    - variables:
+        fab: sensor.dv_vmc_fabrica
+        kj: '{{ state_attr(''sensor.dv_vmc_fabrica_keys'', ''keys_json'') }}'
+        keys: "{% if kj is string %}\n  {{ (kj | default('[]')) | from_json }}\n{%\
+          \ elif kj is iterable %}\n  {{ kj | list }}\n{% else %}\n  {{ [] }}\n{%\
+          \ endif %}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ keys | count > 0 }}'
+        sequence: []
+      default:
+      - stop: 'DV · Fábrica: keys vacío o sensor.dv_vmc_fabrica_keys no listo'
+    - repeat:
+        for_each: '{{ keys }}'
+        sequence:
+        - variables:
+            k: '{{ repeat.item }}'
+            v_raw: '{{ state_attr(fab, k) }}'
+            n: '{{ ''input_number.'' ~ k }}'
+            b: '{{ ''input_boolean.'' ~ k }}'
+            s: '{{ ''input_select.'' ~ k }}'
+            v: "{% if v_raw is string %}\n  {{ v_raw | trim }}\n{% else %}\n  {{ v_raw\
+              \ }}\n{% endif %}"
+            v_mapped: "{% if k == 'dv_vmc_prev_speed' and (v in ['off','OFF','Off'])\
+              \ %}\n  v1\n{% else %}\n  {{ v }}\n{% endif %}"
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ n in states and v_mapped is not none }}'
+            sequence:
+            - service: input_number.set_value
+              target:
+                entity_id: '{{ n }}'
+              data:
+                value: '{{ v_mapped | float(none) }}'
+          - conditions:
+            - condition: template
+              value_template: '{{ b in states and v_mapped is not none }}'
+            sequence:
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ v_mapped in [true,''true'',''True'',1,''1'',''on'',''On'',''ON'']
+                    }}'
+                sequence:
+                - service: input_boolean.turn_on
+                  target:
+                    entity_id: '{{ b }}'
+              - conditions:
+                - condition: template
+                  value_template: '{{ v_mapped in [false,''false'',''False'',0,''0'',''off'',''Off'',''OFF'']
+                    }}'
+                sequence:
+                - service: input_boolean.turn_off
+                  target:
+                    entity_id: '{{ b }}'
+          - conditions:
+            - condition: template
+              value_template: '{{ s in states and v_mapped is not none }}'
+            sequence:
+            - variables:
+                opts: '{{ state_attr(s, ''options'') or [] }}'
+            - condition: template
+              value_template: '{{ (v_mapped | string) in opts }}'
+            - service: input_select.select_option
+              target:
+                entity_id: '{{ s }}'
+              data:
+                option: '{{ v_mapped | string }}'
+    - service: logbook.log
+      data:
+        name: dv_vmc_dv
+        message: Aplicados valores de fábrica ({{ keys | count }} keys)
+  trigger:
+  - platform: homeassistant
+    event: start
+  - platform: state
+    entity_id:
+    - sensor.dv_vmc_hw_missing_count
+    - sensor.dv_vmc_onboarding_missing_runtime
+  condition:
+  - condition: template
+    value_template: '{% set hw = states(''sensor.dv_vmc_hw_missing_count'')|int(999)
+      %} {% set r = states(''sensor.dv_vmc_onboarding_missing_runtime'') %} {% set
+      rm = (r | from_json) if (r is string) else (r or []) %} {{ hw > 0 or (rm|length)
+      > 0 }}'
+  action:
+  - service: persistent_notification.create
+    data:
+      notification_id: dv_vmc_onboarding
+      title: 'DV onboarding: contratos incompletos'
+      message: 'Faltan contratos (HW_MAP y/o runtime contracts).
+
+        hw_missing_count={{ states(''sensor.dv_vmc_hw_missing_count'')|int(999) }}
+        missing_keys={{ states(''sensor.dv_vmc_onboarding_missing_keys'') }} runtime_missing={{
+        states(''sensor.dv_vmc_onboarding_missing_runtime'') }}
+
+        Acción: 1) Asegura que está cargado el addon runtime_contracts (crea dv_vmc_permitida,
+        dv_vmc_en_horario, dv_vmc_override_activo, dv_vmc_velocidad_real, dv_vmc_filtros_horas_desde_reset).
+        2) Abre el package core y edita: sensor.dv_vmc_hw_map → attributes 2) Asigna
+        cada key a tu entidad física (switch/sensor real). 3) Reinicia HA o espera
+        al siguiente refresco.
+
+        Nota clonación: - Para 2ª VMC: duplica dv_vmc_* → dv_vmc2_* + find&replace
+        dv_vmc_→dv_vmc2_. - Luego ajusta solo sensor.dv_vmc2_hw_map.'
+
+automation:
+  - id: dv_vmc_hwmap_startup_check
+    alias: dv_vmc_hwmap_startup_check
+    mode: single
+    trigger:
+    - platform: homeassistant
+      event: start
+    action:
+    - delay:
+        minutes: 7
+    - variables:
+        missing: '{{ states(''sensor.dv_vmc_hw_missing_count'')|int(999) }}'
+        ok: '{{ is_state(''binary_sensor.dv_vmc_hw_contract_ok'',''on'') and (missing
+          == 0) }}'
+        notify_target: "{{ states('input_text.dv_vmc_notify_target')\n   if states('input_text.dv_vmc_notify_target')\
+          \ not in ['unknown','unavailable','none','']\n   else 'notify.notify' }}"
+        required_keys: '{{ state_attr(''sensor.dv_vmc_hw_contract'',''required'') if
+          state_attr(''sensor.dv_vmc_hw_contract'',''required'') is not none else []
+          }}'
+        replace_missing: "{%- set req = state_attr('sensor.dv_vmc_hw_contract','required')\
+          \ if state_attr('sensor.dv_vmc_hw_contract','required') is not none else []\
+          \ -%} {%- set extra = [] -%} {# Optionally validate SDHB wiring only if enabled\
+          \ #} {%- if is_state('input_boolean.dv_vmc_sdhb_enabled','on') -%}\n  {%-\
+          \ set extra = ['sdhb_winner_entity','sdhb_source_slot'] -%}\n{%- endif -%}\
+          \ {%- set keys = (req + extra) -%} {%- set ns = namespace(m=[]) -%} {%- for\
+          \ k in keys -%}\n  {%- set v = state_attr('sensor.dv_vmc_hw_map', k) -%}\n\
+          \  {%- if v is string and v.startswith('REPLACE_') -%}\n    {%- set ns.m =\
+          \ ns.m + [k ~ '=' ~ v] -%}\n  {%- endif -%}\n{%- endfor -%} {{ ns.m }}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ (not ok) or (replace_missing|length > 0) }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DV · HW_MAP/Contrato KO (post-arranque)
+            notification_id: dv_vmc_hwmap_startup_check
+            message: DV HW_MAP/Contrato KO tras el arranque (delay 7 min). hw_contract_ok={{
+              is_state('binary_sensor.dv_vmc_hw_contract_ok','on') }} hw_missing_count={{
+              missing }} Revisa sensor.dv_vmc_hw_map y los detalles de sensor.dv_vmc_hw_missing_count.
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ is_state(''input_boolean.dv_vmc_notif_telegram'',''on'')
+                }}'
+            sequence:
+            - service: notify.send_message
+              target:
+                entity_id: '{{ notify_target }}'
+              data:
+                message: ⚠️ DV HW_MAP/Contrato KO tras el arranque (delay 7 min). contract_ok={{
+                  is_state('binary_sensor.dv_vmc_hw_contract_ok','on') }}, missing={{
+                  missing }}. Mira sensor.dv_vmc_hw_map / sensor.dv_vmc_hw_missing_count.
+      default: []
+
+    dv_vmc_backup_save:
+      alias: dv_vmc_backup_save
+      mode: single
+      sequence:
+      - variables:
+          path: dynamic_suite/dv/vmc/dv_vmc_backup.json
+          bad: ['unknown','unavailable','none','']
+          kj: '{{ state_attr(''sensor.dv_vmc_fabrica_keys'', ''keys_json'') }}'
+          keys: "{% if kj is string %}\n  {{ (kj | default('[]')) | from_json }}\n{% elif kj is iterable %}\n  {{ kj | list }}\n{% else %}\n  {{ [] }}\n{% endif %}"
+          payload: >-
+            {% set out = namespace(d={}) %}
+            {% for k in keys %}
+              {% set n = 'input_number.' ~ k %}
+              {% set b = 'input_boolean.' ~ k %}
+              {% set s = 'input_select.' ~ k %}
+              {% set dt = 'input_datetime.' ~ k %}
+              {% if n in states and states(n) not in bad %}
+                {% set out.d = dict(out.d, **{ n: (states(n) | float(none)) }) %}
+              {% elif b in states and states(b) not in bad %}
+                {% set out.d = dict(out.d, **{ b: (states(b) | string) }) %}
+              {% elif s in states and states(s) not in bad %}
+                {% set out.d = dict(out.d, **{ s: (states(s) | string) }) %}
+              {% elif dt in states and states(dt) not in bad %}
+                {% set out.d = dict(out.d, **{ dt: (states(dt) | string) }) %}
+              {% endif %}
+            {% endfor %}
+            {# extras fuera de fabrica_keys #}
+            {% set nt = 'input_text.dv_vmc_notify_target' %}
+            {% if nt in states and states(nt) not in bad %}
+              {% set out.d = dict(out.d, **{ nt: (states(nt) | string) }) %}
+            {% endif %}
+            {{ out.d | to_json }}
+      - service: appdaemon.dynamic_suite_backup/save
+        data:
+          path: '{{ path }}'
+          payload: '{{ payload }}'
+
+    dv_vmc_backup_restore:
+      alias: dv_vmc_backup_restore
+      mode: single
+      sequence:
+      - service: appdaemon.dynamic_suite_backup/restore
+        data:
+          path: dynamic_suite/dv/vmc/dv_vmc_backup.json

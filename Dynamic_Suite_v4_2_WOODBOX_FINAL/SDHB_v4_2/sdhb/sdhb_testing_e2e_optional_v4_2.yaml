@@ -1,0 +1,214 @@
+# ======================================================================================
+# SDHB · Optional E2E Integration Tests (DC → SDHB → DS) · v4.2
+# --------------------------------------------------------------------------------------
+# Purpose:
+# - Validate the full end-to-end flow for the "core" coordination path:
+#     DC publishes intent → SDHB arbitrates winner → DS consumes & exposes expected state.
+#
+# Notes:
+# - This package is OPTIONAL and should NOT be enabled in production permanently.
+# - If required entities are missing, tests are marked as SKIP (no failure).
+# - Uses SDHB scripts: script.sdhb_publish_intent and script.sdhb_clear_intent.
+#
+# Required (for scenario e2e_dc_solar_shield_ds_w1):
+# - sensor.sdhb_winner_ds_w1
+# - binary_sensor.ds_w1_sdhb_request_solar_shield
+#
+# ======================================================================================
+
+input_boolean:
+  sdhb_e2e_tests_enabled:
+    name: sdhb_e2e_tests_enabled
+    icon: mdi:check-decagram
+    initial: false
+
+input_select:
+  sdhb_e2e_test_scenario:
+    name: sdhb_e2e_test_scenario
+    options:
+      - none
+      - e2e_dc_solar_shield_ds_w1
+    initial: none
+    icon: mdi:clipboard-check-outline
+
+input_text:
+  sdhb_e2e_test_last_result:
+    name: sdhb_e2e_test_last_result
+    max: 255
+    initial: ""
+
+input_boolean:
+  sdhb_e2e_test_pass:
+    name: sdhb_e2e_test_pass
+    icon: mdi:check
+    initial: false
+
+timer:
+  sdhb_e2e_tests_auto_off:
+    name: sdhb_e2e_tests_auto_off
+    duration: "02:00:00"
+    icon: mdi:timer-off-outline
+
+automation:
+  - id: sdhb_e2e_tests_auto_off_start
+    alias: sdhb_e2e_tests_auto_off_start
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.sdhb_e2e_tests_enabled
+        to: "on"
+    action:
+      - service: timer.start
+        target:
+          entity_id: timer.sdhb_e2e_tests_auto_off
+
+  - id: sdhb_e2e_tests_auto_off_end
+    alias: sdhb_e2e_tests_auto_off_end
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sdhb_e2e_tests_auto_off
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_e2e_tests_enabled
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.sdhb_e2e_tests_enabled
+      - service: input_select.select_option
+        target:
+          entity_id: input_select.sdhb_e2e_test_scenario
+        data:
+          option: none
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sdhb_e2e_test_last_result
+        data:
+          value: "INFO: auto-off after 2h"
+
+  - id: sdhb_e2e_tests_run_on_scenario_change
+    alias: sdhb_e2e_tests_run_on_scenario_change
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_select.sdhb_e2e_test_scenario
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_e2e_tests_enabled
+        state: "on"
+      - condition: template
+        value_template: "{{ trigger.to_state.state != 'none' }}"
+    action:
+      - service: script.sdhb_run_e2e_test
+
+script:
+  sdhb_run_e2e_test:
+    alias: sdhb_run_e2e_test
+    mode: single
+    sequence:
+      - variables:
+          scenario: "{{ states('input_select.sdhb_e2e_test_scenario') }}"
+          test_source: "dc_zone01"
+  # Nota: usamos una source existente (dc_zone01) para asegurar que el bus la considera en slots/arbitraje.
+          ttl_s: 30
+          prio_solar_shield: 80
+
+      # Default: reset pass flag
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.sdhb_e2e_test_pass
+
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ scenario == 'e2e_dc_solar_shield_ds_w1' }}"
+            sequence:
+              - variables:
+                  target: "ds_w1"
+                  intent: "request_solar_shield"
+                  winner_entity: "sensor.sdhb_winner_ds_w1"
+                  consume_entity: "binary_sensor.ds_w1_sdhb_request_solar_shield"
+
+              # Preconditions (SKIP if missing)
+              - variables:
+                  winner_ok: "{{ states(winner_entity) not in ['unknown','unavailable','none',''] }}"
+                  consume_ok: "{{ states(consume_entity) not in ['unknown','unavailable','none',''] }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ not (winner_ok and consume_ok) }}"
+                    sequence:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.sdhb_e2e_test_last_result
+                        data:
+                          value: "SKIP: missing entities for e2e_dc_solar_shield_ds_w1"
+                      - service: input_select.select_option
+                        target:
+                          entity_id: input_select.sdhb_e2e_test_scenario
+                        data:
+                          option: none
+                      - stop: "SKIP"
+
+              # Publish intent
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "{{ test_source }}"
+                  intent: "{{ intent }}"
+                  target: "{{ target }}"
+                  ttl_s: "{{ ttl_s }}"
+                  priority: "{{ prio_solar_shield }}"
+                  payload: ""
+
+              - delay: "00:00:02"
+
+              # Validate: winner & DS consume
+              - variables:
+                  winner_is_ok: "{{ is_state(winner_entity, intent) }}"
+                  consume_is_ok: "{{ is_state(consume_entity, 'on') }}"
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ winner_is_ok and consume_is_ok }}"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target:
+                          entity_id: input_boolean.sdhb_e2e_test_pass
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.sdhb_e2e_test_last_result
+                        data:
+                          value: "PASS: e2e_dc_solar_shield_ds_w1"
+                  - default:
+                      - service: input_text.set_value
+                        target:
+                          entity_id: input_text.sdhb_e2e_test_last_result
+                        data:
+                          value: "FAIL: winner={{ states(winner_entity) }} consume={{ states(consume_entity) }}"
+
+              # Cleanup
+              - service: script.sdhb_clear_intent
+                data:
+                  source: "{{ test_source }}"
+
+              # Reset scenario to idle
+              - service: input_select.select_option
+                target:
+                  entity_id: input_select.sdhb_e2e_test_scenario
+                data:
+                  option: none
+
+        default:
+          - service: input_text.set_value
+            target:
+              entity_id: input_text.sdhb_e2e_test_last_result
+            data:
+              value: "SKIP: unknown scenario"
+          - service: input_select.select_option
+            target:
+              entity_id: input_select.sdhb_e2e_test_scenario
+            data:
+              option: none

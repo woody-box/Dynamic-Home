@@ -1,0 +1,2284 @@
+# ============================================================================
+# Dynamic Climate · DC Zone01 · Automations + scripts
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction)
+# ============================================================================
+
+automation:
+- id: dc_zone01_update_last_good_1m
+  alias: dc_zone01_update_last_good_1m
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /1
+  action:
+  - variables:
+      ts_now: '{{ now().timestamp() | int }}'
+      t_ext_ent: '{{ state_attr(''sensor.dc_zone01_hw_map'',''t_ext'') }}'
+      f1_lux_ent: '{{ state_attr(''sensor.dc_zone01_hw_map'',''f1_lux'') }}'
+      f2_lux_ent: '{{ state_attr(''sensor.dc_zone01_hw_map'',''f2_lux'') }}'
+      f3_lux_ent: '{{ state_attr(''sensor.dc_zone01_hw_map'',''f3_lux'') }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ t_ext_ent and is_number(states(t_ext_ent)) }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_t_ext
+        data:
+          value: '{{ states(t_ext_ent) | float(0) }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_t_ext_ts
+        data:
+          value: '{{ ts_now }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ f1_lux_ent and is_number(states(f1_lux_ent)) }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_f1_lux
+        data:
+          value: '{{ states(f1_lux_ent) | float(0) }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_f1_lux_ts
+        data:
+          value: '{{ ts_now }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ f2_lux_ent and is_number(states(f2_lux_ent)) }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_f2_lux
+        data:
+          value: '{{ states(f2_lux_ent) | float(0) }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_f2_lux_ts
+        data:
+          value: '{{ ts_now }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ f3_lux_ent and is_number(states(f3_lux_ent)) }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_f3_lux
+        data:
+          value: '{{ states(f3_lux_ent) | float(0) }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_last_good_f3_lux_ts
+        data:
+          value: '{{ ts_now }}'
+- id: dc_zone01_publish_dew_to_bus
+  alias: dc_zone01_publish_dew_to_bus
+  mode: queued
+  max: 10
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.dc_zone01_riesgo_rocio
+    - binary_sensor.dc_zone01_dew_prerisk
+    - sensor.dc_zone01_dew_spread_c
+  action:
+  - variables:
+      bus_ok: '{{ states(''input_boolean.sdhb_enabled'') != ''unknown'' and is_state(''input_boolean.sdhb_enabled'',''on'')
+        }}'
+      has_flag_risk: '{{ states(''input_boolean.sdhb_flag_dc_zone01_dew_risk'') !=
+        ''unknown'' }}'
+      has_flag_prerisk: '{{ states(''input_boolean.sdhb_flag_dc_zone01_dew_prerisk'')
+        != ''unknown'' }}'
+      has_metric: '{{ states(''input_number.sdhb_metric_dc_zone01_dew_spread_c'')
+        != ''unknown'' }}'
+      risk_on: '{{ is_state(''binary_sensor.dc_zone01_riesgo_rocio'',''on'') }}'
+      prerisk_on: '{{ is_state(''binary_sensor.dc_zone01_dew_prerisk'',''on'') }}'
+      spread: '{{ states(''sensor.dc_zone01_dew_spread_c'') | float(0) }}'
+      spread_ok: '{{ is_number(states(''sensor.dc_zone01_dew_spread_c'')) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ bus_ok and has_flag_risk }}'
+      sequence:
+      - service: '{{ ''input_boolean.turn_on'' if risk_on else ''input_boolean.turn_off''
+          }}'
+        target:
+          entity_id: input_boolean.sdhb_flag_dc_zone01_dew_risk
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ bus_ok and has_flag_prerisk }}'
+      sequence:
+      - service: '{{ ''input_boolean.turn_on'' if prerisk_on else ''input_boolean.turn_off''
+          }}'
+        target:
+          entity_id: input_boolean.sdhb_flag_dc_zone01_dew_prerisk
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ bus_ok and has_metric }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.sdhb_metric_dc_zone01_dew_spread_c
+        data:
+          value: '{{ spread if spread_ok else 0 }}'
+- id: dc_zone01_tendencia_update_5m
+  alias: dc_zone01_tendencia_update_5m
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /5
+  action:
+  - variables:
+      t_ent: '{{ state_attr(''sensor.dc_zone01_hw_map'',''t_int'') }}'
+      t_now: '{{ states(''sensor.dc_zone01_t_int_safe'') | float(none) }}'
+      ts_now: '{{ as_timestamp(now()) | int(0) }}'
+      ts_prev: '{{ states(''input_number.dc_zone01_tendencia_last_ts'') | int(0) }}'
+      dt_s: '{% if ts_prev > 0 %}{{ (ts_now - ts_prev) | int(0) }}{% else %}{{ none
+        }}{% endif %}'
+      t_prev: '{{ states(''input_number.dc_zone01_tendencia_last_t'') | float(none)
+        }}'
+      dt_h: '{% set dts = dt_s | int(0) %}{% if dt_s is not none %}{{ (dts / 3600)
+        | float(none) }}{% else %}{{ none }}{% endif %}'
+      raw_cph: "{% set d = dt_h | float(none) %} {% if t_now is not none and t_prev\
+        \ is not none and d is not none and d > 0.001 %}\n  {{ ((t_now - t_prev) /\
+        \ d) | round(3) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      prev_ema: '{{ states(''input_number.dc_zone01_tendencia_cph_ema'') | float(0)
+        }}'
+      alpha: '{{ states(''input_number.dc_zone01_tendencia_ma_alpha'') | float(0.35)
+        }}'
+      max_abs: '{{ states(''input_number.dc_zone01_tendencia_max_abs_cph'') | float(6.0)
+        }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ t_now is none }}'
+      sequence: []
+    - conditions:
+      - condition: template
+        value_template: '{{ dt_s is not none and ((dt_s | int(0)) <= 0 or (dt_s |
+          int(0)) > 21600) }}
+
+          '
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_last_t
+        data:
+          value: '{{ t_now }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_last_ts
+        data:
+          value: '{{ ts_now }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_cph
+        data:
+          value: 0
+    - conditions:
+      - condition: template
+        value_template: '{{ raw_cph is none }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_last_t
+        data:
+          value: '{{ t_now }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_last_ts
+        data:
+          value: '{{ ts_now }}'
+    - conditions:
+      - condition: template
+        value_template: '{{ raw_cph is not none }}'
+      sequence:
+      - variables:
+          cph_clamped: '{% set v = raw_cph | float(0) %} {% if v > max_abs %}{{ max_abs
+            }} {% elif v < (0 - max_abs) %}{{ 0 - max_abs }} {% else %}{{ v }}{% endif
+            %}
+
+            '
+          ema_new: '{{ (alpha * cph_clamped + (1-alpha) * prev_ema) | round(3) }}
+
+            '
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_cph
+        data:
+          value: '{{ cph_clamped }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_cph_ema
+        data:
+          value: '{{ ema_new }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_last_t
+        data:
+          value: '{{ t_now }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_tendencia_last_ts
+        data:
+          value: '{{ ts_now }}'
+- id: dc_zone01_watchdog_tendencia_recovery
+  alias: ha_start
+  mode: single
+  trigger:
+  - platform: homeassistant
+    event: start
+    id: ha_start
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_watchdog_tendencia_stale
+    to: 'on'
+    for:
+      minutes: 2
+    id: stale_2m
+  - platform: state
+    entity_id: sensor.dc_zone01_hvac_mode
+    to: heat
+    id: hvac_heat
+  - platform: state
+    entity_id: sensor.dc_zone01_hvac_mode
+    to: cool
+    id: hvac_cool
+  - platform: time_pattern
+    minutes: /5
+    id: every_5m
+  condition:
+  - condition: numeric_state
+    entity_id: sensor.uptime
+    above: 120
+  - condition: template
+    value_template: '{{ states(''sensor.dc_zone01_hvac_mode'') in [''heat'',''cool'']
+      }}
+
+      '
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: ha_start
+      sequence:
+      - delay: 00:05:00
+  - condition: state
+    entity_id: binary_sensor.dc_zone01_watchdog_tendencia_stale
+    state: 'on'
+  - variables:
+      m: sensor.dc_zone01_hw_map
+      t_int_ent: '{{ state_attr(m,''t_int'') }}'
+      t_now: "{% if t_int_ent and states(t_int_ent) not in ['unknown','unavailable','none','']\
+        \ %}\n  {{ states(t_int_ent) | float(none) }}\n{% else %}\n  {{ none }}\n\
+        {% endif %}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ t_now is none }}'
+      sequence:
+      - service: persistent_notification.create
+        data:
+          title: DC Zone01 · Watchdog tendencia
+          message: '⚠️ No puedo recuperar la tendencia
+
+            Ahora mismo no puedo leer una temperatura interior válida, así que no
+            es seguro reinicializar la tendencia.
+
+            ✅ En cuanto vuelva una temperatura válida, el sistema podrá recuperarse
+            automáticamente.
+
+            '
+          notification_id: dc_zone01_watchdog_tendencia_no_tint
+      - stop: No se puede recuperar sin t_int
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_tendencia_last_t
+    data:
+      value: '{{ t_now }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_tendencia_last_ts
+    data:
+      value: '{{ as_timestamp(now()) | round(0) }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_tendencia_cph
+    data:
+      value: 0
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_tendencia_cph_ema
+    data:
+      value: 0
+  - service: persistent_notification.create
+    data:
+      title: DC Zone01 · Watchdog tendencia
+      message: '✅ Tendencia recuperada
+
+        La tendencia se había quedado “congelada” y se ha reinicializado para que
+        Dynamic Climate vuelva a calcular con normalidad.
+
+        '
+      notification_id: dc_zone01_watchdog_tendencia_recovered
+- id: dc_zone01_rocio_hard_stop
+  alias: dc_zone01_rocio_hard_stop_off
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_riesgo_rocio
+    to: 'on'
+    for: 00:01:00
+  action:
+  - variables:
+      clim: '{{ state_attr(''sensor.dc_zone01_hw_map'',''climate'') }}'
+      hvac_now: '{{ states(clim) if clim else ''unknown'' }}'
+  - service: input_text.set_value
+    target:
+      entity_id: input_text.dc_zone01_hvac_previo_rocio
+    data:
+      value: '{{ hvac_now }}'
+  - if:
+    - condition: template
+      value_template: '{{ clim and hvac_now in [''heat'',''cool''] }}'
+    then:
+    - service: climate.set_hvac_mode
+      target:
+        entity_id: '{{ clim }}'
+      data:
+        hvac_mode: 'off'
+- id: dc_zone01_rocio_rearme
+  alias: dc_zone01_rocio_rearme_controlado
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_riesgo_rocio
+    to: 'off'
+  action:
+  - variables:
+      min_ok: '{{ states(''input_number.dc_zone01_rearm_minutos_ok_rocio'') | int(10)
+        }}'
+      clim: '{{ state_attr(''sensor.dc_zone01_hw_map'',''climate'') }}'
+      hvac_prev: '{{ states(''input_text.dc_zone01_hvac_previo_rocio'') }}'
+      hvac_now: '{{ states(clim) if clim else ''unknown'' }}'
+  - wait_for_trigger:
+    - platform: state
+      entity_id: binary_sensor.dc_zone01_riesgo_rocio
+      to: 'on'
+    timeout:
+      minutes: '{{ min_ok }}'
+    continue_on_timeout: true
+  - condition: state
+    entity_id: binary_sensor.dc_zone01_riesgo_rocio
+    state: 'off'
+  - if:
+    - condition: template
+      value_template: '{{ clim and hvac_now == ''off'' and hvac_prev in [''heat'',''cool'']
+        }}'
+    then:
+    - service: climate.set_hvac_mode
+      target:
+        entity_id: '{{ clim }}'
+      data:
+        hvac_mode: '{{ hvac_prev }}'
+- id: dc_zone01_aplicar_consigna_5m
+  alias: dc_zone01_aplicar_consigna_5m
+  mode: restart
+  trigger:
+  - platform: time_pattern
+    minutes: /5
+  condition:
+  - condition: state
+    entity_id: binary_sensor.dc_zone01_override_activo
+    state: 'off'
+  - condition: template
+    value_template: '{% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'')
+      %} {{ clim not in [none,'''',''unknown'',''unavailable''] }}'
+  - condition: template
+    value_template: '{% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'')
+      %} {% set hvac = states(clim) if clim else ''unknown'' %} {{ hvac in [''heat'',''cool'']
+      }}'
+  - condition: state
+    entity_id: input_boolean.dc_zone01_window_lockout
+    state: 'off'
+  - condition: state
+    entity_id: binary_sensor.dc_zone01_riesgo_rocio
+    state: 'off'
+  - condition: template
+    value_template: '{{ states(''sensor.dc_zone01_target_final'') | float(none) is
+      not none }}'
+  - condition: template
+    value_template: '{{ states(''sensor.dc_zone01_t_int_safe'') | float(none) is not
+      none }}'
+  - condition: template
+    value_template: '{% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'')
+      %} {% set t_cur = state_attr(clim,''temperature'') | float(none) %} {% set t_tgt
+      = states(''sensor.dc_zone01_target_final'') | float(none) %} {% set dmin  =
+      states(''input_number.dc_zone01_apply_min_delta'') | float(0) %} {{ t_cur is
+      not none and t_tgt is not none and (t_tgt - t_cur) | abs >= dmin }}'
+  action:
+  - variables:
+      clim: '{{ state_attr(''sensor.dc_zone01_hw_map'',''climate'') }}'
+      hv: '{{ states(clim) if clim else ''unknown'' }}'
+      sp_before: '{{ state_attr(clim,''temperature'') | float(none) }}'
+      sp_after: '{{ states(''sensor.dc_zone01_target_final'') | float(none) }}'
+      d: '{% set a = states(''sensor.dc_zone01_target_final'') | float(none) %} {%
+        set b = state_attr(clim,''temperature'') | float(none) %} {% if a is none
+        or b is none %}{{ none }}{% else %}{{ (a-b) | round(2) }}{% endif %}'
+      reason_text: "{% set th = 0.05 %} {% set ext0 = states('sensor.dc_zone01_bias_exterior_raw')\
+        \ | float(0) %} {% set fac0 = states('sensor.dc_zone01_bias_fachadas_raw')\
+        \ | float(0) %} {% set vmc0 = states('sensor.dc_zone01_bias_vmc') | float(0)\
+        \ %} {% set tr0  = states('sensor.dc_zone01_freno_tendencia') | float(0) %}\n\
+        {% set aext = ext0|abs %} {% set afac = fac0|abs %} {% set avmc = vmc0|abs\
+        \ %} {% set atr  = tr0|abs %}\n{% set n1 = '' %}{% set v1 = 0 %} {% if aext\
+        \ >= afac and aext >= avmc and aext >= atr %}\n  {% set n1 = 'Bias exterior'\
+        \ %}{% set v1 = ext0 %}\n  {% set aext = -1 %}\n{% elif afac >= avmc and afac\
+        \ >= atr %}\n  {% set n1 = 'Bias fachadas' %}{% set v1 = fac0 %}\n  {% set\
+        \ afac = -1 %}\n{% elif avmc >= atr %}\n  {% set n1 = 'Bias VMC' %}{% set\
+        \ v1 = vmc0 %}\n  {% set avmc = -1 %}\n{% else %}\n  {% set n1 = 'Freno tendencia'\
+        \ %}{% set v1 = tr0 %}\n  {% set atr = -1 %}\n{% endif %}\n{% set n2 = ''\
+        \ %}{% set v2 = 0 %} {% if aext >= afac and aext >= avmc and aext >= atr %}\n\
+        \  {% set n2 = 'Bias exterior' %}{% set v2 = ext0 %}\n  {% set aext = -1 %}\n\
+        {% elif afac >= avmc and afac >= atr %}\n  {% set n2 = 'Bias fachadas' %}{%\
+        \ set v2 = fac0 %}\n  {% set afac = -1 %}\n{% elif avmc >= atr %}\n  {% set\
+        \ n2 = 'Bias VMC' %}{% set v2 = vmc0 %}\n  {% set avmc = -1 %}\n{% else %}\n\
+        \  {% set n2 = 'Freno tendencia' %}{% set v2 = tr0 %}\n  {% set atr = -1 %}\n\
+        {% endif %}\n{% set n3 = '' %}{% set v3 = 0 %} {% if aext >= afac and aext\
+        \ >= avmc and aext >= atr %}\n  {% set n3 = 'Bias exterior' %}{% set v3 =\
+        \ ext0 %}\n{% elif afac >= avmc and afac >= atr %}\n  {% set n3 = 'Bias fachadas'\
+        \ %}{% set v3 = fac0 %}\n{% elif avmc >= atr %}\n  {% set n3 = 'Bias VMC'\
+        \ %}{% set v3 = vmc0 %}\n{% else %}\n  {% set n3 = 'Freno tendencia' %}{%\
+        \ set v3 = tr0 %}\n{% endif %}\n{% set out = '' %} {% if n1 and (v1|abs) >=\
+        \ th %}\n  {% set out = out ~ n1 ~ ' ' ~ (v1|round(2)) ~ '°C' %}\n{% endif\
+        \ %} {% if n2 and (v2|abs) >= th and n2 != n1 %}\n  {% set out = out ~ ('\
+        \ · ' if out else '') ~ n2 ~ ' ' ~ (v2|round(2)) ~ '°C' %}\n{% endif %} {%\
+        \ if n3 and (v3|abs) >= th and n3 != n1 and n3 != n2 %}\n  {% set out = out\
+        \ ~ (' · ' if out else '') ~ n3 ~ ' ' ~ (v3|round(2)) ~ '°C' %}\n{% endif\
+        \ %} {{ out if out else '---' }}"
+  - service: climate.set_temperature
+    target:
+      entity_id: '{{ clim }}'
+    data:
+      temperature: '{{ sp_after }}'
+  - service: logbook.log
+    data:
+      name: dc_zone01_aplicar_consigna_5m
+      entity_id: '{{ this.entity_id }}'
+      message: '🌡️ Consigna actualizada
+
+        Antes: {{ ''---'' if sp_before is none else (sp_before|round(1)) }}°C Ahora:
+        {{ ''---'' if sp_after is none else (sp_after|round(1)) }}°C Cambio: Δ {{
+        ''---'' if d is none else d }}°C
+
+        Motivo: {{ reason_text }}'
+  - service: script.dc_zone01_log_telemetry
+    data:
+      reason: '{{ reason_text }}'
+      sp_before: '{{ sp_before }}'
+      sp_after: '{{ sp_after }}'
+      delta: '{{ d }}'
+- id: dc_zone01_override_manager
+  alias: dc_zone01_override_gestor
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_override_activo
+  - platform: state
+    entity_id: sensor.dc_zone01_override_temperatura_activa
+  action:
+  - variables:
+      clim: '{{ state_attr(''sensor.dc_zone01_hw_map'',''climate'') }}'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_override_activo
+        state: 'on'
+      sequence:
+      - service: automation.turn_off
+        target:
+          entity_id: automation.dc_zone01_aplicar_consigna_5m
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ clim\n   and states('sensor.dc_zone01_override_temperatura_activa')\n\
+              \     not in ['unknown', 'unavailable', 'none', ''] }}"
+          sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: '{{ clim }}'
+            data:
+              temperature: '{{ states(''sensor.dc_zone01_override_temperatura_activa'')
+                | float }}'
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_override_activo
+        state: 'off'
+      sequence:
+      - service: automation.turn_on
+        target:
+          entity_id: automation.dc_zone01_aplicar_consigna_5m
+      - delay: 00:00:02
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: "{{ clim\n   and states('sensor.dc_zone01_target_final')\n\
+              \     not in ['unknown', 'unavailable', 'none', ''] }}"
+          sequence:
+          - service: climate.set_temperature
+            target:
+              entity_id: '{{ clim }}'
+            data:
+              temperature: '{{ states(''sensor.dc_zone01_target_final'') | float }}'
+- id: dc_zone01_override_1_oneshot_programado_disarm
+  alias: dc_zone01_override_1_one_shot_programado_desarmar
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_override_1_activo
+    from: 'on'
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_override_1_oneshot_programado
+    state: 'on'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id:
+      - input_boolean.dc_zone01_override_1_enabled
+      - input_boolean.dc_zone01_override_1_oneshot_programado
+- id: dc_zone01_override_2_oneshot_programado_disarm
+  alias: dc_zone01_override_2_one_shot_programado_desarmar
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_override_2_activo
+    from: 'on'
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_override_2_oneshot_programado
+    state: 'on'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id:
+      - input_boolean.dc_zone01_override_2_enabled
+      - input_boolean.dc_zone01_override_2_oneshot_programado
+- id: dc_zone01_override_3_oneshot_programado_disarm
+  alias: dc_zone01_override_3_one_shot_programado_desarmar
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_override_3_activo
+    from: 'on'
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_override_3_oneshot_programado
+    state: 'on'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id:
+      - input_boolean.dc_zone01_override_3_enabled
+      - input_boolean.dc_zone01_override_3_oneshot_programado
+- id: dc_zone01_window_lockout_manager
+  alias: dc_zone01_ventanas_gestor_lockout_hard_stop
+  mode: restart
+  max_exceeded: silent
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_ventana_abierta
+  - platform: state
+    entity_id:
+    - input_boolean.dc_zone01_enable_window_sensor
+    - input_boolean.dc_zone01_window_hard_stop
+  - platform: homeassistant
+    event: start
+  action:
+  - variables:
+      clim: '{{ state_attr(''sensor.dc_zone01_hw_map'',''climate'') }}'
+      hvac: '{{ states(clim) if clim else ''unknown'' }}'
+      open_s: '{{ states(''input_number.dc_zone01_window_open_confirm_s'') | int(30)
+        }}'
+      stop_s: '{{ states(''input_number.dc_zone01_window_open_hard_stop_s'') | int(120)
+        }}'
+      close_s: '{{ states(''input_number.dc_zone01_window_close_confirm_s'') | int(60)
+        }}'
+      hard_stop_enabled: '{{ is_state(''input_boolean.dc_zone01_window_hard_stop'',''on'')
+        }}'
+      win_enabled: '{{ is_state(''input_boolean.dc_zone01_enable_window_sensor'',''on'')
+        }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ not win_enabled }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+          - input_boolean.dc_zone01_window_lockout
+          - input_boolean.dc_zone01_window_hard_stopped
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.dc_zone01_window_last_hvac
+        data:
+          value: ''
+      - stop: Ventanas deshabilitadas → runtime limpiado
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ win_enabled and (not hard_stop_enabled) }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+          - input_boolean.dc_zone01_window_hard_stopped
+          - input_boolean.dc_zone01_window_lockout
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.dc_zone01_window_last_hvac
+        data:
+          value: ''
+      - stop: Hard-stop deshabilitado → latch limpiado
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ win_enabled }}'
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_ventana_abierta
+        state: 'on'
+      sequence:
+      - wait_for_trigger:
+        - platform: state
+          entity_id: binary_sensor.dc_zone01_ventana_abierta
+          to: 'off'
+        timeout:
+          seconds: '{{ open_s }}'
+        continue_on_timeout: true
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_ventana_abierta
+        state: 'on'
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.dc_zone01_window_lockout
+      - wait_for_trigger:
+        - platform: state
+          entity_id: binary_sensor.dc_zone01_ventana_abierta
+          to: 'off'
+        timeout:
+          seconds: '{{ [0, stop_s - open_s] | max }}'
+        continue_on_timeout: true
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_ventana_abierta
+        state: 'on'
+      - condition: template
+        value_template: "{{ clim\n   and hard_stop_enabled\n   and hvac in ['heat','cool']\n\
+          \   and is_state('input_boolean.dc_zone01_window_hard_stopped','off')\n\
+          }}\n"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.dc_zone01_window_last_hvac
+        data:
+          value: '{{ hvac }}'
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: '{{ clim }}'
+        data:
+          hvac_mode: 'off'
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.dc_zone01_window_hard_stopped
+    - conditions:
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_ventana_abierta
+        state: 'off'
+      sequence:
+      - wait_for_trigger:
+        - platform: state
+          entity_id: binary_sensor.dc_zone01_ventana_abierta
+          to: 'on'
+        timeout:
+          seconds: '{{ close_s }}'
+        continue_on_timeout: true
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_ventana_abierta
+        state: 'off'
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dc_zone01_window_lockout
+      - if:
+        - condition: state
+          entity_id: input_boolean.dc_zone01_window_hard_stopped
+          state: 'on'
+        then:
+        - variables:
+            last: '{{ states(''input_text.dc_zone01_window_last_hvac'') }}'
+        - condition: template
+          value_template: '{{ clim and last in [''heat'',''cool''] }}'
+        - service: climate.set_hvac_mode
+          target:
+            entity_id: '{{ clim }}'
+          data:
+            hvac_mode: '{{ last }}'
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.dc_zone01_window_hard_stopped
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dc_zone01_window_last_hvac
+          data:
+            value: ''
+    default: []
+- id: dc_zone01_window_enforce_off
+  alias: dc_zone01_ventanas_bloquear_reencendido_manual_hard_stop
+  mode: restart
+  trigger:
+  - platform: template
+    value_template: '{% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'')
+      %} {{ clim and states(clim) in [''heat'',''cool''] }}
+
+      '
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_enable_window_sensor
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.dc_zone01_window_hard_stopped
+    state: 'on'
+  - condition: state
+    entity_id: binary_sensor.dc_zone01_ventana_abierta
+    state: 'on'
+  action:
+  - variables:
+      clim: '{{ state_attr(''sensor.dc_zone01_hw_map'',''climate'') }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ clim is not none and clim != '''' }}'
+      sequence:
+      - service: climate.set_hvac_mode
+        target:
+          entity_id: '{{ clim }}'
+        data:
+          hvac_mode: 'off'
+  - service: persistent_notification.create
+    data:
+      title: DC Zone01 · Ventanas
+      message: '🚫 Re-encendido bloqueado (ventana abierta)
+
+        Hay una ventana abierta y está activa la protección HARD-STOP. Por seguridad,
+        Dynamic Climate apaga la climatización y evita que se vuelva a encender manualmente.
+
+        🔧 Qué hacer: 1) Cierra la ventana 2) Espera unos segundos y vuelve a encender
+        si lo necesitas 3) Si quieres permitir encendido manual con ventanas abiertas,
+        desactiva el HARD-STOP (no recomendado)'
+- id: dc_zone01_warn_empty_window_group
+  alias: dc_zone01_warning_grupo_ventanas_vacio
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: input_boolean.dc_zone01_enable_window_sensor
+    to: 'on'
+  condition:
+  - condition: template
+    value_template: "{% set m = 'sensor.dc_zone01_hw_map' %} {% set g = state_attr(m,'ventanas_group')\
+      \ %} {% if not g %}\n  true\n{% else %}\n  {% set ents = state_attr(g,'entity_id')\
+      \ or [] %}\n  {{ (ents | count) == 0 }}\n{% endif %}\n"
+  action:
+  - variables:
+      g: '{{ state_attr(''sensor.dc_zone01_hw_map'',''ventanas_group'') }}'
+  - service: persistent_notification.create
+    data:
+      title: DC Zone01 · Configuración incompleta
+      message: '⚠️ Ventanas: configuración incompleta
+
+        Has activado la función de ventanas, pero el grupo configurado no tiene sensores.
+
+        Grupo configurado: • {{ g if g else ''no configurado en HW map'' }}
+
+        🔧 Qué hacer: 1) Añade tus sensores de ventana a ese grupo 2) O desactiva la
+        función de ventanas si aún no vas a usarla'
+      notification_id: dc_zone01_warn_empty_window_group
+- id: dc_zone01_alerta_critica_temp_interior_fail
+  alias: dc_zone01_alerta_critica_fallo_t_int
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: sensor.dc_zone01_t_int_safe
+    to: unknown
+  - platform: state
+    entity_id: sensor.dc_zone01_t_int_safe
+    to: unavailable
+  - platform: state
+    entity_id: sensor.dc_zone01_t_int_safe
+    to: ''
+  action:
+  - service: persistent_notification.create
+    data:
+      title: DC Zone01 · FALLO CRÍTICO
+      message: '⚠️ FALLO CRÍTICO · Temperatura interior
+
+        Ahora mismo no puedo leer la temperatura del zona 01. Por seguridad, Dynamic
+        Climate se ha detenido y no aplicará consignas hasta que vuelva un valor válido.
+
+        Sensor configurado (t_int): • {{ state_attr(''sensor.dc_zone01_hw_map'',''t_int'')
+        }} Estado actual: • {{ states(state_attr(''sensor.dc_zone01_hw_map'',''t_int''))
+        if state_attr(''sensor.dc_zone01_hw_map'',''t_int'') else ''no configurado''
+        }}
+
+        🔧 Qué hacer: 1) Comprueba que el sensor está “Disponible” en Home Assistant
+        2) Si es inalámbrico: revisa pilas y alcance 3) En HA: Configuración → Dispositivos
+        y servicios → revisa la integración del sensor
+
+        ✅ El sistema se reactivará automáticamente cuando el sensor vuelva a estar
+        disponible.'
+      notification_id: dc_zone01_crit_t_int_fail
+- id: dc_zone01_warn_missing_valve_switch
+  alias: dc_zone01_warn_adaptive_lead_hw_map_missing_valve_switch
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+    to: 'on'
+  - platform: homeassistant
+    event: start
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+    state: 'on'
+  - condition: template
+    value_template: '{{ is_state(''binary_sensor.dc_zone01_hw_ok_valve_switch'',''off'')
+      }}'
+  action:
+  - service: persistent_notification.create
+    data:
+      title: DC Zone01 · Adaptive Lead (WARNING)
+      message: 'Adaptive Lead está ACTIVADO, pero no hay valve_switch válido en sensor.dc_zone01_hw_map.
+        El aprendizaje NO puede funcionar.
+
+        '
+      notification_id: dc_zone01_warn_missing_valve_switch
+  - service: logbook.log
+    data:
+      name: dc_zone01
+      message: Adaptive Lead ON pero falta valve_switch en HW map (no aprenderá).
+- id: dc_zone01_adaptive_on_capture_t0
+  alias: valve_on
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_valve_open
+    to: 'on'
+    id: valve_on
+  - platform: homeassistant
+    event: start
+    id: ha_start
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+    state: 'on'
+  - condition: template
+    value_template: '{{ states(''sensor.dc_zone01_hvac_mode'') in [''heat'',''cool'']
+      }}'
+  - condition: template
+    value_template: "{% if trigger.id == 'ha_start' %}\n  {{ is_state('binary_sensor.dc_zone01_valve_open','on')\
+      \ }}\n{% else %}\n  true\n{% endif %}\n"
+  action:
+  - variables:
+      m: sensor.dc_zone01_hw_map
+      t_ent: '{{ state_attr(m,''t_int'') }}'
+      t_safe: '{{ states(''sensor.dc_zone01_t_int_safe'') | float(none) }}'
+      t_now: "{% if t_safe is not none %}\n  {{ t_safe }}\n{% elif t_ent and states(t_ent)\
+        \ not in ['unknown','unavailable','none',''] %}\n  {{ states(t_ent) | float(none)\
+        \ }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      sp: '{{ states(''sensor.dc_zone01_target_final'') | float(none) }}'
+      ts_on: '{{ as_timestamp(now()) | int(0) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ t_now is none or sp is none }}'
+      sequence:
+      - stop: 'Adaptive Lead v2.6.1: ON capture skip (t_now/sp inválidos).'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_on_ts
+    data:
+      value: '{{ ts_on }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_on_sp
+    data:
+      value: '{{ sp }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_on_t0_ts
+    data:
+      value: '{{ ts_on }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_on_t0
+    data:
+      value: '{{ t_now }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_adapt_last_cycle_aborted
+    data:
+      value: 0
+- id: dc_zone01_adaptive_off_to_peak_learn
+  alias: dc_zone01_adaptive_lead_off_peak_learn_v2_6_1
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dc_zone01_valve_open
+    to: 'off'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+    state: 'on'
+  - condition: template
+    value_template: '{{ states(''sensor.dc_zone01_hvac_mode'') in [''heat'',''cool'']
+      }}'
+  - condition: state
+    entity_id: binary_sensor.dc_zone01_hw_ok_valve_switch
+    state: 'on'
+  action:
+  - variables:
+      m: sensor.dc_zone01_hw_map
+      t_ent: '{{ state_attr(m,''t_int'') }}'
+      t_safe: '{{ states(''sensor.dc_zone01_t_int_safe'') | float(none) }}'
+      t_now: "{% if t_safe is not none %}\n  {{ t_safe }}\n{% elif t_ent and states(t_ent)\
+        \ not in ['unknown','unavailable','none',''] %}\n  {{ states(t_ent) | float(none)\
+        \ }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      sp_off: '{{ states(''sensor.dc_zone01_target_final'') | float(none) }}'
+      hvac0: '{{ states(''sensor.dc_zone01_hvac_mode'') }}'
+      ts_off: '{{ as_timestamp(now()) | int(0) }}'
+      win_h: '{{ states(''input_number.dc_zone01_adapt_off_window_h'') | float(3.0)
+        }}'
+      end_ts: '{{ (as_timestamp(now()) + (win_h * 3600)) | int(0) }}'
+      alpha: '{{ states(''input_number.dc_zone01_adapt_alpha'') | float(0.20) }}'
+      lr: '{{ states(''input_number.dc_zone01_adapt_gain_lr'') | float(0.10) }}'
+      target_os: '{{ states(''input_number.dc_zone01_adapt_overshoot_target'') | float(0.10)
+        }}'
+      floor_cph: '{{ states(''input_number.dc_zone01_adapt_rate_floor_cph'') | float(0.1)
+        }}'
+      lag_k: '{{ states(''input_number.dc_zone01_adapt_lag_k'') | float(1.0) }}'
+      min_dt_h: '{{ states(''input_number.dc_zone01_adapt_on_rate_min_dt_h'') | float(0.25)
+        }}'
+      min_dT: '{{ states(''input_number.dc_zone01_adapt_on_rate_min_dt'') | float(0.05)
+        }}'
+      t0: '{{ states(''input_number.dc_zone01_rt_on_t0'') | float(none) }}'
+      t0_ts: '{{ states(''input_number.dc_zone01_rt_on_t0_ts'') | int(0) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ t_now is none or sp_off is none or hvac0 not in [''heat'',''cool'']
+          }}'
+      sequence:
+      - stop: 'Adaptive Lead v2.6.1: OFF learn skip (t_now/sp/hvac inválidos).'
+  - variables:
+      dt_h: "{% if t0_ts > 0 %}\n  {{ ((ts_off - t0_ts) / 3600) | float(0) }}\n{%\
+        \ else %}\n  {{ none }}\n{% endif %}"
+      dT: "{% if t0 is not none %}\n  {{ (t_now - t0) | float(0) }}\n{% else %}\n\
+        \  {{ none }}\n{% endif %}"
+      rate: "{% if dt_h is none or dT is none or dt_h <= 0 %}\n  {{ none }}\n{% else\
+        \ %}\n  {{ (dT / dt_h) | round(3) }}\n{% endif %}"
+      use_rate: "{% if rate is none or dt_h is none or dT is none %}\n  false\n{%\
+        \ else %}\n  {{ (dt_h >= min_dt_h) and ((dT | abs) >= min_dT) }}\n{% endif\
+        \ %}"
+      rate_prev: '{{ states(''input_number.dc_zone01_learn_on_rate_cph_ema'') | float(0)
+        }}'
+      rate_ema: "{% if not use_rate %}\n  {{ rate_prev }}\n{% else %}\n  {{ (alpha\
+        \ * rate + (1 - alpha) * rate_prev) | round(3) }}\n{% endif %}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ use_rate }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_rt_on_rate_last
+        data:
+          value: '{{ rate }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_rt_on_rate_last_ts
+        data:
+          value: '{{ ts_off }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_learn_on_rate_cph_ema
+        data:
+          value: '{{ rate_ema }}'
+    default: []
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_off_ts
+    data:
+      value: '{{ ts_off }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_off_sp
+    data:
+      value: '{{ sp_off }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_off_peak
+    data:
+      value: '{{ t_now }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_rt_off_peak_ts
+    data:
+      value: '{{ ts_off }}'
+  - repeat:
+      while:
+      - condition: template
+        value_template: '{{ (as_timestamp(now()) | int(0)) < end_ts }}'
+      - condition: state
+        entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+        state: 'on'
+      - condition: template
+        value_template: '{{ states(''sensor.dc_zone01_hvac_mode'') == hvac0 }}'
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_valve_open
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_ventana_abierta
+        state: 'off'
+      - condition: state
+        entity_id: binary_sensor.dc_zone01_override_activo
+        state: 'off'
+      sequence:
+      - delay: 00:01:00
+      - variables:
+          t_safe_now: '{{ states(''sensor.dc_zone01_t_int_safe'') | float(none) }}'
+          t_cur: "{% if t_safe_now is not none %}\n  {{ t_safe_now }}\n{% elif t_ent\
+            \ and states(t_ent) not in ['unknown','unavailable','none',''] %}\n  {{\
+            \ states(t_ent) | float(none) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+          peak_prev: '{{ states(''input_number.dc_zone01_rt_off_peak'') | float(none)
+            }}'
+          peak_ts_prev: '{{ states(''input_number.dc_zone01_rt_off_peak_ts'') | int(0)
+            }}'
+          now_ts: '{{ as_timestamp(now()) | int(0) }}'
+          peak_new: "{% if t_cur is none or peak_prev is none %}\n  {{ peak_prev }}\n\
+            {% else %}\n  {% if hvac0 == 'heat' %}\n    {{ [peak_prev, t_cur] | max\
+            \ }}\n  {% else %}\n    {{ [peak_prev, t_cur] | min }}\n  {% endif %}\n\
+            {% endif %}"
+          peak_ts_new: "{% if peak_new is not none and peak_prev is not none and peak_new\
+            \ != peak_prev %}\n  {{ now_ts }}\n{% else %}\n  {{ peak_ts_prev }}\n\
+            {% endif %}"
+      - choose:
+        - conditions:
+          - condition: template
+            value_template: '{{ peak_new is not none and peak_prev is not none and
+              peak_new != peak_prev }}'
+          sequence:
+          - service: input_number.set_value
+            target:
+              entity_id: input_number.dc_zone01_rt_off_peak
+            data:
+              value: '{{ peak_new }}'
+          - service: input_number.set_value
+            target:
+              entity_id: input_number.dc_zone01_rt_off_peak_ts
+            data:
+              value: '{{ peak_ts_new }}'
+        default: []
+  - variables:
+      now_ts: '{{ as_timestamp(now()) | int(0) }}'
+      aborted: '{{ now_ts < end_ts }}'
+      peak: '{{ states(''input_number.dc_zone01_rt_off_peak'') | float(none) }}'
+      peak_ts: '{{ states(''input_number.dc_zone01_rt_off_peak_ts'') | int(0) }}'
+      lag_h_raw: "{% if peak_ts > 0 %}\n  {{ ((peak_ts - ts_off) / 3600) | float(0)\
+        \ }}\n{% else %}\n  0\n{% endif %}"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ aborted }}'
+      sequence:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_adapt_last_cycle_aborted
+        data:
+          value: 1
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.dc_zone01_adapt_abort_count
+        data:
+          value: '{{ (states(''input_number.dc_zone01_adapt_abort_count'') | int(0))
+            + 1 }}'
+      - stop: 'Adaptive Lead v2.6.1: OFF→Peak abort (válvula reactivada/condiciones
+          inestables).'
+  - variables:
+      overshoot: "{% if peak is none %}\n  0\n{% else %}\n  {{ (peak - sp_off) | round(3)\
+        \ }}\n{% endif %}"
+      os_prev: '{{ states(''input_number.dc_zone01_learn_overshoot_ema'') | float(0)
+        }}'
+      os_ema: '{{ (alpha * overshoot + (1 - alpha) * os_prev) | round(3) }}'
+      lag_prev: '{{ states(''input_number.dc_zone01_learned_thermal_lag_h'') | float(0)
+        }}'
+      lag_ema: '{{ (alpha * lag_h_raw + (1 - alpha) * lag_prev) | round(3) }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_learn_overshoot_ema
+    data:
+      value: '{{ os_ema }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_learned_thermal_lag_h
+    data:
+      value: '{{ lag_ema }}'
+  - variables:
+      rate_use: '{{ (states(''input_number.dc_zone01_learn_on_rate_cph_ema'') | float(0))
+        | abs }}'
+      rate_eff: '{{ [floor_cph | float(0), rate_use | float(0), 0.1] | max }}'
+      extra_os: '{{ [0, (os_ema | abs) - (target_os | abs)] | max }}'
+      lead_from_os: '{{ (extra_os / rate_eff) | round(3) }}'
+      lead_from_lag: '{{ (lag_ema * lag_k) | round(3) }}'
+      lead_target_raw: '{{ [lead_from_os, lead_from_lag] | max }}'
+      lead_min: '{{ states(''input_number.dc_zone01_lead_min_h'') | float(0) }}'
+      lead_max: '{{ states(''input_number.dc_zone01_lead_max_h'') | float(4.0) }}'
+      lead_target: '{{ [lead_min, [lead_target_raw, lead_max] | min] | max | round(3)
+        }}'
+      lead_prev: '{{ states(''input_number.dc_zone01_lead_gain_adaptive'') | float(1.5)
+        }}'
+      lead_new: '{{ (lead_prev + (lr * (lead_target - lead_prev))) | round(3) }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_lead_gain_adaptive
+    data:
+      value: '{{ lead_new }}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.dc_zone01_adapt_ok_count
+    data:
+      value: '{{ (states(''input_number.dc_zone01_adapt_ok_count'') | int(0)) + 1
+        }}'
+  - service: logbook.log
+    data:
+      name: dc_zone01
+      message: 'Adaptive learn OK ({{ hvac0 }}): os={{ overshoot | round(2) }}°C (ema={{
+        os_ema | round(2) }}), lag={{ lag_h_raw | round(2) }}h (ema={{ lag_ema | round(2)
+        }}), rate_ema={{ (states(''input_number.dc_zone01_learn_on_rate_cph_ema'')
+        | float(0)) | round(2) }}°C/h, lead→{{ lead_new | round(2) }}h
+
+        '
+- id: dc_zone01_adaptive_watchdog
+  alias: dc_zone01_watchdog_adaptive_lead_silent_failures
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /15
+  - platform: state
+    entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dc_zone01_adaptive_lead_enabled
+    state: 'on'
+  action:
+  - variables:
+      off_sp: '{{ states(''input_number.dc_zone01_rt_off_sp'') | float(none) }}'
+      off_peak: '{{ states(''input_number.dc_zone01_rt_off_peak'') | float(none) }}'
+      off_ts: '{{ states(''input_number.dc_zone01_rt_off_ts'') | int(0) }}'
+      sentinel: '{{ (off_sp is not none and off_sp <= -40) or (off_peak is not none
+        and off_peak <= -40) }}'
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ sentinel }}'
+      sequence:
+      - service: system_log.write
+        data:
+          level: warning
+          message: 'DC Zone01 Adaptive Lead: detectados valores sentinel en runtime
+            OFF (rt_off_sp/rt_off_peak). Recomendado: ejecutar script.dc_zone01_adaptive_learning_reset
+            y revisar HW map / valve_open.
+
+            '
+      - service: persistent_notification.create
+        data:
+          title: DC Zone01 · Adaptive Lead (warning)
+          message: 'Detectados valores sentinel en runtime OFF (rt_off_sp/rt_off_peak).
+            Si lleva horas así, el aprendizaje no está capturando ciclos OFF→Peak.
+            Recomendado: ejecutar "Adaptive · Reset aprendizaje" y revisar: - binary_sensor.dc_zone01_valve_open
+            - sensor.dc_zone01_hw_map (valve_switch)
+
+            '
+          notification_id: dc_zone01_adaptive_sentinel
+    default:
+    - service: persistent_notification.dismiss
+      data:
+        notification_id: dc_zone01_adaptive_sentinel
+- id: dc_zone01_run_selftest_full
+  alias: ha_start
+  mode: single
+  trigger:
+  - platform: homeassistant
+    event: start
+    id: ha_start
+  - platform: time
+    at: 03:30:00
+    id: daily
+  action:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: ha_start
+      sequence:
+      - delay: 00:05:00
+  - service: script.dc_zone01_selftest_overall
+template:
+- sensor:
+  - name: dc_zone01_main_automations_version
+    unique_id: dc_zone01_main_automations_version
+    icon: mdi:tag
+    state: '4.2'
+    attributes:
+      module: dc_zone01_main_automations
+      tier: core
+- sensor:
+  - name: dc_zone01_main_scripts_version
+    unique_id: dc_zone01_main_scripts_version
+    icon: mdi:tag
+    state: '4.2'
+    attributes:
+      module: dc_zone01_main_scripts
+      tier: core
+- trigger:
+  - platform: event
+    event_type: dc_zone01_save_backup_event
+  sensor:
+  - name: dc_zone01_backup_storage
+    unique_id: dc_zone01_backup_storage
+    state: OK
+    attributes:
+      backup_json: '{{ trigger.event.data.payload }}'
+      last_updated: '{{ now().isoformat() }}'
+script:
+  dc_zone01_backup_inputs_save:
+    alias: dc_zone01_backup_inputs_save
+    mode: single
+    sequence:
+    - variables:
+        fab: sensor.dc_zone01_fabrica
+        backup_path: dynamic_suite/dc/zone01/dc_zone01_backup.json
+        keys: '{% set a = states[fab].attributes %} {% set k = a.keys() | select(''match'',''^dc_zone01_'')
+          | list %} {{ k | sort }}
+
+          '
+        allowed_entities: "{% set out = namespace(l=[]) %} {% for k in keys %}\n \
+          \ {% set n = 'input_number.' ~ k %}\n  {% set b = 'input_boolean.' ~ k %}\n\
+          \  {% set t = 'input_text.' ~ k %}\n  {% if states(n) != 'unknown' %}\n\
+          \    {% set out.l = out.l + [n] %}\n  {% elif states(b) != 'unknown' %}\n\
+          \    {% set out.l = out.l + [b] %}\n  {% elif states(t) != 'unknown' %}\n\
+          \    {% set out.l = out.l + [t] %}\n  {% endif %}\n{% endfor %} {{ out.l\
+          \ }}\n"
+        extra_entities: "{% set out = namespace(l=[]) %} {% for i in [1,2,3] %}\n\
+          \  {% set out.l = out.l + [\n    'input_boolean.dc_zone01_override_' ~ i\
+          \ ~ '_enabled',\n    'input_boolean.dc_zone01_override_' ~ i ~ '_use_weekly',\n\
+          \    'input_boolean.dc_zone01_override_' ~ i ~ '_oneshot_programado',\n\
+          \    'input_number.dc_zone01_override_' ~ i ~ '_temp',\n    'input_number.dc_zone01_override_'\
+          \ ~ i ~ '_minutes',\n    'input_datetime.dc_zone01_override_' ~ i ~ '_on',\n\
+          \    'input_datetime.dc_zone01_override_' ~ i ~ '_off'\n  ] %}\n  {% for\
+          \ d in ['mon','tue','wed','thu','fri','sat','sun'] %}\n    {% set out.l\
+          \ = out.l + [\n      'input_datetime.dc_zone01_override_' ~ i ~ '_on_' ~\
+          \ d,\n      'input_datetime.dc_zone01_override_' ~ i ~ '_off_' ~ d\n   \
+          \ ] %}\n  {% endfor %}\n{% endfor %} {{ out.l }}\n"
+        extra_existing: "{% set out = namespace(l=[]) %} {% for ent in extra_entities\
+          \ %}\n  {% if states(ent) != 'unknown' %}\n    {% set out.l = out.l + [ent]\
+          \ %}\n  {% endif %}\n{% endfor %} {{ out.l }}\n"
+        allowed_entities_all: '{{ (allowed_entities + extra_existing) | unique | list
+          }}
+
+          '
+        payload: "{% set out = namespace(d={}) %} {% set bad = [none,'unknown','unavailable','']\
+          \ %} {% for ent in allowed_entities_all %}\n  {% set s = states(ent) %}\n\
+          \  {% if s in bad %}\n    {# Saltar helpers en mal estado (no guardamos\
+          \ basura). #}\n  {% else %}\n    {% if ent.startswith('input_number.') %}\n\
+          \      {% set v = s | float(none) %}\n      {% if v is not none %}\n   \
+          \     {% set out.d = dict(out.d, **{ ent: v }) %}\n      {% endif %}\n \
+          \   {% elif ent.startswith('input_boolean.') %}\n      {% if s in ['on','off']\
+          \ %}\n        {% set out.d = dict(out.d, **{ ent: (true if s == 'on' else\
+          \ false) }) %}\n      {% endif %}\n    {% elif ent.startswith('input_text.')\
+          \ %}\n      {% set out.d = dict(out.d, **{ ent: (s | string) }) %}\n   \
+          \ {% elif ent.startswith('input_datetime.') %}\n      {# Guardamos el state\
+          \ tal cual (HH:MM:SS o YYYY-MM-DD HH:MM:SS). #}\n      {% set out.d = dict(out.d,\
+          \ **{ ent: (s | string) }) %}\n    {% else %}\n      {% set out.d = dict(out.d,\
+          \ **{ ent: s }) %}\n    {% endif %}\n  {% endif %}\n{% endfor %} {{ out.d\
+          \ | tojson }}\n"
+        saved_count: "{% if payload in [none,'unknown','unavailable',''] %}\n  0\n\
+          {% else %}\n  {% set obj = payload | from_json %}\n  {{ obj | count }}\n\
+          {% endif %}\n"
+        ignored_missing_helpers: '{{ (keys | count) - (allowed_entities | count) }}
+
+          '
+        ignored_bad_state_helpers: "{% set bad = [none,'unknown','unavailable','']\
+          \ %} {% set out = namespace(n=0) %} {% for ent in allowed_entities %}\n\
+          \  {% if states(ent) in bad %}\n    {% set out.n = out.n + 1 %}\n  {% endif\
+          \ %}\n{% endfor %} {{ out.n }}\n"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ saved_count | int(0) == 0 }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DC Zone01 · Backup
+            message: '⚠️ Backup no guardado
+
+              No había ningún valor válido para guardar (0 elementos). Esto suele
+              pasar si algunos helpers están sin datos en este momento.
+
+              🔧 Qué hacer: 1) Revisa si algún helper/sensor está en unknown o unavailable
+              2) Espera unos segundos (tras reinicio puede tardar) y vuelve a ejecutar
+              el backup
+
+              '
+            notification_id: dc_zone01_backup_save_empty
+        - stop: 'Backup vacío: no se emite evento.'
+        - service: appdaemon.dynamic_suite_backup/save
+          data:
+            path: '{{ backup_path }}'
+            payload: '{{ payload }}'
+        - event: dc_zone01_save_backup_event
+          event_data:
+            payload: '{{ payload }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.dc_zone01_backup_inputs_ts
+      data:
+        datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+    - service: logbook.log
+      data:
+        name: dc_zone01
+        message: '✅ Backup guardado
+
+          Se han guardado {{ saved_count }} valores.
+
+          ℹ️ Detalle: - Detectados: {{ allowed_entities | count }} - Helpers faltantes:
+          {{ ignored_missing_helpers }} - Helpers en mal estado: {{ ignored_bad_state_helpers
+          }}
+
+          '
+        entity_id: sensor.dc_zone01_backup_storage
+  dc_zone01_backup_inputs_restore:
+    alias: dc_zone01_backup_inputs_restore
+    mode: single
+    sequence:
+    - variables:
+        backup_path: dynamic_suite/dc/zone01/dc_zone01_backup.json
+    - service: appdaemon.dynamic_suite_backup/restore
+      data:
+        path: '{{ backup_path }}'
+  dc_zone01_run_self_test:
+    alias: dc_zone01_run_self_test
+    mode: single
+    sequence:
+    - variables:
+        started: '{{ now().isoformat() }}'
+    - event: dc_zone01_selftest_reset
+      event_data:
+        started: '{{ started }}'
+    - delay: 00:00:01
+    - service: script.dc_zone01_test_hw_map
+    - delay: 00:00:01
+    - service: script.dc_zone01_test_sensores_criticos
+    - delay: 00:00:01
+    - service: script.dc_zone01_test_pipeline
+    - delay: 00:00:01
+    - service: script.dc_zone01_test_lux_trend
+    - delay: 00:00:01
+    - service: script.dc_zone01_test_solar_params
+    - delay: 00:00:01
+    - variables:
+        results: '{{ state_attr(''sensor.dc_zone01_selftest_storage'',''results'')
+          or [] }}'
+        fails: '{{ state_attr(''sensor.dc_zone01_selftest_storage'',''fails'') | int(0)
+          }}'
+        total: '{{ results | count }}'
+        ok_all: '{{ fails == 0 and total > 0 }}'
+    - service: persistent_notification.create
+      data:
+        title: DC Zone01 · Self-test
+        message: "\U0001F9EA Auto-test Dynamic Climate\nInicio: {{ started }} Tests:\
+          \ {{ total }} | Fallos: {{ fails }} Resultado: {{ 'OK' if ok_all else 'FALLO'\
+          \ }}\n{% for r in results %} - {{ r.test }}: {{ 'OK' if r.ok else 'FAIL'\
+          \ }}\n  {{ r.msg }}\n{% endfor %}\n"
+        notification_id: dc_zone01_self_test_summary
+  dc_zone01_test_hw_map:
+    alias: dc_zone01_test_hw_map
+    mode: single
+    sequence:
+    - variables:
+        m: sensor.dc_zone01_hw_map
+        bad:
+        - none
+        - unknown
+        - unavailable
+        - ''
+        attrs: '{{ states[m].attributes if states(m) not in bad else dict() }}'
+        required:
+        - climate
+        - t_int
+        - t_ext
+        - modo_vacaciones
+        missing: "{% set out = namespace(l=[]) %} {% if states(m) in bad %}\n  {%\
+          \ set out.l = out.l + ['hw_map'] %}\n{% else %}\n  {% for k in required\
+          \ %}\n    {% if attrs.get(k) in bad %}\n      {% set out.l = out.l + [k]\
+          \ %}\n    {% endif %}\n  {% endfor %}\n{% endif %} {{ out.l }}\n"
+        ok: '{{ missing | count == 0 }}'
+        msg: '{{ ''HW map OK'' if ok else (''Faltan: '' ~ (missing | join('', '')))
+          }}'
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: hw_map
+        ok: '{{ ok }}'
+        msg: '{{ msg }}'
+  dc_zone01_test_sensores_criticos:
+    alias: dc_zone01_test_sensores_criticos
+    mode: single
+    sequence:
+    - variables:
+        t_int_safe: '{{ states(''sensor.dc_zone01_t_int_safe'') | float(none) }}'
+        lead_final_h: '{{ states(''sensor.dc_zone01_lead_final_h'') | float(none)
+          }}'
+        ok: '{{ t_int_safe is not none and lead_final_h is not none }}'
+        msg: "{% if ok %}\n  t_int_safe OK = {{ t_int_safe }}\n{% else %}\n  sensor.dc_zone01_t_int_safe\
+          \ inválido (bloquea el sistema)\n{% endif %}\n"
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: sensores_criticos
+        ok: '{{ ok }}'
+        msg: '{{ msg }}'
+  dc_zone01_test_pipeline:
+    alias: dc_zone01_test_pipeline
+    mode: single
+    sequence:
+    - variables:
+        base: '{{ states(''sensor.dc_zone01_base_activa'') | float(none) }}'
+        target: '{{ states(''sensor.dc_zone01_target_final'') | float(none) }}'
+        ok: '{{ base is not none and target is not none }}'
+        msg: "{% if ok %}\n  base={{ base }}, target_final={{ target }}\n{% else %}\n\
+          \  Pipeline inválido: base={{ states('sensor.dc_zone01_base_activa') }},\
+          \ target={{ states('sensor.dc_zone01_target_final') }}\n{% endif %}\n"
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: pipeline
+        ok: '{{ ok }}'
+        msg: '{{ msg }}'
+  dc_zone01_test_lux_trend:
+    alias: dc_zone01_test_lux_trend
+    mode: single
+    sequence:
+    - variables:
+        bad:
+        - none
+        - unknown
+        - unavailable
+        - ''
+        sr_max: '{{ states(''input_number.dc_zone01_lead_solar_max_h'') | float(0)
+          }}'
+        lux_tr: '{{ states(''sensor.dc_exterior_lux_tendencia'') }}'
+        needed: '{{ sr_max | float(0) > 0 }}'
+        present: '{{ lux_tr not in bad }}'
+        ok: '{{ (not needed) or present }}'
+        msg: "{% if not needed %}\n  Solar lead deshabilitado (sr_max={{ sr_max }}h)\
+          \ → lux trend no requerido.\n{% elif present %}\n  Lux trend OK: sensor.dc_exterior_lux_tendencia={{\
+          \ lux_tr }}\n{% else %}\n  AVISO: Falta sensor.dc_exterior_lux_tendencia.\
+          \ Se usará rise=1.0 (neutral) en lead solar.\n{% endif %}\n"
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: lux_trend
+        ok: '{{ ok }}'
+        msg: '{{ msg }}'
+  dc_zone01_test_solar_params:
+    alias: dc_zone01_test_solar_params
+    mode: single
+    sequence:
+    - variables:
+        sr_max: '{{ states(''input_number.dc_zone01_lead_solar_max_h'') | float(0)
+          }}'
+        lux_span: '{{ states(''input_number.dc_zone01_lead_lux_span'') | float(0)
+          }}'
+        rise_scale: '{{ states(''input_number.dc_zone01_lead_lux_rise_scale'') | float(0)
+          }}'
+        needed: '{{ sr_max | float(0) > 0 }}'
+        ok: '{{ (not needed) or (lux_span > 0 and rise_scale > 0) }}'
+        msg: "{% if not needed %}\n  Solar lead deshabilitado (sr_max={{ sr_max }}h)\
+          \ → parámetros solar no requeridos.\n{% else %}\n  sr_max={{ sr_max }}h,\
+          \ lux_span={{ lux_span }}, rise_scale={{ rise_scale }}.\n  {% if lux_span\
+          \ <= 0 %}\n  ERROR: lux_span debe ser > 0 (si no, nivel lux queda a 0 y\
+          \ el lead solar se anula).\n  {% endif %}\n  {% if rise_scale <= 0 %}\n\
+          \  ERROR: rise_scale debe ser > 0 (si no, el factor rise no se puede calcular).\n\
+          \  {% endif %}\n{% endif %}\n"
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: solar_params
+        ok: '{{ ok }}'
+        msg: '{{ msg }}'
+  dc_zone01_override_1_run_once:
+    alias: dc_zone01_override_1_run_once
+    mode: restart
+    fields:
+      duration:
+        description: Opcional. Duración en formato HH:MM:SS. Si no se indica, usa
+          minutos del helper.
+        example: 01:30:00
+    sequence:
+    - variables:
+        mins: '{{ states(''input_number.dc_zone01_override_1_minutes'') | int(60)
+          }}'
+        duration_str: '{{ duration if duration is defined else '''' }}'
+        duration_valid: "{{ duration is defined\n   and (duration_str | regex_match('^[0-9]{1,4}:[0-5][0-9]:[0-5][0-9]$'))\
+          \ }}"
+        dur: "{% if duration_valid %}\n  {{ duration_str }}\n{% else %}\n  {{ '%02d:%02d:00'\
+          \ | format((mins // 60), (mins % 60)) }}\n{% endif %}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ duration is defined and (duration_str | string | length
+            > 0) and not duration_valid }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DC Zone01 · Override 1
+            message: '⚠️ Duración no válida
+
+              He recibido: "{{ duration_str }}" Usaré esta duración en su lugar: "{{
+              dur }}"'
+    - service: timer.start
+      target:
+        entity_id: timer.dc_zone01_override_1_timer
+      data:
+        duration: '{{ dur }}'
+  dc_zone01_override_2_run_once:
+    alias: dc_zone01_override_2_run_once
+    mode: restart
+    fields:
+      duration:
+        description: Opcional. Duración en formato HH:MM:SS. Si no se indica, usa
+          minutos del helper.
+        example: 01:30:00
+    sequence:
+    - variables:
+        mins: '{{ states(''input_number.dc_zone01_override_2_minutes'') | int(60)
+          }}'
+        duration_str: '{{ duration if duration is defined else '''' }}'
+        duration_valid: "{{ duration is defined\n   and (duration_str | regex_match('^[0-9]{1,4}:[0-5][0-9]:[0-5][0-9]$'))\
+          \ }}"
+        dur: "{% if duration_valid %}\n  {{ duration_str }}\n{% else %}\n  {{ '%02d:%02d:00'\
+          \ | format((mins // 60), (mins % 60)) }}\n{% endif %}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ duration is defined and (duration_str | string | length
+            > 0) and not duration_valid }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DC Zone01 · Override 2
+            message: '⚠️ Duración no válida
+
+              He recibido: "{{ duration_str }}" Usaré esta duración en su lugar: "{{
+              dur }}"'
+    - service: timer.start
+      target:
+        entity_id: timer.dc_zone01_override_2_timer
+      data:
+        duration: '{{ dur }}'
+  dc_zone01_override_3_run_once:
+    alias: dc_zone01_override_3_run_once
+    mode: restart
+    fields:
+      duration:
+        description: Opcional. Duración en formato HH:MM:SS. Si no se indica, usa
+          minutos del helper.
+        example: 01:30:00
+    sequence:
+    - variables:
+        mins: '{{ states(''input_number.dc_zone01_override_3_minutes'') | int(60)
+          }}'
+        duration_str: '{{ duration if duration is defined else '''' }}'
+        duration_valid: "{{ duration is defined\n   and (duration_str | regex_match('^[0-9]{1,4}:[0-5][0-9]:[0-5][0-9]$'))\
+          \ }}"
+        dur: "{% if duration_valid %}\n  {{ duration_str }}\n{% else %}\n  {{ '%02d:%02d:00'\
+          \ | format((mins // 60), (mins % 60)) }}\n{% endif %}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ duration is defined and (duration_str | string | length
+            > 0) and not duration_valid }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DC Zone01 · Override 3
+            message: '⚠️ Duración no válida
+
+              He recibido: "{{ duration_str }}" Usaré esta duración en su lugar: "{{
+              dur }}"'
+    - service: timer.start
+      target:
+        entity_id: timer.dc_zone01_override_3_timer
+      data:
+        duration: '{{ dur }}'
+  dc_zone01_adaptive_learning_reset:
+    alias: dc_zone01_adaptive_learning_reset
+    mode: single
+    sequence:
+    - variables:
+        sp: '{{ states(''sensor.dc_zone01_target_final'') | float(20) }}'
+        gain0: '{{ state_attr(''sensor.dc_zone01_fabrica'',''dc_zone01_lead_gain_adaptive'')
+          | float(1.50) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_off_ts
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_off_sp
+      data:
+        value: '{{ sp }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_off_peak
+      data:
+        value: '{{ sp }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_off_peak_ts
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_on_ts
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_on_sp
+      data:
+        value: '{{ sp }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_on_t0_ts
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_on_t0
+      data:
+        value: '{{ sp }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_on_rate_last
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_on_rate_last_ts
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_learn_overshoot_ema
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_learn_on_reach_h_ema
+      data:
+        value: 1.5
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_learned_thermal_lag_h
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_learn_on_rate_cph_ema
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_adapt_last_cycle_aborted
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_adapt_abort_count
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_adapt_ok_count
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_lead_gain_adaptive
+      data:
+        value: '{{ gain0 }}'
+    - service: logbook.log
+      data:
+        name: dc_zone01
+        message: 'Adaptive reset v2.6.1: runtime+EMAs reiniciados; lead_gain_adaptive
+          ← fábrica'
+  dc_zone01_adaptive_learning_reset_thermal_lag:
+    alias: dc_zone01_adaptive_learning_reset_thermal_lag
+    mode: single
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_rt_off_peak_ts
+      data:
+        value: 0
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dc_zone01_learned_thermal_lag_h
+      data:
+        value: 0
+  dc_zone01_apply_preset_section:
+    alias: dc_zone01_apply_preset_section
+    mode: single
+    fields:
+      group:
+        description: Sección a aplicar (bias_exterior | bias_fachadas | bias_vmc |
+          bias_tendencia | freno_tendencia | lead | bias_forecast)
+        example: bias_vmc
+      preset:
+        description: Preset a aplicar (normal | conservative | aggressive)
+        example: aggressive
+    sequence:
+    - variables:
+        fab: sensor.dc_zone01_fabrica
+        grp: '{{ group | default('''') }}'
+        pre: '{{ preset | default(''normal'') }}'
+        group_patterns: "{{\n  dict(\n    bias_exterior=[\n      '^dc_zone01_bias_ext_.*',\n\
+          \      '^dc_zone01_aislamiento_bias_exterior$',\n      '^dc_zone01_umbral_calor_exterior$',\n\
+          \      '^dc_zone01_umbral_frio_exterior$'\n    ],\n    bias_fachadas=[\n\
+          \      '^dc_zone01_f[123]_enabled$',\n      '^dc_zone01_fachada_.*'\n  \
+          \  ],\n    bias_vmc=[\n      '^dc_zone01_vmc_enabled$',\n      '^dc_zone01_vmc_.*'\n\
+          \    ],\n    bias_tendencia=[\n      '^dc_zone01_tendencia_ma_alpha$',\n\
+          \      '^dc_zone01_tendencia_max_abs_cph$',\n      '^dc_zone01_tendencia_max_shift$',\n\
+          \      '^dc_zone01_tendencia_umbral_estable$'\n    ],\n    freno_tendencia=[\n\
+          \      '^dc_zone01_freno_tend_.*'\n    ],\n    lead=[\n      '^dc_zone01_lead_.*',\n\
+          \      '^dc_zone01_tendencia_lead_gain$',\n      '^dc_zone01_adaptive_lead_enabled$',\n\
+          \      '^dc_zone01_adapt_.*'\n    ],\n    bias_forecast=[\n      '^dc_zone01_forecast_.*',\n\
+          \      '^dc_zone01_bias_forecast_.*',\n      '^dc_zone01_forecast_enabled$'\n\
+          \    ]\n  )\n}}\n"
+        patterns: '{% set p = group_patterns.get(grp, []) %} {{ p }}
+
+          '
+        keys_all: '{% set a = states[fab].attributes %} {% set k = a.keys() | select(''match'',''^dc_zone01_'')
+          | list %} {{ k | sort }}
+
+          '
+        keys_group: "{% set out = namespace(l=[]) %} {% for k in keys_all %}\n  {%\
+          \ set matched = namespace(v=false) %}\n  {% for r in patterns %}\n    {%\
+          \ if (not matched.v) and (k is match(r)) %}\n      {% set out.l = out.l\
+          \ + [k] %}\n      {% set matched.v = true %}\n    {% endif %}\n  {% endfor\
+          \ %}\n{% endfor %} {{ out.l | unique | list | sort }}\n"
+        base_entities: "{% set out = namespace(l=[]) %} {% for k in keys_group %}\n\
+          \  {% set n = 'input_number.' ~ k %}\n  {% set b = 'input_boolean.' ~ k\
+          \ %}\n  {% set t = 'input_text.' ~ k %}\n  {% set d = 'input_datetime.'\
+          \ ~ k %}\n  {% if states(n) != 'unknown' %}\n    {% set out.l = out.l +\
+          \ [n] %}\n  {% elif states(b) != 'unknown' %}\n    {% set out.l = out.l\
+          \ + [b] %}\n  {% elif states(t) != 'unknown' %}\n    {% set out.l = out.l\
+          \ + [t] %}\n  {% elif states(d) != 'unknown' %}\n    {% set out.l = out.l\
+          \ + [d] %}\n  {% endif %}\n{% endfor %} {{ out.l | unique | list }}\n"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ grp == '''' }}'
+        sequence:
+        - stop: Falta field group.
+      - conditions:
+        - condition: template
+          value_template: '{{ pre not in [''normal'',''conservative'',''aggressive'']
+            }}'
+        sequence:
+        - stop: 'Preset inválido. Usa: normal | conservative | aggressive.'
+      - conditions:
+        - condition: template
+          value_template: '{{ base_entities | count == 0 }}'
+        sequence:
+        - stop: No hay helpers detectados para esta sección (base_entities vacío).
+    - variables:
+        payload: "{% set out = namespace(d={}) %} {% for ent in base_entities %}\n\
+          \  {% set k = ent.split('.',1)[1] %}\n\n  {% set fab_src = fab %}\n  {%\
+          \ if pre in ['conservative','aggressive'] %}\n    {% set fab_src = 'sensor.dc_zone01_fabrica_'\
+          \ ~ pre %}\n  {% endif %}\n\n  {% set v = state_attr(fab_src, k) %}\n  {%\
+          \ if v is none %}\n    {% set v = state_attr(fab, k) %}\n  {% endif %}\n\
+          \n  {% if v is not none %}\n    {% set out.d = dict(out.d, **{ ent: v })\
+          \ %}\n  {% endif %}\n{% endfor %} {{ out.d }}\n"
+    - repeat:
+        for_each: '{{ payload | dictsort }}'
+        sequence:
+        - variables:
+            ent: '{{ repeat.item[0] }}'
+            val: '{{ repeat.item[1] }}'
+            dom: '{{ ent.split(''.'')[0] }}'
+            minv: '{{ state_attr(ent,''min'') | float(none) }}'
+            maxv: '{{ state_attr(ent,''max'') | float(none) }}'
+            step: '{{ state_attr(ent,''step'') | float(none) }}'
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ dom == ''input_number'' }}'
+            sequence:
+            - variables:
+                v: '{{ val | float(none) }}'
+                clamped: "{% if v is none %}\n  {{ none }}\n{% elif minv is not none\
+                  \ and maxv is not none %}\n  {{ [minv, [v, maxv] | min] | max }}\n\
+                  {% else %}\n  {{ v }}\n{% endif %}\n"
+                quant: "{% if clamped is none %}\n  {{ none }}\n{% elif step is not\
+                  \ none and step > 0 %}\n  {{ ((clamped / step) | round(0)) * step\
+                  \ }}\n{% else %}\n  {{ clamped }}\n{% endif %}\n"
+            - condition: template
+              value_template: '{{ quant is not none }}'
+            - service: input_number.set_value
+              target:
+                entity_id: '{{ ent }}'
+              data:
+                value: '{{ quant }}'
+          - conditions:
+            - condition: template
+              value_template: '{{ dom == ''input_boolean'' }}'
+            sequence:
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ val == true }}'
+                sequence:
+                - service: input_boolean.turn_on
+                  target:
+                    entity_id: '{{ ent }}'
+              - conditions:
+                - condition: template
+                  value_template: '{{ val == false }}'
+                sequence:
+                - service: input_boolean.turn_off
+                  target:
+                    entity_id: '{{ ent }}'
+          - conditions:
+            - condition: template
+              value_template: '{{ dom == ''input_datetime'' }}'
+            sequence:
+            - variables:
+                has_date: '{{ state_attr(ent,''has_date'') }}'
+                has_time: '{{ state_attr(ent,''has_time'') }}'
+                s: '{{ val | string }}'
+                d: '{% if '' '' in s %}{{ s.split('' '')[0] }}{% else %}{{ s }}{%
+                  endif %}'
+                t: '{% if '' '' in s %}{{ s.split('' '')[1] }}{% else %}{{ s }}{%
+                  endif %}'
+            - choose:
+              - conditions:
+                - condition: template
+                  value_template: '{{ has_date and has_time }}'
+                sequence:
+                - service: input_datetime.set_datetime
+                  target:
+                    entity_id: '{{ ent }}'
+                  data:
+                    date: '{{ d }}'
+                    time: '{{ t }}'
+              - conditions:
+                - condition: template
+                  value_template: '{{ has_date and not has_time }}'
+                sequence:
+                - service: input_datetime.set_datetime
+                  target:
+                    entity_id: '{{ ent }}'
+                  data:
+                    date: '{{ d }}'
+              - conditions:
+                - condition: template
+                  value_template: '{{ has_time and not has_date }}'
+                sequence:
+                - service: input_datetime.set_datetime
+                  target:
+                    entity_id: '{{ ent }}'
+                  data:
+                    time: '{{ t }}'
+          - conditions:
+            - condition: template
+              value_template: '{{ dom == ''input_text'' }}'
+            sequence:
+            - variables:
+                s: '{{ val | string }}'
+                s2: '{{ s[:250] }}'
+            - service: input_text.set_value
+              target:
+                entity_id: '{{ ent }}'
+              data:
+                value: '{{ s2 }}'
+    - service: persistent_notification.create
+      data:
+        title: DC Zone01 · Preset aplicado
+        message: 'Sección: {{ grp }} Preset: {{ pre }} Aplicados: {{ payload | count
+          }} {% if missing_sources | count > 0 %} Aviso: faltan helpers de preset
+          (no aplicados): {{ missing_sources | count }} {% endif %}
+
+          '
+  dc_zone01_apply_presets_global:
+    alias: dc_zone01_apply_presets_global
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_exterior
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_exterior'') }}'
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_fachadas
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_fachadas'') }}'
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_vmc
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_vmc'') }}'
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_tendencia
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_tendencia'') }}'
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: freno_tendencia
+        preset: '{{ states(''input_select.dc_zone01_preset_freno_tendencia'') }}'
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: lead
+        preset: '{{ states(''input_select.dc_zone01_preset_lead'') }}'
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_forecast
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_forecast'') }}'
+  dc_zone01_log_telemetry:
+    alias: dc_zone01_log_telemetry
+    mode: queued
+    max: 50
+    fields:
+      reason:
+        description: Motivo resumido (texto corto)
+      sp_before:
+        description: Consigna antes (float)
+      sp_after:
+        description: Consigna después (float)
+      delta:
+        description: Delta aplicado (float)
+    sequence:
+    - variables:
+        hvac: '{{ states(''sensor.dc_zone01_hvac_mode'') }}'
+        base: '{{ states(''sensor.dc_zone01_base_activa'') }}'
+        ext: '{{ states(''sensor.dc_zone01_bias_exterior_raw'') }}'
+        fac: '{{ states(''sensor.dc_zone01_bias_fachadas_raw'') }}'
+        fcs: '{{ states(''sensor.dc_zone01_bias_forecast_ema'') }}'
+        vmc: '{{ states(''sensor.dc_zone01_bias_vmc'') }}'
+        tr: '{{ states(''sensor.dc_zone01_freno_tendencia'') }}'
+        lead: '{{ states(''sensor.dc_zone01_lead_final_h'') }}'
+        tgt: '{{ states(''sensor.dc_zone01_target_final'') }}'
+        valve: '{{ states(''binary_sensor.dc_zone01_valve_open'') }}'
+        nowts: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        spb: '{{ sp_before | float(none) }}'
+        spa: '{{ sp_after  | float(none) }}'
+        dd: '{{ delta     | float(none) }}'
+        rsn: '{{ reason | default(''---'') }}'
+        line: '{{ nowts }} | hvac={{ hvac }} | sp={{ ''---'' if spb is none else (spb|round(1))
+          }}→{{ ''---'' if spa is none else (spa|round(1)) }} | Δ={{ ''---'' if dd
+          is none else (dd|round(2)) }} | base={{ base }} | ext={{ ext }} fac={{ fac
+          }} fcs={{ fcs }} vmc={{ vmc }} tr={{ tr }} | lead_h={{ lead }} | tgt={{
+          tgt }} | valve={{ valve }} | {{ rsn }}'
+    - service: logbook.log
+      data:
+        name: dc_zone01_telemetry
+        message: '{{ line }}'
+    - variables:
+        old: '{{ states(''input_text.dc_zone01_telemetry_ring'') }}'
+        joined: '{% set s = (line ~ ''\n'' ~ (old if old not in [''unknown'',''unavailable'',''none'',
+          none] else '''')) %} {{ s[:2048] }}'
+    - service: input_text.set_value
+      target:
+        entity_id: input_text.dc_zone01_telemetry_ring
+      data:
+        value: '{{ joined }}'
+  dc_zone01_selftest_full:
+    alias: dc_zone01_selftest_full
+    mode: single
+    sequence:
+    - variables:
+        m: sensor.dc_zone01_hw_map
+        bad:
+        - unknown
+        - unavailable
+        - none
+        - ''
+        errs: ''
+        clim: '{{ state_attr(m,''climate'') }}'
+        t_int: '{{ state_attr(''sensor.dc_zone01_t_int_safe'',''source'') }}'
+        t_ext: '{{ state_attr(''sensor.dc_zone01_t_ext_safe'',''source'') }}'
+        vac: '{{ state_attr(m,''vacaciones'') }}'
+        valve: '{{ state_attr(m,''valve_switch'') }}'
+        f_ent: '{{ state_attr(m,''forecast_entity'') }}'
+        f_time: "{% if f_ent and states(f_ent) not in bad %}\n  {{ state_attr(f_ent,'hourly.time')\
+          \ }}\n{% else %}\n  {{ none }}\n{% endif %}"
+        base: '{{ states(''sensor.dc_zone01_base_activa'') | float(none) }}'
+        tgt: '{{ states(''sensor.dc_zone01_target_final'') | float(none) }}'
+        learning_on: '{{ is_state(''input_boolean.dc_zone01_adaptive_lead_enabled'',''on'')
+          if states(''input_boolean.dc_zone01_adaptive_lead_enabled'') not in bad
+          else false }}'
+    - variables:
+        errs: '{% set e = [] %} {% if states(m) in bad %}{% set e = e + [''HW map:
+          sensor.dc_zone01_hw_map no disponible''] %}{% endif %} {% if not clim or
+          clim in bad %}{% set e = e + [''HW map: falta climate''] %}{% endif %} {%
+          if not t_int or t_int in bad %}{% set e = e + [''HW map: falta t_int'']
+          %}{% endif %} {% if not t_ext or t_ext in bad %}{% set e = e + [''HW map:
+          falta t_ext''] %}{% endif %} {% if not vac or vac in bad %}{% set e = e
+          + [''HW map: falta vacaciones (attr)''] %}{% endif %} {{ e | join(''\n'')
+          }}'
+    - variables:
+        errs: '{% set e = (errs.split(''\n'') if errs else []) %} {% if base is none
+          %}{% set e = e + [''Rango: base_activa no numérica''] %}{% endif %} {% if
+          base is not none and (base < 10 or base > 35) %}{% set e = e + [''Rango:
+          base_activa fuera de 10–35''] %}{% endif %} {% if tgt is none %}{% set e
+          = e + [''Rango: target_final no numérica''] %}{% endif %} {% if tgt is not
+          none and (tgt < 10 or tgt > 35) %}{% set e = e + [''Rango: target_final
+          fuera de 10–35''] %}{% endif %} {{ e | join(''\n'') }}'
+    - variables:
+        errs: "{% set e = (errs.split('\\n') if errs else []) %} {% if f_ent and f_ent\
+          \ not in bad %}\n  {% if f_time is none %}\n    {% set e = e + ['Forecast:\
+          \ hourly.time no disponible en ' ~ f_ent] %}\n  {% elif not (f_time is sequence)\
+          \ %}\n    {% set e = e + ['Forecast: hourly.time no es secuencia en ' ~\
+          \ f_ent] %}\n  {% endif %}\n{% endif %} {{ e | join('\\n') }}"
+    - variables:
+        errs: "{% set e = (errs.split('\\n') if errs else []) %} {% if learning_on\
+          \ and (not valve or valve in bad) %}\n  {% set e = e + ['Coherencia: Adaptive\
+          \ Lead ON pero falta valve_switch en HW map'] %}\n{% endif %} {{ e | join('\\\
+          n') }}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ not errs }}'
+        sequence:
+        - service: persistent_notification.dismiss
+          data:
+            notification_id: dc_zone01_selftest_full
+        - service: logbook.log
+          data:
+            name: dc_zone01_self_test
+            message: ✅ OK (FULL)
+      - conditions:
+        - condition: template
+          value_template: '{{ errs }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DC Zone01 · Self-test (FULL) ❌
+            message: 'Se han detectado problemas:
+
+              {{ errs }}'
+            notification_id: dc_zone01_selftest_full
+        - service: logbook.log
+          data:
+            name: dc_zone01_self_test
+            message: ❌ KO (FULL) — ver notificación
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: selftest_full
+        ok: '{{ not errs }}'
+        msg: "{% if not errs %}\n  OK\n{% else %}\n  {{ (errs | replace('\\n',' ·\
+          \ '))[:220] }}\n{% endif %}"
+  dc_zone01_test_adaptive_learning:
+    alias: dc_zone01_test_adaptive_learning
+    mode: single
+    sequence:
+    - variables:
+        bad:
+        - unknown
+        - unavailable
+        - none
+        - ''
+        enabled: '{{ is_state(''input_boolean.dc_zone01_adaptive_lead_enabled'',''on'')
+          }}'
+        hw_ok: '{{ is_state(''binary_sensor.dc_zone01_hw_ok_valve_switch'',''on'')
+          }}'
+        off_sp: '{{ states(''input_number.dc_zone01_rt_off_sp'') | float(none) }}'
+        off_peak: '{{ states(''input_number.dc_zone01_rt_off_peak'') | float(none)
+          }}'
+        sentinel: '{{ (off_sp is not none and off_sp <= -40) or (off_peak is not none
+          and off_peak <= -40) }}'
+        ok: '{{ (not enabled) or (hw_ok and not sentinel) }}'
+        msg: "{% if not enabled %}\n  Adaptive Lead OFF → OK\n{% elif not hw_ok %}\n\
+          \  Adaptive Lead ON pero falta valve_switch / hw_ok_valve_switch=off\n{%\
+          \ elif sentinel %}\n  Adaptive Lead ON pero runtime OFF tiene sentinel (-50):\
+          \ rt_off_sp={{ off_sp }}, rt_off_peak={{ off_peak }}\n{% else %}\n  Adaptive\
+          \ Lead OK (hw_ok + sin sentinel)\n{% endif %}"
+    - event: dc_zone01_selftest_result
+      event_data:
+        test: adaptive_learning
+        ok: '{{ ok }}'
+        msg: '{{ msg }}'
+  dc_zone01_selftest_overall:
+    alias: dc_zone01_selftest_overall
+    mode: single
+    sequence:
+    - event: dc_zone01_selftest_reset
+    - service: script.dc_zone01_selftest_full
+    - service: script.dc_zone01_test_hw_map
+    - service: script.dc_zone01_test_sensores_criticos
+    - service: script.dc_zone01_test_pipeline
+    - service: script.dc_zone01_test_lux_trend
+    - service: script.dc_zone01_test_solar_params
+    - service: script.dc_zone01_test_adaptive_learning
+    - delay: 00:00:01
+    - variables:
+        res: '{{ state_attr(''sensor.dc_zone01_selftest_storage'',''results'') }}'
+        fails: "{% set out = namespace(n=0) %} {% if res is iterable and res is not\
+          \ string %}\n  {% for it in res %}\n    {% if not (it.ok | default(false))\
+          \ %}\n      {% set out.n = out.n + 1 %}\n    {% endif %}\n  {% endfor %}\n\
+          {% endif %} {{ out.n }}"
+        fail_list: "{% set out = namespace(lst=[]) %} {% if res is iterable and res\
+          \ is not string %}\n  {% for it in res %}\n    {% if not (it.ok | default(false))\
+          \ %}\n      {% set out.lst = out.lst + [ (it.test | default('unknown'))\
+          \ ] %}\n    {% endif %}\n  {% endfor %}\n{% endif %} {{ out.lst }}"
+        fail_list_txt: '{{ (fail_list | join('', '')) if (fail_list | length) > 0
+          else ''—'' }}'
+        ok: '{{ fails == 0 }}'
+        msg: "{% if ok %}\n  DC Zone01 Self-test OVERALL: ✅ OK ({{ (res | length)\
+          \ if (res is iterable and res is not string) else 0 }} tests)\n{% else %}\n\
+          \  DC Zone01 Self-test OVERALL: ❌ {{ fails }} FAILS → {{ fail_list_txt\
+          \ }}\n{% endif %}"
+    - service: system_log.write
+      data:
+        level: '{% if ok %}info{% else %}warning{% endif %}'
+        message: '{{ msg }}'
+    - service: logbook.log
+      data:
+        name: dc_zone01_self_test
+        message: '{{ msg }}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ not ok }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DC Zone01 · Self-test (OVERALL)
+            message: '{{ msg }}'
+            notification_id: dc_zone01_selftest_overall
+      default:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: dc_zone01_selftest_overall
+  dc_zone01_apply_preset_bias_exterior:
+    alias: dc_zone01_apply_preset_bias_exterior
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_exterior
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_exterior'') }}'
+  dc_zone01_apply_preset_bias_fachadas:
+    alias: dc_zone01_apply_preset_bias_fachadas
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_fachadas
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_fachadas'') }}'
+  dc_zone01_apply_preset_bias_vmc:
+    alias: dc_zone01_apply_preset_bias_vmc
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_vmc
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_vmc'') }}'
+  dc_zone01_apply_preset_bias_tendencia:
+    alias: dc_zone01_apply_preset_bias_tendencia
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_tendencia
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_tendencia'') }}'
+  dc_zone01_apply_preset_freno_tendencia:
+    alias: dc_zone01_apply_preset_freno_tendencia
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: freno_tendencia
+        preset: '{{ states(''input_select.dc_zone01_preset_freno_tendencia'') }}'
+  dc_zone01_apply_preset_bias_forecast:
+    alias: dc_zone01_apply_preset_bias_forecast
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: bias_forecast
+        preset: '{{ states(''input_select.dc_zone01_preset_bias_forecast'') }}'
+  dc_zone01_apply_preset_lead:
+    alias: dc_zone01_apply_preset_lead
+    mode: single
+    sequence:
+    - service: script.dc_zone01_apply_preset_section
+      data:
+        group: lead
+        preset: '{{ states(''input_select.dc_zone01_preset_lead'') }}'
+  dc_zone01_reset_fabrica:
+    alias: dc_zone01_reset_fabrica
+    mode: single
+    sequence:
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_bias_exterior
+      data:
+        option: normal
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_bias_fachadas
+      data:
+        option: normal
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_bias_vmc
+      data:
+        option: normal
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_bias_tendencia
+      data:
+        option: normal
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_freno_tendencia
+      data:
+        option: normal
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_bias_forecast
+      data:
+        option: normal
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dc_zone01_preset_lead
+      data:
+        option: normal
+    - service: script.dc_zone01_apply_presets_global
+    - service: logbook.log
+      data:
+        name: dc_zone01
+        message: 'Reset a fábrica: presets→normal + apply_presets_global'

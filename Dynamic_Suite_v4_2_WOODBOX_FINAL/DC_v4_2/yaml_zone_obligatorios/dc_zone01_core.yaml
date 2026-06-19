@@ -1,0 +1,1546 @@
+# ============================================================================
+# Dynamic Climate · DC Zone01 · Core + runtime
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction)
+# ============================================================================
+
+template:
+- sensor:
+  - name: dc_zone01_main_core_version
+    unique_id: dc_zone01_main_core_version
+    icon: mdi:tag
+    state: '4.2'
+    attributes:
+      module: dc_zone01_main_core
+      tier: core
+- sensor:
+  - name: dc_zone01_hw_map
+    unique_id: dc_zone01_hw_map
+    icon: mdi:chip
+    state: ok
+    attributes:
+      climate: climate.dc_zone01
+      sun: sun.sun
+      modo_vacaciones: input_boolean.dc_modo_vacaciones
+      ventanas_group: REPLACE_VENTANAS_GROUP
+      t_int: REPLACE_T_INT
+      h_int: REPLACE_H_INT
+      punto_rocio: REPLACE_DEWPOINT
+      riesgo_rocio: REPLACE_DEW_RISK
+      notify_target: ''
+      t_ext: REPLACE_T_EXT
+      h_ext: REPLACE_H_EXT
+      wind_speed: REPLACE_WIND_SPEED
+      forecast_entity: REPLACE_FORECAST_ENTITY
+      valve_switch: REPLACE_VALVE_SWITCH
+      mode_heat_flag: input_boolean.dc_zone01_calor
+      mode_cool_flag: input_boolean.dc_zone01_frio
+      t_agua: REPLACE_T_AGUA_suelo_radiante_temperature
+
+  - name: dc_zone01_hw_replace_count
+    unique_id: dc_zone01_hw_replace_count
+    icon: mdi:clipboard-search
+    availability: "{{ states.sensor.dc_zone01_hw_map is not none }}"
+    state: >-
+      {% set a = states.sensor.dc_zone01_hw_map.attributes %}
+      {% if a is mapping %}
+        {% set ns = namespace(n=0) %}
+        {% for k, v in a.items() %}
+          {% if v is string and v.startswith('REPLACE_') %}
+            {% set ns.n = ns.n + 1 %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.n }}
+      {% else %}
+        0
+      {% endif %}
+      vmc_velocidad_real: input_number.sdhb_metric_dv_vmc_speed
+      f1_cover: cover.grupo_terraza
+      f1_is_in_sun: sensor.persianas_terraza_is_in_sun
+      f1_lux: sensor.sensor_de_lluvia_illuminance
+      f1_t_ext: sensor.temperatura_terraza_temperature
+      f1_h_ext: sensor.temperatura_terraza_humidity
+      f2_cover: cover.grupo_salon
+      f2_is_in_sun: sensor.persianas_salon_is_in_sun
+      f2_lux: sensor.sensor_de_lluvia_illuminance
+      f2_t_ext: REPLACE_T_EXT
+      f2_h_ext: REPLACE_H_EXT
+      f3_cover: ''
+      f3_is_in_sun: ''
+      f3_lux: ''
+      f3_t_ext: ''
+      f3_h_ext: ''
+- sensor:
+  - name: dc_zone01_hvac_mode
+    unique_id: dc_zone01_hvac_mode
+    icon: mdi:thermostat
+    state: '{% set c = state_attr(''sensor.dc_zone01_hw_map'',''climate'') %} {{ states(c)
+      if c else ''unknown'' }}
+
+      '
+  - name: dc_zone01_base_activa
+    unique_id: dc_zone01_base_activa
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    availability: '{{ is_number(states(''sensor.dc_zone01_t_int_safe'')) }}
+
+      '
+    state: "{% set hvac = states('sensor.dc_zone01_hvac_mode') %} {% set vac_ent =\
+      \ state_attr('sensor.dc_zone01_hw_map','modo_vacaciones') %} {% set vac = (is_state(vac_ent,'on')\
+      \ if vac_ent else false) %}\n{# ================================================================\n\
+      \   DEGRADACIÓN EXPLÍCITA: Elevación Solar\n   - Si sensor.dc_zone01_sun_elevation_safe\
+      \ está unavailable/none\n   - Degradación conservadora: asumir DÍA (es_noche\
+      \ = false)\n   - Impacto: si realmente es noche, base se queda “día” temporalmente\n\
+      \   ================================================================ #}\n{%\
+      \ set elev = states('sensor.dc_zone01_sun_elevation_safe') | float(none) %}\
+      \ {% if elev is none %}\n  {% set es_noche = false %}\n{% else %}\n  {% set\
+      \ es_noche = (elev <= -3) %}\n{% endif %}\n{% if vac %}\n  {% set bh = states('input_number.dc_zone01_vac_base_heat_day')|float(17)\
+      \ %}\n  {% set bc = states('input_number.dc_zone01_vac_base_cool_day')|float(30)\
+      \ %}\n  {{ (bh if hvac == 'heat' else bc) | round(2) }}\n{% else %}\n  {% set\
+      \ bh = states('input_number.dc_zone01_base_heat_day')|float(22.5) %}\n  {% set\
+      \ bc = states('input_number.dc_zone01_base_cool_day')|float(26.5) %}\n  {% set\
+      \ dn = states('input_number.dc_zone01_delta_noche')|float(0.5) %}\n  {% set\
+      \ base_day = (bh if hvac == 'heat' else bc) %}\n  {% set base_n = (base_day\
+      \ - dn) if hvac == 'heat' else (base_day + dn) %}\n  {{ (base_n if es_noche\
+      \ else base_day) | round(2) }}\n{% endif %}\n"
+    attributes:
+      sun_elevation: '{{ states(''sensor.dc_zone01_sun_elevation_safe'') }}'
+      sun_elevation_degraded: '{{ states(''sensor.dc_zone01_sun_elevation_safe'')
+        | float(none) is none }}
+
+        '
+      es_noche: '{% set elev = states(''sensor.dc_zone01_sun_elevation_safe'') | float(none)
+        %} {{ (elev is not none and elev <= -3) }}
+
+        '
+      degradation_reason: "{% if states('sensor.dc_zone01_sun_elevation_safe') | float(none)\
+        \ is none %}\n  sun_elevation_unavailable\n{% else %}\n  none\n{% endif %}\n"
+  - name: dc_zone01_tendencia_derivada
+    unique_id: dc_zone01_tendencia_derivada
+    unit_of_measurement: °C/h
+    state: '{% set cph = states(''input_number.dc_zone01_tendencia_cph_ema'') | float(0)
+      %} {% set th = states(''input_number.dc_zone01_tendencia_umbral_estable'') |
+      float(0) %} {{ (0 if (cph | abs) < th else cph) | round(3) }}
+
+      '
+  - name: dc_zone01_lead_bias_h
+    unique_id: dc_zone01_lead_bias_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: "{{ is_number(states('input_number.dc_zone01_tendencia_cph_ema'))\n\
+      \   and states('sensor.dc_zone01_hvac_mode') not in ['unknown','unavailable','none']\
+      \ }}\n"
+    state: "{% set m = 'sensor.dc_zone01_hw_map' %} {% set hvac = states('sensor.dc_zone01_hvac_mode')\
+      \ %} {% set cph_abs = (states('input_number.dc_zone01_tendencia_cph_ema')|float(0))\
+      \ | abs %} {% set dead = states('input_number.dc_zone01_lead_cph_deadband')|float(0)\
+      \ %} {% set scale = states('input_number.dc_zone01_lead_cph_scale')|float(1)\
+      \ %} {% set scale = [scale, 0.1] | max %} {% set tr_max = states('input_number.dc_zone01_lead_cph_max_h')|float(0)\
+      \ %} {% set cph_eff = [0.0, (cph_abs - dead)]|max %} {% set tr = (cph_eff /\
+      \ scale * tr_max) if scale > 0 else 0.0 %} {% set tr = [0, [tr, tr_max]|min]|max\
+      \ %}\n{% set env = 0.0 %} {% set f1_ok = is_state('binary_sensor.dc_zone01_f1_valida','on')\
+      \ %} {% set f2_ok = is_state('binary_sensor.dc_zone01_f2_valida','on') %} {%\
+      \ set f3_ok = is_state('binary_sensor.dc_zone01_f3_valida','on') %}\n{# lux:\
+      \ primera fachada válida con lux válido #} {% set bad = [none,'unknown','unavailable','']\
+      \ %} {% set lux = states('sensor.dc_zone01_lux_f1_safe') | float(none) %} {%\
+      \ if lux is none %}\n  {% set lux = states('sensor.dc_zone01_lux_f2_safe') |\
+      \ float(none) %}\n{% endif %} {% if lux is none %}\n  {% set lux = states('sensor.dc_zone01_lux_f3_safe')\
+      \ | float(none) %}\n{% endif %} {% if lux is none %}\n  {% set lux = 0.0 %}\n\
+      {% endif %} {% set lux_ent = 'sensor.dc_zone01_lux_f1_safe' if (states('sensor.dc_zone01_lux_f1_safe')|float(none))\
+      \ is not none else\n                ('sensor.dc_zone01_lux_f2_safe' if (states('sensor.dc_zone01_lux_f2_safe')|float(none))\
+      \ is not none else\n                ('sensor.dc_zone01_lux_f3_safe' if (states('sensor.dc_zone01_lux_f3_safe')|float(none))\
+      \ is not none else none)) %}\n{% set lux_min = states('input_number.dc_zone01_lead_lux_min')|float(0)\
+      \ %} {% set lux_span = states('input_number.dc_zone01_lead_lux_span')|float(0)\
+      \ %} {% set lux_span = [lux_span, 0.1] | max %} {% set sr_max = states('input_number.dc_zone01_lead_solar_max_h')|float(0)\
+      \ %} {% set rise_scale = states('input_number.dc_zone01_lead_lux_rise_scale')|float(0)\
+      \ %} {% set rise_scale = [rise_scale, 0.1] | max %}\n{# nivel solar por lux\
+      \ (blindado contra lux_span = 0) #} {% set nivel_lux = ((lux - lux_min) / lux_span)\
+      \ if lux_span > 0 else 0.0 %} {% set nivel_lux = [0, [nivel_lux, 1.0]|min]|max\
+      \ %}\n{# factor por tendencia lux (blindado contra rise_scale = 0) #} {% set\
+      \ lux_tr_raw = states('sensor.dc_exterior_lux_tendencia') %} {% set lux_tr =\
+      \ (lux_tr_raw|float(0)) if lux_tr_raw not in ['unknown','unavailable','none']\
+      \ else none %} {% set factor_rise = (lux_tr / rise_scale) if (lux_tr is not\
+      \ none and rise_scale > 0) else 1.0 %} {% set factor_rise = [0, [factor_rise,\
+      \ 1.0]|min]|max %}\n{% set sr = (nivel_lux * factor_rise * sr_max) if hvac in\
+      \ ['heat','cool'] else 0.0 %}\n{% set c1 = state_attr(m,'f1_cover') %} {% set\
+      \ c2 = state_attr(m,'f2_cover') %} {% set c3 = state_attr(m,'f3_cover') %} {%\
+      \ if f1_ok and c1 and (is_state(c1,'open') or (state_attr(c1,'current_position')|int(0) > 0)) %}{% set env = env + (states('input_number.dc_zone01_lead_env_f1_h')|float(0))\
+      \ %}{% endif %} {% if f2_ok and c2 and (is_state(c2,'open') or (state_attr(c2,'current_position')|int(0) > 0)) %}{% set env = env\
+      \ + (states('input_number.dc_zone01_lead_env_f2_h')|float(0)) %}{% endif %}\
+      \ {% if f3_ok and c3 and (is_state(c3,'open') or (state_attr(c3,'current_position')|int(0) > 0)) %}{% set env = env + (states('input_number.dc_zone01_lead_env_f3_h')|float(0))\
+      \ %}{% endif %}\n{% set w_ent = state_attr(m,'wind_speed') %} {% set wind =\
+      \ 0.0 %} {% if w_ent is string and w_ent|length > 0 %}\n  {% set w_raw = states(w_ent)\
+      \ %}\n  {% if is_number(w_raw) %}\n    {% set wind = states('sensor.dc_zone01_wind_speed_safe')\
+      \ | float(none) %}\n{% if wind is none %}{% set wind = 0 %}{% endif %}\n  {%\
+      \ endif %}\n{% endif %} {% set w0 = states('input_number.dc_zone01_lead_wind_start')|float(0)\
+      \ %} {% set ws = states('input_number.dc_zone01_lead_wind_span')|float(1) %}\
+      \ {% set wmax = states('input_number.dc_zone01_lead_wind_max_h')|float(0) %}\
+      \ {% set wf = ((wind - w0) / ws) if ws > 0 else 0 %} {% set wf = [0, [wf, 1.0]|min]|max\
+      \ %} {% set wind_boost = wf * wmax %} {{ (tr + sr + env + wind_boost) | round(2)\
+      \ }}\n"
+  - name: dc_zone01_lead_base_h
+    unique_id: dc_zone01_lead_base_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: "{{ is_number(states('input_number.dc_zone01_tendencia_lead_gain'))\n\
+      \   and (not is_state('input_boolean.dc_zone01_adaptive_lead_enabled','on')\n\
+      \        or is_number(states('input_number.dc_zone01_lead_gain_adaptive')))\
+      \ }}\n"
+    state: "{% if is_state('input_boolean.dc_zone01_adaptive_lead_enabled','on') %}\n\
+      \  {{ states('input_number.dc_zone01_lead_gain_adaptive') | float(0) | round(2)\
+      \ }}\n{% else %}\n  {{ states('input_number.dc_zone01_tendencia_lead_gain')\
+      \ | float(0) | round(2) }}\n{% endif %}\n"
+  - name: dc_zone01_adapt_lead_target_h
+    unique_id: dc_zone01_adapt_lead_target_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: "{{ is_number(states('input_number.dc_zone01_learn_overshoot_ema'))\n\
+      \   and is_number(states('input_number.dc_zone01_learn_on_rate_cph_ema'))\n\
+      \   and is_number(states('input_number.dc_zone01_learned_thermal_lag_h'))\n\
+      \   and is_number(states('input_number.dc_zone01_adapt_rate_floor_cph'))\n \
+      \  and is_number(states('input_number.dc_zone01_adapt_lag_k')) }}\n"
+    state: "{% set os = states('input_number.dc_zone01_learn_overshoot_ema') | float(0)\
+      \ %} {% set target_os = states('input_number.dc_zone01_adapt_overshoot_target')\
+      \ | float(0) %} {% set extra = [0, ((os|abs) - (target_os|abs))] | max %}\n\
+      {% set rate = states('input_number.dc_zone01_learn_on_rate_cph_ema') | float(0)\
+      \ %} {% set floor = states('input_number.dc_zone01_adapt_rate_floor_cph') |\
+      \ float(0.1) %} {% set floor = [floor, 0.1] | max %} {% set rate_eff = [floor,\
+      \ (rate|abs)] | max %}\n{% set lag = states('input_number.dc_zone01_learned_thermal_lag_h')\
+      \ | float(0) %} {% set k = states('input_number.dc_zone01_adapt_lag_k') | float(1.0)\
+      \ %} {% set k = [k, 0.1] | max %}\n{% set lead_lag = lag * k %} {% set lead_os\
+      \ = extra / rate_eff %} {% set raw = [lead_lag, lead_os] | max %}\n{% set mn\
+      \ = states('input_number.dc_zone01_lead_min_h') | float(0) %} {% set mx = states('input_number.dc_zone01_lead_max_h')\
+      \ | float(0) %} {% if mx > 0 %}\n  {{ [mn, [raw, mx] | min] | max | round(2)\
+      \ }}\n{% else %}\n  {{ [mn, raw] | max | round(2) }}\n{% endif %}\n"
+  - name: dc_zone01_lead_final_h
+    unique_id: dc_zone01_lead_final_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: "{{ is_number(states('sensor.dc_zone01_lead_base_h'))\n   and is_number(states('sensor.dc_zone01_lead_bias_h'))\
+      \ }}\n"
+    state: "{% set base = states('sensor.dc_zone01_lead_base_h')|float(0) %} {% set\
+      \ bias = states('sensor.dc_zone01_lead_bias_h')|float(0) %} {% set mn = states('input_number.dc_zone01_lead_min_h')|float(0)\
+      \ %} {% set mx = states('input_number.dc_zone01_lead_max_h')|float(0) %} {%\
+      \ set lead = base + bias %} {% if mx > 0 %}\n  {{ [mn, [lead, mx]|min]|max |\
+      \ round(2) }}\n{% else %}\n  {{ [mn, lead]|max | round(2) }}\n{% endif %}\n"
+  - name: dc_zone01_lead_tr_h
+    unique_id: dc_zone01_lead_tr_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: "{{ is_number(states('input_number.dc_zone01_tendencia_cph_ema'))\n\
+      \   and states('sensor.dc_zone01_hvac_mode') not in ['unknown','unavailable','none']\
+      \ }}\n"
+    state: '{% set cph_abs = (states(''input_number.dc_zone01_tendencia_cph_ema'')|float(0))
+      | abs %} {% set dead = states(''input_number.dc_zone01_lead_cph_deadband'')|float(0)
+      %} {% set scale = states(''input_number.dc_zone01_lead_cph_scale'')|float(1)
+      %} {% set scale = [scale, 0.1] | max %} {% set tr_max = states(''input_number.dc_zone01_lead_cph_max_h'')|float(0)
+      %} {% set cph_eff = [0.0, (cph_abs - dead)]|max %} {% set tr = (cph_eff / scale
+      * tr_max) if scale > 0 else 0.0 %} {{ [0, [tr, tr_max]|min]|max | round(2) }}
+
+      '
+  - name: dc_zone01_lead_solar_h
+    unique_id: dc_zone01_lead_solar_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: '{{ states(''sensor.dc_zone01_hvac_mode'') not in [''unknown'',''unavailable'',''none'']
+      }}
+
+      '
+    state: "{% set m = 'sensor.dc_zone01_hw_map' %} {% set hvac = states('sensor.dc_zone01_hvac_mode')\
+      \ %}\n{# Lux SAFE (f1->f2->f3). Si ninguno disponible => 0 (fail-safe) #} {%\
+      \ set lux = states('sensor.dc_zone01_lux_f1_safe') | float(none) %} {% set lux_ent\
+      \ = 'sensor.dc_zone01_lux_f1_safe' %} {% if lux is none %}\n  {% set lux = states('sensor.dc_zone01_lux_f2_safe')\
+      \ | float(none) %}\n  {% set lux_ent = 'sensor.dc_zone01_lux_f2_safe' %}\n{%\
+      \ endif %} {% if lux is none %}\n  {% set lux = states('sensor.dc_zone01_lux_f3_safe')\
+      \ | float(none) %}\n  {% set lux_ent = 'sensor.dc_zone01_lux_f3_safe' %}\n{%\
+      \ endif %} {% if lux is none %}\n  {% set lux = 0.0 %}\n  {% set lux_ent = none\
+      \ %}\n{% endif %}\n{% set lux_min = states('input_number.dc_zone01_lead_lux_min')|float(0)\
+      \ %} {% set lux_span = states('input_number.dc_zone01_lead_lux_span')|float(1)\
+      \ %} {% set lux_span = [lux_span, 0.1] | max %} {% set sr_max = states('input_number.dc_zone01_lead_solar_max_h')|float(0)\
+      \ %} {% set rise_scale = states('input_number.dc_zone01_lead_lux_rise_scale')|float(1)\
+      \ %} {% set rise_scale = [rise_scale, 0.1] | max %}\n{% set lvl = ((lux - lux_min)\
+      \ / lux_span) if lux_span > 0 else 0 %} {% set lvl = [0, [lvl, 1.0]|min]|max\
+      \ %}\n{# Lux trend opcional: si no existe o falla -> rise=1.0 #} {% set lux_tr_raw\
+      \ = states('sensor.dc_exterior_lux_tendencia') %} {% set lux_tr = (lux_tr_raw|float(0))\
+      \ if lux_tr_raw not in ['unknown','unavailable','none'] else none %} {% set\
+      \ rise = (lux_tr / rise_scale) if (lux_tr is not none and rise_scale > 0) else\
+      \ 1.0 %} {% set rise = [0, [rise, 1.0]|min]|max %}\n{# Solar SIEMPRE suma lead\
+      \ en heat/cool #} {% set sr = (lvl * rise * sr_max) if hvac in ['heat','cool']\
+      \ else 0.0 %} {{ sr | round(2) }}\n"
+  - name: dc_zone01_lead_env_h
+    unique_id: dc_zone01_lead_env_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: '{{ states(''sensor.dc_zone01_hvac_mode'') not in [''unknown'',''unavailable'',''none'']
+      }}
+
+      '
+    state: '{% set m = ''sensor.dc_zone01_hw_map'' %} {% set env = 0.0 %} {% set f1_ok
+      = is_state(''binary_sensor.dc_zone01_f1_valida'',''on'') %} {% set f2_ok = is_state(''binary_sensor.dc_zone01_f2_valida'',''on'')
+      %} {% set f3_ok = is_state(''binary_sensor.dc_zone01_f3_valida'',''on'') %}
+      {% set c1 = state_attr(m,''f1_cover'') %} {% set c2 = state_attr(m,''f2_cover'')
+      %} {% set c3 = state_attr(m,''f3_cover'') %} {% if f1_ok and c1 and (is_state(c1,''open'') or (state_attr(c1,''current_position'')|int(0) > 0))
+      %}{% set env = env + (states(''input_number.dc_zone01_lead_env_f1_h'')|float(0))
+      %}{% endif %} {% if f2_ok and c2 and (is_state(c2,''open'') or (state_attr(c2,''current_position'')|int(0) > 0)) %}{% set env = env
+      + (states(''input_number.dc_zone01_lead_env_f2_h'')|float(0)) %}{% endif %}
+      {% if f3_ok and c3 and (is_state(c3,''open'') or (state_attr(c3,''current_position'')|int(0) > 0)) %}{% set env = env + (states(''input_number.dc_zone01_lead_env_f3_h'')|float(0))
+      %}{% endif %} {{ env | round(2) }}
+
+      '
+  - name: dc_zone01_lead_wind_h
+    unique_id: dc_zone01_lead_wind_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: '{{ states(''sensor.dc_zone01_hvac_mode'') not in [''unknown'',''unavailable'',''none'']
+      }}
+
+      '
+    state: "{% set m = 'sensor.dc_zone01_hw_map' %} {% set w_ent = state_attr(m,'wind_speed')\
+      \ %} {% set wind = 0.0 %} {% if w_ent is string and w_ent|length > 0 %}\n  {%\
+      \ set w_raw = states(w_ent) %}\n  {% if is_number(w_raw) %}\n    {% set wind\
+      \ = states('sensor.dc_zone01_wind_speed_safe') | float(none) %}\n{% if wind\
+      \ is none %}{% set wind = 0 %}{% endif %}\n  {% endif %}\n{% endif %}\n{% set\
+      \ w0 = states('input_number.dc_zone01_lead_wind_start')|float(0) %} {% set ws\
+      \ = states('input_number.dc_zone01_lead_wind_span')|float(1) %} {% set wmax\
+      \ = states('input_number.dc_zone01_lead_wind_max_h')|float(0) %}\n{% set wf\
+      \ = ((wind - w0) / ws) if ws > 0 else 0 %} {% set wf = [0, [wf, 1.0]|min]|max\
+      \ %} {{ (wf * wmax) | round(2) }}\n"
+  - name: dc_zone01_lead_breakdown_sum_h
+    unique_id: dc_zone01_lead_breakdown_sum_h
+    unit_of_measurement: h
+    device_class: duration
+    state_class: measurement
+    availability: "{{ is_number(states('sensor.dc_zone01_lead_tr_h'))\n   and is_number(states('sensor.dc_zone01_lead_solar_h'))\n\
+      \   and is_number(states('sensor.dc_zone01_lead_env_h'))\n   and is_number(states('sensor.dc_zone01_lead_wind_h'))\
+      \ }}\n"
+    state: '{% set tr = states(''sensor.dc_zone01_lead_tr_h'')|float(0) %} {% set
+      sr = states(''sensor.dc_zone01_lead_solar_h'')|float(0) %} {% set env = states(''sensor.dc_zone01_lead_env_h'')|float(0)
+      %} {% set w  = states(''sensor.dc_zone01_lead_wind_h'')|float(0) %} {{ (tr +
+      sr + env + w) | round(2) }}
+
+      '
+  - name: dc_zone01_tendencia_efectiva
+    unique_id: dc_zone01_tendencia_efectiva
+    unit_of_measurement: °C
+    availability: "{{ is_number(states('sensor.dc_zone01_lead_final_h'))\n   and is_number(states('sensor.dc_zone01_tendencia_derivada'))\n\
+      \   and is_number(states('input_number.dc_zone01_tendencia_max_shift')) }} \
+      \       \n"
+    state: '{% set base = states(''input_number.dc_zone01_tendencia_lead_gain'') |
+      float(0) %} {% set mn = states(''input_number.dc_zone01_lead_min_h'') | float(base)
+      %} {% set lead_h = states(''sensor.dc_zone01_lead_final_h'') | float(mn) %}
+      {% set max_shift = states(''input_number.dc_zone01_tendencia_max_shift'') |
+      float(0.25) %} {% set cph = states(''sensor.dc_zone01_tendencia_derivada'')
+      | float(0) %} {% set shift = (-cph * lead_h) %} {{ [ -max_shift, [ shift, max_shift
+      ] | min ] | max | round(3) }}
+
+      '
+  - name: dc_zone01_freno_tendencia
+    unique_id: dc_zone01_freno_tendencia
+    unit_of_measurement: °C
+    availability: '{% set ema = states(''input_number.dc_zone01_tendencia_cph_ema'')
+      %} {{ ema not in [''unknown'',''unavailable'',''none'',''''] }}
+
+      '
+    state: "{% set hvac = states('sensor.dc_zone01_hvac_mode') %} {% set cph = states('sensor.dc_zone01_tendencia_derivada')\
+      \ | float(0) %} {% set th1 = states('input_number.dc_zone01_freno_tend_th1_cph')\
+      \ | float(0) %} {% set th2 = states('input_number.dc_zone01_freno_tend_th2_cph')\
+      \ | float(0) %} {% set th3 = states('input_number.dc_zone01_freno_tend_th3_cph')\
+      \ | float(0) %} {% set b1 = states('input_number.dc_zone01_freno_tend_bias1')\
+      \ | float(0) %} {% set b2 = states('input_number.dc_zone01_freno_tend_bias2')\
+      \ | float(0) %} {% set b3 = states('input_number.dc_zone01_freno_tend_bias3')\
+      \ | float(0) %}\n{# Solo frenamos si la tendencia ayuda al modo actual #} {%\
+      \ if hvac == 'heat' and cph > 0 %}\n  {% set abs_cph = cph %}\n  {% set sign\
+      \ = -1 %}\n{% elif hvac == 'cool' and cph < 0 %}\n  {% set abs_cph = -cph %}\n\
+      \  {% set sign = 1 %}\n{% else %}\n  {% set abs_cph = 0 %}\n  {% set sign =\
+      \ 0 %}\n{% endif %}\n{% set mag = 0 %} {% if abs_cph >= th3 %}\n  {% set mag\
+      \ = b3 %}\n{% elif abs_cph >= th2 %}\n  {% set mag = b2 %}\n{% elif abs_cph\
+      \ >= th1 %}\n  {% set mag = b1 %}\n{% endif %}\n{{ (sign * mag) | round(3) }}\n"
+  - name: dc_zone01_bias_exterior_raw
+    unique_id: dc_zone01_bias_exterior_raw
+    unit_of_measurement: °C
+    availability: '{% set t_ext = states(''sensor.dc_zone01_t_ext_safe'') | float(none)
+      %} {{ t_ext is not none }}
+
+      '
+    state: "{% set hvac = states('sensor.dc_zone01_hvac_mode') %} {% set t_ext = states('sensor.dc_zone01_t_ext_safe')\
+      \ | float(none) %}\n{% if t_ext is none %}\n  {{ none }}\n{% else %}\n  {% set\
+      \ u_frio = states('input_number.dc_zone01_umbral_frio_exterior') | float(0)\
+      \ %}\n  {% set u_calor = states('input_number.dc_zone01_umbral_calor_exterior')\
+      \ | float(30) %}\n\n  {% set h_f = states('input_number.dc_zone01_bias_ext_heat_fuerte')\
+      \ | float(0) %}\n  {% set h_l = states('input_number.dc_zone01_bias_ext_heat_leve')\
+      \ | float(0) %}\n  {% set c_f = states('input_number.dc_zone01_bias_ext_cool_fuerte')\
+      \ | float(0) %}\n  {% set c_l = states('input_number.dc_zone01_bias_ext_cool_leve')\
+      \ | float(0) %}\n\n  {% set ais = states('input_number.dc_zone01_aislamiento_bias_exterior')\
+      \ | float(1) %}\n\n  {% if hvac == 'heat' %}\n    {% if t_ext <= u_frio %}\n\
+      \      {{ (h_f * ais) | round(2) }}\n    {% elif t_ext <= (u_frio + 5) %}\n\
+      \      {{ (h_l * ais) | round(2) }}\n    {% else %}\n      0\n    {% endif %}\n\
+      \  {% elif hvac == 'cool' %}\n    {% if t_ext >= u_calor %}\n      {{ (c_f *\
+      \ ais) | round(2) }}\n    {% elif t_ext >= (u_calor - 5) %}\n      {{ (c_l *\
+      \ ais) | round(2) }}\n    {% else %}\n      0\n    {% endif %}\n  {% else %}\n\
+      \    0\n  {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_bias_vmc
+    unique_id: dc_zone01_bias_vmc
+    unit_of_measurement: °C
+    availability: "{% if not is_state('input_boolean.dc_zone01_vmc_enabled','on')\
+      \ %}\n  {{ true }}\n{% else %}\n  {% set t_int = states('sensor.dc_zone01_t_int_safe')\
+      \ %}\n  {% set t_ext = states('sensor.dc_zone01_t_ext_safe') %}\n  {{ t_int\
+      \ not in ['unknown','unavailable','none',''] and t_ext not in ['unknown','unavailable','none','']\
+      \ }}\n{% endif %}\n"
+    state: "{% if not is_state('input_boolean.dc_zone01_vmc_enabled','on') %}\n  0\n\
+      {% else %}\n  {% set m = 'sensor.dc_zone01_hw_map' %}\n  {% set hvac = states('sensor.dc_zone01_hvac_mode')\
+      \ %}\n  {% set v = states('sensor.dc_zone01_vmc_speed_safe') | int(none) %}\n\
+      \  {% set v = 0 if v is none else v %}\n  {% set t_int_ent = state_attr(m,'t_int')\
+      \ %}\n  {% set t_ext_ent = state_attr(m,'t_ext') %}\n  {% set t_int = states('sensor.dc_zone01_t_int_safe')\
+      \ | float(none) %}\n  {% set t_ext = states('sensor.dc_zone01_t_ext_safe') |\
+      \ float(none) %}\n  {% if v not in [1,2,3] or t_int is none or t_ext is none\
+      \ %}\n    0\n  {% else %}\n    {% set delta = (t_ext - t_int) | float(0) %}\n\
+      \    {% if delta | abs < 0.2 %}\n      0\n    {% else %}\n      {% if hvac ==\
+      \ 'heat' %}\n        {% set b1 = states('input_number.dc_zone01_vmc_bias_heat_v1')\
+      \ | float(0) | abs %}\n        {% set b2 = states('input_number.dc_zone01_vmc_bias_heat_v2')\
+      \ | float(0) | abs %}\n        {% set b3 = states('input_number.dc_zone01_vmc_bias_heat_v3')\
+      \ | float(0) | abs %}\n        {% set b = (b1 if v==1 else (b2 if v==2 else\
+      \ (b3 if v==3 else 0))) %}\n        {# En HEAT: la VMC suele extraer calor si\
+      \ fuera está más frío (delta < 0). #}\n        {{ (b if delta < 0 else 0) |\
+      \ round(2) }}\n      {% elif hvac == 'cool' %}\n        {% set b1 = states('input_number.dc_zone01_vmc_bias_cool_v1')\
+      \ | float(0) | abs %}\n        {% set b2 = states('input_number.dc_zone01_vmc_bias_cool_v2')\
+      \ | float(0) | abs %}\n        {% set b3 = states('input_number.dc_zone01_vmc_bias_cool_v3')\
+      \ | float(0) | abs %}\n        {% set b = (b1 if v==1 else (b2 if v==2 else\
+      \ (b3 if v==3 else 0))) %}\n        {# En COOL:\n           - si fuera está\
+      \ MÁS CALIENTE (delta > 0) → la VMC mete carga → pedimos más frío (resta)\n\
+      \           - si fuera está MÁS FRÍO    (delta < 0) → la VMC ayuda → pedimos\
+      \ menos frío (suma)\n        #}\n        {{ ((-b) if delta > 0 else b) | round(2)\
+      \ }}\n      {% else %}\n        0\n      {% endif %}\n    {% endif %}\n  {%\
+      \ endif %}\n{% endif %}\n"
+  - name: dc_zone01_bias_fachada_1_raw
+    unique_id: dc_zone01_bias_fachada_1_raw
+    unit_of_measurement: °C
+    availability: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set t_int_ent = state_attr(m,'t_int') %} {{ (t_int_ent is string and\
+      \ t_int_ent not in bad)\n   and is_number(states('sensor.dc_zone01_t_int_safe'))\n\
+      \   and (states('sensor.dc_zone01_base_activa') | float(none)) is not none }}\n"
+    state: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set hvac = states('sensor.dc_zone01_hvac_mode') %} {% set base = states('sensor.dc_zone01_base_activa')\
+      \ | float(none) %} {% set t_int = states('sensor.dc_zone01_t_int_safe') | float(none)\
+      \ %} {% if base is none or t_int is none %}\n  {{ none }}\n{% else %}\n  {%\
+      \ set lux_low = states('input_number.dc_zone01_fachada_lux_low') | float(300)\
+      \ %}\n  {% set lux_high = states('input_number.dc_zone01_fachada_lux_high')\
+      \ | float(2800) %}\n  {% set margin_heat = states('input_number.dc_zone01_fachada_solar_margin_heat')\
+      \ | float(0.5) %}\n  {% set gain_heat = states('input_number.dc_zone01_fachada_gain_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_heat = states('input_number.dc_zone01_fachada_freno_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_cool = states('input_number.dc_zone01_fachada_freno_cool_max')\
+      \ | float(0.15) %}\n  {% set w_low = states('input_number.dc_zone01_fachada_w_poco_abierta')\
+      \ | float(0.35) %}\n  {% set w_mid = states('input_number.dc_zone01_fachada_w_entreabierta')\
+      \ | float(0.7) %}\n  {% set w_open = states('input_number.dc_zone01_fachada_w_abierta')\
+
+  {# ==========================================================
+     DC_FACADE_MACROS_CANONICAL
+     ==========================================================
+     Este bloque de macros (boolish / cover_weight / lux_norm) se repite
+     por fachada (f1/f2/f3 y raw) por limitaciones prácticas de HA/Jinja
+     en packages.
+
+     NOTA DE MANTENIMIENTO:
+     - Si modificas una macro, replica exactamente el cambio en todas
+       las fachadas para evitar divergencias.
+     - Busca: DC_FACADE_MACROS_CANONICAL
+     ========================================================== #}
+      \ | float(1.0) %}\n  {% macro boolish(ent) -%}\n    {%- if ent in bad -%}false\n\
+      \    {%- else -%}\n      {%- set s = (states(ent) | string) | lower -%}\n  \
+      \    {{ s in ['true','on','1','yes'] }}\n    {%- endif -%}\n  {%- endmacro %}\n\
+      \  {% macro cover_weight(ent) -%}\n    {%- if ent in bad -%}0\n    {%- else\
+      \ -%}\n      {%- set p = state_attr(ent,'current_position') -%}\n      {%- set\
+      \ pos = (p | float(none)) -%}\n      {%- if pos is none -%}0\n      {%- elif\
+      \ pos == 0 -%}0.1\n      {%- elif pos <= 20 -%}{{ w_low }}\n      {%- elif pos\
+      \ <= 80 -%}{{ w_mid }}\n      {%- else -%}{{ w_open }}\n      {%- endif -%}\n\
+      \    {%- endif -%}\n  {%- endmacro %}\n  {% macro lux_norm(ent) -%}\n    {%-\
+      \ if ent in bad -%}0\n    {%- else -%}\n      {%- set lx = states(ent) | float(none)\
+      \ -%}\n      {%- if lx is none or lux_high <= lux_low -%}0\n      {%- else -%}\n\
+      \        {%- set n = (lx - lux_low) / (lux_high - lux_low) -%}\n        {{ 0\
+      \ if n < 0 else (1 if n > 1 else n) }}\n      {%- endif -%}\n    {%- endif -%}\n\
+      \  {%- endmacro %}\n  {%- set idx = 1 -%}\n  {%- set en = is_state('binary_sensor.dc_zone01_f'\
+      \ ~ idx ~ '_valida','on') -%}\n  {%- if not en -%}0\n  {%- else -%}\n    {%-\
+      \ set cover = state_attr(m,'f' ~ idx ~ '_cover') -%}\n    {%- set sun  = state_attr(m,'f'\
+      \ ~ idx ~ '_is_in_sun') -%}\n    {%- set lux  = state_attr(m,'f' ~ idx ~ '_lux')\
+      \ -%}\n    {%- set te   = state_attr(m,'f' ~ idx ~ '_t_ext') -%}\n    {%- set\
+      \ w = cover_weight(cover) | float(0) -%}\n    {%- if w == 0 -%}0\n    {%- else\
+      \ -%}\n      {%- set is_sun = boolish(sun) -%}\n      {%- set ln = (lux_norm(lux)\
+      \ | float(0)) -%}\n      {%- set solar = (1 if is_sun else 0) * ln -%}\n   \
+      \   {%- set t_ext = (states(te) | float(none)) if (te is string and te not in\
+      \ bad) else none -%}\n      {%- if t_ext is none -%}0\n      {%- else -%}\n\
+      \        {%- set d = t_ext - t_int -%}\n        {%- set temp_term = 0 -%}\n\
+      \        {%- if hvac in ['heat','cool'] -%}\n          {%- if d > 0 -%}\n  \
+      \          {%- set temp_term = (-0.10 * w) -%}\n          {%- elif d < 0 -%}\n\
+      \            {%- set temp_term = (0.10 * w) -%}\n          {%- endif -%}\n \
+      \       {%- endif -%}\n        {%- set solar_term = 0 -%}\n        {%- if solar\
+      \ > 0 -%}\n          {%- if hvac == 'heat' -%}\n            {%- if t_int >=\
+      \ (base - margin_heat) -%}\n              {%- set solar_term = (-freno_heat\
+      \ * solar * w) -%}\n            {%- else -%}\n              {%- set solar_term\
+      \ = (gain_heat * solar * w) -%}\n            {%- endif -%}\n          {%- elif\
+      \ hvac == 'cool' -%}\n            {%- set solar_term = (-freno_cool * solar\
+      \ * w) -%}\n          {%- endif -%}\n        {%- endif -%}\n        {{ (temp_term\
+      \ + solar_term) | round(3) }}\n      {%- endif -%}\n    {%- endif -%}\n  {%-\
+      \ endif -%}\n{% endif %}\n"
+  - name: dc_zone01_bias_fachada_2_raw
+    unique_id: dc_zone01_bias_fachada_2_raw
+    unit_of_measurement: °C
+    availability: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set t_int_ent = state_attr(m,'t_int') %} {{ (t_int_ent is string and\
+      \ t_int_ent not in bad)\n   and is_number(states('sensor.dc_zone01_t_int_safe'))\n\
+      \   and (states('sensor.dc_zone01_base_activa') | float(none)) is not none }}\n"
+    state: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set hvac = states('sensor.dc_zone01_hvac_mode') %} {% set base = states('sensor.dc_zone01_base_activa')\
+      \ | float(none) %} {% set t_int = states('sensor.dc_zone01_t_int_safe') | float(none)\
+      \ %} {% if base is none or t_int is none %}\n  {{ none }}\n{% else %}\n  {%\
+      \ set lux_low = states('input_number.dc_zone01_fachada_lux_low') | float(300)\
+      \ %}\n  {% set lux_high = states('input_number.dc_zone01_fachada_lux_high')\
+      \ | float(2800) %}\n  {% set margin_heat = states('input_number.dc_zone01_fachada_solar_margin_heat')\
+      \ | float(0.5) %}\n  {% set gain_heat = states('input_number.dc_zone01_fachada_gain_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_heat = states('input_number.dc_zone01_fachada_freno_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_cool = states('input_number.dc_zone01_fachada_freno_cool_max')\
+      \ | float(0.15) %}\n  {% set w_low = states('input_number.dc_zone01_fachada_w_poco_abierta')\
+      \ | float(0.35) %}\n  {% set w_mid = states('input_number.dc_zone01_fachada_w_entreabierta')\
+      \ | float(0.7) %}\n  {% set w_open = states('input_number.dc_zone01_fachada_w_abierta')\
+      \ | float(1.0) %}\n  {% macro boolish(ent) -%}\n    {%- if ent in bad -%}false\n\
+      \    {%- else -%}\n      {%- set s = (states(ent) | string) | lower -%}\n  \
+      \    {{ s in ['true','on','1','yes'] }}\n    {%- endif -%}\n  {%- endmacro %}\n\
+      \  {% macro cover_weight(ent) -%}\n    {%- if ent in bad -%}0\n    {%- else\
+      \ -%}\n      {%- set p = state_attr(ent,'current_position') -%}\n      {%- set\
+      \ pos = (p | float(none)) -%}\n      {%- if pos is none -%}0\n      {%- elif\
+      \ pos == 0 -%}0.1\n      {%- elif pos <= 20 -%}{{ w_low }}\n      {%- elif pos\
+      \ <= 80 -%}{{ w_mid }}\n      {%- else -%}{{ w_open }}\n      {%- endif -%}\n\
+      \    {%- endif -%}\n  {%- endmacro %}\n  {% macro lux_norm(ent) -%}\n    {%-\
+      \ if ent in bad -%}0\n    {%- else -%}\n      {%- set lx = states(ent) | float(none)\
+      \ -%}\n      {%- if lx is none or lux_high <= lux_low -%}0\n      {%- else -%}\n\
+      \        {%- set n = (lx - lux_low) / (lux_high - lux_low) -%}\n        {{ 0\
+      \ if n < 0 else (1 if n > 1 else n) }}\n      {%- endif -%}\n    {%- endif -%}\n\
+      \  {%- endmacro %}\n  {%- set idx = 2 -%}\n  {%- set en = is_state('binary_sensor.dc_zone01_f'\
+      \ ~ idx ~ '_valida','on') -%}\n  {%- if not en -%}0\n  {%- else -%}\n    {%-\
+      \ set cover = state_attr(m,'f' ~ idx ~ '_cover') -%}\n    {%- set sun  = state_attr(m,'f'\
+      \ ~ idx ~ '_is_in_sun') -%}\n    {%- set lux  = state_attr(m,'f' ~ idx ~ '_lux')\
+      \ -%}\n    {%- set te   = state_attr(m,'f' ~ idx ~ '_t_ext') -%}\n    {%- set\
+      \ w = cover_weight(cover) | float(0) -%}\n    {%- if w == 0 -%}0\n    {%- else\
+      \ -%}\n      {%- set is_sun = boolish(sun) -%}\n      {%- set ln = (lux_norm(lux)\
+      \ | float(0)) -%}\n      {%- set solar = (1 if is_sun else 0) * ln -%}\n   \
+      \   {%- set t_ext = (states(te) | float(none)) if (te is string and te not in\
+      \ bad) else none -%}\n      {%- if t_ext is none -%}0\n      {%- else -%}\n\
+      \        {%- set d = t_ext - t_int -%}\n        {%- set temp_term = 0 -%}\n\
+      \        {%- if hvac in ['heat','cool'] -%}\n          {%- if d > 0 -%}\n  \
+      \          {%- set temp_term = (-0.10 * w) -%}\n          {%- elif d < 0 -%}\n\
+      \            {%- set temp_term = (0.10 * w) -%}\n          {%- endif -%}\n \
+      \       {%- endif -%}\n        {%- set solar_term = 0 -%}\n        {%- if solar\
+      \ > 0 -%}\n          {%- if hvac == 'heat' -%}\n            {%- if t_int >=\
+      \ (base - margin_heat) -%}\n              {%- set solar_term = (-freno_heat\
+      \ * solar * w) -%}\n            {%- else -%}\n              {%- set solar_term\
+      \ = (gain_heat * solar * w) -%}\n            {%- endif -%}\n          {%- elif\
+      \ hvac == 'cool' -%}\n            {%- set solar_term = (-freno_cool * solar\
+      \ * w) -%}\n          {%- endif -%}\n        {%- endif -%}\n        {{ (temp_term\
+      \ + solar_term) | round(3) }}\n      {%- endif -%}\n    {%- endif -%}\n  {%-\
+      \ endif -%}\n{% endif %}\n"
+  - name: dc_zone01_bias_fachada_3_raw
+    unique_id: dc_zone01_bias_fachada_3_raw
+    unit_of_measurement: °C
+    availability: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set t_int_ent = state_attr(m,'t_int') %} {{ (t_int_ent is string and\
+      \ t_int_ent not in bad)\n   and is_number(states('sensor.dc_zone01_t_int_safe'))\n\
+      \   and (states('sensor.dc_zone01_base_activa') | float(none)) is not none }}\n"
+    state: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set hvac = states('sensor.dc_zone01_hvac_mode') %} {% set base = states('sensor.dc_zone01_base_activa')\
+      \ | float(none) %} {% set t_int = states('sensor.dc_zone01_t_int_safe') | float(none)\
+      \ %} {% if base is none or t_int is none %}\n  {{ none }}\n{% else %}\n  {%\
+      \ set lux_low = states('input_number.dc_zone01_fachada_lux_low') | float(300)\
+      \ %}\n  {% set lux_high = states('input_number.dc_zone01_fachada_lux_high')\
+      \ | float(2800) %}\n  {% set margin_heat = states('input_number.dc_zone01_fachada_solar_margin_heat')\
+      \ | float(0.5) %}\n  {% set gain_heat = states('input_number.dc_zone01_fachada_gain_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_heat = states('input_number.dc_zone01_fachada_freno_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_cool = states('input_number.dc_zone01_fachada_freno_cool_max')\
+      \ | float(0.15) %}\n  {% set w_low = states('input_number.dc_zone01_fachada_w_poco_abierta')\
+      \ | float(0.35) %}\n  {% set w_mid = states('input_number.dc_zone01_fachada_w_entreabierta')\
+      \ | float(0.7) %}\n  {% set w_open = states('input_number.dc_zone01_fachada_w_abierta')\
+      \ | float(1.0) %}\n  {% macro boolish(ent) -%}\n    {%- if ent in bad -%}false\n\
+      \    {%- else -%}\n      {%- set s = (states(ent) | string) | lower -%}\n  \
+      \    {{ s in ['true','on','1','yes'] }}\n    {%- endif -%}\n  {%- endmacro %}\n\
+      \  {% macro cover_weight(ent) -%}\n    {%- if ent in bad -%}0\n    {%- else\
+      \ -%}\n      {%- set p = state_attr(ent,'current_position') -%}\n      {%- set\
+      \ pos = (p | float(none)) -%}\n      {%- if pos is none -%}0\n      {%- elif\
+      \ pos == 0 -%}0.1\n      {%- elif pos <= 20 -%}{{ w_low }}\n      {%- elif pos\
+      \ <= 80 -%}{{ w_mid }}\n      {%- else -%}{{ w_open }}\n      {%- endif -%}\n\
+      \    {%- endif -%}\n  {%- endmacro %}\n  {% macro lux_norm(ent) -%}\n    {%-\
+      \ if ent in bad -%}0\n    {%- else -%}\n      {%- set lx = states(ent) | float(none)\
+      \ -%}\n      {%- if lx is none or lux_high <= lux_low -%}0\n      {%- else -%}\n\
+      \        {%- set n = (lx - lux_low) / (lux_high - lux_low) -%}\n        {{ 0\
+      \ if n < 0 else (1 if n > 1 else n) }}\n      {%- endif -%}\n    {%- endif -%}\n\
+      \  {%- endmacro %}\n  {%- set idx = 3 -%}\n  {%- set en = is_state('binary_sensor.dc_zone01_f'\
+      \ ~ idx ~ '_valida','on') -%}\n  {%- if not en -%}0\n  {%- else -%}\n    {%-\
+      \ set cover = state_attr(m,'f' ~ idx ~ '_cover') -%}\n    {%- set sun  = state_attr(m,'f'\
+      \ ~ idx ~ '_is_in_sun') -%}\n    {%- set lux  = state_attr(m,'f' ~ idx ~ '_lux')\
+      \ -%}\n    {%- set te   = state_attr(m,'f' ~ idx ~ '_t_ext') -%}\n    {%- set\
+      \ w = cover_weight(cover) | float(0) -%}\n    {%- if w == 0 -%}0\n    {%- else\
+      \ -%}\n      {%- set is_sun = boolish(sun) -%}\n      {%- set ln = (lux_norm(lux)\
+      \ | float(0)) -%}\n      {%- set solar = (1 if is_sun else 0) * ln -%}\n   \
+      \   {%- set t_ext = (states(te) | float(none)) if (te is string and te not in\
+      \ bad) else none -%}\n      {%- if t_ext is none -%}0\n      {%- else -%}\n\
+      \        {%- set d = t_ext - t_int -%}\n        {%- set temp_term = 0 -%}\n\
+      \        {%- if hvac in ['heat','cool'] -%}\n          {%- if d > 0 -%}\n  \
+      \          {%- set temp_term = (-0.10 * w) -%}\n          {%- elif d < 0 -%}\n\
+      \            {%- set temp_term = (0.10 * w) -%}\n          {%- endif -%}\n \
+      \       {%- endif -%}\n        {%- set solar_term = 0 -%}\n        {%- if solar\
+      \ > 0 -%}\n          {%- if hvac == 'heat' -%}\n            {%- if t_int >=\
+      \ (base - margin_heat) -%}\n              {%- set solar_term = (-freno_heat\
+      \ * solar * w) -%}\n            {%- else -%}\n              {%- set solar_term\
+      \ = (gain_heat * solar * w) -%}\n            {%- endif -%}\n          {%- elif\
+      \ hvac == 'cool' -%}\n            {%- set solar_term = (-freno_cool * solar\
+      \ * w) -%}\n          {%- endif -%}\n        {%- endif -%}\n        {{ (temp_term\
+      \ + solar_term) | round(3) }}\n      {%- endif -%}\n    {%- endif -%}\n  {%-\
+      \ endif -%}\n{% endif %}\n"
+  - name: dc_zone01_bias_fachadas_raw
+    unique_id: dc_zone01_bias_fachadas_raw
+    unit_of_measurement: °C
+    availability: "{% set bad = [none,'unknown','unavailable',''] %} {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %} {% set t_int_ent = state_attr(m,'t_int') %} {{ (t_int_ent is string and\
+      \ t_int_ent not in bad)\n   and is_number(states('sensor.dc_zone01_t_int_safe'))\n\
+      \   and (states('sensor.dc_zone01_base_activa') | float(none)) is not none }}\n"
+    state: "{# Helpers #} {% set bad = [none,'unknown','unavailable',''] %} {% set\
+      \ m = 'sensor.dc_zone01_hw_map' %}\n{% set hvac = states('sensor.dc_zone01_hvac_mode')\
+      \ %} {% set base = states('sensor.dc_zone01_base_activa') | float(none) %}\n\
+      {% set t_int = states('sensor.dc_zone01_t_int_safe') | float(none) %}\n{% if\
+      \ base is none or t_int is none %}\n  {{ none }}\n{% else %}\n\n  {% set lux_low\
+      \ = states('input_number.dc_zone01_fachada_lux_low') | float(300) %}\n  {% set\
+      \ lux_high = states('input_number.dc_zone01_fachada_lux_high') | float(2800)\
+      \ %}\n  {% set margin_heat = states('input_number.dc_zone01_fachada_solar_margin_heat')\
+      \ | float(0.5) %}\n\n  {% set gain_heat = states('input_number.dc_zone01_fachada_gain_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_heat = states('input_number.dc_zone01_fachada_freno_heat_max')\
+      \ | float(0.15) %}\n  {% set freno_cool = states('input_number.dc_zone01_fachada_freno_cool_max')\
+      \ | float(0.15) %}\n\n  {% set w_low = states('input_number.dc_zone01_fachada_w_poco_abierta')\
+      \ | float(0.35) %}\n  {% set w_mid = states('input_number.dc_zone01_fachada_w_entreabierta')\
+      \ | float(0.7) %}\n  {% set w_open = states('input_number.dc_zone01_fachada_w_abierta')\
+      \ | float(1.0) %}\n\n  {% macro boolish(ent) -%}\n    {%- if ent in bad -%}false\n\
+      \    {%- else -%}\n      {%- set s = (states(ent) | string) | lower -%}\n  \
+      \    {{ s in ['true','on','1','yes'] }}\n    {%- endif -%}\n  {%- endmacro %}\n\
+      \n  {% macro cover_weight(ent) -%}\n    {%- if ent in bad -%}0\n    {%- else\
+      \ -%}\n      {%- set p = state_attr(ent,'current_position') -%}\n      {%- set\
+      \ pos = (p | float(none)) -%}\n      {%- if pos is none -%}0\n      {%- elif\
+      \ pos == 0 -%}0.1\n      {%- elif pos <= 20 -%}{{ w_low }}\n      {%- elif pos\
+      \ <= 80 -%}{{ w_mid }}\n      {%- else -%}{{ w_open }}\n      {%- endif -%}\n\
+      \    {%- endif -%}\n  {%- endmacro %}\n\n  {% macro lux_norm(ent) -%}\n    {%-\
+      \ if ent in bad -%}0\n    {%- else -%}\n      {%- set lx = states(ent) | float(none)\
+      \ -%}\n      {%- if lx is none or lux_high <= lux_low -%}0\n      {%- else -%}\n\
+      \        {%- set n = (lx - lux_low) / (lux_high - lux_low) -%}\n        {{ 0\
+      \ if n < 0 else (1 if n > 1 else n) }}\n      {%- endif -%}\n    {%- endif -%}\n\
+      \  {%- endmacro %}\n\n  {% macro fachada_bias(idx) -%}\n    {%- set en = is_state('binary_sensor.dc_zone01_f'\
+      \ ~ idx ~ '_valida','on') -%}\n    {%- if not en -%}0\n    {%- else -%}\n  \
+      \    {%- set cover = state_attr(m,'f' ~ idx ~ '_cover') -%}\n      {%- set sun\
+      \  = state_attr(m,'f' ~ idx ~ '_is_in_sun') -%}\n      {%- set lux  = state_attr(m,'f'\
+      \ ~ idx ~ '_lux') -%}\n      {%- set te   = state_attr(m,'f' ~ idx ~ '_t_ext')\
+      \ -%}\n\n      {%- set w = cover_weight(cover) | float(0) -%}\n      {%- if\
+      \ w == 0 -%}0\n      {%- else -%}\n        {%- set is_sun = boolish(sun) -%}\n\
+      \        {%- set ln = (lux_norm(lux) | float(0)) -%}\n        {%- set solar\
+      \ = (1 if is_sun else 0) * ln -%}\n\n        {# t_ext es opcional por fachada:\
+      \ si falta, esa fachada NO aporta #}\n        {%- set t_ext = (states(te) |\
+      \ float(none)) if (te is string and te not in bad) else none -%}\n        {%-\
+      \ if t_ext is none -%}0\n        {%- else -%}\n          {%- set d = t_ext -\
+      \ t_int -%}\n\n          {# Parte A: efecto por temperatura exterior vs interior\
+      \ (sin sol) #}\n          {%- set temp_term = 0 -%}\n          {%- if hvac in\
+      \ ['heat','cool'] -%}\n            {%- if d > 0 -%}\n              {%- set temp_term\
+      \ = (-0.10 * w) -%}\n            {%- elif d < 0 -%}\n              {%- set temp_term\
+      \ = (0.10 * w) -%}\n            {%- else -%}\n              {%- set temp_term\
+      \ = 0 -%}\n            {%- endif -%}\n          {%- endif -%}\n\n          {#\
+      \ Parte B: efecto solar (con freno si vamos cerca / por encima de base) #}\n\
+      \          {%- set solar_term = 0 -%}\n          {%- if solar > 0 -%}\n    \
+      \        {%- if hvac == 'heat' -%}\n              {%- if t_int >= (base - margin_heat)\
+      \ -%}\n                {%- set solar_term = (-freno_heat * solar * w) -%}\n\
+      \              {%- else -%}\n                {%- set solar_term = (gain_heat\
+      \ * solar * w) -%}\n              {%- endif -%}\n            {%- elif hvac ==\
+      \ 'cool' -%}\n              {%- set solar_term = (-freno_cool * solar * w) -%}\n\
+      \            {%- endif -%}\n          {%- endif -%}\n\n          {{ (temp_term\
+      \ + solar_term) | round(3) }}\n        {%- endif -%}\n      {%- endif -%}\n\
+      \    {%- endif -%}\n  {%- endmacro %}\n\n  {% set max_abs = states('input_number.dc_zone01_fachada_bias_max_abs')\
+      \ | float(0.20) %}\n\n  {% set b1r = fachada_bias(1) | float(0) %}\n  {% set\
+      \ b2r = fachada_bias(2) | float(0) %}\n  {% set b3r = fachada_bias(3) | float(0)\
+      \ %}\n\n  {% set b1 = (max_abs if b1r >  max_abs else (-max_abs if b1r < -max_abs\
+      \ else b1r)) %}\n  {% set b2 = (max_abs if b2r >  max_abs else (-max_abs if\
+      \ b2r < -max_abs else b2r)) %}\n  {% set b3 = (max_abs if b3r >  max_abs else\
+      \ (-max_abs if b3r < -max_abs else b3r)) %}\n\n  {{ (b1 + b2 + b3) | round(3)\
+      \ }}\n\n{% endif %}\n"
+  - name: dc_zone01_forecast_window_h_raw
+    unique_id: dc_zone01_forecast_window_h_raw
+    unit_of_measurement: h
+    availability: '{% set man = states(''input_number.dc_zone01_forecast_window_h'')
+      %} {{ man not in [''unknown'',''unavailable'',''none'',''''] }}
+
+      '
+    state_class: measurement
+    state: "{% set auto = is_state('input_boolean.dc_zone01_forecast_window_auto','on')\
+      \ %} {% set man  = states('input_number.dc_zone01_forecast_window_h') | float(none)\
+      \ %} {% set lag  = states('input_number.dc_zone01_learned_thermal_lag_h') |\
+      \ float(none) %} {% set k    = states('input_number.dc_zone01_forecast_window_k')\
+      \ | float(1.0) %} {% set k = [k, 0.1] | max %} {% set wmin = states('input_number.dc_zone01_forecast_window_min_h')\
+      \ | float(2.0) %} {% set wmax = states('input_number.dc_zone01_forecast_window_max_h')\
+      \ | float(8.0) %} {% if not auto or lag is none or lag <= 0 or man is none %}\n\
+      \  {{ man | float(0) | round(2) }}\n{% else %}\n  {% set w = (lag * k) %}\n\
+      \  {{ [wmin, [w, wmax] | min] | max | round(2) }}\n{% endif %}\n"
+  - name: dc_zone01_bias_forecast_raw
+    unique_id: dc_zone01_bias_forecast_raw
+    unit_of_measurement: °C
+    availability: "{% if is_state('input_boolean.dc_zone01_forecast_enabled','off')\
+      \ %}\n  {{ true }}\n{% else %}\n  {% set hv = states('sensor.dc_zone01_hvac_mode')\
+      \ %}\n  {% set t_ext = states('sensor.dc_zone01_t_ext_safe') %}\n  {% set ent\
+      \ = state_attr('sensor.dc_zone01_hw_map','forecast_entity') %}\n  {% set h =\
+      \ state_attr(ent,'hourly') if ent else none %}\n  {% set ok_h = (h is mapping\
+      \ and (h.time is sequence) and (h.temperature_2m is sequence)) %}\n  {% set\
+      \ gain = states('input_number.dc_zone01_bias_forecast_gain') %}\n  {% set cap\
+      \  = states('input_number.dc_zone01_bias_forecast_cap') %}\n  {{ hv in ['heat','cool']\
+      \ and t_ext not in ['unknown','unavailable','none',''] and ok_h and gain not\
+      \ in ['unknown','unavailable','none',''] and cap not in ['unknown','unavailable','none','']\
+      \ }}\n{% endif %}\n"
+    state_class: measurement
+    state: "{% if is_state('input_boolean.dc_zone01_forecast_enabled','off') %}\n\
+      \  {{ 0 }}\n{% else %}\n  {% set hv = states('sensor.dc_zone01_hvac_mode') %}\n\
+      \  {% if hv not in ['heat','cool'] %}\n    {{ 0 }}\n  {% else %}\n    {% set\
+      \ t_ext = states('sensor.dc_zone01_t_ext_safe') | float(none) %}\n    {% if\
+      \ t_ext is none %}\n      {{ 0 }}\n    {% else %}\n      {% set m = 'sensor.dc_zone01_hw_map'\
+      \ %}\n      {% set ent = state_attr(m,'forecast_entity') %}\n      {% set h\
+      \ = state_attr(ent,'hourly') %}\n      {% if h is not mapping %}\n        {{\
+      \ 0 }}\n      {% else %}\n        {% set times = h.time if (h.time is sequence)\
+      \ else none %}\n        {% set temps = h.temperature_2m if (h.temperature_2m\
+      \ is sequence) else none %}\n        {% if not times or not temps %}\n     \
+      \     {{ 0 }}\n        {% else %}\n          {% set auto_win = is_state('input_boolean.dc_zone01_forecast_window_auto','on')\
+      \ %}\n          {% set win_h = (states('sensor.dc_zone01_forecast_window_h_ema')\
+      \ if auto_win else states('input_number.dc_zone01_forecast_window_h')) | float(none)\
+      \ %}\n          {% set gain = states('input_number.dc_zone01_bias_forecast_gain')\
+      \ | float(none) %}\n          {% set cap  = states('input_number.dc_zone01_bias_forecast_cap')\
+      \  | float(none) %}\n          {% if win_h is none or gain is none or cap is\
+      \ none %}\n            {{ 0 }}\n          {% else %}\n            {% set now_ts\
+      \ = as_timestamp(now()) %}\n            {% set end_ts = now_ts + win_h*3600\
+      \ %}\n            {% set n = [times|count, temps|count] | min %}\n         \
+      \   {% if n == 0 %}\n              {{ 0 }}\n            {% else %}\n       \
+      \       {% set pick = namespace(val=none) %}\n\n              {# init con primer\
+      \ valor válido dentro de ventana #}\n              {% for i in range(0, n) %}\n\
+      \                {% set ts = as_timestamp(times[i], default=none) %}\n     \
+      \           {% set tv = temps[i] | float(none) %}\n                {% if pick.val\
+      \ is none and ts is not none and tv is not none and ts >= now_ts and ts <= end_ts\
+      \ %}\n                  {% set pick.val = tv %}\n                {% endif %}\n\
+      \              {% endfor %}\n\n              {% if pick.val is none %}\n   \
+      \             {{ 0 }}\n              {% else %}\n                {# max para\
+      \ heat, min para cool #}\n                {% for i in range(0, n) %}\n     \
+      \             {% set ts = as_timestamp(times[i], default=none) %}\n        \
+      \          {% set tv = temps[i] | float(none) %}\n                  {% if ts\
+      \ is not none and tv is not none and ts >= now_ts and ts <= end_ts %}\n    \
+      \                {% if hv == 'heat' and tv > pick.val %}\n                 \
+      \     {% set pick.val = tv %}\n                    {% elif hv == 'cool' and\
+      \ tv < pick.val %}\n                      {% set pick.val = tv %}\n        \
+      \            {% endif %}\n                  {% endif %}\n                {%\
+      \ endfor %}\n\n                {% set dT = (pick.val - t_ext) %}\n         \
+      \       {# solo freno: heat solo si dT>0, cool solo si dT<0 #}\n           \
+      \     {% if (hv == 'heat' and dT <= 0) or (hv == 'cool' and dT >= 0) %}\n  \
+      \                {{ 0 }}\n                {% else %}\n                  {% set\
+      \ raw = 0 - (dT * gain) %}\n                  {% set out = [raw, cap] | min\
+      \ | max(0 - cap) %}\n                  {{ out | round(2) }}\n              \
+      \  {% endif %}\n              {% endif %}\n            {% endif %}\n       \
+      \   {% endif %}\n        {% endif %}\n      {% endif %}\n    {% endif %}\n \
+      \ {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_forecast_t_now
+    unique_id: dc_zone01_forecast_t_now
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    availability: "{{ is_state('input_boolean.dc_zone01_forecast_enabled','on')\n\
+      \   and states('sensor.dc_zone01_hvac_mode') in ['heat','cool']\n   and is_number(states('sensor.dc_zone01_t_ext_safe'))\
+      \ }}\n"
+    state: "{% set hv = states('sensor.dc_zone01_hvac_mode') %} {% set t_ext = states('sensor.dc_zone01_t_ext_safe')\
+      \ | float(none) %} {% if t_ext is none %}\n  {{ none }}\n{% else %}\n  {% set\
+      \ m = 'sensor.dc_zone01_hw_map' %}\n  {% set ent = state_attr(m,'forecast_entity')\
+      \ %}\n  {% set h = state_attr(ent,'hourly') %}\n  {% if h is not mapping %}\n\
+      \    {{ none }}\n  {% else %}\n    {% set times = h.time if (h.time is sequence)\
+      \ else none %}\n    {% set temps = h.temperature_2m if (h.temperature_2m is\
+      \ sequence) else none %}\n    {% if not times or not temps %}\n      {{ none\
+      \ }}\n    {% else %}\n      {% set win_h = states('input_number.dc_zone01_forecast_window_h')\
+      \ | float(none) %}\n      {% if win_h is none %}\n        {{ none }}\n     \
+      \ {% else %}\n        {% set now_ts = as_timestamp(now()) %}\n        {% set\
+      \ end_ts = now_ts + win_h*3600 %}\n        {% set n = [times|count, temps|count]\
+      \ | min %}\n        {% if n == 0 %}\n          {{ none }}\n        {% else %}\n\
+      \          {% set pick = namespace(val=none) %}\n          {% for i in range(0,\
+      \ n) %}\n            {% set ts = as_timestamp(times[i], default=none) %}\n \
+      \           {% set tv = temps[i] | float(none) %}\n            {% if pick.val\
+      \ is none and ts is not none and tv is not none and ts >= now_ts and ts <= end_ts\
+      \ %}\n              {% set pick.val = tv %}\n            {% endif %}\n     \
+      \     {% endfor %}\n          {{ pick.val }}\n        {% endif %}\n      {%\
+      \ endif %}\n    {% endif %}\n  {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_forecast_t_peak
+    unique_id: dc_zone01_forecast_t_peak
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    availability: "{{ is_state('input_boolean.dc_zone01_forecast_enabled','on')\n\
+      \   and states('sensor.dc_zone01_hvac_mode') in ['heat','cool']\n   and is_number(states('sensor.dc_zone01_t_ext_safe'))\
+      \ }}\n"
+    state: "{% set hv = states('sensor.dc_zone01_hvac_mode') %} {% set t_ext = states('sensor.dc_zone01_t_ext_safe')\
+      \ | float(none) %} {% if t_ext is none %}\n  {{ none }}\n{% else %}\n  {% set\
+      \ m = 'sensor.dc_zone01_hw_map' %}\n  {% set ent = state_attr(m,'forecast_entity')\
+      \ %}\n  {% set h = state_attr(ent,'hourly') %}\n  {% if h is not mapping %}\n\
+      \    {{ none }}\n  {% else %}\n    {% set times = h.time if (h.time is sequence)\
+      \ else none %}\n    {% set temps = h.temperature_2m if (h.temperature_2m is\
+      \ sequence) else none %}\n    {% if not times or not temps %}\n      {{ none\
+      \ }}\n    {% else %}\n      {% set win_h = states('input_number.dc_zone01_forecast_window_h')\
+      \ | float(none) %}\n      {% if win_h is none %}\n        {{ none }}\n     \
+      \ {% else %}\n        {% set now_ts = as_timestamp(now()) %}\n        {% set\
+      \ end_ts = now_ts + win_h*3600 %}\n        {% set n = [times|count, temps|count]\
+      \ | min %}\n        {% if n == 0 %}\n          {{ none }}\n        {% else %}\n\
+      \          {% set pick = namespace(val=none) %}\n\n          {# init con primer\
+      \ valor válido #}\n          {% for i in range(0, n) %}\n            {% set\
+      \ ts = as_timestamp(times[i], default=none) %}\n            {% set tv = temps[i]\
+      \ | float(none) %}\n            {% if pick.val is none and ts is not none and\
+      \ tv is not none and ts >= now_ts and ts <= end_ts %}\n              {% set\
+      \ pick.val = tv %}\n            {% endif %}\n          {% endfor %}\n\n    \
+      \      {% if pick.val is none %}\n            {{ none }}\n          {% else\
+      \ %}\n            {% for i in range(0, n) %}\n              {% set ts = as_timestamp(times[i],\
+      \ default=none) %}\n              {% set tv = temps[i] | float(none) %}\n  \
+      \            {% if ts is not none and tv is not none and ts >= now_ts and ts\
+      \ <= end_ts %}\n                {% if hv == 'heat' and tv > pick.val %}\n  \
+      \                {% set pick.val = tv %}\n                {% elif hv == 'cool'\
+      \ and tv < pick.val %}\n                  {% set pick.val = tv %}\n        \
+      \        {% endif %}\n              {% endif %}\n            {% endfor %}\n\
+      \            {{ pick.val }}\n          {% endif %}\n        {% endif %}\n  \
+      \    {% endif %}\n    {% endif %}\n  {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_forecast_dt
+    unique_id: dc_zone01_forecast_dt
+    unit_of_measurement: °C
+    state_class: measurement
+    availability: "{{ is_number(states('sensor.dc_zone01_forecast_t_peak'))\n   and\
+      \ is_number(states('sensor.dc_zone01_t_ext_safe')) }}\n"
+    state: "{% set peak = states('sensor.dc_zone01_forecast_t_peak') | float(none)\
+      \ %} {% set t_ext = states('sensor.dc_zone01_t_ext_safe') | float(none) %} {%\
+      \ if peak is none or t_ext is none %}\n  {{ none }}\n{% else %}\n  {{ (peak\
+      \ - t_ext) | round(2) }}\n{% endif %}\n"
+  - name: dc_zone01_bias_forecast_reason
+    unique_id: dc_zone01_bias_forecast_reason
+    state: "{% if is_state('input_boolean.dc_zone01_forecast_enabled','off') %}\n\
+      \  OFF: forecast disabled\n{% else %}\n  {% set hv = states('sensor.dc_zone01_hvac_mode')\
+      \ %}\n  {% if hv not in ['heat','cool'] %}\n    OFF: hvac_mode={{ hv }}\n  {%\
+      \ else %}\n    {% set t_ext = states('sensor.dc_zone01_t_ext_safe') | float(none)\
+      \ %}\n    {% if t_ext is none %}\n      OFF: sin T_ext_safe\n    {% else %}\n\
+      \      {% set m = 'sensor.dc_zone01_hw_map' %}\n      {% set ent = state_attr(m,'forecast_entity')\
+      \ %}\n      {% if not ent %}\n        OFF: forecast_entity vacío en HW map\n\
+      \      {% else %}\n        {% set h = state_attr(ent,'hourly') %}\n        {%\
+      \ if h is not mapping %}\n          OFF: hourly inválido (no mapping)\n    \
+      \    {% else %}\n          {% set times = h.time if (h.time is sequence) else\
+      \ none %}\n          {% set temps = h.temperature_2m if (h.temperature_2m is\
+      \ sequence) else none %}\n          {% if not times or not temps %}\n      \
+      \      OFF: hourly.time/temperature_2m inválidos\n          {% else %}\n   \
+      \         {% set win_h = states('input_number.dc_zone01_forecast_window_h')\
+      \ | float(none) %}\n            {% set gain = states('input_number.dc_zone01_bias_forecast_gain')\
+      \ | float(none) %}\n            {% set cap  = states('input_number.dc_zone01_bias_forecast_cap')\
+      \  | float(none) %}\n            {% if win_h is none or gain is none or cap\
+      \ is none %}\n              OFF: parámetros win/gain/cap inválidos\n       \
+      \     {% else %}\n              {% set peak = states('sensor.dc_zone01_forecast_t_peak')\
+      \ | float(none) %}\n              {% if peak is none %}\n                OFF:\
+      \ sin datos en ventana (win={{ win_h|round(2) }}h)\n              {% else %}\n\
+      \                {% set dT = (peak - t_ext) %}\n                {% if (hv ==\
+      \ 'heat' and dT <= 0) %}\n                  OFF: heat pero no sube (ΔT={{ dT|round(2)\
+      \ }}°C)\n                {% elif (hv == 'cool' and dT >= 0) %}\n           \
+      \       OFF: cool pero no baja (ΔT={{ dT|round(2) }}°C)\n                {%\
+      \ else %}\n                  {% set raw = 0 - (dT * gain) %}\n             \
+      \     {% set out = [raw, cap] | min | max(0 - cap) %}\n                  ON:\
+      \ {{ hv }} | win={{ win_h|round(2) }}h | ΔT={{ dT|round(2) }}°C → raw={{ raw|round(2)\
+      \ }}°C → cap={{ out|round(2) }}°C\n                {% endif %}\n           \
+      \   {% endif %}\n            {% endif %}\n          {% endif %}\n        {%\
+      \ endif %}\n      {% endif %}\n    {% endif %}\n  {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_forecast_peak_temp
+    unique_id: dc_zone01_forecast_peak_temp
+    unit_of_measurement: °C
+    availability: "{% if is_state('input_boolean.dc_zone01_forecast_enabled','off')\
+      \ %}\n  {{ true }}\n{% else %}\n  {% set hv = states('sensor.dc_zone01_hvac_mode')\
+      \ %}\n  {% set ent = state_attr('sensor.dc_zone01_hw_map','forecast_entity')\
+      \ %}\n  {% set h = state_attr(ent,'hourly') if ent else none %}\n  {{ hv in\
+      \ ['heat','cool'] and (h is mapping) }}\n{% endif %}\n"
+    device_class: temperature
+    state_class: measurement
+    state: "{% if is_state('input_boolean.dc_zone01_forecast_enabled','off') %}\n\
+      \  {{ 0 }}\n{% else %}\n  {% set hv = states('sensor.dc_zone01_hvac_mode') %}\n\
+      \  {% if hv not in ['heat','cool'] %}\n    {{ 0 }}\n  {% else %}\n    {% set\
+      \ m = 'sensor.dc_zone01_hw_map' %}\n    {% set ent = state_attr(m,'forecast_entity')\
+      \ %}\n    {% set h = state_attr(ent,'hourly') %}\n    {% if h is not mapping\
+      \ %}\n      {{ 0 }}\n    {% else %}\n      {% set times = h.time if (h.time\
+      \ is sequence) else none %}\n      {% set temps = h.temperature_2m if (h.temperature_2m\
+      \ is sequence) else none %}\n      {% set auto_win = is_state('input_boolean.dc_zone01_forecast_window_auto','on')\
+      \ %}\n          {% set win_h = (states('sensor.dc_zone01_forecast_window_h_ema')\
+      \ if auto_win else states('input_number.dc_zone01_forecast_window_h')) | float(none)\
+      \ %}\n      {% if not times or not temps or win_h is none %}\n        {{ 0 }}\n\
+      \      {% else %}\n        {% set now_ts = as_timestamp(now()) %}\n        {%\
+      \ set end_ts = now_ts + win_h*3600 %}\n        {% set n = [times|count, temps|count]\
+      \ | min %}\n        {% set pick = namespace(val=none) %}\n        {% for i in\
+      \ range(0, n) %}\n          {% set ts = as_timestamp(times[i], default=none)\
+      \ %}\n          {% set tv = temps[i] | float(none) %}\n          {% if pick.val\
+      \ is none and ts is not none and tv is not none and ts >= now_ts and ts <= end_ts\
+      \ %}\n            {% set pick.val = tv %}\n          {% endif %}\n        {%\
+      \ endfor %}\n        {% if pick.val is none %}\n          {{ 0 }}\n        {%\
+      \ else %}\n          {% for i in range(0, n) %}\n            {% set ts = as_timestamp(times[i],\
+      \ default=none) %}\n            {% set tv = temps[i] | float(none) %}\n    \
+      \        {% if ts is not none and tv is not none and ts >= now_ts and ts <=\
+      \ end_ts %}\n              {% if hv == 'heat' and tv > pick.val %}\n       \
+      \         {% set pick.val = tv %}\n              {% elif hv == 'cool' and tv\
+      \ < pick.val %}\n                {% set pick.val = tv %}\n              {% endif\
+      \ %}\n            {% endif %}\n          {% endfor %}\n          {{ pick.val\
+      \ | round(2) }}\n        {% endif %}\n      {% endif %}\n    {% endif %}\n \
+      \ {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_max_mods_total_cool
+    unique_id: dc_zone01_max_mods_total_cool
+    unit_of_measurement: °C
+    state: '{{ states(''input_number.dc_zone01_max_mods_total_cool'') | float(0.8)
+      | round(2) }}'
+  - name: dc_zone01_mods_catalog
+    unique_id: dc_zone01_mods_catalog
+    state: ok
+    attributes:
+      mods: "{{\n  [\n    ['bias_exterior_raw','sensor.dc_zone01_bias_exterior_raw'],\n\
+        \    ['bias_fachadas_raw','sensor.dc_zone01_bias_fachadas_raw'],\n    ['bias_vmc','sensor.dc_zone01_bias_vmc'],\n\
+        \    ['bias_forecast_ema','sensor.dc_zone01_bias_forecast_ema'],\n    ['tendencia_efectiva','sensor.dc_zone01_tendencia_efectiva'],\n\
+        \    ['freno_tendencia','sensor.dc_zone01_freno_tendencia']\n  ]\n}}"
+      mods_count_total: 6
+  - name: dc_zone01_mods_total_raw
+    unique_id: dc_zone01_mods_total_raw
+    unit_of_measurement: °C
+    availability: "{% set mods = state_attr('sensor.dc_zone01_mods_catalog','mods')\
+      \ or [] %} {% set ns = namespace(ok=0) %} {% for _n, e in mods %}\n  {% set\
+      \ v = states(e) | float(none) %}\n  {% if v is not none %}\n    {% set ns.ok\
+      \ = ns.ok + 1 %}\n  {% endif %}\n{% endfor %} {{ ns.ok > 0 }}"
+    state: "{% set mods = state_attr('sensor.dc_zone01_mods_catalog','mods') or []\
+      \ %} {% set ns = namespace(sum=0.0, ok=0, missing=[]) %} {% for n, e in mods\
+      \ %}\n  {% set v = states(e) | float(none) %}\n  {% if v is none %}\n    {%\
+      \ set ns.missing = ns.missing + [n] %}\n  {% else %}\n    {% set ns.sum = ns.sum\
+      \ + v %}\n    {% set ns.ok = ns.ok + 1 %}\n  {% endif %}\n{% endfor %} {% if\
+      \ ns.ok == 0 %}\n  {{ none }}\n{% else %}\n  {{ ns.sum | round(2) }}\n{% endif\
+      \ %}"
+    attributes:
+      missing_mods: "{% set mods = state_attr('sensor.dc_zone01_mods_catalog','mods')\
+        \ or [] %} {% set ns = namespace(missing=[]) %} {% for n, e in mods %}\n \
+        \ {% if (states(e) | float(none)) is none %}\n    {% set ns.missing = ns.missing\
+        \ + [n] %}\n  {% endif %}\n{% endfor %} {{ ns.missing }}"
+      sum_partial: "{% set mods = state_attr('sensor.dc_zone01_mods_catalog','mods')\
+        \ or [] %} {% set ns = namespace(ok=0) %} {% for _n, e in mods %}\n  {% if\
+        \ (states(e) | float(none)) is not none %}\n    {% set ns.ok = ns.ok + 1 %}\n\
+        \  {% endif %}\n{% endfor %} {{ ns.ok > 0 and ns.ok < (mods | count) }}"
+      mods_count_ok: "{% set mods = state_attr('sensor.dc_zone01_mods_catalog','mods')\
+        \ or [] %} {% set ns = namespace(ok=0) %} {% for _n, e in mods %}\n  {% if\
+        \ (states(e) | float(none)) is not none %}\n    {% set ns.ok = ns.ok + 1 %}\n\
+        \  {% endif %}\n{% endfor %} {{ ns.ok }}"
+      mods_count_total: '{{ state_attr(''sensor.dc_zone01_mods_catalog'',''mods_count_total'')
+        | int(0) }}'
+  - name: dc_zone01_mods_total_limited
+    unique_id: dc_zone01_mods_total_limited
+    unit_of_measurement: °C
+    availability: '{% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'')
+      %} {% set raw = states(''sensor.dc_zone01_mods_total_raw'') %} {{ clim and states(clim)
+      not in [''unknown'',''unavailable'',''none'',''''] and raw not in [''unknown'',''unavailable'',''none'','''']
+      }}
+
+      '
+    state: '{% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'') %} {%
+      set hvac = states(clim) %} {% set raw  = states(''sensor.dc_zone01_mods_total_raw'')
+      | float(0) %} {% set lim_h = states(''input_number.dc_zone01_max_mods_total_heat'')
+      | float(0.8) %} {% set lim_c = states(''input_number.dc_zone01_max_mods_total_cool'')
+      | float(0.8) %} {% set lim = lim_h if hvac == ''heat'' else lim_c %} {{ [ -lim,
+      [ raw, lim ] | min ] | max | round(2) }}
+
+      '
+  - name: dc_zone01_target_raw
+    unique_id: dc_zone01_target_raw
+    unit_of_measurement: °C
+    availability: '{% set base = states(''sensor.dc_zone01_base_activa'') %} {% set
+      mods = states(''sensor.dc_zone01_mods_total_raw'') %} {{ base not in [''unknown'',''unavailable'',''none'','''']
+      and mods not in [''unknown'',''unavailable'',''none'',''''] }}
+
+      '
+    state: '{% set base = states(''sensor.dc_zone01_base_activa'') | float(0) %} {%
+      set mods = states(''sensor.dc_zone01_mods_total_raw'') | float(0) %} {{ (base
+      + mods) | round(2) }}
+
+      '
+  - name: dc_zone01_target_limitado
+    unique_id: dc_zone01_target_limitado
+    unit_of_measurement: °C
+    availability: '{% set base = states(''sensor.dc_zone01_base_activa'') %} {% set
+      mods = states(''sensor.dc_zone01_mods_total_limited'') %} {{ base not in [''unknown'',''unavailable'',''none'','''']
+      and mods not in [''unknown'',''unavailable'',''none'',''''] }}
+
+      '
+    state: '{% set base = states(''sensor.dc_zone01_base_activa'') | float(0) %} {%
+      set mods = states(''sensor.dc_zone01_mods_total_limited'') | float(0) %} {{
+      (base + mods) | round(2) }}
+
+      '
+  - name: dc_zone01_target_final
+    unique_id: dc_zone01_target_final
+    unit_of_measurement: °C
+    availability: '{% set t = states(''sensor.dc_zone01_target_limitado'') | float(none)
+      %} {% set clim = state_attr(''sensor.dc_zone01_hw_map'',''climate'') %} {{ t
+      is not none and clim and states(clim) not in [''unknown'',''unavailable'',''none'','''']
+      }}
+
+      '
+    state: "{% set m = 'sensor.dc_zone01_hw_map' %} {% set clim = state_attr(m,'climate')\
+      \ %} {% set hvac = states(clim) %} {% set vac_ent = state_attr(m,'modo_vacaciones')\
+      \ %} {% set vac = (is_state(vac_ent,'on') if vac_ent else false) %} {% set t\
+      \ = states('sensor.dc_zone01_target_limitado') | float(none) %} {% if t is none\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set bias_sdhb = states('sensor.dc_zone01_sdhb_bias_c')\
+      \ | float(0) %}\n  {% set t = (t + bias_sdhb) %}\n\n  {% if vac %}\n    {% set\
+      \ min_h = states('input_number.dc_zone01_vac_target_min_heat') | float(18) %}\n\
+      \    {% set max_h = states('input_number.dc_zone01_vac_target_max_heat') | float(26)\
+      \ %}\n    {% set min_c = states('input_number.dc_zone01_vac_target_min_cool')\
+      \ | float(22) %}\n    {% set max_c = states('input_number.dc_zone01_vac_target_max_cool')\
+      \ | float(29) %}\n  {% else %}\n    {% set min_h = states('input_number.dc_zone01_target_min_heat')\
+      \ | float(18) %}\n    {% set max_h = states('input_number.dc_zone01_target_max_heat')\
+      \ | float(26) %}\n    {% set min_c = states('input_number.dc_zone01_target_min_cool')\
+      \ | float(22) %}\n    {% set max_c = states('input_number.dc_zone01_target_max_cool')\
+      \ | float(29) %}\n  {% endif %}\n\n  {% set step = states('input_number.dc_zone01_target_step')\
+      \ | float(0.5) %}\n  {% set step = [step, 0.1] | max %}\n  {% set lo = min_h\
+      \ if hvac == 'heat' else min_c %}\n  {% set hi = max_h if hvac == 'heat' else\
+      \ max_c %}\n  {% set clamped = [ lo, [ t, hi ] | min ] | max %}\n  {% set q_i = none %}
+  {# Quantización robusta (evita errores float con step fino) #}
+  {% set step_s = step | string %}
+  {% set decimals = (step_s.split('.')[1] | length) if ('.' in step_s) else 0 %}
+  {% set scale = (10 ** decimals) | int %}
+  {% set step_i = (step * scale) | round(0) | int %}
+  {% set val_i = (clamped * scale) | round(0) | int %}
+  {% set q_i = ((val_i + (step_i // 2)) // step_i) * step_i %}
+  {% set quant = (q_i / scale) %}
+  {{ quant | round(decimals) }}\n{% endif %}\n"
+  - name: dc_zone01_rama_decision
+    unique_id: dc_zone01_rama_decision
+    icon: mdi:directions-fork
+    state: "{% set auto_ent = 'automation.dc_zone01_aplicar_consigna_5m' %} {% set\
+      \ auto_state = states(auto_ent) %} {% set auto_known = auto_state not in ['unknown','unavailable','none','']\
+      \ %} {% set auto_on = auto_state == 'on' %} {% set vac = is_state('input_boolean.dc_modo_vacaciones','on')\
+      \ %} {% set rocio = is_state('binary_sensor.dc_zone01_riesgo_rocio','on') %}\
+      \ {% set win_enabled = is_state('input_boolean.dc_zone01_enable_window_sensor','on')\
+      \ %} {% set win_lock = win_enabled and is_state('input_boolean.dc_zone01_window_lockout','on')\
+      \ %} {% set win_hs = win_enabled and is_state('input_boolean.dc_zone01_window_hard_stopped','on')\
+      \ %} {% set t_int = states('sensor.dc_zone01_t_int_safe') | float(none) %}\n\
+      {% if is_state('binary_sensor.dc_zone01_override_activo','on') %}\n  override_{{\
+      \ state_attr('binary_sensor.dc_zone01_override_activo','slot') }}\n{% elif auto_known\
+      \ and not auto_on %}\n  manual\n{% elif not auto_known %}\n  manual_auto_unknown\n\
+      {% elif t_int is none %}\n  fallback_t_int_fail\n{% elif rocio %}\n  off_rocio\n\
+      {% elif win_lock %}\n  off_ventana_lockout\n{% elif win_hs %}\n  off_ventana_hard_stop\n\
+      {% elif is_state('input_boolean.dc_zone01_calor','on') %}\n  {{ 'heat_vac' if\
+      \ vac else 'heat' }}\n{% elif is_state('input_boolean.dc_zone01_frio','on')\
+      \ %}\n  {{ 'cool_vac' if vac else 'cool' }}\n{% else %}\n  off\n{% endif %}"
+    attributes:
+      motivo_humano: "{% set s = this.state %} {% if s.startswith('override_') %}\n\
+        \  {% set slot = s.split('_')[1] %}\n  {% if slot == '1' %}\n    {% set t\
+        \ = states('input_number.dc_zone01_override_1_temp') %}\n    {% if is_state('timer.dc_zone01_override_1_timer','active')\
+        \ %}\n      Override 1 activo (temporal) · {{ t }} °C\n    {% else %}\n  \
+        \    Override 1 activo (programado) · {{ t }} °C\n    {% endif %}\n  {% elif\
+        \ slot == '2' %}\n    {% set t = states('input_number.dc_zone01_override_2_temp')\
+        \ %}\n    {% if is_state('timer.dc_zone01_override_2_timer','active') %}\n\
+        \      Override 2 activo (temporal) · {{ t }} °C\n    {% else %}\n      Override\
+        \ 2 activo (programado) · {{ t }} °C\n    {% endif %}\n  {% elif slot == '3'\
+        \ %}\n    {% set t = states('input_number.dc_zone01_override_3_temp') %}\n\
+        \    {% if is_state('timer.dc_zone01_override_3_timer','active') %}\n    \
+        \  Override 3 activo (temporal) · {{ t }} °C\n    {% else %}\n      Override\
+        \ 3 activo (programado) · {{ t }} °C\n    {% endif %}\n  {% else %}\n    Override\
+        \ activo\n  {% endif %}\n\n{% elif s == 'heat' %}HEAT {% elif s == 'heat_vac'\
+        \ %}HEAT (vacaciones) {% elif s == 'cool' %}COOL {% elif s == 'cool_vac' %}COOL\
+        \ (vacaciones) {% elif s == 'off_rocio' %}OFF (seguridad: rocío) {% elif s\
+        \ == 'off_ventana_lockout' %}OFF (ventana: lockout) {% elif s == 'off_ventana_hard_stop'\
+        \ %}OFF (ventana: hard-stop) {% elif s == 'fallback_t_int_fail' %}FALLBACK\
+        \ (fallo t_int) {% elif s == 'manual' %}MANUAL (consigna automática deshabilitada)\
+        \ {% else %}OFF {% endif %}"
+- trigger:
+  - platform: state
+    entity_id: sensor.dc_zone01_forecast_window_h_raw
+  sensor:
+  - name: dc_zone01_forecast_window_h_ema
+    unique_id: dc_zone01_forecast_window_h_ema
+    unit_of_measurement: h
+    availability: '{% set raw = states(''sensor.dc_zone01_forecast_window_h_raw'')
+      %} {{ raw not in [''unknown'',''unavailable'',''none'',''''] or this.state not
+      in [''unknown'',''unavailable'',''none'',''''] }}
+
+      '
+    state_class: measurement
+    state: "{% set alpha = states('input_number.dc_zone01_forecast_window_ema_alpha')\
+      \ | float(0.30) %} {% set raw   = states('sensor.dc_zone01_forecast_window_h_raw')\
+      \ | float(none) %} {% if raw is none %}\n  {{ this.state | float(0) | round(2)\
+      \ }}\n{% else %}\n  {% set prev = this.state | float(raw) %}\n  {{ (alpha *\
+      \ raw + (1 - alpha) * prev) | round(2) }}\n{% endif %}\n"
+- trigger:
+  - platform: state
+    entity_id: sensor.dc_zone01_bias_forecast_raw
+  sensor:
+  - name: dc_zone01_bias_forecast_ema
+    unique_id: dc_zone01_bias_forecast_ema
+    unit_of_measurement: °C
+    availability: '{% set raw = states(''sensor.dc_zone01_bias_forecast_raw'') %}
+      {{ raw not in [''unknown'',''unavailable'',''none'',''''] or this.state not
+      in [''unknown'',''unavailable'',''none'',''''] }}
+
+      '
+    state_class: measurement
+    state: '{% set alpha = states(''input_number.dc_zone01_bias_forecast_ema_alpha'')
+      | float(0.30) %} {% set raw = states(''sensor.dc_zone01_bias_forecast_raw'')
+      | float(0) %} {% set prev = this.state | float(raw) %} {{ (alpha * raw + (1
+      - alpha) * prev) | round(2) }}
+
+      '
+- binary_sensor:
+  - name: dc_zone01_valve_open
+    unique_id: dc_zone01_valve_open
+    icon: mdi:valve
+    availability: "{% set ent = state_attr('sensor.dc_zone01_hw_map','valve_switch') %} {{ ent and states(ent) not in ['unknown','unavailable','none',''] }}"
+    state: "{% set ent = state_attr('sensor.dc_zone01_hw_map','valve_switch') %} {{ ent and is_state(ent,'on') }}"
+
+  - name: dc_zone01_hw_ok_valve_switch
+    unique_id: dc_zone01_hw_ok_valve_switch
+    icon: mdi:check-decagram
+    availability: "{% set ent = state_attr('sensor.dc_zone01_hw_map','valve_switch') %} {{ ent and states(ent) not in ['unknown','unavailable','none',''] }}"
+    state: "{% set ent = state_attr('sensor.dc_zone01_hw_map','valve_switch') %} {{ ent and is_state(ent,'on') }}"
+
+  - name: dc_zone01_hw_contract_ok
+    unique_id: dc_zone01_hw_contract_ok
+    icon: mdi:shield-check
+    availability: "{{ states('sensor.dc_zone01_hw_replace_count') not in ['unknown','unavailable','none',''] }}"
+    state: >-
+      {% set rc = states('sensor.dc_zone01_hw_replace_count') | int(0) %}
+      {{ rc == 0 and is_state('binary_sensor.dc_zone01_hw_ok_valve_switch','on') }}
+  - name: dc_zone01_override_1_activo
+    unique_id: dc_zone01_override_1_activo
+    state: "{% set days = ['mon','tue','wed','thu','fri','sat','sun'] %} {% set d\
+      \ = days[now().weekday()] %} {% set bad = ['unknown','unavailable','none','']\
+      \ %}\n{% if is_state('input_boolean.dc_zone01_override_1_use_weekly','on') %}\n\
+      \  {% set on_ent = 'input_datetime.dc_zone01_override_1_on_' ~ d %}\n  {% set\
+      \ off_ent = 'input_datetime.dc_zone01_override_1_off_' ~ d %}\n{% else %}\n\
+      \  {% set on_ent = 'input_datetime.dc_zone01_override_1_on' %}\n  {% set off_ent\
+      \ = 'input_datetime.dc_zone01_override_1_off' %}\n{% endif %}\n{% set t_on =\
+      \ states(on_ent) %} {% set t_off = states(off_ent) %}\n{% set in_window = false\
+      \ %} {% if t_on not in bad and t_off not in bad %}\n  {% set start = today_at(t_on)\
+      \ %}\n  {% set stop = today_at(t_off) %}\n  {% if t_on == t_off %}\n    {% set\
+      \ in_window = true %}\n  {% elif stop > start %}\n    {% set in_window = (now()\
+      \ >= start and now() < stop) %}\n  {% else %}\n    {% set in_window = (now()\
+      \ >= start or now() < stop) %}\n  {% endif %}\n{% endif %}\n{{\n  (is_state('input_boolean.dc_zone01_override_1_enabled','on')\
+      \ and in_window)\n  or is_state('timer.dc_zone01_override_1_timer','active')\n\
+      }}"
+  - name: dc_zone01_override_2_activo
+    unique_id: dc_zone01_override_2_activo
+    state: "{% set days = ['mon','tue','wed','thu','fri','sat','sun'] %} {% set d\
+      \ = days[now().weekday()] %} {% set bad = ['unknown','unavailable','none','']\
+      \ %}\n{% if is_state('input_boolean.dc_zone01_override_2_use_weekly','on') %}\n\
+      \  {% set on_ent = 'input_datetime.dc_zone01_override_2_on_' ~ d %}\n  {% set\
+      \ off_ent = 'input_datetime.dc_zone01_override_2_off_' ~ d %}\n{% else %}\n\
+      \  {% set on_ent = 'input_datetime.dc_zone01_override_2_on' %}\n  {% set off_ent\
+      \ = 'input_datetime.dc_zone01_override_2_off' %}\n{% endif %}\n{% set t_on =\
+      \ states(on_ent) %} {% set t_off = states(off_ent) %}\n{% set in_window = false\
+      \ %} {% if t_on not in bad and t_off not in bad %}\n  {% set start = today_at(t_on)\
+      \ %}\n  {% set stop = today_at(t_off) %}\n  {% if t_on == t_off %}\n    {% set\
+      \ in_window = true %}\n  {% elif stop > start %}\n    {% set in_window = (now()\
+      \ >= start and now() < stop) %}\n  {% else %}\n    {% set in_window = (now()\
+      \ >= start or now() < stop) %}\n  {% endif %}\n{% endif %}\n{{\n  (is_state('input_boolean.dc_zone01_override_2_enabled','on')\
+      \ and in_window)\n  or is_state('timer.dc_zone01_override_2_timer','active')\n\
+      }}"
+  - name: dc_zone01_override_3_activo
+    unique_id: dc_zone01_override_3_activo
+    state: "{% set days = ['mon','tue','wed','thu','fri','sat','sun'] %} {% set d\
+      \ = days[now().weekday()] %} {% set bad = ['unknown','unavailable','none','']\
+      \ %}\n{% if is_state('input_boolean.dc_zone01_override_3_use_weekly','on') %}\n\
+      \  {% set on_ent = 'input_datetime.dc_zone01_override_3_on_' ~ d %}\n  {% set\
+      \ off_ent = 'input_datetime.dc_zone01_override_3_off_' ~ d %}\n{% else %}\n\
+      \  {% set on_ent = 'input_datetime.dc_zone01_override_3_on' %}\n  {% set off_ent\
+      \ = 'input_datetime.dc_zone01_override_3_off' %}\n{% endif %}\n{% set t_on =\
+      \ states(on_ent) %} {% set t_off = states(off_ent) %}\n{% set in_window = false\
+      \ %} {% if t_on not in bad and t_off not in bad %}\n  {% set start = today_at(t_on)\
+      \ %}\n  {% set stop = today_at(t_off) %}\n  {% if t_on == t_off %}\n    {% set\
+      \ in_window = true %}\n  {% elif stop > start %}\n    {% set in_window = (now()\
+      \ >= start and now() < stop) %}\n  {% else %}\n    {% set in_window = (now()\
+      \ >= start or now() < stop) %}\n  {% endif %}\n{% endif %}\n{{\n  (is_state('input_boolean.dc_zone01_override_3_enabled','on')\
+      \ and in_window)\n  or is_state('timer.dc_zone01_override_3_timer','active')\n\
+      }}"
+  - name: dc_zone01_override_activo
+    unique_id: dc_zone01_override_activo
+    state: "{{\n  is_state('binary_sensor.dc_zone01_override_1_activo','on')\n  or\
+      \ is_state('binary_sensor.dc_zone01_override_2_activo','on')\n  or is_state('binary_sensor.dc_zone01_override_3_activo','on')\n\
+      }}"
+    attributes:
+      slot: '{% if is_state(''binary_sensor.dc_zone01_override_1_activo'',''on'')
+        %} 1 {% elif is_state(''binary_sensor.dc_zone01_override_2_activo'',''on'')
+        %} 2 {% elif is_state(''binary_sensor.dc_zone01_override_3_activo'',''on'')
+        %} 3 {% else %} none {% endif %}'
+- sensor:
+  - name: dc_zone01_override_temperatura_activa
+    unique_id: dc_zone01_override_temperatura_activa
+    unit_of_measurement: °C
+    device_class: temperature
+    availability: '{{ is_state(''binary_sensor.dc_zone01_override_activo'',''on'')
+      }}'
+    state: '{% set s = (state_attr(''binary_sensor.dc_zone01_override_activo'',''slot'')
+      | string) %} {% if s == ''1'' %} {{ states(''input_number.dc_zone01_override_1_temp'')
+      | float(none) }} {% elif s == ''2'' %} {{ states(''input_number.dc_zone01_override_2_temp'')
+      | float(none) }} {% elif s == ''3'' %} {{ states(''input_number.dc_zone01_override_3_temp'')
+      | float(none) }} {% else %} {{ none }} {% endif %}'
+- binary_sensor:
+  - name: dc_zone01_watchdog_tendencia_stale
+    unique_id: dc_zone01_watchdog_tendencia_stale
+    icon: mdi:timer-alert
+    state: "{% set ts = states('input_number.dc_zone01_tendencia_last_ts') | int(0)\
+      \ %} {% if ts <= 0 %}\n  true\n{% else %}\n  {% set age = (as_timestamp(now())\
+      \ | int(0)) - ts %}\n  {{ age > 1200 }}\n{% endif %}\n"
+    attributes:
+      age_s: "{% set ts = states('input_number.dc_zone01_tendencia_last_ts') | int(0)\
+        \ %} {% if ts <= 0 %}\n  {{ none }}\n{% else %}\n  {{ (as_timestamp(now())\
+        \ | int(0)) - ts }}\n{% endif %}\n"
+      threshold_s: 1200
+- sensor:
+  - name: dc_zone01_dew_point_c
+    unique_id: dc_zone01_dew_point_c
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    availability: '{% set t_ent = state_attr(''sensor.dc_zone01_hw_map'',''t_int'')
+      %} {% set h_ent = state_attr(''sensor.dc_zone01_hw_map'',''h_int'') %} {{ t_ent
+      and h_ent and is_number(states(t_ent)) and is_number(states(h_ent)) }}
+
+      '
+    state: "{% set t_ent = state_attr('sensor.dc_zone01_hw_map','t_int') %} {% set\
+      \ h_ent = state_attr('sensor.dc_zone01_hw_map','h_int') %} {% set t = states(t_ent)\
+      \ | float(none) %} {% set rh = states(h_ent) | float(none) %} {% if t is none\
+      \ or rh is none or rh <= 0 %}\n  {{ none }}\n{% else %}\n  {# Magnus-Tetens\
+      \ (agua), válido aprox -45..60°C #}\n  {% set a = 17.62 %}\n  {% set b = 243.12\
+      \ %}\n  {% set gamma = ((a * t) / (b + t)) + ((rh / 100) | log) %}\n  {{ ((b\
+      \ * gamma) / (a - gamma)) | round(2) }}\n{% endif %}\n"
+    attributes:
+      t_source: '{{ state_attr(''sensor.dc_zone01_hw_map'',''t_int'') }}'
+      rh_source: '{{ state_attr(''sensor.dc_zone01_hw_map'',''h_int'') }}'
+      reason_code: '{% set t_ent = state_attr(''sensor.dc_zone01_hw_map'',''t_int'')
+        %} {% set h_ent = state_attr(''sensor.dc_zone01_hw_map'',''h_int'') %} {%
+        if not t_ent or not h_ent %}missing_hwmap_key {% elif not is_number(states(t_ent))
+        or not is_number(states(h_ent)) %}non_numeric {% else %}ok{% endif %}
+
+        '
+  - name: dc_zone01_dew_target_c
+    unique_id: dc_zone01_dew_target_c
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    availability: '{% set w_ent = state_attr(''sensor.dc_zone01_hw_map'',''t_agua'')
+      %} {{ w_ent and is_number(states(w_ent)) }}
+
+      '
+    state: "{% set w_ent = state_attr('sensor.dc_zone01_hw_map','t_agua') %} {% set\
+      \ w = states(w_ent) | float(none) %} {% set m = states('input_number.dc_zone01_dew_margin_c')\
+      \ | float(0.5) %} {% if w is none %}\n  {{ none }}\n{% else %}\n  {{ (w + m)\
+      \ | round(2) }}\n{% endif %}\n"
+    attributes:
+      water_source: '{{ state_attr(''sensor.dc_zone01_hw_map'',''t_agua'') }}'
+      margin_c: '{{ states(''input_number.dc_zone01_dew_margin_c'') }}'
+      reason_code: '{% set w_ent = state_attr(''sensor.dc_zone01_hw_map'',''t_agua'')
+        %} {% if not w_ent %}missing_hwmap_key {% elif not is_number(states(w_ent))
+        %}non_numeric {% else %}ok{% endif %}
+
+        '
+  - name: dc_zone01_dew_spread_c
+    unique_id: dc_zone01_dew_spread_c
+    unit_of_measurement: °C
+    device_class: temperature
+    state_class: measurement
+    availability: '{{ is_number(states(''sensor.dc_zone01_dew_point_c'')) and is_number(states(''sensor.dc_zone01_dew_target_c''))
+      }}
+
+      '
+    state: "{% set dp = states('sensor.dc_zone01_dew_point_c') | float(none) %} {%\
+      \ set tg = states('sensor.dc_zone01_dew_target_c') | float(none) %} {% if dp\
+      \ is none or tg is none %}\n  {{ none }}\n{% else %}\n  {{ (tg - dp) | round(2)\
+      \ }}\n{% endif %}\n"
+- binary_sensor:
+  - name: dc_zone01_dewpoint_safe
+    unique_id: dc_zone01_dewpoint_safe
+    attributes:
+      reason_code: '{% set t_ent = state_attr(''sensor.dc_zone01_hw_map'',''t_int'')
+        %} {% set h_ent = state_attr(''sensor.dc_zone01_hw_map'',''h_int'') %} {%
+        set w_ent = state_attr(''sensor.dc_zone01_hw_map'',''t_agua'') %} {% if not
+        t_ent or not h_ent or not w_ent %}missing_hwmap_key {% elif not is_number(states(t_ent))
+        or not is_number(states(h_ent)) or not is_number(states(w_ent)) %}non_numeric
+        {% else %}ok{% endif %}
+
+        '
+    icon: mdi:water-check
+    device_class: connectivity
+    state: '{{ is_number(states(''sensor.dc_zone01_dew_point_c'')) and is_number(states(''sensor.dc_zone01_dew_target_c''))
+      }}
+
+      '
+  - name: dc_zone01_riesgo_rocio
+    unique_id: dc_zone01_riesgo_rocio
+    attributes:
+      dew_spread: '{{ states(''sensor.dc_zone01_dew_spread_c'') }}'
+      reason_code: '{% if not is_number(states(''sensor.dc_zone01_dew_spread_c''))
+        %}missing_spread {% else %}ok{% endif %}
+
+        '
+    device_class: moisture
+    state: '{% set s = states(''sensor.dc_zone01_dew_spread_c'') | float(none) %}
+      {{ s is not none and s <= 0 }}
+
+      '
+  - name: dc_zone01_dew_prerisk
+    unique_id: dc_zone01_dew_prerisk
+    attributes:
+      dew_spread: '{{ states(''sensor.dc_zone01_dew_spread_c'') }}'
+      prerisk_delta_c: '{{ states(''input_number.dc_zone01_dew_prerisk_delta_c'')
+        }}'
+      reason_code: '{% if not is_number(states(''sensor.dc_zone01_dew_spread_c''))
+        %}missing_spread {% elif not is_number(states(''input_number.dc_zone01_dew_prerisk_delta_c''))
+        %}missing_delta {% else %}ok{% endif %}
+
+        '
+    icon: mdi:water-alert
+    device_class: moisture
+    state: '{% set s = states(''sensor.dc_zone01_dew_spread_c'') | float(none) %}
+      {% set d = states(''input_number.dc_zone01_dew_prerisk_delta_c'') | float(1.0)
+      %} {{ s is not none and s > 0 and s <= d }}
+
+      '
+- binary_sensor:
+  - name: dc_zone01_ventana_abierta
+    unique_id: dc_zone01_ventana_abierta
+    icon: mdi:window-open
+    state: "{% if is_state('input_boolean.dc_zone01_enable_window_sensor','off') %}\n\
+      \  false\n{% else %}\n  {% set g = state_attr('group.dc_zone01_grupo_sensores_ventana','entity_id')\
+      \ or [] %}\n  {% if g | count == 0 %}\n    false\n  {% else %}\n    {% set ents\
+      \ = expand(g) %}\n    {{ ents | selectattr('state','in',['on','open','opened','true'])\
+      \ | list | count > 0 }}\n  {% endif %}\n{% endif %}\n"
+  - name: dc_zone01_f1_valida
+    unique_id: dc_zone01_f1_valida
+    state: "{% set f = state_attr('sensor.dc_zone01_hw_map','f1_cover') %} {{\n  is_state('input_boolean.dc_zone01_f1_enabled','on')\n\
+      \  and f not in [none, '']\n  and f in states\n  and states(f) not in ['unknown','unavailable','none','']\n\
+      }}"
+  - name: dc_zone01_f2_valida
+    unique_id: dc_zone01_f2_valida
+    state: "{% set f = state_attr('sensor.dc_zone01_hw_map','f2_cover') %} {{\n  is_state('input_boolean.dc_zone01_f2_enabled','on')\n\
+      \  and f not in [none, '']\n  and f in states\n  and states(f) not in ['unknown','unavailable','none','']\n\
+      }}"
+  - name: dc_zone01_f3_valida
+    unique_id: dc_zone01_f3_valida
+    state: "{% set f = state_attr('sensor.dc_zone01_hw_map','f3_cover') %} {{\n  is_state('input_boolean.dc_zone01_f3_enabled','on')\n\
+      \  and f not in [none, '']\n  and f in states\n  and states(f) not in ['unknown','unavailable','none','']\n\
+      }}"
+  - name: dc_zone01_stats
+    unique_id: dc_zone01_stats
+    icon: mdi:heart-pulse
+    state: "{% set max_age = states('input_number.dc_zone01_stats_max_age_s') | float(900)\
+      \ %} {% set a = (as_timestamp(now()) - as_timestamp(states.sensor.dc_zone01_target_final.last_updated))\
+      \ if states.sensor.dc_zone01_target_final is defined else none %} {% if a is\
+      \ none %}\n  fail\n{% elif a > max_age %}\n  degraded\n{% else %}\n  ok\n{%\
+      \ endif %}"
+    attributes:
+      max_age_s: '{{ states(''input_number.dc_zone01_stats_max_age_s'') | float(900)
+        }}'
+      hvac_mode: '{{ states(''sensor.dc_zone01_hvac_mode'') }}'
+      target_final_age_s: "{% if states.sensor.dc_zone01_target_final is defined %}\n\
+        \  {{ (as_timestamp(now()) - as_timestamp(states.sensor.dc_zone01_target_final.last_updated))\
+        \ | round(0) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      tendencia_age_s: "{% if states.sensor.dc_zone01_tendencia_derivada is defined\
+        \ %}\n  {{ (as_timestamp(now()) - as_timestamp(states.sensor.dc_zone01_tendencia_derivada.last_updated))\
+        \ | round(0) }}\n{% else %}\n  {{ none }}\n{% endif %}"
+      overrides_active_count: "{{ [\n  is_state('binary_sensor.dc_zone01_override_1_activo','on'),\n\
+        \  is_state('binary_sensor.dc_zone01_override_2_activo','on'),\n  is_state('binary_sensor.dc_zone01_override_3_activo','on')\n\
+        ] | select('eq', true) | list | count }}"
+      fachadas_validas_count: "{{ [\n  is_state('binary_sensor.dc_zone01_f1_valida','on'),\n\
+        \  is_state('binary_sensor.dc_zone01_f2_valida','on'),\n  is_state('binary_sensor.dc_zone01_f3_valida','on')\n\
+        ] | select('eq', true) | list | count }}"
+      watchdog_tendencia_stale: '{{ states(''binary_sensor.dc_zone01_watchdog_tendencia_stale'')
+        }}'
+      windows_enabled: '{{ states(''input_boolean.dc_zone01_enable_window_sensor'')
+        }}'
+      window_open: '{{ states(''binary_sensor.dc_zone01_ventana_abierta'') }}'
+  - name: dc_zone01_stats_max_age_s_fallback
+    unique_id: dc_zone01_stats_max_age_s_fallback
+    unit_of_measurement: s
+    state: '{{ 900 }}'
+- sensor:
+  - name: dc_zone01_main_runtime_version
+    unique_id: dc_zone01_main_runtime_version
+    icon: mdi:tag
+    state: '4.2'
+    attributes:
+      module: dc_zone01_main_runtime
+      tier: core
+input_datetime:
+  dc_zone01_backup_inputs_ts:
+    name: dc_zone01_backup_inputs_ts
+    has_date: true
+    has_time: true
+input_boolean:
+  dc_zone01_window_lockout:
+    name: dc_zone01_window_lockout
+    icon: mdi:pause-circle
+  dc_zone01_window_hard_stopped:
+    name: dc_zone01_window_hard_stopped
+    icon: mdi:stop-circle
+input_text:
+  dc_zone01_window_last_hvac:
+    name: dc_zone01_window_last_hvac
+    max: 20
+  dc_zone01_hvac_previo_rocio:
+    name: dc_zone01_hvac_previo_rocio
+    max: 10
+input_number:
+  dc_zone01_tendencia_last_t:
+    name: dc_zone01_tendencia_last_t
+    min: -50
+    max: 60
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C
+  dc_zone01_tendencia_last_ts:
+    name: dc_zone01_tendencia_last_ts
+    min: 0
+    max: 4102444800
+    step: 1
+    mode: box
+    unit_of_measurement: s
+  dc_zone01_tendencia_cph:
+    name: dc_zone01_tendencia_cph
+    min: -10
+    max: 10
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C/h
+  dc_zone01_tendencia_cph_ema:
+    name: dc_zone01_tendencia_cph_ema
+    icon: mdi:chart-bell-curve
+    min: -5
+    max: 5
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C/h
+  dc_zone01_rt_off_ts:
+    name: dc_zone01_rt_off_ts
+    min: 0
+    max: 4102444800
+    step: 1
+    mode: box
+    unit_of_measurement: s
+  dc_zone01_rt_off_sp:
+    name: dc_zone01_rt_off_sp
+    min: -50
+    max: 60
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C
+  dc_zone01_rt_off_peak:
+    name: dc_zone01_rt_off_peak
+    min: -50
+    max: 60
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C
+  dc_zone01_learn_overshoot_ema:
+    name: dc_zone01_learn_overshoot_ema
+    min: -5
+    max: 5
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C
+  dc_zone01_rt_on_ts:
+    name: dc_zone01_rt_on_ts
+    min: 0
+    max: 4102444800
+    step: 1
+    mode: box
+    unit_of_measurement: s
+  dc_zone01_rt_on_sp:
+    name: dc_zone01_rt_on_sp
+    min: -50
+    max: 60
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C
+  dc_zone01_learn_on_reach_h_ema:
+    name: dc_zone01_learn_on_reach_h_ema
+    min: 0
+    max: 24
+    step: 0.01
+    mode: box
+    unit_of_measurement: h
+  dc_zone01_rt_off_peak_ts:
+    name: dc_zone01_rt_off_peak_ts
+    min: 0
+    max: 9999999999
+    step: 1
+    mode: box
+  dc_zone01_learned_thermal_lag_h:
+    name: dc_zone01_learned_thermal_lag_h
+    min: 0
+    max: 12
+    step: 0.01
+    mode: box
+    unit_of_measurement: h
+  dc_zone01_rt_on_t0_ts:
+    name: dc_zone01_rt_on_t0_ts
+    min: 0
+    max: 9999999999
+    step: 1
+    mode: box
+    unit_of_measurement: s
+  dc_zone01_rt_on_t0:
+    name: dc_zone01_rt_on_t0
+    min: -50
+    max: 60
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C
+  dc_zone01_learn_on_rate_cph_ema:
+    name: dc_zone01_learn_on_rate_cph_ema
+    min: -5
+    max: 5
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C/h
+  dc_zone01_rt_on_rate_last:
+    name: dc_zone01_rt_on_rate_last
+    min: -5
+    max: 5
+    step: 0.01
+    mode: box
+    unit_of_measurement: °C/h
+  dc_zone01_rt_on_rate_last_ts:
+    name: dc_zone01_rt_on_rate_last_ts
+    min: 0
+    max: 9999999999
+    step: 1
+    mode: box
+    unit_of_measurement: s
+  dc_zone01_adapt_last_cycle_aborted:
+    name: dc_zone01_adapt_last_cycle_aborted
+    min: 0
+    max: 1
+    step: 1
+    mode: box
+  dc_zone01_adapt_abort_count:
+    name: dc_zone01_adapt_abort_count
+    min: 0
+    max: 999999
+    step: 1
+    mode: box
+  dc_zone01_adapt_ok_count:
+    name: dc_zone01_adapt_ok_count
+    min: 0
+    max: 999999
+    step: 1
+    mode: box
+timer:
+  dc_zone01_override_1_timer:
+    name: dc_zone01_override_1_timer
+    duration: 01:00:00
+  dc_zone01_override_2_timer:
+    name: dc_zone01_override_2_timer
+    duration: 01:00:00
+  dc_zone01_override_3_timer:
+    name: dc_zone01_override_3_timer
+    duration: 01:00:00

@@ -1,0 +1,317 @@
+# ============================================================================
+# Dynamic Shutter · DS · BUS integration (flags + groups)
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction: inputs/logic/sdhb + global common/bus)
+# ============================================================================
+
+
+# Intent contract (suite-level, used by SDHB winners):
+# - request_quiet: prioritize acoustic comfort (silent/low-noise).
+# - request_eco: prioritize efficiency/low power. DS treats it as 'quiet-lite' by default.
+# - request_solar_shield: prioritize solar shading / glare control.
+# Recommendation: modules that want strict silence should publish request_quiet.
+
+input_boolean: {}
+group:
+  ds_zone01_f1_windows:
+    name: ds_zone01_f1_windows
+    entities: []
+  ds_zone01_f2_windows:
+    name: ds_zone01_f2_windows
+    entities: []
+  ds_zone01_f3_windows:
+    name: ds_zone01_f3_windows
+    entities: []
+  ds_zone01_f4_windows:
+    name: ds_zone01_f4_windows
+    entities: []
+  ds_zone02_f1_windows:
+    name: ds_zone02_f1_windows
+    entities: []
+  ds_zone02_f2_windows:
+    name: ds_zone02_f2_windows
+    entities: []
+  ds_zone02_f3_windows:
+    name: ds_zone02_f3_windows
+    entities: []
+  ds_zone02_f4_windows:
+    name: ds_zone02_f4_windows
+    entities: []
+  ds_zone03_f1_windows:
+    name: ds_zone03_f1_windows
+    entities: []
+  ds_zone03_f2_windows:
+    name: ds_zone03_f2_windows
+    entities: []
+  ds_zone03_f3_windows:
+    name: ds_zone03_f3_windows
+    entities: []
+  ds_zone03_f4_windows:
+    name: ds_zone03_f4_windows
+    entities: []
+  ds_zone04_f1_windows:
+    name: ds_zone04_f1_windows
+    entities: []
+  ds_zone04_f2_windows:
+    name: ds_zone04_f2_windows
+    entities: []
+  ds_zone04_f3_windows:
+    name: ds_zone04_f3_windows
+    entities: []
+  ds_zone04_f4_windows:
+    name: ds_zone04_f4_windows
+    entities: []
+  ds_zone05_f1_windows:
+    name: ds_zone05_f1_windows
+    entities: []
+  ds_zone05_f2_windows:
+    name: ds_zone05_f2_windows
+    entities: []
+  ds_zone05_f3_windows:
+    name: ds_zone05_f3_windows
+    entities: []
+  ds_zone05_f4_windows:
+    name: ds_zone05_f4_windows
+    entities: []
+  ds_zone06_f1_windows:
+    name: ds_zone06_f1_windows
+    entities: []
+  ds_zone06_f2_windows:
+    name: ds_zone06_f2_windows
+    entities: []
+  ds_zone06_f3_windows:
+    name: ds_zone06_f3_windows
+    entities: []
+  ds_zone06_f4_windows:
+    name: ds_zone06_f4_windows
+    entities: []
+  ds_zone07_f1_windows:
+    name: ds_zone07_f1_windows
+    entities: []
+  ds_zone07_f2_windows:
+    name: ds_zone07_f2_windows
+    entities: []
+  ds_zone07_f3_windows:
+    name: ds_zone07_f3_windows
+    entities: []
+  ds_zone07_f4_windows:
+    name: ds_zone07_f4_windows
+    entities: []
+  ds_zone08_f1_windows:
+    name: ds_zone08_f1_windows
+    entities: []
+  ds_zone08_f2_windows:
+    name: ds_zone08_f2_windows
+    entities: []
+  ds_zone08_f3_windows:
+    name: ds_zone08_f3_windows
+    entities: []
+  ds_zone08_f4_windows:
+    name: ds_zone08_f4_windows
+    entities: []
+automation:
+- id: ds_sync_window_group_membership
+  alias: ds_sync_window_group_membership
+  mode: queued
+  trigger:
+  - platform: state
+    entity_id: input_select.ds_w1_zone
+    id: w1
+  - platform: state
+    entity_id: input_select.ds_w1_facade
+    id: w1
+  - platform: state
+    entity_id: input_select.ds_w2_zone
+    id: w2
+  - platform: state
+    entity_id: input_select.ds_w2_facade
+    id: w2
+  - platform: state
+    entity_id: input_select.ds_w3_zone
+    id: w3
+  - platform: state
+    entity_id: input_select.ds_w3_facade
+    id: w3
+  - platform: state
+    entity_id: input_select.ds_w4_zone
+    id: w4
+  - platform: state
+    entity_id: input_select.ds_w4_facade
+    id: w4
+  - platform: state
+    entity_id: input_select.ds_w5_zone
+    id: w5
+  - platform: state
+    entity_id: input_select.ds_w5_facade
+    id: w5
+  - platform: state
+    entity_id: input_select.ds_w6_zone
+    id: w6
+  - platform: state
+    entity_id: input_select.ds_w6_facade
+    id: w6
+  - platform: state
+    entity_id: input_select.ds_w7_zone
+    id: w7
+  - platform: state
+    entity_id: input_select.ds_w7_facade
+    id: w7
+  - platform: state
+    entity_id: input_select.ds_w8_zone
+    id: w8
+  - platform: state
+    entity_id: input_select.ds_w8_facade
+    id: w8
+  action:
+  - variables:
+      w: '{{ trigger.id }}'
+      sensor_entity: binary_sensor.ds_{{ trigger.id }}_solar_shield_active
+      zone_raw: '{{ states(''input_select.ds_'' ~ trigger.id ~ ''_zone'')|lower }}'
+      facade: '{{ states(''input_select.ds_'' ~ trigger.id ~ ''_facade'')|lower }}'
+      zone_short: '{{ zone_raw | replace(''dc_'', '''') }}'
+      target_group: group.ds_{{ zone_short }}_{{ facade }}_windows
+      all_groups: "{{ [\n  'group.ds_zone01_f1_windows',\n  'group.ds_zone01_f2_windows',\n\
+        \  'group.ds_zone01_f3_windows',\n  'group.ds_zone01_f4_windows',\n  'group.ds_zone02_f1_windows',\n\
+        \  'group.ds_zone02_f2_windows',\n  'group.ds_zone02_f3_windows',\n  'group.ds_zone02_f4_windows',\n\
+        \  'group.ds_zone03_f1_windows',\n  'group.ds_zone03_f2_windows',\n  'group.ds_zone03_f3_windows',\n\
+        \  'group.ds_zone03_f4_windows',\n  'group.ds_zone04_f1_windows',\n  'group.ds_zone04_f2_windows',\n\
+        \  'group.ds_zone04_f3_windows',\n  'group.ds_zone04_f4_windows',\n  'group.ds_zone05_f1_windows',\n\
+        \  'group.ds_zone05_f2_windows',\n  'group.ds_zone05_f3_windows',\n  'group.ds_zone05_f4_windows',\n\
+        \  'group.ds_zone06_f1_windows',\n  'group.ds_zone06_f2_windows',\n  'group.ds_zone06_f3_windows',\n\
+        \  'group.ds_zone06_f4_windows',\n  'group.ds_zone07_f1_windows',\n  'group.ds_zone07_f2_windows',\n\
+        \  'group.ds_zone07_f3_windows',\n  'group.ds_zone07_f4_windows',\n  'group.ds_zone08_f1_windows',\n\
+        \  'group.ds_zone08_f2_windows',\n  'group.ds_zone08_f3_windows',\n  'group.ds_zone08_f4_windows'\n\
+        ] }}\n"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ zone_raw in [''unknown'',''unavailable'',''none'','''']
+          or facade in [''unknown'',''unavailable'',''none'',''''] }}'
+      sequence: []
+    default:
+    - repeat:
+        for_each: '{{ all_groups }}'
+        sequence:
+        - variables:
+            members: '{{ state_attr(repeat.item, ''entity_id'') or [] }}'
+        - condition: template
+          value_template: '{{ sensor_entity in members }}'
+        - service: group.set
+          data:
+            object_id: '{{ repeat.item.split(''.'')[-1] }}'
+            entities: '{{ members | reject(''equalto'', sensor_entity) | list }}'
+    - variables:
+        members_t: '{{ state_attr(target_group, ''entity_id'') or [] }}'
+    - service: group.set
+      data:
+        object_id: '{{ target_group.split(''.'')[-1] }}'
+        entities: '{{ (members_t + [sensor_entity]) | unique | list }}
+
+          '
+- id: ds_publish_bus_facade_flags
+  alias: ds_publish_bus_facade_flags
+  mode: queued
+  trigger:
+  - platform: state
+    entity_id: group.ds_zone01_f1_windows
+  - platform: state
+    entity_id: group.ds_zone01_f2_windows
+  - platform: state
+    entity_id: group.ds_zone01_f3_windows
+  - platform: state
+    entity_id: group.ds_zone01_f4_windows
+  - platform: state
+    entity_id: group.ds_zone02_f1_windows
+  - platform: state
+    entity_id: group.ds_zone02_f2_windows
+  - platform: state
+    entity_id: group.ds_zone02_f3_windows
+  - platform: state
+    entity_id: group.ds_zone02_f4_windows
+  - platform: state
+    entity_id: group.ds_zone03_f1_windows
+  - platform: state
+    entity_id: group.ds_zone03_f2_windows
+  - platform: state
+    entity_id: group.ds_zone03_f3_windows
+  - platform: state
+    entity_id: group.ds_zone03_f4_windows
+  - platform: state
+    entity_id: group.ds_zone04_f1_windows
+  - platform: state
+    entity_id: group.ds_zone04_f2_windows
+  - platform: state
+    entity_id: group.ds_zone04_f3_windows
+  - platform: state
+    entity_id: group.ds_zone04_f4_windows
+  - platform: state
+    entity_id: group.ds_zone05_f1_windows
+  - platform: state
+    entity_id: group.ds_zone05_f2_windows
+  - platform: state
+    entity_id: group.ds_zone05_f3_windows
+  - platform: state
+    entity_id: group.ds_zone05_f4_windows
+  - platform: state
+    entity_id: group.ds_zone06_f1_windows
+  - platform: state
+    entity_id: group.ds_zone06_f2_windows
+  - platform: state
+    entity_id: group.ds_zone06_f3_windows
+  - platform: state
+    entity_id: group.ds_zone06_f4_windows
+  - platform: state
+    entity_id: group.ds_zone07_f1_windows
+  - platform: state
+    entity_id: group.ds_zone07_f2_windows
+  - platform: state
+    entity_id: group.ds_zone07_f3_windows
+  - platform: state
+    entity_id: group.ds_zone07_f4_windows
+  - platform: state
+    entity_id: group.ds_zone08_f1_windows
+  - platform: state
+    entity_id: group.ds_zone08_f2_windows
+  - platform: state
+    entity_id: group.ds_zone08_f3_windows
+  - platform: state
+    entity_id: group.ds_zone08_f4_windows
+  action:
+  - variables:
+      group_entity: '{{ trigger.entity_id }}'
+      group_name: '{{ group_entity.split(''.'')[-1] }}'
+      parts: '{{ group_name.split(''_'') }}'
+      zone_short: '{{ parts[1] }}'
+      facade: '{{ parts[2] }}'
+      bus_flag: input_boolean.sdhb_flag_ds_{{ zone_short }}_{{ facade }}_solar_shield
+      desired: '{{ is_state(group_entity, ''on'') }}'
+      allowed_zone_short:
+      - zone01
+      - zone02
+      - zone03
+      - zone04
+      - zone05
+      - zone06
+      - zone07
+      - zone08
+      allowed_facade:
+      - f1
+      - f2
+      - f3
+      - f4
+      is_valid: '{{ zone_short in allowed_zone_short and facade in allowed_facade
+        }}'
+  - choose:
+    - conditions: '{{ is_valid }}'
+      sequence:
+      - service: input_boolean.turn_{{ 'on' if desired else 'off' }}
+        target:
+          entity_id: '{{ bus_flag }}'
+    - conditions: '{{ not is_valid }}'
+      sequence:
+      - service: logbook.log
+        data:
+          name: DS BUS flags
+          message: Invalid zone/facade parsed from group {{ group_entity }} (zone_short={{
+            zone_short }}, facade={{ facade }}). Skipping publish.

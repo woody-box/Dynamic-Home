@@ -1,0 +1,70 @@
+DV (Dynamic Ventilation) — INDEX (v4.2 compact · fix_final)
+==========================================================
+
+Este índice está basado en dv_index_v3_9 (manteniendo el enfoque “producto”),
+pero alineado a la estructura real v4.2 compact y al naming dv_vmc.
+
+Versiones
+---------
+- DV: v4.2 compact (fix_final)
+- BUS/SDHB: suite_dynamic_home_bus_v4_2.yaml (se instala aparte)
+
+Naming determinista
+-------------------
+- Unidad principal: dv_vmc  (no dv_home)
+
+Estructura del paquete DV v4.2 compact (archivos reales)
+--------------------------------------------------------
+
+OBLIGATORIOS (dv_vmc)
+- dv_vmc_inputs.yaml
+  - Helpers + defaults + contratos/checks (hw_map/onboarding/startup)
+- dv_vmc_logic.yaml
+  - Lógica de control y cálculo de target (IAQ, dew, freecool, etc.)
+- dv_vmc_automations.yaml
+  - Automations/scripts de aplicación (velocidad real, cooldowns, locks)
+- dv_vmc_sdhb.yaml
+  - Integración SDHB (consume intents + publish/feedback/heartbeat)
+- dv_vmc_observability.yaml
+  - Observabilidad/health
+
+OPCIONALES (no recomendados en producción)
+- dv_testing_simulator_optional.yaml (si se incluye)
+  - simulador/tests/regresión
+
+BUS/SDHB (contrato práctico para DV)
+------------------------------------
+- DV consume “winners” del BUS para su target:
+  - sensor.sdhb_winner_dv_vmc
+- DV puede publicar feedback/heartbeat por SDHB cuando export está habilitado.
+- Si el BUS no está instalado o sdhb_enabled está OFF:
+  - DV sigue funcionando en modo standalone.
+
+Checklist rápida
+----------------
+1) hw_map resuelto (si hay REPLACE_*):
+   - onboarding/startup_check debe avisar si queda algo sin configurar
+2) Loop de aplicación:
+   - automatización de aplicar velocidad activa
+3) SDHB:
+   - input_boolean.sdhb_enabled ON
+   - dv_vmc_sdhb.yaml cargado
+
+Nuevas entidades (v4.2 hotfix)
+-------------------------
+- sensor.dv_vmc_hw_replace_count: cuenta placeholders REPLACE_* en dv_vmc_hw_map (onboarding)
+- timer.dv_vmc_startup_grace: gracia de arranque (120s)
+- binary_sensor.dv_vmc_hw_contract_ok attribute warming_up: true durante la gracia
+
+Backup/Restore externo (AppDaemons)
+--------------------------------------
+- script.dv_vmc_backup_save  -> AppDaemon.dv_vmc_backup_save (path: dynamic_suite/dv/vmc/dv_vmc_backup.json)
+- script.dv_vmc_backup_restore -> AppDaemon.dv_vmc_backup_restore (path: dynamic_suite/dv/vmc/dv_vmc_backup.json)
+- Optional: yaml_zone_opcionales/dv_testing_features_optional_v4_2.yaml (hw_replace_count guard test)
+- Optional: yaml_zone_opcionales/dv_testing_backup_cycle_optional_v4_2.yaml (backup-save-restore cycle)
+- Feature tests extended: replace fixed recovery (dv_testing_features_optional_v4_2.yaml)
+- Optional: yaml_zone_opcionales/dv_vmc_testing_golden_scenarios_optional_v4_2.yaml (true golden record/verify; file-backed)
+
+NOTE (AppDaemon): backup/restore & golden via AppDaemon services; files stored under /config/dynamic_suite/.
+Docs:
+- dv_pipeline_summary_v4_2.md / dv_pipeline_summary_v4_2.docx

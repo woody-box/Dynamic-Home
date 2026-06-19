@@ -1,0 +1,58 @@
+DV (Dynamic Ventilation) — QUICKSTART (v4.2 compact · fix_final)
+===============================================================
+
+1) Copiar YAML obligatorios
+--------------------------
+Copia a /config/packages/ (dv_vmc):
+
+- dv_vmc_inputs.yaml
+- dv_vmc_logic.yaml
+- dv_vmc_automations.yaml
+- dv_vmc_sdhb.yaml
+- dv_vmc_observability.yaml
+
+2) BUS/SDHB (si quieres coordinación)
+-------------------------------------
+Copia a /config/packages/:
+- suite_dynamic_home_bus_v4_2.yaml
+
+Activa:
+- input_boolean.sdhb_enabled = ON (cuando quieras coordinación)
+
+3) Ajustar hw_map / placeholders
+--------------------------------
+Si el paquete incluye REPLACE_* en el mapa de hardware, sustitúyelos por tus entidades reales.
+Verifica que el onboarding/startup_check no reporta placeholders pendientes.
+
+4) Reinicio y verificación rápida
+---------------------------------
+- scripts SDHB (si bus instalado):
+  - script.sdhb_publish_intent / script.sdhb_heartbeat / script.sdhb_feedback
+- winner DV:
+  - sensor.sdhb_winner_dv_vmc
+
+5) (Opcional) tests/sim
+-----------------------
+Si quieres simulación/tests:
+- dv_testing_simulator_optional.yaml
+
+Optional tests:
+- dv_testing_features_optional_v4_2.yaml (hw_replace_count guard)
+
+Optional tests:
+- dv_testing_backup_cycle_optional_v4_2.yaml (backup-save-restore)
+
+Optional tests:
+- dv_vmc_testing_golden_scenarios_optional_v4_2.yaml (golden record/verify)
+
+NOTE (AppDaemon): backup/restore & golden via AppDaemon services; files stored under /config/dynamic_suite/.
+- Startup grace configurable: input_number.dv_vmc_startup_grace_s (default 120s).
+
+- CO2 EMA (opcional): activa input_boolean.dv_vmc_co2_ema_enabled para que DV use sensor.dv_vmc_co2_ema (EMA) en vez de CO2 instantáneo.
+
+- PM2.5 EMA (opcional): activa input_boolean.dv_vmc_pm25_ema_enabled para que DV use sensor.dv_vmc_pm25_ema (EMA) en vez de PM2.5 instantáneo.
+
+
+Opcional (DV): Exterior hostil (WAQI AQI)
+- input_boolean.dv_vmc_hostile_outside_enabled
+- sensor.dv_vmc_outdoor_aqi_safe (desde hw_map outdoor_aqi_entity)

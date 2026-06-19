@@ -1,0 +1,302 @@
+# version: v4.2
+# # changelog: v4.2 (integration tests: canonical priority cases; fix scenario reset order)
+
+# -----------------------------------------------------------------------------
+# Optional package: SDHB integration tests (end-to-end within the BUS)
+#
+# Purpose:
+# - Validate that SDHB arbitration + per-target winner sensors work as expected.
+# - Does NOT require DC/DV/DS modules to be installed; it drives the BUS directly
+#   using script.sdhb_publish_intent / script.sdhb_clear_intent.
+#
+# Safety:
+# - Disabled by default (input_boolean.sdhb_tests_enabled = off).
+# - When enabled and a test is run, it will publish temporary intents (TTL 30s)
+#   on selected sources (dc_zone01, dv_vmc) and targets (ds_w1, ds_w2).
+# -----------------------------------------------------------------------------
+
+input_boolean:
+  sdhb_tests_enabled:
+    name: "sdhb_tests_enabled"
+    icon: mdi:flask-outline
+  sdhb_test_pass:
+    name: "sdhb_test_pass"
+    icon: mdi:check-circle-outline
+
+input_select:
+  sdhb_test_scenario:
+    name: "sdhb_test_scenario"
+    icon: mdi:test-tube
+    options:
+      - none
+      - t1_broadcast_hits_ds_w1
+      - t2_arbitration_priority_wins
+      - t3_target_specificity
+
+input_text:
+  sdhb_test_last_result:
+    name: "sdhb_test_last_result"
+  sdhb_test_last_details:
+    name: "sdhb_test_last_details"
+
+
+timer:
+  sdhb_tests_auto_off:
+    name: "sdhb_tests_auto_off"
+    duration: "02:00:00"
+
+script:
+  sdhb_run_integration_test:
+    alias: "sdhb_run_integration_test"
+    mode: single
+    sequence:
+      - choose:
+          - conditions:
+              - condition: state
+                entity_id: input_boolean.sdhb_tests_enabled
+                state: "off"
+            sequence:
+              - service: input_text.set_value
+                target: {entity_id: input_text.sdhb_test_last_result}
+                data: {value: "SKIP: sdhb_tests_enabled=off"}
+              - stop: "tests disabled"
+      - service: input_boolean.turn_on
+        target:
+          entity_id:
+            - input_boolean.sdhb_enabled
+            - input_boolean.sdhb_ds_w1_enabled
+            - input_boolean.sdhb_ds_w2_enabled
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.sdhb_test_pass
+
+      # Clear involved sources to start clean
+      - service: script.sdhb_clear_intent
+        data: {source: "dc_zone01"}
+      - service: script.sdhb_clear_intent
+        data: {source: "dv_vmc"}
+
+      - variables:
+          # Capture scenario BEFORE any reset.
+          scenario: "{{ states('input_select.sdhb_test_scenario') }}"
+          winner_w1_before: "{{ states('sensor.sdhb_winner_ds_w1') }}"
+          winner_w2_before: "{{ states('sensor.sdhb_winner_ds_w2') }}"
+          # Canonical-ish priorities for tests (global)
+          prio_weather_protect: 90
+          prio_solar_shield: 80
+          prio_privacy: 70
+          prio_quiet: 60
+          prio_eco: 50
+
+      - choose:
+
+          # -------------------------------------------------------------------
+          # T1: broadcast target 'ds' should be visible to ds_w1
+          # -------------------------------------------------------------------
+          - conditions: "{{ scenario == 't1_broadcast_hits_ds_w1' }}"
+            sequence:
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "dc_zone01"
+                  intent: "request_quiet"
+                  target: "ds"
+                  ttl_s: 30
+                  priority: "{{ prio_quiet }}"
+                  payload: "test:t1"
+              - delay: "00:00:01"
+              - variables:
+                  winner_w1: "{{ states('sensor.sdhb_winner_ds_w1') }}"
+              - choose:
+                  - conditions: "{{ winner_w1 == 'request_quiet' }}"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target: {entity_id: input_boolean.sdhb_test_pass}
+                      - service: input_text.set_value
+                        target: {entity_id: input_text.sdhb_test_last_result}
+                        data: {value: "PASS:t1"}
+                    default:
+                      - service: input_text.set_value
+                        target: {entity_id: input_text.sdhb_test_last_result}
+                        data: {value: "FAIL:t1"}
+              - service: input_text.set_value
+                target: {entity_id: input_text.sdhb_test_last_details}
+                data:
+                  value: "t1 winner_w1={{ winner_w1 }} before={{ winner_w1_before }}"
+
+          # -------------------------------------------------------------------
+          # T2: arbitration - higher priority must win (same target ds_w1)
+          # -------------------------------------------------------------------
+          - conditions: "{{ scenario == 't2_arbitration_priority_wins' }}"
+            sequence:
+              # Case A: solar_shield should beat quiet (canonical priorities)
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "dc_zone01"
+                  intent: "request_quiet"
+                  target: "ds_w1"
+                  ttl_s: 30
+                  priority: "{{ prio_quiet }}"
+                  payload: "test:t2.quiet"
+              - delay: "00:00:01"
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "dv_vmc"
+                  intent: "request_solar_shield"
+                  target: "ds_w1"
+                  ttl_s: 30
+                  priority: "{{ prio_solar_shield }}"
+                  payload: "test:t2.solar"
+              - delay: "00:00:01"
+              - variables:
+                  winner_w1_a: "{{ states('sensor.sdhb_winner_ds_w1') }}"
+                  src_w1_a: "{{ state_attr('sensor.sdhb_winner_ds_w1','source') }}"
+
+              # Clear intents before Case B
+              - service: script.sdhb_clear_intent
+                data: {source: "dc_zone01"}
+              - service: script.sdhb_clear_intent
+                data: {source: "dv_vmc"}
+              - delay: "00:00:01"
+
+              # Case B: privacy should beat eco (canonical priorities)
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "dc_zone01"
+                  intent: "request_eco"
+                  target: "ds_w1"
+                  ttl_s: 30
+                  priority: "{{ prio_eco }}"
+                  payload: "test:t2.eco"
+              - delay: "00:00:01"
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "dv_vmc"
+                  intent: "request_privacy"
+                  target: "ds_w1"
+                  ttl_s: 30
+                  priority: "{{ prio_privacy }}"
+                  payload: "test:t2.privacy"
+              - delay: "00:00:01"
+              - variables:
+                  winner_w1_b: "{{ states('sensor.sdhb_winner_ds_w1') }}"
+                  src_w1_b: "{{ state_attr('sensor.sdhb_winner_ds_w1','source') }}"
+
+              - choose:
+                  - conditions: >-
+                      {{ winner_w1_a == 'request_solar_shield'
+                         and src_w1_a == 'dv_vmc'
+                         and winner_w1_b == 'request_privacy'
+                         and src_w1_b == 'dv_vmc' }}
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target: {entity_id: input_boolean.sdhb_test_pass}
+                      - service: input_text.set_value
+                        target: {entity_id: input_text.sdhb_test_last_result}
+                        data: {value: "PASS:t2"}
+                    default:
+                      - service: input_text.set_value
+                        target: {entity_id: input_text.sdhb_test_last_result}
+                        data: {value: "FAIL:t2"}
+              - service: input_text.set_value
+                target: {entity_id: input_text.sdhb_test_last_details}
+                data:
+                  value: "t2 A winner={{ winner_w1_a }} src={{ src_w1_a }} | B winner={{ winner_w1_b }} src={{ src_w1_b }}"
+
+          # -------------------------------------------------------------------
+          # T3: target specificity - ds_w1 intent should not leak to ds_w2
+          # -------------------------------------------------------------------
+          - conditions: "{{ scenario == 't3_target_specificity' }}"
+            sequence:
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "dc_zone01"
+                  intent: "request_quiet"
+                  target: "ds_w1"
+                  ttl_s: 30
+                  priority: "{{ prio_quiet }}"
+                  payload: "test:t3"
+              - delay: "00:00:01"
+              - variables:
+                  winner_w1: "{{ states('sensor.sdhb_winner_ds_w1') }}"
+                  winner_w2: "{{ states('sensor.sdhb_winner_ds_w2') }}"
+              - choose:
+                  - conditions: "{{ winner_w1 == 'request_quiet' and winner_w2 in ['none','unknown','unavailable',''] }}"
+                    sequence:
+                      - service: input_boolean.turn_on
+                        target: {entity_id: input_boolean.sdhb_test_pass}
+                      - service: input_text.set_value
+                        target: {entity_id: input_text.sdhb_test_last_result}
+                        data: {value: "PASS:t3"}
+                    default:
+                      - service: input_text.set_value
+                        target: {entity_id: input_text.sdhb_test_last_result}
+                        data: {value: "FAIL:t3"}
+              - service: input_text.set_value
+                target: {entity_id: input_text.sdhb_test_last_details}
+                data:
+                  value: "t3 w1={{ winner_w1 }} w2={{ winner_w2 }} before_w2={{ winner_w2_before }}"
+
+        default:
+          - service: input_text.set_value
+            target: {entity_id: input_text.sdhb_test_last_result}
+            data: {value: "SKIP: unknown scenario"}
+
+      # Cleanup
+      - service: script.sdhb_clear_intent
+        data: {source: "dc_zone01"}
+      - service: script.sdhb_clear_intent
+        data: {source: "dv_vmc"}
+
+      # Reset scenario selector to idle ('none') after the run
+      - service: input_select.select_option
+        target: {entity_id: input_select.sdhb_test_scenario}
+        data: {option: "none"}
+
+automation:
+  - id: sdhb_run_integration_test_on_select
+    alias: "sdhb_run_integration_test_on_select"
+    mode: single
+    trigger:
+      - platform: state
+        entity_id: input_select.sdhb_test_scenario
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_tests_enabled
+        state: "on"
+      - condition: template
+        value_template: "{{ trigger.to_state.state != 'none' }}"
+    action:
+      - service: script.sdhb_run_integration_test
+
+  - id: sdhb_tests_auto_off_start_timer
+    alias: "sdhb_tests_auto_off_start_timer"
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id: input_boolean.sdhb_tests_enabled
+        to: "on"
+    action:
+      - service: timer.start
+        target: {entity_id: timer.sdhb_tests_auto_off}
+
+  - id: sdhb_tests_auto_off_when_timer_finishes
+    alias: "sdhb_tests_auto_off_when_timer_finishes"
+    mode: single
+    trigger:
+      - platform: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.sdhb_tests_auto_off
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_tests_enabled
+        state: "on"
+    action:
+      - service: input_boolean.turn_off
+        target: {entity_id: input_boolean.sdhb_tests_enabled}
+      - service: input_select.select_option
+        target: {entity_id: input_select.sdhb_test_scenario}
+        data: {option: "none"}
+      - service: input_text.set_value
+        target: {entity_id: input_text.sdhb_test_last_result}
+        data: {value: "INFO: auto-off after 2h"}

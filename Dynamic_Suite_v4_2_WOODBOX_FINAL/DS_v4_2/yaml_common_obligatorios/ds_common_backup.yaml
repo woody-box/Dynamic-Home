@@ -1,0 +1,197 @@
+# ============================================================================
+# Dynamic Shutter · DS · Common backup/restore
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 hotfix (backup/restore common)
+# ============================================================================
+
+input_text:
+  ds_common_backup_json:
+    name: ds_common_backup_json_persistente
+    max: 255
+    icon: mdi:content-save
+
+input_datetime:
+  ds_common_backup_ts:
+    name: ds_common_backup_ts
+    has_date: true
+    has_time: true
+
+template:
+- trigger:
+  - platform: event
+    event_type: ds_common_save_backup_event
+  sensor:
+  - name: ds_common_backup_storage
+    unique_id: ds_common_backup_storage
+    icon: mdi:database
+    state: OK
+    availability: "{{ trigger is defined and trigger.event is defined and trigger.event.data.payload is defined }}"
+    attributes:
+      backup_json: "{{ trigger.event.data.payload }}"
+      last_updated: "{{ now().isoformat() }}"
+
+script:
+  ds_common_backup_save_file:
+    alias: ds_common_backup_save_file
+    mode: single
+    sequence:
+      - variables:
+          backup_path: "dynamic_suite/ds/common/ds_common_backup.json"
+          entities:
+            - input_boolean.ds_sdhb_advanced_mode
+          payload: >-
+            {% set out = namespace(d={}) %}
+            {% for e in entities %}
+              {% set s = states(e) %}
+              {% if s not in ['unknown','unavailable','none',''] %}
+                {% set out.d = dict(out.d, **{e: s}) %}
+              {% endif %}
+            {% endfor %}
+            {{ out.d | tojson }}
+          saved_count: >-
+            {% set d = payload | from_json if payload not in ['unknown','unavailable','none',''] else {} %}
+            {{ d | count }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ saved_count | int(0) == 0 }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: DS Common · Backup
+                  message: "⚠️ Backup no guardado
+
+No había ningún valor válido para guardar (0 elementos).
+Reintenta en unos segundos."
+                  notification_id: ds_common_backup_save_empty
+              - stop: "Backup vacío: no se guarda."
+      - service: appdaemon.dynamic_suite_backup/save
+        data:
+          path: "{{ backup_path }}"
+          payload: "{{ payload }}"
+
+  ds_common_backup_restore_file:
+    alias: ds_common_backup_restore_file
+    mode: single
+    sequence:
+      - variables:
+          backup_path: "dynamic_suite/ds/common/ds_common_backup.json"
+      - service: appdaemon.dynamic_suite_backup/restore
+        data:
+          path: "{{ backup_path }}"
+
+  ds_common_backup_save:
+    alias: ds_common_backup_save
+    mode: single
+    sequence:
+    - variables:
+        bad: ['unknown','unavailable','none','']
+        keys:
+        - ds_sdhb_advanced_mode
+        payload: >-
+          {% set out = namespace(d={}) %}
+          {% for k in keys %}
+            {% set n = 'input_number.' ~ k %}
+            {% set b = 'input_boolean.' ~ k %}
+            {% set s = 'input_select.' ~ k %}
+            {% set dt = 'input_datetime.' ~ k %}
+            {% set tx = 'input_text.' ~ k %}
+            {% if n in states and states(n) not in bad %}
+              {% set v = states(n) | float(none) %}
+              {% if v is not none %}{% set out.d = dict(out.d, **{k:v}) %}{% endif %}
+            {% elif b in states and states(b) not in bad %}
+              {% set st = states(b) %}
+              {% if st in ['on','off'] %}{% set out.d = dict(out.d, **{k:(true if st=='on' else false)}) %}{% endif %}
+            {% elif s in states and states(s) not in bad %}
+              {% set out.d = dict(out.d, **{k:states(s)|string}) %}
+            {% elif dt in states and states(dt) not in bad %}
+              {% set out.d = dict(out.d, **{k:states(dt)|string}) %}
+            {% elif tx in states and states(tx) not in bad %}
+              {% set out.d = dict(out.d, **{k:states(tx)|string}) %}
+            {% endif %}
+          {% endfor %}
+          {{ dict(meta=dict(module='DS', scope='common', version='4.2', ts=now().isoformat()),
+                  values=out.d) | to_json }}
+    - event: ds_common_save_backup_event
+      event_data:
+        payload: "{{ payload }}"
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.ds_common_backup_ts
+      data:
+        datetime: "{{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+    - service: logbook.log
+      data:
+        name: ds_common
+        message: Backup common guardado ({{ (payload|from_json).values | count }} items)
+
+  ds_common_backup_restore:
+    alias: ds_common_backup_restore
+    mode: single
+    sequence:
+    - variables:
+        raw: >-
+          {{ state_attr('sensor.ds_common_backup_storage','backup_json')
+             if state_attr('sensor.ds_common_backup_storage','backup_json') not in [none,'unknown','unavailable','']
+             else states('input_text.ds_common_backup_json') }}
+        data: >-
+          {% if raw in [none,'unknown','unavailable',''] %}
+            {{ dict() }}
+          {% else %}
+            {{ raw | from_json if raw is string else raw }}
+          {% endif %}
+        values: "{{ data.get('values', {}) }}"
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: "{{ values | count == 0 }}"
+        sequence:
+        - stop: No hay backup válido (common)
+    - repeat:
+        for_each: "{{ values.items() | list }}"
+        sequence:
+        - variables:
+            k: "{{ repeat.item[0] }}"
+            v: "{{ repeat.item[1] }}"
+            n: "{{ 'input_number.' ~ k }}"
+            b: "{{ 'input_boolean.' ~ k }}"
+            s: "{{ 'input_select.' ~ k }}"
+            dt: "{{ 'input_datetime.' ~ k }}"
+            tx: "{{ 'input_text.' ~ k }}"
+        - choose:
+          - conditions: "{{ n in states }}"
+            sequence:
+            - service: input_number.set_value
+              target: {entity_id: "{{ n }}"}
+              data: {value: "{{ v | float(none) }}"}
+          - conditions: "{{ b in states }}"
+            sequence:
+            - choose:
+              - conditions: "{{ v in [true, 'true', 1, '1', 'on'] }}"
+                sequence:
+                - service: input_boolean.turn_on
+                  target: {entity_id: "{{ b }}"}
+              - conditions: "{{ v in [false, 'false', 0, '0', 'off'] }}"
+                sequence:
+                - service: input_boolean.turn_off
+                  target: {entity_id: "{{ b }}"}
+          - conditions: "{{ s in states }}"
+            sequence:
+            - service: input_select.select_option
+              target: {entity_id: "{{ s }}"}
+              data: {option: "{{ v | string }}"}
+          - conditions: "{{ dt in states }}"
+            sequence:
+            - service: input_datetime.set_datetime
+              target: {entity_id: "{{ dt }}"}
+              data: {datetime: "{{ v | string }}"}
+          - conditions: "{{ tx in states }}"
+            sequence:
+            - service: input_text.set_value
+              target: {entity_id: "{{ tx }}"}
+              data: {value: "{{ v | string }}"}
+    - service: logbook.log
+      data:
+        name: ds_common
+        message: Restore common aplicado ({{ values | count }} items)

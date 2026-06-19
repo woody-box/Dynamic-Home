@@ -1,0 +1,478 @@
+# ============================================================================
+# Dynamic Shutter · DS W1 · Inputs
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction: inputs/logic/sdhb + global common/bus)
+# ============================================================================
+
+template:
+- sensor:
+  - name: ds_w1_hw_map_version
+    unique_id: ds_w1_hw_map_version
+    state: '4.2'
+  - name: ds_w1_hw_map
+    unique_id: ds_w1_hw_map
+    state: ok
+    attributes:
+      zone_name: cocina
+      shutter_type: puerta
+      cover_entity: cover.persiana_cocina_cover_0
+      climate_enabled: true
+      climate_entity: climate.termostato_salon
+      t_in_enabled: true
+      t_in_entity: sensor.sensor_ht_salon_temperature
+      rh_in_enabled: true
+      rh_in_entity: sensor.sensor_ht_salon_humidity
+      dew_in_enabled: true
+      dew_in_entity: sensor.tc_salon_punto_de_rocio
+      t_out_enabled: true
+      t_out_entity: sensor.temperatura_terraza_temperature
+      rh_out_enabled: true
+      rh_out_entity: sensor.temperatura_terraza_humidity
+      dew_out_enabled: true
+      dew_out_entity: sensor.tc_terraza_punto_de_rocio
+      rain_enabled: true
+      rain_entity: sensor.sensor_de_lluvia_rainwater
+      lux_out_enabled: true
+      lux_out_entity: sensor.sensor_de_lluvia_illuminance
+      wind_enabled: true
+      wind_entity: sensor.openweathermap_wind_speed
+      wind_gust_enabled: false
+      wind_gust_entity: null
+      window_contact_enabled: false
+      window_contact_entity: null
+      lux_in_enabled: false
+      lux_in_entity: null
+      forecast_enabled: false
+      forecast_entity: sensor.clima_daily_opwm
+      sun_entity: sun.sun
+- sensor:
+  - name: ds_w1_user_version
+    unique_id: ds_w1_user_version
+    state: '4.2'
+- sensor:
+  - name: ds_w1_fabrica
+    unique_id: ds_w1_fabrica
+    state: ok
+    attributes:
+      orientacion_deg: 91
+      altura_cm: 220
+      voladizo_cm: 0
+      offset_edificios_min: 0
+      angulo_fachada_deg: 180
+      lux_day_min: 2900
+      lux_cloudy_max: 2900
+      lux_night_max: 30
+      summer_min_open_pct: 20
+      delta_hot_out: 0.8
+      delta_freecool: 0.8
+      freecool_max_open_pct: 60
+      winter_night_pct: 0
+      wind_limit_kmh: 40
+      weather_max_open_pct: 30
+      rain_threshold: 0.1
+      rain_close_pct: 0
+      privacy_position_pct: 40
+      privacy_from_hhmm: '22:30'
+      min_change_pct: 10
+      min_time_between_moves_min: 15
+      forecast_hot_threshold: 32
+      forecast_cold_threshold: 6
+      forecast_preclose_time_hhmm: 2200
+- sensor: null
+- sensor:
+  - name: ds_w1_fabrica_keys
+    unique_id: ds_w1_fabrica_keys
+    state: OK
+    availability: "{{ states('sensor.ds_w1_fabrica') not in ['unknown','unavailable','none',''] }}"
+    attributes:
+      keys_json: >-
+        {% set st = states['sensor.ds_w1_fabrica'] | default(none, true) %}
+        {% set attrs = st.attributes if st else {} %}
+        {% set base = (attrs.keys() | list | map('regex_replace','^(.*)$','ds_w1_\1') | list) %}
+        {% set extra = [
+          'ds_w1_override_mode','ds_w1_zone',
+          'ds_w1_sleep_mode','ds_w1_slew_enabled','ds_w1_cover_inverted',
+          'ds_w1_interlock_enabled','ds_w1_interlock_notify_enabled',
+          'ds_w1_privacy_enabled','ds_w1_weather_protect_enabled','ds_w1_forecast_enabled',
+          'ds_w1_hold_until','ds_w1_override_until','ds_w1_privacy_from','ds_w1_privacy_until',
+          'ds_w1_notify_target_entity',
+          'ds_w1_sdhb_enabled','ds_w1_sdhb_export_enabled','ds_w1_sdhb_consume_enabled','ds_w1_sdhb_quiet_respect_enabled',
+          'ds_w1_health_alert_notify_enabled',
+          'ds_w1_sdhb_target_dv'
+        ] %}
+        {{ ((base + extra) | unique | list | sort) | tojson }}
+
+- sensor:
+  - name: ds_w1_inputs_version
+    unique_id: ds_w1_inputs_version
+    state: '4.2'
+
+- trigger:
+  - platform: event
+    event_type: ds_w1_save_backup_event
+  sensor:
+  - name: ds_w1_backup_storage
+    unique_id: ds_w1_backup_storage
+    icon: mdi:database
+    state: OK
+    availability: "{{ trigger is defined and trigger.event is defined and trigger.event.data.payload is defined }}"
+    attributes:
+      backup_json: "{{ trigger.event.data.payload }}"
+      last_updated: "{{ now().isoformat() }}"
+
+input_select:
+  ds_w1_override_mode:
+    name: ds_w1_override_mode
+    options:
+    - auto
+    - hold
+    - lock
+    - ttl
+    initial: auto
+  ds_w1_zone:
+    name: ds_w1_zone
+    options:
+    - dc_zone01
+    - dc_zone02
+    - dc_zone03
+    - dc_zone04
+    - dc_zone05
+    - dc_zone06
+    - dc_zone07
+    - dc_zone08
+    initial: dc_zone01
+  ds_w1_facade:
+    name: ds_w1_facade
+    options:
+    - f1
+    - f2
+    - f3
+    - f4
+    initial: f1
+input_number:
+  ds_w1_interlock_wait_s:
+    name: ds_w1_interlock_wait_s
+    min: 5
+    max: 180
+    step: 1
+    mode: box
+    unit_of_measurement: s
+    initial: 30
+  ds_w1_interlock_tol_pct:
+    name: ds_w1_interlock_tol_pct
+    min: 0
+    max: 20
+    step: 1
+    mode: box
+    unit_of_measurement: '%'
+    initial: 3
+  ds_w1_last_target_pct:
+    name: ds_w1_last_target
+    min: 0
+    max: 100
+    step: 10
+    mode: box
+    unit_of_measurement: '%'
+  ds_w1_orientacion_deg:
+    name: ds_w1_orientacion_deg
+    min: 0
+    max: 359
+    step: 1
+    mode: box
+    unit_of_measurement: °
+    initial: 91
+  ds_w1_altura_cm:
+    name: ds_w1_altura_cm
+    min: 50
+    max: 400
+    step: 1
+    mode: box
+    unit_of_measurement: cm
+    initial: 220
+  ds_w1_voladizo_cm:
+    name: ds_w1_voladizo_cm
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    unit_of_measurement: cm
+    initial: 0
+  ds_w1_offset_edificios_min:
+    name: ds_w1_offset_edificios_min
+    min: 0
+    max: 180
+    step: 1
+    mode: box
+    unit_of_measurement: min
+    initial: 0
+  ds_w1_angulo_fachada_deg:
+    name: ds_w1_angulo_fachada_deg
+    min: 30
+    max: 360
+    step: 1
+    mode: box
+    unit_of_measurement: °
+    initial: 180
+  ds_w1_lux_day_min:
+    name: ds_w1_lux_day_min
+    min: 0
+    max: 20000
+    step: 50
+    mode: box
+    unit_of_measurement: lx
+    initial: 2900
+  ds_w1_lux_cloudy_max:
+    name: ds_w1_lux_cloudy_max
+    min: 0
+    max: 20000
+    step: 50
+    mode: box
+    unit_of_measurement: lx
+    initial: 2900
+  ds_w1_lux_night_max:
+    name: ds_w1_lux_night_max
+    min: 0
+    max: 2000
+    step: 10
+    mode: box
+    unit_of_measurement: lx
+    initial: 30
+  ds_w1_summer_min_open_pct:
+    name: ds_w1_summer_min_open_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 20
+  ds_w1_delta_hot_out:
+    name: ds_w1_delta_hot_out
+    min: -10
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: °C
+    initial: 1
+  ds_w1_delta_freecool:
+    name: ds_w1_delta_freecool
+    min: -10
+    max: 10
+    step: 0.5
+    mode: box
+    unit_of_measurement: °C
+    initial: 1
+  ds_w1_freecool_max_open_pct:
+    name: ds_w1_freecool_max_open_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 100
+  ds_w1_winter_night_pct:
+    name: ds_w1_winter_night_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 0
+  ds_w1_wind_limit_kmh:
+    name: ds_w1_wind_limit_kmh
+    min: 0
+    max: 150
+    step: 1
+    mode: box
+    unit_of_measurement: km/h
+    initial: 40
+  ds_w1_wind_cap_hyst_kmh:
+    name: ds_w1_wind_cap_hyst_kmh
+    min: 0
+    max: 50
+    step: 1
+    mode: box
+    unit_of_measurement: km/h
+    initial: 5
+  ds_w1_wind_cap_span_kmh:
+    name: ds_w1_wind_cap_span_kmh
+    min: 0
+    max: 200
+    step: 1
+    mode: box
+    unit_of_measurement: km/h
+    initial: 0
+  ds_w1_weather_max_open_pct:
+    name: ds_w1_weather_max_open_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 50
+  ds_w1_rain_threshold:
+    name: ds_w1_rain_threshold
+    min: 0
+    max: 50
+    step: 0.1
+    mode: box
+    unit_of_measurement: mm
+    initial: 0.1
+  ds_w1_rain_close_pct:
+    name: ds_w1_rain_close_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 0
+  ds_w1_privacy_position_pct:
+    name: ds_w1_privacy_position_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 0
+  ds_w1_min_change_pct:
+    name: ds_w1_min_change_pct
+    min: 0
+    max: 100
+    step: 1
+    mode: box
+    unit_of_measurement: '%'
+    initial: 5
+  ds_w1_min_time_between_moves_min:
+    name: ds_w1_min_time_between_moves_min
+    min: 0
+    max: 240
+    step: 1
+    mode: box
+    unit_of_measurement: min
+    initial: 5
+  ds_w1_forecast_hot_threshold:
+    name: ds_w1_forecast_hot_threshold
+    min: -20
+    max: 50
+    step: 0.5
+    mode: box
+    unit_of_measurement: °C
+    initial: 30
+  ds_w1_forecast_cold_threshold:
+    name: ds_w1_forecast_cold_threshold
+    min: -20
+    max: 50
+    step: 0.5
+    mode: box
+    unit_of_measurement: °C
+    initial: 5
+  ds_w1_forecast_preclose_time_hhmm:
+    name: ds_w1_forecast_preclose_time_hhmm
+    min: 0
+    max: 2359
+    step: 1
+    mode: box
+    initial: 2200
+  ds_w1_override_position_pct:
+    name: ds_w1_override_position_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 100
+  ds_w1_sdhb_solar_shield_max_open_pct:
+    name: ds_w1_sdhb_solar_shield_max_open_pct
+    min: 0
+    max: 100
+    step: 5
+    mode: box
+    unit_of_measurement: '%'
+    initial: 100
+  ds_w1_slew_step_pct:
+    name: ds_w1_slew_step_pct
+    min: 1
+    max: 50
+    step: 1
+    mode: box
+    unit_of_measurement: '%'
+    initial: 10
+  ds_w1_wind_cap_hold_min:
+    name: ds_w1_wind_cap_hold_min
+    min: 0
+    max: 180
+    step: 5
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:timer-outline
+    initial: 30
+input_datetime:
+  ds_w1_last_move_ts:
+    name: ds_w1_last_move_ts
+    has_date: true
+    has_time: true
+  ds_w1_hold_until:
+    name: ds_w1_hold_until
+    has_date: true
+    has_time: true
+  ds_w1_override_until:
+    name: ds_w1_override_until
+    has_date: true
+    has_time: true
+  ds_w1_privacy_from:
+    name: ds_w1_privacy_from
+    has_date: false
+    has_time: true
+  ds_w1_privacy_until:
+    name: ds_w1_privacy_until
+    has_date: false
+    has_time: true
+  ds_w1_wind_cap_hold_until:
+    name: ds_w1_wind_cap_hold_until
+    has_date: true
+    has_time: true
+  ds_w1_backup_inputs_ts:
+    name: ds_w1_backup_inputs_ts
+    has_date: true
+    has_time: true
+
+input_boolean:
+  ds_w1_sleep_mode:
+    name: ds_w1_sleep_mode
+    icon: mdi:sleep
+  ds_w1_slew_enabled:
+    name: ds_w1_slew_enabled
+    icon: mdi:animation
+  ds_w1_cover_inverted:
+    name: ds_w1_cover_inverted
+    icon: mdi:swap-vertical
+    initial: false
+  ds_w1_interlock_enabled:
+    name: ds_w1_interlock_enabled
+    icon: mdi:check-circle-outline
+    initial: false
+  ds_w1_interlock_notify_enabled:
+    name: ds_w1_interlock_notify_enabled
+    icon: mdi:bell-outline
+    initial: false
+  ds_w1_privacy_enabled:
+    name: ds_w1_privacy_enabled
+    icon: mdi:shield-account
+  ds_w1_weather_protect_enabled:
+    name: ds_w1_weather_protect_enabled
+    icon: mdi:weather-windy
+  ds_w1_forecast_enabled:
+    name: ds_w1_forecast_enabled
+    icon: mdi:weather-partly-cloudy
+  ds_w1_sim_enabled:
+    name: ds_w1_sim_enabled
+    icon: mdi:flask-outline
+    initial: false
+  ds_w1_sim_rain:
+    name: ds_w1_sim_rain
+    icon: mdi:flask-outline
+    initial: false
+  ds_w1_sim_sun_effective:
+    name: ds_w1_sim_sun_effective
+    icon: mdi:flask-outline
+    initial: false

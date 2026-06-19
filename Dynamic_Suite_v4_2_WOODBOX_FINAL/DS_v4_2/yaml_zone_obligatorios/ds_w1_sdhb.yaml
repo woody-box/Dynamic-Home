@@ -1,0 +1,302 @@
+# ============================================================================
+# Dynamic Shutter · DS W1 · SDHB (helpers + publish/heartbeat)
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (hotfix_p10: DS W1 SDHB feedback ACK)
+# ============================================================================
+
+input_boolean:
+  ds_w1_sdhb_enabled:
+    name: ds_w1_sdhb_enabled
+    icon: mdi:transit-connection-variant
+    initial: true
+  ds_w1_sdhb_export_enabled:
+    name: ds_w1_sdhb_export_enabled
+    icon: mdi:export
+    initial: true
+  ds_w1_sdhb_consume_enabled:
+    name: ds_w1_sdhb_consume_enabled
+    icon: mdi:import
+    initial: true
+  ds_w1_sdhb_quiet_respect_enabled:
+    name: ds_w1_sdhb_quiet_respect_enabled
+    icon: mdi:volume-mute
+    initial: true
+
+input_text:
+  ds_w1_sdhb_target_dv:
+    name: ds_w1_sdhb_target_dv
+    icon: mdi:air-filter
+    initial: dv_vmc
+
+input_number:
+  ds_w1_sdhb_priority:
+    name: ds_w1_sdhb_priority
+    icon: mdi:priority-high
+    min: 0
+    max: 100
+    step: 1
+    initial: 10
+  ds_w1_sdhb_ttl_s:
+    name: ds_w1_sdhb_ttl_s
+    icon: mdi:timer-outline
+    min: 0
+    max: 86400
+    step: 1
+    initial: 600
+
+automation:
+  - id: ds_w1_sdhb_publish_intent_on_reason_change
+    alias: ds_w1_sdhb_publish_intent_on_reason_change
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.ds_w1_target_reason
+          - input_select.ds_w1_zone
+          - input_select.ds_w1_facade
+          - input_boolean.ds_w1_sdhb_enabled
+          - input_boolean.ds_w1_sdhb_export_enabled
+          - input_boolean.sdhb_enabled
+          - input_boolean.ds_sdhb_advanced_mode
+          - input_number.ds_w1_sdhb_priority
+          - input_number.ds_w1_sdhb_ttl_s
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.ds_w1_sdhb_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.ds_w1_sdhb_export_enabled
+        state: "on"
+    action:
+      - variables:
+          reason: "{{ states('sensor.ds_w1_target_reason') }}"
+          zone: "{{ states('input_select.ds_w1_zone') }}"
+          facade: "{{ states('input_select.ds_w1_facade') }}"
+          dv_target: "{{ states('input_text.ds_w1_sdhb_target_dv') }}"
+          advanced: "{{ is_state('input_boolean.ds_sdhb_advanced_mode','on') }}"
+          prio_default: "{{ 20 if reason == 'summer_solar_shield' else 15 if reason == 'winter_solar_gain' else 30 if reason == 'freecool_night' else 0 }}"
+          ttl_default: "{{ 900 if reason in ['summer_solar_shield','winter_solar_gain'] else 600 if reason == 'freecool_night' else 0 }}"
+          prio: "{{ (states('input_number.ds_w1_sdhb_priority')|int(10)) if advanced else (prio_default|int(0)) }}"
+          ttl: "{{ (states('input_number.ds_w1_sdhb_ttl_s')|int(600)) if advanced else (ttl_default|int(0)) }}"
+      - choose:
+          - conditions: "{{ reason == 'summer_solar_shield' }}"
+            sequence:
+              - service: script.sdhb_publish_intent
+                data:
+                  source: ds_w1
+                  target: "{{ zone }}"
+                  intent: request_solar_shield
+                  priority: "{{ prio | int(0) }}"
+                  ttl_s: "{{ ttl | int(0) }}"
+                  payload: "{{ {'module':'ds','window':'ds_w1','zone': zone,'facade': facade,'reason': reason} | tojson }}"
+          - conditions: "{{ reason == 'winter_solar_gain' }}"
+            sequence:
+              - service: script.sdhb_publish_intent
+                data:
+                  source: ds_w1
+                  target: "{{ zone }}"
+                  intent: request_solar_gain
+                  priority: "{{ prio | int(0) }}"
+                  ttl_s: "{{ ttl | int(0) }}"
+                  payload: "{{ {'module':'ds','window':'ds_w1','zone': zone,'facade': facade,'reason': reason} | tojson }}"
+          - conditions: "{{ reason == 'freecool_night' }}"
+            sequence:
+              - service: script.sdhb_publish_intent
+                data:
+                  source: ds_w1
+                  target: "{{ dv_target }}"
+                  intent: request_freecool
+                  priority: "{{ prio | int(0) }}"
+                  ttl_s: "{{ ttl | int(0) }}"
+                  payload: "{{ {'module':'ds','window':'ds_w1','zone': zone,'facade': facade,'reason': reason} | tojson }}"
+        default:
+          - service: script.sdhb_publish_intent
+            data:
+              source: ds_w1
+              target: ""
+              intent: none
+              priority: 0
+              ttl_s: 0
+              payload: "{{ {'intent':'none','module':'ds','window':'ds_w1','zone': zone,'facade': facade,'reason': reason} | tojson }}"
+
+  - id: ds_w1_sdhb_heartbeat_5m
+    alias: ds_w1_sdhb_heartbeat_5m
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_enabled
+        state: "on"
+      - condition: state
+        entity_id: input_boolean.ds_w1_sdhb_enabled
+        state: "on"
+      # Heartbeat must reflect module liveness even if export is disabled.
+      # If you want to fully disable DS↔Bus activity, turn off ds_w1_sdhb_enabled.
+    action:
+      - service: script.sdhb_heartbeat
+        data:
+          source: ds_w1
+
+  - id: ds_w1_sdhb_feedback_ack_on_change
+    alias: ds_w1_sdhb_feedback_ack_on_change
+    mode: restart
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.sdhb_winner_ds_w1
+          - binary_sensor.ds_w1_sdhb_allow_override
+          - binary_sensor.ds_w1_sdhb_request_quiet
+          - binary_sensor.ds_w1_sdhb_request_solar_shield
+          - input_boolean.sdhb_enabled
+          - input_boolean.ds_w1_sdhb_enabled
+          - input_boolean.ds_w1_sdhb_consume_enabled
+          - input_boolean.ds_w1_sdhb_quiet_respect_enabled
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_enabled
+        state: "on"
+    action:
+      - delay: "00:00:02"
+      - variables:
+          intent: "{{ states('sensor.sdhb_winner_ds_w1') | default('none') }}"
+          bus_en: "{{ is_state('input_boolean.sdhb_enabled','on') }}"
+          mod_en: "{{ is_state('input_boolean.ds_w1_sdhb_enabled','on') }}"
+          consume_en: "{{ is_state('input_boolean.ds_w1_sdhb_consume_enabled','on') }}"
+          quiet_respect: "{{ is_state('input_boolean.ds_w1_sdhb_quiet_respect_enabled','on') }}"
+          allow: "{{ is_state('binary_sensor.ds_w1_sdhb_allow_override','on') }}"
+          is_quiet: "{{ is_state('binary_sensor.ds_w1_sdhb_request_quiet','on') }}"
+          is_solar: "{{ is_state('binary_sensor.ds_w1_sdhb_request_solar_shield','on') }}"
+          status: >-
+            {% if not bus_en %} ignored
+            {% elif not mod_en %} ignored
+            {% elif not consume_en %} ignored
+            {% elif intent in ['none','unknown','unavailable',''] %} none
+            {% elif intent == 'request_quiet' and (not quiet_respect) %} ignored
+            {% elif allow and (is_quiet or is_solar) %} accepted
+            {% else %} ignored
+            {% endif %}
+          applied: >-
+            {{ (status == 'accepted') }}
+          reason: >-
+            {% if not bus_en %} bus_disabled
+            {% elif not mod_en %} module_disabled
+            {% elif not consume_en %} consume_disabled
+            {% elif intent in ['none','unknown','unavailable',''] %} none
+            {% elif intent == 'request_quiet' and (not quiet_respect) %} quiet_respect_disabled
+            {% elif allow %} not_matched
+            {% else %} gate_off
+            {% endif %}
+          details: >-
+            {{ {'intent': intent, 'allow': allow, 'is_quiet': is_quiet, 'is_solar': is_solar} | tojson }}
+      - service: script.sdhb_feedback
+        data:
+          source: ds_w1
+          status: "{{ status }}"
+          intent_received: "{{ intent }}"
+          applied: "{{ applied }}"
+          reason: "{{ reason }}"
+          details: "{{ details }}"
+template:
+  # --------------------------------------------------------------------------
+  # SDHB consume (per-window)
+  # - Exposes the matched intent for DS W1 (or 'none')
+  # - Provides convenience binary_sensors consumed by ds_w1_logic.yaml
+  # --------------------------------------------------------------------------
+  - sensor:
+    - name: ds_w1_stage4_sdhb_version
+      unique_id: ds_w1_stage4_sdhb_version
+      icon: mdi:source-branch
+      state: '4.2'
+
+    - name: ds_w1_sdhb_winner
+      unique_id: ds_w1_sdhb_winner
+      icon: mdi:trophy
+      availability: >-
+        {{ states('sensor.sdhb_winner_ds_w1') not in ['unknown','unavailable'] }}
+      state: >-
+        {% set en = is_state('input_boolean.sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_enabled','on') %}
+        {% set intent = states('sensor.sdhb_winner_ds_w1') if en else 'none' %}
+        {% if intent in ['unknown','unavailable','none',''] %}
+          none
+        {% else %}
+          {{ intent }}
+        {% endif %}
+
+  - binary_sensor:
+      - name: ds_w1_sdhb_has_intent
+        unique_id: ds_w1_sdhb_has_intent
+        icon: mdi:check-circle-outline
+        availability: >-
+          {{ states('sensor.sdhb_winner_ds_w1') not in ['unknown','unavailable'] }}
+        state: >-
+          {% set ok = is_state('input_boolean.sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_consume_enabled','on') %}
+          {{ ok and states('sensor.ds_w1_sdhb_winner') != 'none' }}
+
+      - name: ds_w1_sdhb_allow_override
+        unique_id: ds_w1_sdhb_allow_override
+        icon: mdi:shield-check
+        availability: >-
+          {{ states('sensor.sdhb_winner_ds_w1') not in ['unknown','unavailable'] }}
+        state: >-
+          {{ is_state('input_boolean.ds_w1_sdhb_consume_enabled','on')
+             and is_state('binary_sensor.ds_w1_sdhb_has_intent','on') }}
+
+  - sensor:
+      - name: ds_w1_sdhb_intent_matched
+        unique_id: ds_w1_sdhb_intent_matched
+        icon: mdi:target
+        availability: >-
+          {{ states('sensor.sdhb_winner_ds_w1') not in ['unknown','unavailable'] }}
+        state: >-
+          {% set en = is_state('input_boolean.sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_enabled','on') %}
+          {% set consume = en and is_state('input_boolean.ds_w1_sdhb_consume_enabled','on') %}
+          {% if not consume %}
+            none
+          {% else %}
+            {% set intent = states('sensor.sdhb_winner_ds_w1') %}
+            {% if intent in ['unknown','unavailable','none',''] %}
+              none
+            {% else %}
+              {{ intent }}
+            {% endif %}
+          {% endif %}
+        attributes:
+          consume_enabled: "{{ is_state('input_boolean.ds_w1_sdhb_consume_enabled','on') }}"
+          intent: "{{ states('sensor.sdhb_winner_ds_w1') }}"
+          target: "{{ state_attr('sensor.sdhb_winner_ds_w1','target') }}"
+          source: "{{ state_attr('sensor.sdhb_winner_ds_w1','source') }}"
+          priority: "{{ state_attr('sensor.sdhb_winner_ds_w1','priority') }}"
+          expires_at: "{{ state_attr('sensor.sdhb_winner_ds_w1','expires_at') }}"
+          payload: "{{ state_attr('sensor.sdhb_winner_ds_w1','payload') }}"
+
+  - binary_sensor:
+      - name: ds_w1_sdhb_request_quiet
+        unique_id: ds_w1_sdhb_request_quiet
+        icon: mdi:volume-mute
+        availability: >-
+          {{ states('sensor.sdhb_winner_ds_w1') not in ['unknown','unavailable'] }}
+        state: >-
+          {% set ok = is_state('input_boolean.sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_consume_enabled','on') %}
+          {{ ok and states('sensor.ds_w1_sdhb_intent_matched') in ['request_quiet','request_eco'] }}
+
+      - name: ds_w1_sdhb_request_solar_shield
+        unique_id: ds_w1_sdhb_request_solar_shield
+        icon: mdi:weather-sunny-alert
+        availability: >-
+          {{ states('sensor.sdhb_winner_ds_w1') not in ['unknown','unavailable'] }}
+        state: >-
+          {% set ok = is_state('input_boolean.sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_enabled','on') and is_state('input_boolean.ds_w1_sdhb_consume_enabled','on') %}
+          {{ ok and states('sensor.ds_w1_sdhb_intent_matched') == 'request_solar_shield' }}
+
+  # ---------------------------------------------------------------------------
+  # SDHB Feedback ACK (DS -> SDHB)
+  # - DS reports whether the current SDHB winner for ds_w1 is accepted/applied.
+  # - This improves suite observability: "winner" vs "actually applied".
+  # - Published via script.sdhb_feedback (defined in the bus).
+  # ---------------------------------------------------------------------------

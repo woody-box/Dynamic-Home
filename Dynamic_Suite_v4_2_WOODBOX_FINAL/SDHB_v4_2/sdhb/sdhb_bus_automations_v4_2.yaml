@@ -1,0 +1,162 @@
+# version: v4.2
+# file: sdhb_bus_automations_v4_2.yaml
+# purpose: SDHB automations. Load this as a Home Assistant package.
+# note: Split from suite_dynamic_home_bus_v4_2.yaml to reduce monolith. No functional changes.
+
+automation:
+  - id: sdhb_winner_change_event
+    alias: "sdhb_winner_change_event"
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id: sensor.sdhb_intent_effective
+    action:
+      - variables:
+          intent: "{{ states('sensor.sdhb_intent_effective') }}"
+          source: "{{ state_attr('sensor.sdhb_intent_effective','source') }}"
+          target: "{{ state_attr('sensor.sdhb_intent_effective','target') }}"
+          priority: "{{ state_attr('sensor.sdhb_intent_effective','priority') }}"
+          now_ts: "{{ as_timestamp(now()) | int(0) }}"
+          last_ts: "{{ states('input_number.sdhb_winner_event_last_ts') | int(0) }}"
+          last_target: "{{ states('input_text.sdhb_winner_event_last_target') }}"
+          rl: "{{ states('input_number.sdhb_winner_event_rate_limit_s') | int(1) }}"
+      - choose:
+          - conditions: "{{ rl > 0 and (now_ts - last_ts) < rl and (target | string) == (last_target | string) }}"
+            sequence:
+              - stop: "winner_changed rate-limited (same target)"
+      - event: sdhb_winner_changed
+        event_data:
+          intent: "{{ intent }}"
+          source: "{{ source }}"
+          target: "{{ target }}"
+          priority: "{{ priority }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.sdhb_winner_event_last_ts
+        data:
+          value: "{{ now_ts }}"
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.sdhb_winner_event_last_target
+        data:
+          value: "{{ target }}"
+
+  - id: sdhb_feedback_reset
+    alias: "sdhb_feedback_reset_on_none"
+    mode: queued
+    trigger:
+      - platform: state
+        entity_id:
+          - sensor.sdhb_winner_dc_zone01
+          - sensor.sdhb_winner_dc_zone02
+          - sensor.sdhb_winner_dc_zone03
+          - sensor.sdhb_winner_dc_zone04
+          - sensor.sdhb_winner_dc_zone05
+          - sensor.sdhb_winner_dc_zone06
+          - sensor.sdhb_winner_dc_zone07
+          - sensor.sdhb_winner_dc_zone08
+          - sensor.sdhb_winner_ds_w1
+          - sensor.sdhb_winner_ds_w2
+          - sensor.sdhb_winner_ds_w3
+          - sensor.sdhb_winner_ds_w4
+          - sensor.sdhb_winner_ds_w5
+          - sensor.sdhb_winner_ds_w6
+          - sensor.sdhb_winner_ds_w7
+          - sensor.sdhb_winner_ds_w8
+          - sensor.sdhb_winner_ds_w9
+          - sensor.sdhb_winner_ds_w10
+          - sensor.sdhb_winner_ds_w11
+          - sensor.sdhb_winner_ds_w12
+          - sensor.sdhb_winner_dv_vmc
+          - sensor.sdhb_winner_dv_2
+          - sensor.sdhb_winner_dv_3
+    condition:
+      - condition: template
+        value_template: "{{ trigger.to_state is not none and trigger.to_state.state == 'none' }}"
+    action:
+      - variables:
+          consumer: "{{ trigger.entity_id | regex_replace('^sensor\\.sdhb_winner_(.*)$','\\1') }}"
+          ent_fb: "{{ 'input_boolean.sdhb_' ~ consumer ~ '_feedback_applied' }}"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: "{{ ent_fb }}"
+
+  - id: sdhb_error_count_increment
+    alias: "sdhb_error_count_increment"
+    mode: queued
+    trigger:
+      - platform: event
+        event_type: sdhb_error
+    action:
+      - service: counter.increment
+        target:
+          entity_id: counter.sdhb_error_count
+
+  - id: sdhb_error_count_reset_daily
+    alias: "sdhb_error_count_reset_daily"
+    mode: queued
+    trigger:
+      - platform: time
+        at: "00:00:00"
+    action:
+      - service: counter.reset
+        target:
+          entity_id: counter.sdhb_error_count
+
+  - id: sdhb_ttl_cleanup_5m
+    alias: sdhb_ttl_cleanup_5m
+    mode: single
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_enabled
+        state: "on"
+    action:
+      - variables:
+          slots: ['dc_zone01', 'dc_zone02', 'dc_zone03', 'dc_zone04', 'dc_zone05', 'dc_zone06', 'dc_zone07', 'dc_zone08', 'ds_w1', 'ds_w10', 'ds_w11', 'ds_w12', 'ds_w2', 'ds_w3', 'ds_w4', 'ds_w5', 'ds_w6', 'ds_w7', 'ds_w8', 'ds_w9', 'dv_2', 'dv_3', 'dv_vmc']
+          now_ts: "{{ as_timestamp(now()) }}"
+      - repeat:
+          for_each: "{{ slots }}"
+          sequence:
+            - variables:
+                src: "{{ repeat.item }}"
+                ent_enabled: "input_boolean.sdhb_{{ src }}_enabled"
+                ent_exp: "input_datetime.sdhb_{{ src }}_expires_at"
+                exp_ts: "{{ as_timestamp(states(ent_exp)) if states(ent_exp) not in ['unknown','unavailable','none',''] else 0 }}"
+            - choose:
+                - conditions: "{{ is_state(ent_enabled,'on') and exp_ts > 0 and exp_ts <= now_ts }}"
+                  sequence:
+                    - service: script.sdhb_clear_intent
+                      data:
+                        source: "{{ src }}"
+
+
+  - id: sdhb_startup_feedback_guard
+    alias: sdhb_startup_feedback_guard
+    mode: single
+    trigger:
+      - platform: homeassistant
+        event: start
+    condition:
+      - condition: state
+        entity_id: input_boolean.sdhb_enabled
+        state: "on"
+    action:
+      - variables:
+          consumers: ['dc_zone01', 'dc_zone02', 'dc_zone03', 'dc_zone04', 'dc_zone05', 'dc_zone06', 'dc_zone07', 'dc_zone08', 'ds_w1', 'ds_w10', 'ds_w11', 'ds_w12', 'ds_w2', 'ds_w3', 'ds_w4', 'ds_w5', 'ds_w6', 'ds_w7', 'ds_w8', 'ds_w9', 'dv_2', 'dv_3', 'dv_vmc']
+      - repeat:
+          for_each: "{{ consumers }}"
+          sequence:
+            - variables:
+                c: "{{ repeat.item }}"
+                ent_applied: "input_boolean.sdhb_{{ c }}_feedback_applied"
+                win_sensor: "sensor.sdhb_winner_{{ c }}"
+            - choose:
+                - conditions: "{{ is_state(ent_applied,'on') and states(win_sensor) in ['unknown','unavailable','none',''] }}"
+                  sequence:
+                    - service: input_boolean.turn_off
+                      target:
+                        entity_id: "{{ ent_applied }}"
+

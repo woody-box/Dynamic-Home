@@ -1,0 +1,1360 @@
+# ============================================================================
+# Dynamic Climate · DC · Common scripts (factory/backup/master)
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction; backup coverage: add common entities; init_fabrica_common: reset common entities)
+# ============================================================================
+
+template:
+- sensor:
+  - name: dc_common_stats_version
+    unique_id: dc_common_stats_version
+    icon: mdi:tag
+    state: '4.2'
+    attributes:
+      module: dc_common_stats
+      tier: core
+- sensor:
+  - name: dc_zone01_duracion_ultimo_ciclo_calor
+    unique_id: dc_zone01_duracion_ultimo_ciclo_calor
+    unit_of_measurement: min
+    icon: mdi:radiator
+    state: "{% set inicio = states('input_datetime.dc_zone01_ultima_hora_encendido_calor')\
+      \ %} {% set fin = states('input_datetime.dc_zone01_ultima_hora_apagado_calor')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone01_ultima_hora_encendido_calor')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone01_ultima_hora_apagado_calor')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone01_duracion_ultimo_ciclo_frio
+    unique_id: dc_zone01_duracion_ultimo_ciclo_frio
+    unit_of_measurement: min
+    icon: mdi:snowflake
+    state: "{% set inicio = states('input_datetime.dc_zone01_ultima_hora_encendido_frio')\
+      \ %} {% set fin = states('input_datetime.dc_zone01_ultima_hora_apagado_frio')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone01_ultima_hora_encendido_frio')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone01_ultima_hora_apagado_frio')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone02_duracion_ultimo_ciclo_calor
+    unique_id: dc_zone02_duracion_ultimo_ciclo_calor
+    unit_of_measurement: min
+    icon: mdi:radiator
+    state: "{% set inicio = states('input_datetime.dc_zone02_ultima_hora_encendido_calor')\
+      \ %} {% set fin = states('input_datetime.dc_zone02_ultima_hora_apagado_calor')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone02_ultima_hora_encendido_calor')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone02_ultima_hora_apagado_calor')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone02_duracion_ultimo_ciclo_frio
+    unique_id: dc_zone02_duracion_ultimo_ciclo_frio
+    unit_of_measurement: min
+    icon: mdi:snowflake
+    state: "{% set inicio = states('input_datetime.dc_zone02_ultima_hora_encendido_frio')\
+      \ %} {% set fin = states('input_datetime.dc_zone02_ultima_hora_apagado_frio')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone02_ultima_hora_encendido_frio')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone02_ultima_hora_apagado_frio')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone03_duracion_ultimo_ciclo_calor
+    unique_id: dc_zone03_duracion_ultimo_ciclo_calor
+    unit_of_measurement: min
+    icon: mdi:radiator
+    state: "{% set inicio = states('input_datetime.dc_zone03_ultima_hora_encendido_calor')\
+      \ %} {% set fin = states('input_datetime.dc_zone03_ultima_hora_apagado_calor')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone03_ultima_hora_encendido_calor')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone03_ultima_hora_apagado_calor')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone03_duracion_ultimo_ciclo_frio
+    unique_id: dc_zone03_duracion_ultimo_ciclo_frio
+    unit_of_measurement: min
+    icon: mdi:snowflake
+    state: "{% set inicio = states('input_datetime.dc_zone03_ultima_hora_encendido_frio')\
+      \ %} {% set fin = states('input_datetime.dc_zone03_ultima_hora_apagado_frio')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone03_ultima_hora_encendido_frio')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone03_ultima_hora_apagado_frio')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone04_duracion_ultimo_ciclo_calor
+    unique_id: dc_zone04_duracion_ultimo_ciclo_calor
+    unit_of_measurement: min
+    icon: mdi:radiator
+    state: "{% set inicio = states('input_datetime.dc_zone04_ultima_hora_encendido_calor')\
+      \ %} {% set fin = states('input_datetime.dc_zone04_ultima_hora_apagado_calor')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone04_ultima_hora_encendido_calor')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone04_ultima_hora_apagado_calor')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_zone04_duracion_ultimo_ciclo_frio
+    unique_id: dc_zone04_duracion_ultimo_ciclo_frio
+    unit_of_measurement: min
+    icon: mdi:snowflake
+    state: "{% set inicio = states('input_datetime.dc_zone04_ultima_hora_encendido_frio')\
+      \ %} {% set fin = states('input_datetime.dc_zone04_ultima_hora_apagado_frio')\
+      \ %} {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_zone04_ultima_hora_encendido_frio')\
+      \ not in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_zone04_ultima_hora_apagado_frio')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_bh_duracion_ultimo_ciclo_calor
+    unique_id: dc_bh_duracion_ultimo_ciclo_calor
+    unit_of_measurement: min
+    icon: mdi:radiator
+    state: "{% set inicio = states('input_datetime.dc_bh_ultima_hora_encendido_calor')\
+      \ %} {% set fin = states('input_datetime.dc_bh_ultima_hora_apagado_calor') %}\
+      \ {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_bh_ultima_hora_encendido_calor') not\
+      \ in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_bh_ultima_hora_apagado_calor')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_bh_duracion_ultimo_ciclo_frio
+    unique_id: dc_bh_duracion_ultimo_ciclo_frio
+    unit_of_measurement: min
+    icon: mdi:snowflake
+    state: "{% set inicio = states('input_datetime.dc_bh_ultima_hora_encendido_frio')\
+      \ %} {% set fin = states('input_datetime.dc_bh_ultima_hora_apagado_frio') %}\
+      \ {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_bh_ultima_hora_encendido_frio') not\
+      \ in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_bh_ultima_hora_apagado_frio')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_bp_duracion_ultimo_ciclo_calor
+    unique_id: dc_bp_duracion_ultimo_ciclo_calor
+    unit_of_measurement: min
+    icon: mdi:radiator
+    state: "{% set inicio = states('input_datetime.dc_bp_ultima_hora_encendido_calor')\
+      \ %} {% set fin = states('input_datetime.dc_bp_ultima_hora_apagado_calor') %}\
+      \ {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_bp_ultima_hora_encendido_calor') not\
+      \ in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_bp_ultima_hora_apagado_calor')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+  - name: dc_bp_duracion_ultimo_ciclo_frio
+    unique_id: dc_bp_duracion_ultimo_ciclo_frio
+    unit_of_measurement: min
+    icon: mdi:snowflake
+    state: "{% set inicio = states('input_datetime.dc_bp_ultima_hora_encendido_frio')\
+      \ %} {% set fin = states('input_datetime.dc_bp_ultima_hora_apagado_frio') %}\
+      \ {% if inicio in ['unknown','unavailable','none',''] or fin in ['unknown','unavailable','none','']\
+      \ %}\n  {{ none }}\n{% else %}\n  {% set diff = as_timestamp(fin) - as_timestamp(inicio)\
+      \ %}\n  {{ (diff / 60) | round(1, default=none) }}\n{% endif %}\n"
+    availability: "{{ states('input_datetime.dc_bp_ultima_hora_encendido_frio') not\
+      \ in ['unknown','unavailable','none','']\n   and states('input_datetime.dc_bp_ultima_hora_apagado_frio')\
+      \ not in ['unknown','unavailable','none',''] }}\n"
+script:
+  dc_init_fabrica_common:
+    alias: dc_init_fabrica_common
+    mode: single
+    sequence:
+    - variables:
+        fab: sensor.dc_fabrica_common
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_number.dc_zones_total'') != ''unknown''
+            }}'
+        sequence:
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.dc_zones_total
+          data:
+            value: '{{ state_attr(fab, ''dc_zones_total'') | int(4) }}'
+    - repeat:
+        for_each:
+        - dc_zone01_label
+        - dc_zone02_label
+        - dc_zone03_label
+        - dc_zone04_label
+        - dc_zone05_label
+        - dc_zone06_label
+        - dc_zone07_label
+        - dc_zone08_label
+        sequence:
+        - variables:
+            k: '{{ repeat.item }}'
+            e: input_text.{{ repeat.item }}
+            v: '{{ state_attr(fab, k) }}'
+        - choose:
+          - conditions:
+            - condition: template
+              value_template: '{{ states(e) != ''unknown'' and v is not none }}'
+            sequence:
+            - service: input_text.set_value
+              target:
+                entity_id: '{{ e }}'
+              data:
+                value: '{{ v }}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_text.dc_ds_facade_groups_json'') != ''unknown'' }}'
+        sequence:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dc_ds_facade_groups_json
+          data:
+            value: '{}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_text.dc_zones_enabled'') != ''unknown'' }}'
+        sequence:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dc_zones_enabled
+          data:
+            value: 'zone01'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_text.dc_hwmap_check_zones_csv'') != ''unknown'' }}'
+        sequence:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dc_hwmap_check_zones_csv
+          data:
+            value: 'zone01'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_text.dc_notify_target'') != ''unknown'' }}'
+        sequence:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dc_notify_target
+          data:
+            value: 'notify.notify'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_boolean.dc_modo_vacaciones'') != ''unknown'' }}'
+        sequence:
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.dc_modo_vacaciones
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''input_boolean.dc_modo_ayuda'') != ''unknown'' }}'
+        sequence:
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.dc_modo_ayuda
+  dc_common_backup_save:
+    alias: dc_common_backup_save
+    mode: single
+    sequence:
+      - variables:
+          backup_path: "dynamic_suite/dc/common/dc_common_backup.json"
+          entities:
+            - input_number.dc_zones_total
+            - input_text.dc_zone01_label
+            - input_text.dc_zone02_label
+            - input_text.dc_zone03_label
+            - input_text.dc_zone04_label
+            - input_text.dc_zone05_label
+            - input_text.dc_zone06_label
+            - input_text.dc_zone07_label
+            - input_text.dc_zone08_label
+            - input_text.dc_ds_facade_groups_json
+            - input_text.dc_zones_enabled
+            - input_text.dc_hwmap_check_zones_csv
+            - input_text.dc_notify_target
+            - input_boolean.dc_modo_vacaciones
+            - input_boolean.dc_modo_ayuda
+          payload: >-
+            {% set out = namespace(d={}) %}
+            {% for e in entities %}
+              {% set s = states(e) %}
+              {% if s not in ['unknown','unavailable','none',''] %}
+                {% set out.d = dict(out.d, **{e: s}) %}
+              {% endif %}
+            {% endfor %}
+            {{ out.d | tojson }}
+          saved_count: >-
+            {% set d = payload | from_json if payload not in ['unknown','unavailable','none',''] else {} %}
+            {{ d | count }}
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ saved_count | int(0) == 0 }}"
+            sequence:
+              - service: persistent_notification.create
+                data:
+                  title: DC Common · Backup
+                  message: "⚠️ Backup no guardado
+
+No había ningún valor válido para guardar (0 elementos).
+Esto puede ocurrir tras reinicio si algunos helpers están en unknown/unavailable.
+
+Reintenta en unos segundos."
+                  notification_id: dc_common_backup_save_empty
+              - stop: "Backup vacío: no se guarda."
+      - service: appdaemon.dynamic_suite_backup/save
+        data:
+          path: "{{ backup_path }}"
+          payload: "{{ payload }}"
+
+  dc_common_backup_restore:
+    alias: dc_common_backup_restore
+    mode: single
+    sequence:
+      - variables:
+          backup_path: "dynamic_suite/dc/common/dc_common_backup.json"
+      - service: appdaemon.dynamic_suite_backup/restore
+        data:
+          path: "{{ backup_path }}"
+
+  dc_init_fabrica_all:
+    alias: dc_init_fabrica_all
+    mode: single
+    sequence:
+    - service: script.dc_init_fabrica_common
+    - choose:
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 1 }}'
+        sequence:
+        - service: script.dc_zone01_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 2 }}'
+        sequence:
+        - service: script.dc_zone02_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 3 }}'
+        sequence:
+        - service: script.dc_zone03_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 4 }}'
+        sequence:
+        - service: script.dc_zone04_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 5 }}'
+        sequence:
+        - service: script.dc_zone05_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 6 }}'
+        sequence:
+        - service: script.dc_zone06_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 7 }}'
+        sequence:
+        - service: script.dc_zone07_init_fabrica
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 8 }}'
+        sequence:
+        - service: script.dc_zone08_init_fabrica
+  dc_backup_all_save:
+    alias: dc_backup_all_save
+    mode: single
+    sequence:
+    - service: script.dc_common_backup_save
+    - choose:
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 1 }}'
+        sequence:
+        - service: script.dc_zone01_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 2 }}'
+        sequence:
+        - service: script.dc_zone02_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 3 }}'
+        sequence:
+        - service: script.dc_zone03_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 4 }}'
+        sequence:
+        - service: script.dc_zone04_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 5 }}'
+        sequence:
+        - service: script.dc_zone05_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 6 }}'
+        sequence:
+        - service: script.dc_zone06_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 7 }}'
+        sequence:
+        - service: script.dc_zone07_backup_inputs_save
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 8 }}'
+        sequence:
+        - service: script.dc_zone08_backup_inputs_save
+  dc_backup_all_restore:
+    alias: dc_backup_all_restore
+    mode: single
+    sequence:
+    - service: script.dc_common_backup_restore
+    - choose:
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 1 }}'
+        sequence:
+        - service: script.dc_zone01_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 2 }}'
+        sequence:
+        - service: script.dc_zone02_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 3 }}'
+        sequence:
+        - service: script.dc_zone03_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 4 }}'
+        sequence:
+        - service: script.dc_zone04_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 5 }}'
+        sequence:
+        - service: script.dc_zone05_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 6 }}'
+        sequence:
+        - service: script.dc_zone06_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 7 }}'
+        sequence:
+        - service: script.dc_zone07_backup_inputs_restore
+      - conditions: '{{ (states(''input_number.dc_zones_total'') | int(1)) >= 8 }}'
+        sequence:
+        - service: script.dc_zone08_backup_inputs_restore
+input_boolean:
+  dc_sim_armed:
+    name: dc_sim_armed
+    icon: mdi:gamepad-variant
+    initial: false
+  dc_debug_help_base_activa:
+    name: dc_debug_help_base_activa
+    icon: mdi:information-outline
+  dc_debug_help_target_raw:
+    name: dc_debug_help_target_raw
+    icon: mdi:information-outline
+  dc_debug_help_target_limitado:
+    name: dc_debug_help_target_limitado
+    icon: mdi:information-outline
+  dc_debug_help_target_final:
+    name: dc_debug_help_target_final
+    icon: mdi:information-outline
+  dc_debug_help_bias_exterior:
+    name: dc_debug_help_bias_exterior
+    icon: mdi:information-outline
+  dc_debug_help_bias_fachadas:
+    name: dc_debug_help_bias_fachadas
+    icon: mdi:information-outline
+  dc_debug_help_bias_vmc:
+    name: dc_debug_help_bias_vmc
+    icon: mdi:information-outline
+  dc_debug_help_bias_tendencia:
+    name: dc_debug_help_bias_tendencia
+    icon: mdi:information-outline
+  dc_debug_help_freno_tendencia:
+    name: dc_debug_help_freno_tendencia
+    icon: mdi:information-outline
+  dc_debug_help_lead_final:
+    name: dc_debug_help_lead_final
+    icon: mdi:information-outline
+  dc_debug_base_activa:
+    name: dc_debug_base_activa
+    icon: mdi:chart-bell-curve
+  dc_debug_target_raw:
+    name: dc_debug_target_raw
+    icon: mdi:target-variant
+  dc_debug_target_limitado:
+    name: dc_debug_target_limitado
+    icon: mdi:target-account
+  dc_debug_target_final:
+    name: dc_debug_target_final
+    icon: mdi:target
+  dc_debug_bias_exterior:
+    name: dc_debug_bias_exterior
+    icon: mdi:weather-partly-cloudy
+  dc_debug_bias_fachadas:
+    name: dc_debug_bias_fachadas
+    icon: mdi:home-analytics
+  dc_debug_bias_vmc:
+    name: dc_debug_bias_vmc
+    icon: mdi:air-filter
+  dc_debug_bias_tendencia:
+    name: dc_debug_bias_tendencia
+    icon: mdi:trending-up
+  dc_debug_freno_tendencia:
+    name: dc_debug_freno_tendencia
+    icon: mdi:car-brake-alert
+  dc_debug_lead_final:
+    name: dc_debug_lead_final
+    icon: mdi:clock-fast
+input_datetime:
+  dc_zone01_ultima_hora_encendido_calor:
+    name: dc_zone01_ultima_hora_encendido_calor
+    has_date: true
+    has_time: true
+  dc_zone01_ultima_hora_apagado_calor:
+    name: dc_zone01_ultima_hora_apagado_calor
+    has_date: true
+    has_time: true
+  dc_zone01_ultima_hora_encendido_frio:
+    name: dc_zone01_ultima_hora_encendido_frio
+    has_date: true
+    has_time: true
+  dc_zone01_ultima_hora_apagado_frio:
+    name: dc_zone01_ultima_hora_apagado_frio
+    has_date: true
+    has_time: true
+  dc_zone02_ultima_hora_encendido_calor:
+    name: dc_zone02_ultima_hora_encendido_calor
+    has_date: true
+    has_time: true
+  dc_zone02_ultima_hora_apagado_calor:
+    name: dc_zone02_ultima_hora_apagado_calor
+    has_date: true
+    has_time: true
+  dc_zone02_ultima_hora_encendido_frio:
+    name: dc_zone02_ultima_hora_encendido_frio
+    has_date: true
+    has_time: true
+  dc_zone02_ultima_hora_apagado_frio:
+    name: dc_zone02_ultima_hora_apagado_frio
+    has_date: true
+    has_time: true
+  dc_zone03_ultima_hora_encendido_calor:
+    name: dc_zone03_ultima_hora_encendido_calor
+    has_date: true
+    has_time: true
+  dc_zone03_ultima_hora_apagado_calor:
+    name: dc_zone03_ultima_hora_apagado_calor
+    has_date: true
+    has_time: true
+  dc_zone03_ultima_hora_encendido_frio:
+    name: dc_zone03_ultima_hora_encendido_frio
+    has_date: true
+    has_time: true
+  dc_zone03_ultima_hora_apagado_frio:
+    name: dc_zone03_ultima_hora_apagado_frio
+    has_date: true
+    has_time: true
+  dc_zone04_ultima_hora_encendido_calor:
+    name: dc_zone04_ultima_hora_encendido_calor
+    has_date: true
+    has_time: true
+  dc_zone04_ultima_hora_apagado_calor:
+    name: dc_zone04_ultima_hora_apagado_calor
+    has_date: true
+    has_time: true
+  dc_zone04_ultima_hora_encendido_frio:
+    name: dc_zone04_ultima_hora_encendido_frio
+    has_date: true
+    has_time: true
+  dc_zone04_ultima_hora_apagado_frio:
+    name: dc_zone04_ultima_hora_apagado_frio
+    has_date: true
+    has_time: true
+  dc_bh_ultima_hora_encendido_calor:
+    name: dc_bh_ultima_hora_encendido_calor
+    has_date: true
+    has_time: true
+  dc_bh_ultima_hora_apagado_calor:
+    name: dc_bh_ultima_hora_apagado_calor
+    has_date: true
+    has_time: true
+  dc_bh_ultima_hora_encendido_frio:
+    name: dc_bh_ultima_hora_encendido_frio
+    has_date: true
+    has_time: true
+  dc_bh_ultima_hora_apagado_frio:
+    name: dc_bh_ultima_hora_apagado_frio
+    has_date: true
+    has_time: true
+  dc_bp_ultima_hora_encendido_calor:
+    name: dc_bp_ultima_hora_encendido_calor
+    has_date: true
+    has_time: true
+  dc_bp_ultima_hora_apagado_calor:
+    name: dc_bp_ultima_hora_apagado_calor
+    has_date: true
+    has_time: true
+  dc_bp_ultima_hora_encendido_frio:
+    name: dc_bp_ultima_hora_encendido_frio
+    has_date: true
+    has_time: true
+  dc_bp_ultima_hora_apagado_frio:
+    name: dc_bp_ultima_hora_apagado_frio
+    has_date: true
+    has_time: true
+sensor:
+- platform: history_stats
+  name: dc_zone01_last_tiempo_encendido_calor
+  unique_id: dc_zone01_last_tiempo_encendido_calor
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone01_calor.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone01_last_tiempo_encendido_frio
+  unique_id: dc_zone01_last_tiempo_encendido_frio
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone01_frio.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone02_last_tiempo_encendido_calor
+  unique_id: dc_zone02_last_tiempo_encendido_calor
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone02_calor.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone02_last_tiempo_encendido_frio
+  unique_id: dc_zone02_last_tiempo_encendido_frio
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone02_frio.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone03_last_tiempo_encendido_calor
+  unique_id: dc_zone03_last_tiempo_encendido_calor
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone03_calor.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone03_last_tiempo_encendido_frio
+  unique_id: dc_zone03_last_tiempo_encendido_frio
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone03_frio.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone04_last_tiempo_encendido_calor
+  unique_id: dc_zone04_last_tiempo_encendido_calor
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone04_calor.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone04_last_tiempo_encendido_frio
+  unique_id: dc_zone04_last_tiempo_encendido_frio
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_zone04_frio.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bh_last_tiempo_encendido_calor
+  unique_id: dc_bh_last_tiempo_encendido_calor
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_bh_calor.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bh_last_tiempo_encendido_frio
+  unique_id: dc_bh_last_tiempo_encendido_frio
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_bh_frio.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bp_last_tiempo_encendido_calor
+  unique_id: dc_bp_last_tiempo_encendido_calor
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_bp_calor.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bp_last_tiempo_encendido_frio
+  unique_id: dc_bp_last_tiempo_encendido_frio
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  start: '{{ states.input_boolean.dc_bp_frio.last_changed }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone01_24h_heat
+  unique_id: dc_zone01_24h_heat
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone01_72h_heat
+  unique_id: dc_zone01_72h_heat
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone01_7d_heat
+  unique_id: dc_zone01_7d_heat
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone01_30d_heat
+  unique_id: dc_zone01_30d_heat
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone01_24h_cool
+  unique_id: dc_zone01_24h_cool
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone01_72h_cool
+  unique_id: dc_zone01_72h_cool
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone01_7d_cool
+  unique_id: dc_zone01_7d_cool
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone01_30d_cool
+  unique_id: dc_zone01_30d_cool
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone01_today_heat
+  unique_id: dc_zone01_today_heat
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone01_today_cool
+  unique_id: dc_zone01_today_cool
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone01_week_heat
+  unique_id: dc_zone01_week_heat
+  entity_id: input_boolean.dc_zone01_calor
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone01_week_cool
+  unique_id: dc_zone01_week_cool
+  entity_id: input_boolean.dc_zone01_frio
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone02_24h_heat
+  unique_id: dc_zone02_24h_heat
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone02_72h_heat
+  unique_id: dc_zone02_72h_heat
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone02_7d_heat
+  unique_id: dc_zone02_7d_heat
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone02_30d_heat
+  unique_id: dc_zone02_30d_heat
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone02_24h_cool
+  unique_id: dc_zone02_24h_cool
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone02_72h_cool
+  unique_id: dc_zone02_72h_cool
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone02_7d_cool
+  unique_id: dc_zone02_7d_cool
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone02_30d_cool
+  unique_id: dc_zone02_30d_cool
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone02_today_heat
+  unique_id: dc_zone02_today_heat
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone02_today_cool
+  unique_id: dc_zone02_today_cool
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone02_week_heat
+  unique_id: dc_zone02_week_heat
+  entity_id: input_boolean.dc_zone02_calor
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone02_week_cool
+  unique_id: dc_zone02_week_cool
+  entity_id: input_boolean.dc_zone02_frio
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone03_24h_heat
+  unique_id: dc_zone03_24h_heat
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone03_72h_heat
+  unique_id: dc_zone03_72h_heat
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone03_7d_heat
+  unique_id: dc_zone03_7d_heat
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone03_30d_heat
+  unique_id: dc_zone03_30d_heat
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone03_24h_cool
+  unique_id: dc_zone03_24h_cool
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone03_72h_cool
+  unique_id: dc_zone03_72h_cool
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone03_7d_cool
+  unique_id: dc_zone03_7d_cool
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone03_30d_cool
+  unique_id: dc_zone03_30d_cool
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone03_today_heat
+  unique_id: dc_zone03_today_heat
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone03_today_cool
+  unique_id: dc_zone03_today_cool
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone03_week_heat
+  unique_id: dc_zone03_week_heat
+  entity_id: input_boolean.dc_zone03_calor
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone03_week_cool
+  unique_id: dc_zone03_week_cool
+  entity_id: input_boolean.dc_zone03_frio
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone04_24h_heat
+  unique_id: dc_zone04_24h_heat
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone04_72h_heat
+  unique_id: dc_zone04_72h_heat
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone04_7d_heat
+  unique_id: dc_zone04_7d_heat
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone04_30d_heat
+  unique_id: dc_zone04_30d_heat
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone04_24h_cool
+  unique_id: dc_zone04_24h_cool
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_zone04_72h_cool
+  unique_id: dc_zone04_72h_cool
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_zone04_7d_cool
+  unique_id: dc_zone04_7d_cool
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_zone04_30d_cool
+  unique_id: dc_zone04_30d_cool
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_zone04_today_heat
+  unique_id: dc_zone04_today_heat
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone04_today_cool
+  unique_id: dc_zone04_today_cool
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone04_week_heat
+  unique_id: dc_zone04_week_heat
+  entity_id: input_boolean.dc_zone04_calor
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_zone04_week_cool
+  unique_id: dc_zone04_week_cool
+  entity_id: input_boolean.dc_zone04_frio
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bh_24h_heat
+  unique_id: dc_bh_24h_heat
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_bh_72h_heat
+  unique_id: dc_bh_72h_heat
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_bh_7d_heat
+  unique_id: dc_bh_7d_heat
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_bh_30d_heat
+  unique_id: dc_bh_30d_heat
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_bh_24h_cool
+  unique_id: dc_bh_24h_cool
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_bh_72h_cool
+  unique_id: dc_bh_72h_cool
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_bh_7d_cool
+  unique_id: dc_bh_7d_cool
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_bh_30d_cool
+  unique_id: dc_bh_30d_cool
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_bh_today_heat
+  unique_id: dc_bh_today_heat
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bh_today_cool
+  unique_id: dc_bh_today_cool
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bh_week_heat
+  unique_id: dc_bh_week_heat
+  entity_id: input_boolean.dc_bh_calor
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bh_week_cool
+  unique_id: dc_bh_week_cool
+  entity_id: input_boolean.dc_bh_frio
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bp_24h_heat
+  unique_id: dc_bp_24h_heat
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_bp_72h_heat
+  unique_id: dc_bp_72h_heat
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_bp_7d_heat
+  unique_id: dc_bp_7d_heat
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_bp_30d_heat
+  unique_id: dc_bp_30d_heat
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_bp_24h_cool
+  unique_id: dc_bp_24h_cool
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_bp_72h_cool
+  unique_id: dc_bp_72h_cool
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_bp_7d_cool
+  unique_id: dc_bp_7d_cool
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_bp_30d_cool
+  unique_id: dc_bp_30d_cool
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: history_stats
+  name: dc_bp_today_heat
+  unique_id: dc_bp_today_heat
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bp_today_cool
+  unique_id: dc_bp_today_cool
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bp_week_heat
+  unique_id: dc_bp_week_heat
+  entity_id: input_boolean.dc_bp_calor
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_bp_week_cool
+  unique_id: dc_bp_week_cool
+  entity_id: input_boolean.dc_bp_frio
+  state: 'on'
+  type: time
+  start: '{{ as_timestamp( now().replace(hour=0).replace(minute=0).replace(second=0)
+    ) - now().weekday() * 86400 }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_srr_today
+  unique_id: dc_srr_today
+  entity_id: binary_sensor.dc_srr_encendido
+  state: 'on'
+  type: time
+  start: '{{ now().replace(hour=0).replace(minute=0).replace(second=0) }}'
+  end: '{{ now() }}'
+- platform: history_stats
+  name: dc_srr_24h
+  unique_id: dc_srr_24h
+  entity_id: binary_sensor.dc_srr_encendido
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 24
+- platform: history_stats
+  name: dc_srr_72h
+  unique_id: dc_srr_72h
+  entity_id: binary_sensor.dc_srr_encendido
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    hours: 72
+- platform: history_stats
+  name: dc_srr_7d
+  unique_id: dc_srr_7d
+  entity_id: binary_sensor.dc_srr_encendido
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 7
+- platform: history_stats
+  name: dc_srr_30d
+  unique_id: dc_srr_30d
+  entity_id: binary_sensor.dc_srr_encendido
+  state: 'on'
+  type: time
+  end: '{{ now() }}'
+  duration:
+    days: 30
+- platform: derivative
+  name: dc_exterior_lux_tendencia
+  unique_id: dc_exterior_lux_tendencia
+  source: sensor.sensor_de_lluvia_illuminance
+  unit_time: h
+  time_window: 00:10:00

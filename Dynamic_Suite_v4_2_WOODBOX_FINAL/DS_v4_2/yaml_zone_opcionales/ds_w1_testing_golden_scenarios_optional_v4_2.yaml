@@ -1,0 +1,193 @@
+# DS W1 optional tests: Golden scenarios (record/verify) (v4.2)
+#
+# True golden harness for DS W1:
+# - Apply a deterministic test case (sim inputs + optional bus intent)
+# - Record outputs to a file or verify against baseline
+#
+# Storage: /config/dynamic_suite/ds/w1/ds_w1_golden.json
+#
+# Requires python_scripts in /config/python_scripts/:
+# - ds_w1_golden_record.py
+# - ds_w1_golden_verify.py
+#
+input_boolean:
+  ds_w1_golden_scenarios_enabled:
+    name: ds_w1_golden_scenarios_enabled
+    icon: mdi:shield-check
+    initial: false
+
+input_select:
+  ds_w1_golden_scenarios_mode:
+    name: ds_w1_golden_scenarios_mode
+    options:
+      - record
+      - verify
+    initial: verify
+    icon: mdi:content-save-check
+
+input_select:
+  ds_w1_golden_scenarios_case:
+    name: ds_w1_golden_scenarios_case
+    options:
+      - none
+      - base_open_no_intent
+      - solar_shield_sun_effective
+      - quiet_request_no_sun
+      - rain_forces_protect
+      - toggle_consume_off_ignored
+    initial: none
+    icon: mdi:playlist-play
+
+input_button:
+  ds_w1_golden_scenarios_run_btn:
+    name: ds_w1_golden_scenarios_run_btn
+    icon: mdi:play
+
+input_boolean:
+  ds_w1_golden_scenarios_pass:
+    name: ds_w1_golden_scenarios_pass
+    initial: false
+
+input_text:
+  ds_w1_golden_scenarios_last_result:
+    name: ds_w1_golden_scenarios_last_result
+    initial: ""
+
+automation:
+  - id: ds_w1_golden_scenarios_run_on_button
+    alias: ds_w1_golden_scenarios_run_on_button
+    trigger:
+      - platform: state
+        entity_id: input_button.ds_w1_golden_scenarios_run_btn
+    condition:
+      - condition: state
+        entity_id: input_boolean.ds_w1_golden_scenarios_enabled
+        state: "on"
+      - condition: template
+        value_template: "{{ states('input_select.ds_w1_golden_scenarios_case') not in ['none','unknown','unavailable'] }}"
+    action:
+      - service: script.ds_w1_golden_scenarios_run_case
+
+script:
+  ds_w1_golden_scenarios_run_case:
+    alias: ds_w1_golden_scenarios_run_case
+    mode: queued
+    sequence:
+      - variables:
+          case: "{{ states('input_select.ds_w1_golden_scenarios_case') }}"
+          mode: "{{ states('input_select.ds_w1_golden_scenarios_mode') }}"
+          tgt: "ds_w1"
+          src: "dc_zone01"
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ds_w1_golden_scenarios_pass
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.ds_w1_golden_scenarios_last_result
+        data:
+          value: "RUN {{ mode }} / {{ case }} @ {{ now() }}"
+      # defaults
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ds_w1_sim_enabled
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ds_w1_sdhb_consume_enabled
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.ds_w1_sdhb_enabled
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ds_w1_sim_rain
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.ds_w1_sim_sun_effective
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ds_w1_sim_cover_pos_pct
+        data:
+          value: 100
+      # clear any previous intent
+      - service: script.sdhb_clear_intent
+        data:
+          target: "{{ tgt }}"
+          source: "{{ src }}"
+      - choose:
+          - conditions: "{{ case == 'base_open_no_intent' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.ds_w1_sim_sun_effective
+          - conditions: "{{ case == 'solar_shield_sun_effective' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.ds_w1_sim_sun_effective
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "{{ src }}"
+                  target: "{{ tgt }}"
+                  intent: "request_solar_shield"
+                  priority: 80
+                  ttl_s: 60
+          - conditions: "{{ case == 'quiet_request_no_sun' }}"
+            sequence:
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "{{ src }}"
+                  target: "{{ tgt }}"
+                  intent: "request_quiet"
+                  priority: 60
+                  ttl_s: 60
+          - conditions: "{{ case == 'rain_forces_protect' }}"
+            sequence:
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.ds_w1_sim_rain
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "{{ src }}"
+                  target: "{{ tgt }}"
+                  intent: "request_weather_protect"
+                  priority: 90
+                  ttl_s: 60
+          - conditions: "{{ case == 'toggle_consume_off_ignored' }}"
+            sequence:
+              - service: input_boolean.turn_off
+                target:
+                  entity_id: input_boolean.ds_w1_sdhb_consume_enabled
+              - service: script.sdhb_publish_intent
+                data:
+                  source: "{{ src }}"
+                  target: "{{ tgt }}"
+                  intent: "request_solar_shield"
+                  priority: 80
+                  ttl_s: 60
+      - delay: "00:00:03"
+      - choose:
+          - conditions: "{{ mode == 'record' }}"
+            sequence:
+              - service: appdaemon.dynamic_suite_golden/record
+                data:
+                  case: "{{ case }}"
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.ds_w1_golden_scenarios_pass
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ds_w1_golden_scenarios_last_result
+                data:
+                  value: "RECORDED: {{ case }} (dynamic_suite/ds/w1/ds_w1_golden.json)"
+          - conditions: "{{ mode == 'verify' }}"
+            sequence:
+              - service: appdaemon.dynamic_suite_golden/verify
+                data:
+                  case: "{{ case }}"
+              - service: input_boolean.turn_on
+                target:
+                  entity_id: input_boolean.ds_w1_golden_scenarios_pass
+              - service: input_text.set_value
+                target:
+                  entity_id: input_text.ds_w1_golden_scenarios_last_result
+                data:
+                  value: "VERIFY OK (no exception): {{ case }}"

@@ -1,0 +1,1878 @@
+# ============================================================================
+# Dynamic Ventilation · DV VMC · Automations + scripts
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 hotfix p7 (startup grace 120s for hw_contract_ok)
+# ============================================================================
+automation:
+- id: dv_vmc_cancel_override_btn
+  alias: dv_vmc_boton_cancelar_override
+  mode: restart
+  trigger:
+  - platform: event
+    event_type: call_service
+    event_data:
+      domain: input_button
+      service: press
+  condition:
+  - condition: template
+    value_template: "{% set e = 'input_button.dv_vmc_cancel_override_btn' %} {{ e\
+      \ in (trigger.event.data.get('service_data', {}).get('entity_id', []) | list)\n\
+      \   or e in (trigger.event.data.get('target', {}).get('entity_id', []) | list)\
+      \ }}"
+  action:
+  - service: script.dv_vmc_cancel_override
+- id: dv_vmc_failsafe_sensores_vitales_arm
+  alias: dv_vmc_failsafe_sensores_vitales_ko_30s_man_v1_alerta
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_fallo_sensores_vitales
+    to: 'on'
+    for: 00:00:30
+  condition:
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  action:
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.dv_vmc_auto_lock
+  - service: script.dv_vmc_cancel_override
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.dv_vmc_auto
+  - service: switch.turn_on
+    data:
+      entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_pwr'') }}'
+  - service: script.dv_vmc_set_speed
+    data:
+      speed: 1
+  - variables:
+      failed: '{{ state_attr(''binary_sensor.dv_vmc_fallo_sensores_vitales'',''failed'')
+        }}'
+      msg: '⚠️ DV FAILSAFE activado (sensores vitales KO > 30s) Sensores: {{ failed
+        }}'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dv_vmc_notif_persistente
+        state: 'on'
+      sequence:
+      - service: persistent_notification.create
+        data:
+          notification_id: dv_vmc_failsafe
+          title: DV · FAILSAFE
+          message: '{{ msg }}'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dv_vmc_notif_telegram
+        state: 'on'
+      sequence:
+      - service: script.dv_vmc_notify_throttled
+        data:
+          msg: '{{ msg }}'
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: ERROR
+      mensaje: FAILSAFE activado - Sensores vitales KO
+      datos_adicionales:
+        sensores_fallados: '{{ state_attr(''binary_sensor.dv_vmc_fallo_sensores_vitales'',
+          ''failed'') }}'
+- id: dv_vmc_filtros_reset_btn
+  alias: dv_vmc_filtros_reset_desde_boton
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: input_button.dv_vmc_filtros_reset_btn
+  action:
+  - service: script.dv_vmc_filtros_reset_contador
+- id: dv_vmc_failsafe_block_auto_si_ko
+  alias: dv_vmc_failsafe_bloquear_auto_si_sensores_ko
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_boolean.dv_vmc_auto
+    to: 'on'
+  condition:
+  - condition: or
+    conditions:
+    - condition: state
+      entity_id: input_boolean.dv_vmc_auto_lock
+      state: 'on'
+    - condition: state
+      entity_id: binary_sensor.dv_vmc_fallo_sensores_vitales
+      state: 'on'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.dv_vmc_auto
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: WARNING
+      mensaje: Intento AUTO bloqueado por Failsafe
+- id: dv_vmc_failsafe_auto_rearm
+  alias: dv_vmc_failsafe_autorearme_ok_2_min_auto
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_fallo_sensores_vitales
+    to: 'off'
+    for: 00:02:00
+  condition:
+  - condition: template
+    value_template: '{{ as_timestamp(states(''input_datetime.dv_vmc_failsafe_lockout_until''))|float(0)
+      <= as_timestamp(now()) }}'
+  - condition: state
+    entity_id: input_boolean.dv_vmc_auto_lock
+    state: 'on'
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.dv_vmc_auto_lock
+  - service: persistent_notification.dismiss
+    data:
+      notification_id: dv_vmc_failsafe
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.dv_vmc_auto
+  - delay: 00:00:01
+  - service: automation.trigger
+    target:
+      entity_id: automation.dv_vmc_control_principal_stage_1_2
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: INFO
+      mensaje: FAILSAFE rearmado - Sensores OK >2min
+- id: dv_vmc_watchdog_nunca_dos_reles
+  alias: dv_vmc_watchdog_nunca_v2_y_v3_a_la_vez
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.dv_vmc_hw_v2
+    - binary_sensor.dv_vmc_hw_v3
+  condition:
+  - condition: template
+    value_template: "{{ is_state('binary_sensor.dv_vmc_hw_v2','on')\n   and is_state('binary_sensor.dv_vmc_hw_v3','on')\
+      \ }}"
+  action:
+  - service: switch.turn_off
+    data:
+      entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+  - service: switch.turn_off
+    data:
+      entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v3'') }}'
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: ERROR
+      mensaje: WATCHDOG - V2 y V3 simultáneos - Apagados
+- id: dv_vmc_watchdog_driver_busy_stuck
+  alias: dv_vmc_watchdog_driver_busy_atascado
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_boolean.dv_vmc_driver_busy
+    to: 'on'
+    for: 00:00:20
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.dv_vmc_driver_busy
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: ERROR
+      mensaje: WATCHDOG - driver_busy >20s - Liberado
+  - delay: 00:00:01
+  - service: automation.trigger
+    target:
+      entity_id: automation.dv_vmc_control_principal_stage_1_2
+    data:
+      skip_condition: true
+- id: dv_vmc_bootstrap_reset_on_power_off
+  alias: dv_vmc_reset_bootstrap_al_apagar
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_hw_pwr
+    to: 'off'
+  action:
+  - service: input_boolean.turn_off
+    target:
+      entity_id: input_boolean.dv_vmc_bootstrap_done
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: INFO
+      mensaje: Bootstrap reset (PWR OFF)
+- id: dv_vmc_sync_relays_to_ui
+  alias: dv_vmc_sync_reles_fisicos_ui_seguridad
+  mode: queued
+  max: 4
+  max_exceeded: discard
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_hw_v2
+    for: 00:00:02
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_hw_v3
+    for: 00:00:02
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_driver_busy
+    state: 'off'
+  - condition: template
+    value_template: "{% set v2_hw = is_state('binary_sensor.dv_vmc_hw_v2','on') %}\
+      \ {% set v3_hw = is_state('binary_sensor.dv_vmc_hw_v3','on') %} {% set v2_ui\
+      \ = is_state('input_boolean.dv_vmc_v2','on') %} {% set v3_ui = is_state('input_boolean.dv_vmc_v3','on')\
+      \ %} {% set v1_ui = is_state('input_boolean.dv_vmc_v1','on') %} {{\n  not (\n\
+      \    (v2_hw and v2_ui)\n    or (v3_hw and v3_ui)\n    or ((not v2_hw and not\
+      \ v3_hw) and v1_ui)\n  )\n}}"
+  action:
+  - variables:
+      permitida: '{{ is_state(''binary_sensor.dv_vmc_permitida'',''on'') }}'
+      v2_hw: '{{ is_state(''binary_sensor.dv_vmc_hw_v2'',''on'') }}'
+      v3_hw: '{{ is_state(''binary_sensor.dv_vmc_hw_v3'',''on'') }}'
+  - choose:
+    - conditions: '{{ not permitida }}'
+      sequence:
+      - service: switch.turn_off
+        data:
+          entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_pwr'') }}'
+    default:
+    - choose:
+      - conditions: '{{ v3_hw }}'
+        sequence:
+        - service: switch.turn_off
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+        - service: input_boolean.turn_off
+          target:
+            entity_id:
+            - input_boolean.dv_vmc_v1
+            - input_boolean.dv_vmc_v2
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_v3
+      - conditions: '{{ (not v3_hw) and v2_hw }}'
+        sequence:
+        - service: switch.turn_off
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v3'') }}'
+        - service: input_boolean.turn_off
+          target:
+            entity_id:
+            - input_boolean.dv_vmc_v1
+            - input_boolean.dv_vmc_v3
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_v2
+      - conditions: '{{ (not v2_hw) and (not v3_hw) }}'
+        sequence:
+        - service: input_boolean.turn_off
+          target:
+            entity_id:
+            - input_boolean.dv_vmc_v2
+            - input_boolean.dv_vmc_v3
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_v1
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: INFO
+      mensaje: Sync HW→UI realizado
+      datos_adicionales:
+        motivo: '{{ ''Fuera horario'' if not permitida else ''Cambio físico relés''
+          }}'
+- id: dv_vmc_btn_override_v2
+  alias: dv_vmc_boton_override_v2
+  mode: restart
+  trigger:
+  - platform: event
+    event_type: call_service
+    event_data:
+      domain: input_button
+      service: press
+  condition:
+  - condition: template
+    value_template: "{% set e = 'input_button.dv_vmc_override_btn_v2' %} {{ e in (trigger.event.data.get('service_data',\
+      \ {}).get('entity_id', []) | list)\n   or e in (trigger.event.data.get('target',\
+      \ {}).get('entity_id', []) | list) }}"
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  action:
+  - service: script.dv_vmc_start_override
+    data:
+      speed: 2
+- id: dv_vmc_btn_override_v3
+  alias: dv_vmc_boton_override_v3
+  mode: restart
+  trigger:
+  - platform: event
+    event_type: call_service
+    event_data:
+      domain: input_button
+      service: press
+  condition:
+  - condition: template
+    value_template: "{% set e = 'input_button.dv_vmc_override_btn_v3' %} {{ e in (trigger.event.data.get('service_data',\
+      \ {}).get('entity_id', []) | list)\n   or e in (trigger.event.data.get('target',\
+      \ {}).get('entity_id', []) | list) }}"
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  action:
+  - service: script.dv_vmc_start_override
+    data:
+      speed: 3
+- id: dv_vmc_btn_permiso_extra
+  alias: dv_vmc_boton_permiso_extra
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_button.dv_vmc_permiso_extra_btn
+  action:
+  - service: script.dv_vmc_permiso_extra_iniciar
+- id: dv_vmc_btn_reset_fabrica
+  alias: dv_vmc_boton_reset_fabrica
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_button.dv_vmc_reset_fabrica_btn
+  action:
+  - service: script.dv_vmc_reset_valores_fabrica
+- id: dv_vmc_al_apagar_pwr_cleanup
+  alias: dv_vmc_al_apagar_pwr_cleanup_total
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_hw_pwr
+    to: 'off'
+  action:
+  - service: script.dv_vmc_cleanup_state
+- id: dv_vmc_power_on_force_v1
+  alias: dv_vmc_al_encender_pwr_forzar_v1
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.dv_vmc_hw_pwr
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  action:
+  - service: script.dv_vmc_set_speed
+    data:
+      speed: 1
+- id: dv_vmc_manual_ui_booleans_to_speed
+  alias: dv_vmc_manual_booleans_ui_aplicar_velocidad
+  mode: queued
+  max: 4
+  max_exceeded: discard
+  trigger:
+  - platform: state
+    entity_id:
+    - input_boolean.dv_vmc_v1
+    - input_boolean.dv_vmc_v2
+    - input_boolean.dv_vmc_v3
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_auto
+    state: 'off'
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  - condition: template
+    value_template: '{{ trigger.to_state.context.user_id is not none }}'
+  - condition: state
+    entity_id: timer.dv_vmc_override
+    state: idle
+  - condition: state
+    entity_id: timer.dv_vmc_ducha_override
+    state: idle
+  - condition: state
+    entity_id: input_boolean.dv_vmc_override_v2
+    state: 'off'
+  - condition: state
+    entity_id: input_boolean.dv_vmc_override_v3
+    state: 'off'
+  action:
+  - variables:
+      s: '{% if trigger.entity_id == ''input_boolean.dv_vmc_v3'' %} 3 {% elif trigger.entity_id
+        == ''input_boolean.dv_vmc_v2'' %} 2 {% else %} 1 {% endif %}'
+  - service: script.dv_vmc_set_speed
+    data:
+      speed: '{{ s|int(1) }}'
+- id: dv_vmc_auto_click_v2v3_override_1min
+  alias: dv_vmc_auto_click_v2_v3_override_1_min
+  mode: queued
+  max: 4
+  max_exceeded: discard
+  trigger:
+  - platform: state
+    entity_id:
+    - input_boolean.dv_vmc_v2
+    - input_boolean.dv_vmc_v3
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_auto
+    state: 'on'
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  - condition: template
+    value_template: '{{ trigger.to_state.context.user_id is not none }}'
+  action:
+  - service: script.dv_vmc_start_override
+    data:
+      speed: '{{ 3 if trigger.entity_id == ''input_boolean.dv_vmc_v3'' else 2 }}'
+      duration_min: 1
+- id: dv_vmc_ui_velocidad_exclusiva
+  alias: dv_vmc_ui_velocidad_exclusiva_v1_v2_v3
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id:
+    - input_boolean.dv_vmc_v1
+    - input_boolean.dv_vmc_v2
+    - input_boolean.dv_vmc_v3
+    to: 'on'
+  action:
+  - choose:
+    - conditions: '{{ trigger.entity_id == ''input_boolean.dv_vmc_v1'' }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+          - input_boolean.dv_vmc_v2
+          - input_boolean.dv_vmc_v3
+    - conditions: '{{ trigger.entity_id == ''input_boolean.dv_vmc_v2'' }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+          - input_boolean.dv_vmc_v1
+          - input_boolean.dv_vmc_v3
+    - conditions: '{{ trigger.entity_id == ''input_boolean.dv_vmc_v3'' }}'
+      sequence:
+      - service: input_boolean.turn_off
+        target:
+          entity_id:
+          - input_boolean.dv_vmc_v1
+          - input_boolean.dv_vmc_v2
+- id: dv_vmc_control_principal
+  alias: dv_vmc_control_principal_stage_1_2
+  mode: queued
+  max: 4
+  max_exceeded: discard
+  trigger:
+  - platform: homeassistant
+    event: start
+  - platform: time_pattern
+    minutes: /5
+  - platform: state
+    entity_id:
+    - binary_sensor.dv_vmc_permitida
+    - input_boolean.dv_vmc_auto
+    - timer.dv_vmc_override
+    - timer.dv_vmc_ducha_override
+    - input_boolean.dv_vmc_override_v2
+    - input_boolean.dv_vmc_override_v3
+    - input_select.dv_vmc_ducha_nivel
+    - input_boolean.dv_vmc_dry_mode
+    - binary_sensor.dv_vmc_dew_risk_any
+    - binary_sensor.dv_vmc_dew_prerisk_any
+  - platform: state
+    entity_id:
+    - sensor.dv_vmc_co2_safe
+    - sensor.dv_vmc_pm25_safe
+    - sensor.dv_vmc_co2_ema
+    - sensor.dv_vmc_pm25_ema
+    - input_boolean.dv_vmc_co2_ema_enabled
+    - input_boolean.dv_vmc_pm25_ema_enabled
+    for: 00:00:30
+  action:
+  - variables:
+      permitida: '{{ is_state(''binary_sensor.dv_vmc_permitida'',''on'') }}'
+      auto: '{{ is_state(''input_boolean.dv_vmc_auto'',''on'') }}'
+      man_override: '{{ is_state(''timer.dv_vmc_override'',''active'') }}'
+      ducha_override: '{{ is_state(''timer.dv_vmc_ducha_override'',''active'') }}'
+      co2_raw: '{{ states(''sensor.dv_vmc_co2_safe'')|float(0) }}'
+      co2_ema_enabled: '{{ is_state(''input_boolean.dv_vmc_co2_ema_enabled'',''on'') }}'
+      co2_ema: '{{ states(''sensor.dv_vmc_co2_ema'')|float(0) }}'
+      co2: >-
+        {% if co2_ema_enabled and co2_ema|float(0) > 0 %}
+          {{ co2_ema|float(0) }}
+        {% else %}
+          {{ co2_raw|float(0) }}
+        {% endif %}
+      pm_raw: '{{ states(''sensor.dv_vmc_pm25_safe'')|float(0) }}'
+      pm_ema_enabled: '{{ is_state(''input_boolean.dv_vmc_pm25_ema_enabled'',''on'') }}'
+      pm_ema: '{{ states(''sensor.dv_vmc_pm25_ema'')|float(0) }}'
+      pm: >-
+        {% if pm_ema_enabled and pm_ema|float(0) > 0 %}
+          {{ pm_ema|float(0) }}
+        {% else %}
+          {{ pm_raw|float(0) }}
+        {% endif %}
+      v_actual: '{{ states(''sensor.dv_vmc_velocidad_real'')|int(1) }}'
+      trigger_es_iaq: '{{ trigger is defined and (trigger.entity_id in [''sensor.dv_vmc_co2_safe'',''sensor.dv_vmc_pm25_safe''])
+        }}'
+      sdhb_intent: '{{ states(''sensor.dv_vmc_sdhb_intent_matched'') }}'
+      dry_mode: '{{ is_state(''input_boolean.dv_vmc_dry_mode'',''on'') }}'
+      dew_risk: '{{ is_state(''binary_sensor.dv_vmc_dew_risk_any'',''on'') }}'
+      dew_prerisk: '{{ is_state(''binary_sensor.dv_vmc_dew_prerisk_any'',''on'') }}'
+      dp_in: '{{ states(''sensor.dv_vmc_dp_casa_safe'') | float(none) }}'
+      dp_out: '{{ states(''sensor.dv_vmc_dp_exterior_safe'') | float(none) }}'
+      dp_diff: "{% if dp_in is none or dp_out is none %}\n  {{ none }}\n{% else %}\n\
+        \  {{ (dp_in - dp_out) | float }}\n{% endif %}"
+      dry_v3_delta: '{{ states(''input_number.dv_vmc_dry_dp_v3_delta'')|float(1.0)
+        }}'
+      dry_v2_delta: '{{ states(''input_number.dv_vmc_dry_dp_v2_delta'')|float(0.2)
+        }}'
+      stage3_active: '{{ dry_mode and dew_risk and (dp_diff is not none) }}'
+      stage3_blind: '{{ dry_mode and dew_risk and (dp_diff is none) }}'
+      adaptive_on: '{{ is_state(''input_boolean.dv_vmc_adaptive_thresholds_enabled'',''on'')
+        and (states(''sensor.dv_vmc_adaptive_ready'')|lower == ''true'') }}'
+      co2_v2_up: '{% set base = states(''input_number.dv_vmc_co2_v2_threshold'')|float(900)
+        %} {% set a = states(''sensor.dv_vmc_co2_v2_threshold_adaptive'')|float(none)
+        %} {{ a if adaptive_on and a is not none else base }}'
+      co2_v3_up: '{% set base = states(''input_number.dv_vmc_co2_v3_threshold'')|float(1300)
+        %} {% set a = states(''sensor.dv_vmc_co2_v3_threshold_adaptive'')|float(none)
+        %} {{ a if adaptive_on and a is not none else base }}'
+      co2_hys: '{{ states(''input_number.dv_vmc_co2_hysteresis'')|float(100) }}'
+      pm_v2_up: '{% set base = states(''input_number.dv_vmc_pm25_v2_threshold'')|float(15)
+        %} {% set a = states(''sensor.dv_vmc_pm25_v2_threshold_adaptive'')|float(none)
+        %} {{ a if adaptive_on and a is not none else base }}'
+      pm_v3_up: '{% set base = states(''input_number.dv_vmc_pm25_v3_threshold'')|float(40)
+        %} {% set a = states(''sensor.dv_vmc_pm25_v3_threshold_adaptive'')|float(none)
+        %} {{ a if adaptive_on and a is not none else base }}'
+      pm_hys: '{{ states(''input_number.dv_vmc_pm25_hysteresis'')|float(5) }}'
+  - choose:
+    - conditions: '{{ trigger_es_iaq }}'
+      sequence:
+      - variables:
+          co2_age_s: '{% set e = states.sensor.dv_vmc_co2_safe %} {{ (now() - e.last_updated).total_seconds()
+            if e is not none else 999999 }}'
+          pm_age_s: '{% set e = states.sensor.dv_vmc_pm25_safe %} {{ (now() - e.last_updated).total_seconds()
+            if e is not none else 999999 }}'
+          datos_frescos: '{{ (co2_age_s < 120) and (pm_age_s < 120) }}'
+      - choose:
+        - conditions: '{{ not datos_frescos }}'
+          sequence:
+          - service: script.dv_vmc_log_evento
+            data:
+              nivel: WARNING
+              mensaje: 'Control principal abortado: IAQ no fresco'
+              datos_adicionales:
+                co2_age_s: '{{ co2_age_s|round(1) }}'
+                pm_age_s: '{{ pm_age_s|round(1) }}'
+          - stop: IAQ no fresco
+    default: []
+  - choose:
+    - conditions: '{{ stage3_blind }}'
+      sequence:
+      - service: script.dv_vmc_log_evento
+        data:
+          nivel: ERROR
+          mensaje: 'Stage 3 ciego: DP interior/exterior no disponible (no se aplica
+            bloqueo)'
+          datos_adicionales:
+            dp_in: '{{ dp_in }}'
+            dp_out: '{{ dp_out }}'
+      - choose:
+        - conditions: '{{ is_state(''input_boolean.dv_vmc_notif_telegram'',''on'')
+            }}'
+          sequence:
+          - service: script.dv_vmc_notify_throttled
+            data:
+              msg: '⚠️ DV · Stage 3 (Dry Mode) ciego: DP interior/exterior no disponible.
+                No se aplica el bloqueo; continúan Stage 1/2. Revisa sensores de meteo/DP.'
+        default: []
+    default: []
+  - wait_template: '{{ not is_state(''input_boolean.dv_vmc_driver_busy'',''on'') }}'
+    timeout: 00:00:10
+    continue_on_timeout: true
+  - choose:
+    - conditions: '{{ is_state(''input_boolean.dv_vmc_driver_busy'',''on'') }}'
+      sequence:
+      - service: script.dv_vmc_log_evento
+        data:
+          nivel: WARNING
+          mensaje: 'Control principal abortado: driver_busy >10s'
+      - stop: driver_busy >10s
+  - choose:
+    - conditions: '{{ not permitida }}'
+      sequence:
+      - service: switch.turn_off
+        target:
+          entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_pwr'') }}'
+      - service: script.dv_vmc_log_evento
+        data:
+          nivel: INFO
+          mensaje: Apagado por fuera de horario
+    default:
+    - service: switch.turn_on
+      target:
+        entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_pwr'') }}'
+    - choose:
+      - conditions: '{{ man_override }}'
+        sequence:
+        - service: script.dv_vmc_set_speed
+          data:
+            speed: '{{ 3 if is_state(''input_boolean.dv_vmc_override_v3'',''on'')
+              else 2 }}'
+      - conditions: '{{ (not man_override) and stage3_active }}'
+        sequence:
+        - variables:
+            target_dry: "{% if dp_diff >= dry_v3_delta %}\n  3\n{% elif dp_diff >=\
+              \ dry_v2_delta %}\n  2\n{% else %}\n  1\n{% endif %}"
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dv_vmc_stage_winner
+          data:
+            value: dry_mode
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dv_vmc_stage_winner_detail
+          data:
+            value: "{{ ('dp_diff=' ~ (dp_diff|string) ~ ' target=' ~ (target_dry|string))[:128] }}"
+        - service: script.dv_vmc_log_evento
+          data:
+            nivel: WARNING
+            mensaje: 'Stage 3: Dry Mode activo (riesgo rocío)'
+            datos_adicionales:
+              dp_in: '{{ dp_in }}'
+              dp_out: '{{ dp_out }}'
+              dp_diff: '{{ dp_diff }}'
+              target: '{{ target_dry }}'
+        - service: script.dv_vmc_set_speed
+          data:
+            speed: '{{ target_dry|int(1) }}'
+      - conditions: '{{ (not man_override) and (not stage3_active) and ducha_override
+          }}'
+        sequence:
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dv_vmc_stage_winner
+          data:
+            value: shower_override
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dv_vmc_stage_winner_detail
+          data:
+            value: "{{ ('nivel=' ~ states('input_select.dv_vmc_ducha_nivel'))[:128] }}"
+        - service: script.dv_vmc_set_speed
+          data:
+            speed: '{% if is_state(''input_select.dv_vmc_ducha_nivel'',''v3'') %}
+              3 {% elif is_state(''input_select.dv_vmc_ducha_nivel'',''v2'') %} 2
+              {% else %} 1 {% endif %}'
+      - conditions: '{{ (not man_override) and (not stage3_active) and (not ducha_override)
+          and auto }}'
+        sequence:
+        - variables:
+            override_reciente: "{% set s = states['timer.dv_vmc_override'] if 'timer.dv_vmc_override'\
+              \ in states else none %} {% if s is none or s.state in ['unknown','unavailable','none','']\
+              \ %}\n  false\n{% else %}\n  {% set ultimo = as_timestamp(s.last_changed)\
+              \ %}\n  {% set ahora = as_timestamp(now()) %}\n  {{ (ahora - ultimo)\
+              \ < 300 }}\n{% endif %}"
+            co2_hys_ajustada: "{% if override_reciente and v_actual == 3 %}\n  {{\
+              \ co2_hys * 0.5 }}\n{% else %}\n  {{ co2_hys }}\n{% endif %}"
+            pm_hys_ajustada: "{% if override_reciente and v_actual == 3 %}\n  {{ pm_hys\
+              \ * 0.5 }}\n{% else %}\n  {{ pm_hys }}\n{% endif %}"
+            target: "{% set need3 = (co2 >= co2_v3_up) or (pm >= pm_v3_up) %} {% if\
+              \ need3 %}\n  3\n{% else %}\n  {% if v_actual == 3 %}\n    {% set can_drop_from3\
+              \ = (co2 < (co2_v3_up - co2_hys_ajustada)) and (pm < (pm_v3_up - pm_hys_ajustada))\
+              \ %}\n    {% if can_drop_from3 %}\n      {% if (co2 >= co2_v2_up) or\
+              \ (pm >= pm_v2_up) %} 2 {% else %} 1 {% endif %}\n    {% else %}\n \
+              \     3\n    {% endif %}\n  {% else %}\n    {% set need2 = (co2 >= co2_v2_up)\
+              \ or (pm >= pm_v2_up) %}\n    {% if need2 %}\n      2\n    {% else %}\n\
+              \      {% if v_actual == 2 %}\n        {% set can_drop_from2 = (co2\
+              \ < (co2_v2_up - co2_hys_ajustada)) and (pm < (pm_v2_up - pm_hys_ajustada))\
+              \ %}\n        {% if can_drop_from2 %} 1 {% else %} 2 {% endif %}\n \
+              \     {% else %}\n        1\n      {% endif %}\n    {% endif %}\n  {%\
+              \ endif %}\n{% endif %}"
+            target_final: "{% set t = target | int(1) %} {% set va = v_actual | int(1)\
+              \ %} {# FREECOOL nativo (opt-in): permitir al menos V2 si hay delta\
+              \ térmico favorable #} {% if is_state('binary_sensor.dv_vmc_freecool_active','on')\
+              \ and auto and (not man_override) and (not ducha_override) %}\n  {%\
+              \ if t < 2 %}{% set t = 2 %}{% endif %}\n{% endif %}\n{# PRE-RIESGO\
+              \ ROCÍO (DC→BUS): si está activo, forzar al menos V2 para secar antes\
+              \ (solo si NO hay dew_risk). #} {% if dry_mode and dew_prerisk and (not\
+              \ dew_risk) %}\n  {% if t < 2 %}{% set t = 2 %}{% endif %}\n{% endif\
+              \ %}\n\n{# SDHB (PRIORIDAD final): se evalúa DESPUÉS de Freecool; puede\
+              \ forzar/capar por encima del mínimo de Freecool. Solo si auto y sin\
+              \ overrides. #} {% set intent = sdhb_intent %} {% if intent not in ['none','unknown','unavailable','']\
+              \ and auto and (not man_override) and (not ducha_override) %}\n  {%\
+              \ if intent in ['request_quiet','request_eco','request_weather_protect']\
+              \ %}\n    {% set t = 1 %}\n  {% elif intent == 'request_boost' %}\n\
+              \    {% set t = 3 %}\n  {% elif intent == 'request_freecool' %}\n  \
+              \  {# permitir subir al menos V2 #}\n    {% if t < 2 %}{% set t = 2\
+              \ %}{% endif %}\n  {% elif intent == 'request_normal' %}\n    {# no-op:\
+              \ dejar pasar decisión IAQ #}\n  {% endif %}\n{% endif %}
+
+{# HOSTILE OUTSIDE (WAQI AQI): cap final por tramos. Si AQI>=T3 => OFF.
+   Nota: no anula dew_risk (por diseño). El Stage 3 (dry_mode + dew_risk) sigue ganando.
+#}
+{% if is_state('input_boolean.dv_vmc_hostile_outside_enabled','on') %}
+  {% set aqi = states('sensor.dv_vmc_outdoor_aqi_safe') | float(0) %}
+  {% set t1 = states('input_number.dv_vmc_hostile_outside_t1') | float(50) %}
+  {% set t2 = states('input_number.dv_vmc_hostile_outside_t2') | float(100) %}
+  {% set t3 = states('input_number.dv_vmc_hostile_outside_t3') | float(150) %}
+  {% if aqi >= t3 %}
+    {% set t = 0 %}
+  {% elif aqi >= t2 %}
+    {% if t > 1 %}{% set t = 1 %}{% endif %}
+  {% elif aqi >= t1 %}
+    {% if t > 2 %}{% set t = 2 %}{% endif %}
+  {% endif %}
+{% endif %} 
+{% set allow_raise\
+              \ = ((trigger_es_iaq|string|lower) in ['true','on','1','yes']) or (intent\
+              \ in ['request_boost','request_freecool']) or ((dew_risk|string|lower)\
+              \ in ['true','on','1','yes']) or ((dew_prerisk|string|lower) in ['true','on','1','yes'])\
+              \ or ((dry_mode|string|lower) in ['true','on','1','yes']) %}\n{% if\
+              \ (not allow_raise) and (t > va) %}\n  {{ va }}\n{% else %}\n  {{ t\
+              \ }}\n{% endif %}"
+        - variables:
+            stage_winner: >-
+              {#
+              Debug: intenta reflejar QUÉ módulo forzó/capó la decisión final.
+              Precedencia (alta→baja): hostile_off/caps → SDHB → freecool → dew_prerisk → IAQ
+              #}
+              {% set base = target | int(1) %}
+              {% set final = target_final | int(1) %}
+              {% set intent = sdhb_intent %}
+              {% set hostile_on = is_state('input_boolean.dv_vmc_hostile_outside_enabled','on') %}
+              {% set aqi = states('sensor.dv_vmc_outdoor_aqi_safe') | float(0) %}
+              {% set t1 = states('input_number.dv_vmc_hostile_outside_t1') | float(50) %}
+              {% set t2 = states('input_number.dv_vmc_hostile_outside_t2') | float(100) %}
+              {% set t3 = states('input_number.dv_vmc_hostile_outside_t3') | float(150) %}
+              {% if hostile_on and aqi >= t3 and final == 0 %}
+                hostile_off
+              {% elif hostile_on and aqi >= t2 and final == 1 and base != 1 %}
+                hostile_cap_v1
+              {% elif hostile_on and aqi >= t1 and final <= 2 and base > final %}
+                hostile_cap_v2
+              {% elif intent in ['request_quiet','request_eco','request_weather_protect'] and final == 1 and base != 1 %}
+                sdhb_quiet
+              {% elif intent == 'request_boost' and final == 3 and base != 3 %}
+                sdhb_boost
+              {% elif intent == 'request_freecool' and final >= 2 and base < 2 %}
+                sdhb_freecool
+              {% elif is_state('binary_sensor.dv_vmc_freecool_active','on') and final >= 2 and base < 2 %}
+                freecool
+              {% elif dry_mode and dew_prerisk and (not dew_risk) and final >= 2 and base < 2 %}
+                dew_prerisk
+              {% else %}
+                iaq
+              {% endif %}
+            stage_detail: >-
+              {% set base = target | int(1) %}
+              {% set final = target_final | int(1) %}
+              {% set intent = sdhb_intent %}
+              {% set cap = states('sensor.dv_vmc_hostile_outside_cap') %}
+              {{ ('base=' ~ base ~ ' final=' ~ final ~ ' intent=' ~ intent ~ ' cap=' ~ cap)[:128] }}
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dv_vmc_stage_winner
+          data:
+            value: "{{ stage_winner }}"
+        - service: input_text.set_value
+          target:
+            entity_id: input_text.dv_vmc_stage_winner_detail
+          data:
+            value: "{{ stage_detail[:128] }}"
+        - service: script.dv_vmc_log_evento
+          data_template:
+            nivel: INFO
+            mensaje: Control automático evalúa velocidad
+            datos_adicionales:
+              velocidad_actual: '{{ v_actual }}'
+              velocidad_objetivo: '{{ target_final }}'
+              co2: '{{ co2 }}'
+              pm25: '{{ pm }}'
+              outdoor_aqi: '{{ states(''sensor.dv_vmc_outdoor_aqi_safe'') }}'
+              hostile_cap: '{{ states(''sensor.dv_vmc_hostile_outside_cap'') }}'
+              decision: '{% if target_final|int(1) == 3 %}V3 {% elif target_final|int(1)
+                == 2 %}V2 {% else %}V1{% endif %}'
+        - condition: template
+          value_template: '{{ target_final|int(1) != v_actual|int(1) }}'
+        - service: script.dv_vmc_set_speed
+          data:
+            speed: '{{ target_final|int(1) }}'
+      default: []
+- id: dv_vmc_stage2_ducha_activa_override
+  alias: dv_vmc_stage_2_ducha_activa_override_v2_v3
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id:
+    - binary_sensor.dv_vmc_ducha_bano_dormitorio
+    - binary_sensor.dv_vmc_ducha_bano_pasillo
+    to: 'on'
+  condition:
+  - condition: state
+    entity_id: binary_sensor.dv_vmc_permitida
+    state: 'on'
+  - condition: template
+    value_template: "{{ not (is_state('input_boolean.dv_vmc_dry_mode','on')\n    \
+      \    and is_state('binary_sensor.dv_vmc_dew_risk_any','on')) }}"
+  action:
+  - choose:
+    - conditions: '{{ is_state(''timer.dv_vmc_ducha_override'',''idle'') }}'
+      sequence:
+      - service: script.dv_vmc_ducha_snapshot_prev
+    default: []
+  - service: timer.cancel
+    target:
+      entity_id: timer.dv_vmc_override
+  - service: input_boolean.turn_off
+    target:
+      entity_id:
+      - input_boolean.dv_vmc_override_v2
+      - input_boolean.dv_vmc_override_v3
+  - service: script.dv_vmc_ducha_force_auto
+  - variables:
+      dp_casa: '{{ states(''sensor.dv_vmc_dp_casa_safe'') | float(none) }}'
+      dp_ext: '{{ states(''sensor.dv_vmc_dp_exterior_safe'') | float(none) }}'
+      favorable: '{{ dp_ext is not none and dp_casa is not none and (dp_ext <= (dp_casa
+        - 1.0)) }}'
+      dur_min: "{% if favorable %}\n  {{ states('input_number.dv_vmc_ducha_v3_min')|int(0)\
+        \ }}\n{% else %}\n  {{ states('input_number.dv_vmc_ducha_v2_min')|int(0) }}\n\
+        {% endif %}"
+      nivel: '{% if favorable %} v3 {% else %} v2 {% endif %}'
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.dv_vmc_ducha_nivel
+    data:
+      option: '{{ nivel }}'
+  - service: timer.start
+    target:
+      entity_id: timer.dv_vmc_ducha_override
+    data:
+        duration: "{{ '%02d:%02d:%02d' | format(0, (states('input_number.dv_vmc_startup_grace_s')|int(120) // 60), (states('input_number.dv_vmc_startup_grace_s')|int(120) % 60)) }}"
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: INFO
+      mensaje: Ducha detectada - Override activado
+      datos_adicionales:
+        nivel: '{{ nivel }}'
+        duracion_min: '{{ dur_min }}'
+        favorable: '{{ favorable }}'
+- id: dv_vmc_timer_override_ducha_fin
+  alias: dv_vmc_fin_override_ducha_limpiar_flags
+  mode: restart
+  trigger:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.dv_vmc_ducha_override
+  action:
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.dv_vmc_ducha_nivel
+    data:
+      option: none
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: INFO
+      mensaje: Override ducha finalizado
+  - service: script.dv_vmc_ducha_restore_prev
+  - delay: 00:00:01
+  - service: automation.trigger
+    target:
+      entity_id: automation.dv_vmc_control_principal_stage_1_2
+- id: dv_vmc_notify_hw_missing
+  alias: dv_vmc_notificar_hw_missing_0_durante_5_min
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: sensor.dv_vmc_hw_missing_count
+    for: 00:05:00
+  condition:
+  - condition: template
+    value_template: '{{ states(''sensor.dv_vmc_hw_missing_count'')|int(0) > 0 }}'
+  action:
+  - variables:
+      missing: '{{ state_attr(''sensor.dv_vmc_hw_missing_count'', ''missing'') or
+        [] }}'
+      missing_text: "{% if missing|count == 0 %}\n  (sin detalle)\n{% else %}\n  {%-\
+        \ for m in missing -%}\n  - {{ m }}\n  {%- if not loop.last %}\\n{% endif\
+        \ -%}\n  {%- endfor -%}\n{% endif %}"
+      msg: '⚠️ DV HW MAP / SENSORES REQUERIDOS KO (>5 min) Missing ({{ states(''sensor.dv_vmc_hw_missing_count'')
+        }}): {{ missing_text }}'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dv_vmc_notif_persistente
+        state: 'on'
+      sequence:
+      - service: persistent_notification.create
+        data:
+          notification_id: dv_vmc_hw_missing
+          title: DV · HW missing
+          message: '{{ msg }}'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dv_vmc_notif_telegram
+        state: 'on'
+      sequence:
+      - service: script.dv_vmc_notify_throttled
+        data:
+          msg: '{{ msg }}'
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: WARN
+      mensaje: HW missing (>5 min)
+      datos_adicionales:
+        missing_count: '{{ states(''sensor.dv_vmc_hw_missing_count'') }}'
+        missing: '{{ state_attr(''sensor.dv_vmc_hw_missing_count'', ''missing'') }}'
+- id: dv_vmc_propagar_horario_lunes_resto
+  alias: dv_vmc_propagar_horario_del_lunes_al_resto_de_dias
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: input_button.dv_vmc_propagar_horario_lunes_resto
+  action:
+  - variables:
+      today: '{{ now().strftime(''%Y-%m-%d'') }}'
+      on_time: '{{ states(''input_datetime.dv_vmc_hora_encendido_lunes'') }}'
+      off_time: '{{ states(''input_datetime.dv_vmc_hora_apagado_lunes'') }}'
+      targets_on:
+      - input_datetime.dv_vmc_hora_encendido_martes
+      - input_datetime.dv_vmc_hora_encendido_miercoles
+      - input_datetime.dv_vmc_hora_encendido_jueves
+      - input_datetime.dv_vmc_hora_encendido_viernes
+      - input_datetime.dv_vmc_hora_encendido_sabado
+      - input_datetime.dv_vmc_hora_encendido_domingo
+      targets_off:
+      - input_datetime.dv_vmc_hora_apagado_martes
+      - input_datetime.dv_vmc_hora_apagado_miercoles
+      - input_datetime.dv_vmc_hora_apagado_jueves
+      - input_datetime.dv_vmc_hora_apagado_viernes
+      - input_datetime.dv_vmc_hora_apagado_sabado
+      - input_datetime.dv_vmc_hora_apagado_domingo
+  - repeat:
+      for_each: '{{ targets_on }}'
+      sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: '{{ repeat.item }}'
+        data:
+          time: '{{ on_time }}'
+  - repeat:
+      for_each: '{{ targets_off }}'
+      sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: '{{ repeat.item }}'
+        data:
+          time: '{{ off_time }}'
+- id: dv_vmc_aviso_programacion_semanal_propagacion
+  alias: dv_vmc_aviso_programacion_semanal_rellena_dias_o_propaga_lunes
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: input_boolean.dv_vmc_programacion_semanal
+    to: 'on'
+    for: 00:00:03
+  action:
+  - service: persistent_notification.create
+    data:
+      title: DV · Programación semanal
+      message: 'Has activado la programación semanal. Recuerda: rellena los horarios
+        de cada día o pulsa “DV · Propagar horario del lunes al resto de días”.'
+- id: dv_vmc_filtros_aviso_por_horas
+  alias: dv_vmc_filtros_aviso_por_horas
+  mode: single
+  trigger:
+  - platform: numeric_state
+    entity_id: sensor.dv_vmc_filtros_horas_desde_reset
+    above: input_number.dv_vmc_filtros_intervalo_horas
+    for: 00:10:00
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_filtros_aviso_enviado
+    state: 'off'
+  action:
+  - variables:
+      used: '{{ states(''sensor.dv_vmc_filtros_horas_desde_reset'') }}'
+      lim: '{{ states(''input_number.dv_vmc_filtros_intervalo_horas'') }}'
+      msg: '🔧 DV · Cambio de filtros recomendado Horas desde último reset: {{ used
+        }} h (límite: {{ lim }} h). Pulsa “DV · Reset horas de filtro” después de
+        cambiarlos.'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dv_vmc_notif_persistente
+        state: 'on'
+      sequence:
+      - service: persistent_notification.create
+        data:
+          notification_id: dv_vmc_filtros
+          title: DV · Filtros
+          message: '{{ msg }}'
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.dv_vmc_notif_telegram
+        state: 'on'
+      sequence:
+      - service: script.dv_vmc_notify_throttled
+        data:
+          msg: '{{ msg }}'
+  - service: input_boolean.turn_on
+    target:
+      entity_id: input_boolean.dv_vmc_filtros_aviso_enviado
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: WARN
+      mensaje: Aviso filtros por horas
+      datos_adicionales:
+        used_h: '{{ used }}'
+        limit_h: '{{ lim }}'
+- id: dv_vmc_reset_filtros_boton
+  alias: dv_vmc_reset_horas_de_filtro_boton
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: input_button.dv_vmc_filtros_reset_btn
+  action:
+  - service: script.dv_vmc_reset_filtros_horas
+- id: dv_vmc_aviso_umbrales_error
+  alias: dv_vmc_aviso_umbrales_en_error
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: sensor.dv_vmc_validacion_umbrales
+    to: ERROR
+    for: 00:01:00
+  action:
+  - service: persistent_notification.create
+    data:
+      title: DV · Umbrales en ERROR
+      message: Se han detectado incoherencias en los umbrales configurados. Revisa
+        sensor.dv_vmc_validacion_umbrales (atributo 'resumen').
+- id: dv_vmc_aviso_umbrales_ok
+  alias: dv_vmc_aviso_umbrales_ok
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: sensor.dv_vmc_validacion_umbrales
+    to: OK
+    for: 00:00:10
+  condition:
+  - condition: template
+    value_template: '{{ trigger.from_state is not none and trigger.from_state.state
+      == ''ERROR'' }}'
+  action:
+  - service: persistent_notification.create
+    data:
+      title: DV · Umbrales OK
+      message: Los umbrales han vuelto a un estado coherente (OK).
+- id: dv_vmc_self_test_btn
+  alias: dv_vmc_self_test_boton
+  trigger:
+  - platform: state
+    entity_id: input_button.dv_vmc_self_test_btn
+  action:
+  - service: script.dv_vmc_run_self_test
+- id: dv_vmc_bootstrap_guard_timeout
+  alias: dv_vmc_bootstrap_guard_timeout
+  mode: single
+  trigger:
+  - platform: event
+    event_type: timer.finished
+    event_data:
+      entity_id: timer.dv_vmc_bootstrap_guard
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_bootstrap_done
+    state: 'off'
+  action:
+  - service: script.dv_vmc_log_evento
+    data:
+      nivel: ERROR
+      mensaje: Bootstrap no confirmado en 5 min (guard)
+
+- id: dv_vmc_hw_map_replace_guard
+  alias: dv_vmc_hw_map_replace_detectado_notificacion
+  mode: restart
+  trigger:
+  - platform: state
+    entity_id: sensor.dv_vmc_hw_replace_count
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_enabled
+    state: 'on'
+  action:
+  - choose:
+    - conditions:
+      - condition: numeric_state
+        entity_id: sensor.dv_vmc_hw_replace_count
+        above: 0
+      sequence:
+      - service: persistent_notification.create
+        data:
+          notification_id: dv_vmc_hw_map_replace
+          title: DV · HW MAP sin configurar
+          message: >-
+            Detectados placeholders REPLACE_* en sensor.dv_vmc_hw_map ({{ states('sensor.dv_vmc_hw_replace_count') }}).
+            Edita el hw_map y sustituye REPLACE_* por tus entity_id reales antes de usar DV.
+    - conditions:
+      - condition: numeric_state
+        entity_id: sensor.dv_vmc_hw_replace_count
+        below: 1
+      sequence:
+      - service: persistent_notification.dismiss
+        data:
+          notification_id: dv_vmc_hw_map_replace
+
+- id: dv_vmc_startup_grace_timer_start
+  alias: dv_vmc_startup_grace_timer_start
+  mode: single
+  trigger:
+  - platform: homeassistant
+    event: start
+  action:
+  - service: timer.start
+    target:
+      entity_id: timer.dv_vmc_startup_grace
+- id: dv_vmc_startup_grace_end_early_on_contract_ok
+  alias: dv_vmc_startup_grace_end_early_on_contract_ok
+  mode: restart
+  trigger:
+    - platform: state
+      entity_id: binary_sensor.dv_vmc_hw_contract_ok
+      to: 'on'
+  condition:
+    - condition: state
+      entity_id: input_boolean.dv_vmc_enabled
+      state: 'on'
+    - condition: state
+      entity_id: timer.dv_vmc_startup_grace
+      state: active
+  action:
+    - service: timer.cancel
+      target:
+        entity_id: timer.dv_vmc_startup_grace
+
+- id: dv_vmc_startup_grace_end_early_on_replace_placeholders
+  alias: dv_vmc_startup_grace_end_early_on_replace_placeholders
+  mode: restart
+  trigger:
+    - platform: numeric_state
+      entity_id: sensor.dv_vmc_hw_replace_count
+      above: 0
+  condition:
+    - condition: state
+      entity_id: input_boolean.dv_vmc_enabled
+      state: 'on'
+    - condition: state
+      entity_id: timer.dv_vmc_startup_grace
+      state: active
+  action:
+    - service: timer.cancel
+      target:
+        entity_id: timer.dv_vmc_startup_grace
+
+- id: dv_vmc_co2_ema_update_1m
+  alias: dv_vmc_co2_ema_update_1m
+  mode: single
+  trigger:
+    - platform: time_pattern
+      minutes: /1
+  condition:
+    - condition: state
+      entity_id: input_boolean.dv_vmc_co2_ema_enabled
+      state: 'on'
+    - condition: template
+      value_template: "{{ states('sensor.dv_vmc_co2_safe') not in ['unknown','unavailable','none',''] }}"
+  action:
+    - variables:
+        x: "{{ states('sensor.dv_vmc_co2_safe') | float(0) }}"
+        prev: "{{ states('input_number.dv_vmc_co2_ema_value') | float(0) }}"
+        a: "{{ states('input_number.dv_vmc_co2_ema_alpha') | float(0.2) }}"
+        ema: >-
+          {% if prev <= 0 %}
+            {{ x }}
+          {% else %}
+            {{ (a * x + (1 - a) * prev) }}
+          {% endif %}
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_co2_ema_value
+      data:
+        value: "{{ ema | round(0) }}"
+
+- id: dv_vmc_pm25_ema_update_1m
+  alias: dv_vmc_pm25_ema_update_1m
+  mode: single
+  trigger:
+    - platform: time_pattern
+      minutes: /1
+  condition:
+    - condition: state
+      entity_id: input_boolean.dv_vmc_pm25_ema_enabled
+      state: 'on'
+    - condition: template
+      value_template: "{{ states('sensor.dv_vmc_pm25_safe') not in ['unknown','unavailable','none',''] }}"
+  action:
+    - variables:
+        x: "{{ states('sensor.dv_vmc_pm25_safe') | float(0) }}"
+        prev: "{{ states('input_number.dv_vmc_pm25_ema_value') | float(0) }}"
+        a: "{{ states('input_number.dv_vmc_pm25_ema_alpha') | float(0.2) }}"
+        ema: >-
+          {% if prev <= 0 %}
+            {{ x }}
+          {% else %}
+            {{ (a * x + (1 - a) * prev) }}
+          {% endif %}
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_pm25_ema_value
+      data:
+        value: "{{ ema | round(1) }}"
+
+template:
+- sensor:
+  - name: dv_vmc_main_automations_version
+    unique_id: dv_vmc_main_automations_version
+    state: '4.2'
+- sensor:
+  - name: dv_vmc_main_scripts_version
+    unique_id: dv_vmc_main_scripts_version
+    state: '4.2'
+script:
+  dv_vmc_log_evento:
+    alias: dv_vmc_registrar_evento_en_log
+    mode: queued
+    fields:
+      nivel:
+        description: Nivel del evento (INFO, WARNING, ERROR)
+        default: INFO
+      mensaje:
+        description: Mensaje descriptivo
+      datos_adicionales:
+        description: Diccionario opcional con datos adicionales
+        default: {}
+    sequence:
+    - variables:
+        ts: '{{ now().isoformat() }}'
+        _nivel: '{{ (nivel if nivel is defined else ''INFO'') | upper }}'
+        _mensaje: '{{ (mensaje if mensaje is defined else '''') }}'
+        _datos: '{{ datos_adicionales if datos_adicionales is defined else {} }}'
+        payload: '{{ {''timestamp'': ts, ''nivel'': _nivel, ''mensaje'': _mensaje,
+          ''datos'': _datos} | tojson }}'
+    - event: dv_vmc_log_evento_event
+      event_data:
+        payload: '{{ payload }}'
+  dv_vmc_cleanup_state:
+    alias: dv_vmc_cleanup_reles_timers_ui_coherente
+    icon: mdi:broom
+    mode: restart
+    sequence:
+    - service: switch.turn_off
+      data:
+        entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+    - service: switch.turn_off
+      data:
+        entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v3'') }}'
+    - service: timer.cancel
+      target:
+        entity_id:
+        - timer.dv_vmc_override
+        - timer.dv_vmc_ducha_override
+    - service: input_boolean.turn_off
+      target:
+        entity_id:
+        - input_boolean.dv_vmc_override_v2
+        - input_boolean.dv_vmc_override_v3
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dv_vmc_ducha_nivel
+      data:
+        option: none
+    - service: input_boolean.turn_off
+      target:
+        entity_id:
+        - input_boolean.dv_vmc_v2
+        - input_boolean.dv_vmc_v3
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.dv_vmc_v1
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: INFO
+        mensaje: Cleanup completo realizado
+        datos_adicionales:
+          accion: Reset estado completo
+  dv_vmc_permiso_extra_iniciar:
+    alias: dv_vmc_permiso_extra_iniciar
+    icon: mdi:timer-plus
+    mode: restart
+    sequence:
+    - service: timer.start
+      target:
+        entity_id: timer.dv_vmc_permiso_extra
+      data:
+        duration: '{% set m = states(''input_number.dv_vmc_permiso_extra_min'')|int(0)
+          %} {{ ''%02d:%02d:00''|format((m//60), (m%60)) }}'
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: INFO
+        mensaje: Permiso extra iniciado
+        datos_adicionales:
+          duracion_min: '{{ states(''input_number.dv_vmc_permiso_extra_min'')|int(0)
+            }}'
+  dv_vmc_reset_valores_fabrica:
+    alias: dv_vmc_reset_valores_fabrica
+    icon: mdi:backup-restore
+    mode: single
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_override_min
+      data:
+        value: '{{ states(''sensor.dv_vmc_override_manual_min_fabrica'')|float(30)
+          }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_permiso_extra_min
+      data:
+        value: '{{ states(''sensor.dv_vmc_permiso_extra_min_fabrica'')|float(120)
+          }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_ducha_v3_min
+      data:
+        value: '{{ states(''sensor.dv_vmc_ducha_v3_min_fabrica'')|float(20) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_ducha_v2_min
+      data:
+        value: '{{ states(''sensor.dv_vmc_ducha_v2_min_fabrica'')|float(10) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_co2_v2_threshold
+      data:
+        value: '{{ states(''sensor.dv_vmc_co2_v2_threshold_fabrica'')|float(900) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_co2_v3_threshold
+      data:
+        value: '{{ states(''sensor.dv_vmc_co2_v3_threshold_fabrica'')|float(1300)
+          }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_pm25_v2_threshold
+      data:
+        value: '{{ states(''sensor.dv_vmc_pm25_v2_threshold_fabrica'')|float(15) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_pm25_v3_threshold
+      data:
+        value: '{{ states(''sensor.dv_vmc_pm25_v3_threshold_fabrica'')|float(40) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_co2_hysteresis
+      data:
+        value: '{{ states(''sensor.dv_vmc_co2_hysteresis_fabrica'')|float(100) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_pm25_hysteresis
+      data:
+        value: '{{ states(''sensor.dv_vmc_pm25_hysteresis_fabrica'')|float(5) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.dv_vmc_filtros_intervalo_horas
+      data:
+        value: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_filtros_intervalo_horas'')
+          | float(3650) }}'
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.dv_vmc_filtros_aviso_enviado
+    - service: script.dv_vmc_filtros_reset_contador
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: WARNING
+        mensaje: Valores de fábrica restaurados (+ reset contador filtros)
+        datos_adicionales:
+          usuario: '{{ user_id }}'
+          accion: Reset completo valores configurables
+          reset_filtros: true
+          filtros_intervalo_h: '{{ state_attr(''sensor.dv_vmc_fabrica'',''dv_vmc_filtros_intervalo_horas'')
+            | float(3650) }}'
+  dv_vmc_filtros_reset_contador:
+    alias: dv_vmc_filtros_reset_contador_mantenimiento
+    mode: single
+    sequence:
+    - variables:
+        src_total_hours: sensor.dv_vmc_maquina_horas_total
+        h: '{{ states(src_total_hours) | float(none) }}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ h is not none }}'
+        sequence:
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.dv_vmc_filtros_horas_offset
+          data:
+            value: '{{ h | round(2) }}'
+        - service: logbook.log
+          data:
+            name: dv_vmc_dv
+            message: 'Reset filtros: baseline_horas={{ h | round(2) }}'
+      default:
+      - service: logbook.log
+        data:
+          name: dv_vmc_dv
+          message: 'Reset filtros: NO aplicado (sensor horas total no disponible:
+            {{ src_total_hours }})'
+  dv_vmc_apply_hardware_speed:
+    alias: dv_vmc_aplicar_velocidad_a_reles_hw_driver
+    icon: mdi:chip
+    mode: queued
+    max: 10
+    fields:
+      speed:
+        description: Velocidad objetivo lógica (1/2/3)
+    sequence:
+    - condition: template
+      value_template: '{{ states(''sensor.dv_vmc_velocidad_real'')|int(0) != (speed|int(1))
+        }}'
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.dv_vmc_driver_busy
+    - variables:
+        s: '{{ speed|int(1) }}'
+        d_ms: 1
+        p_ms: 800
+        boot_done: '{{ is_state(''input_boolean.dv_vmc_bootstrap_done'',''on'') }}'
+    - service: switch.turn_off
+      data:
+        entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+    - service: switch.turn_off
+      data:
+        entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v3'') }}'
+    - delay:
+        milliseconds: '{{ d_ms }}'
+    - choose:
+      - conditions: '{{ (not boot_done) and (p_ms|int(0) > 0) }}'
+        sequence:
+        - service: switch.turn_on
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+        - delay:
+            milliseconds: '{{ p_ms }}'
+        - service: switch.turn_off
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+        - delay:
+            milliseconds: '{{ d_ms }}'
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_bootstrap_done
+    - choose:
+      - conditions: '{{ s == 2 }}'
+        sequence:
+        - service: switch.turn_on
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+      - conditions: '{{ s == 3 }}'
+        sequence:
+        - service: switch.turn_on
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v3'') }}'
+      - conditions: '{{ s == 1 }}'
+        sequence:
+        - service: switch.turn_off
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v2'') }}'
+        - service: switch.turn_off
+          data:
+            entity_id: '{{ state_attr(''sensor.dv_vmc_hw_map'',''sw_v3'') }}'
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.dv_vmc_driver_busy
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: INFO
+        mensaje: Velocidad cambiada en HW
+        datos_adicionales:
+          velocidad: '{{ s }}'
+          boot_done: '{{ is_state(''input_boolean.dv_vmc_bootstrap_done'',''on'')
+            }}'
+  dv_vmc_set_speed:
+    alias: dv_vmc_set_speed_ui_hw
+    icon: mdi:fan
+    mode: restart
+    fields:
+      speed:
+        description: Velocidad objetivo (1/2/3)
+    sequence:
+    - variables:
+        s: '{{ speed|int(1) }}'
+        v_real: '{{ states(''sensor.dv_vmc_velocidad_real'')|int(0) }}'
+    - condition: template
+      value_template: '{{ v_real != s }}'
+    - service: input_boolean.turn_off
+      target:
+        entity_id:
+        - input_boolean.dv_vmc_v1
+        - input_boolean.dv_vmc_v2
+        - input_boolean.dv_vmc_v3
+    - choose:
+      - conditions: '{{ s == 1 }}'
+        sequence:
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_v1
+      - conditions: '{{ s == 2 }}'
+        sequence:
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_v2
+      - conditions: '{{ s == 3 }}'
+        sequence:
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_v3
+    - service: script.dv_vmc_apply_hardware_speed
+      data:
+        speed: '{{ s }}'
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: INFO
+        mensaje: Velocidad cambiada desde UI
+        datos_adicionales:
+          velocidad_anterior: '{{ states(''sensor.dv_vmc_velocidad_actual'') }}'
+          velocidad_nueva: '{{ s }}'
+          modo: '{{ ''AUTO'' if is_state(''input_boolean.dv_vmc_auto'',''on'') else
+            ''MANUAL'' }}'
+  dv_vmc_start_override:
+    alias: dv_vmc_iniciar_override_manual_v2_v3
+    icon: mdi:timer-play-outline
+    mode: restart
+    fields:
+      speed:
+        description: Velocidad override (2 o 3)
+      duration_min:
+        description: Duración opcional (min). Si no se pasa, usa input_number.dv_vmc_override_min
+    sequence:
+    - variables:
+        s: '{{ speed|int(2) }}'
+        dur_m: "{% if duration_min is defined and (duration_min|int(0) > 0) %}\n \
+          \ {{ duration_min|int(0) }}\n{% else %}\n  {{ states('input_number.dv_vmc_override_min')|int(30)\
+          \ }}\n{% endif %}"
+    - service: input_boolean.turn_off
+      target:
+        entity_id:
+        - input_boolean.dv_vmc_override_v2
+        - input_boolean.dv_vmc_override_v3
+    - choose:
+      - conditions: '{{ s == 2 }}'
+        sequence:
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_override_v2
+      - conditions: '{{ s == 3 }}'
+        sequence:
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_override_v3
+    - service: timer.start
+      target:
+        entity_id: timer.dv_vmc_override
+      data:
+        duration: '{% set m = dur_m|int(0) %} {{ ''%02d:%02d:00''|format((m//60),
+          (m%60)) }}'
+    - service: script.dv_vmc_set_speed
+      data:
+        speed: '{{ s }}'
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: INFO
+        mensaje: Override manual iniciado
+        datos_adicionales:
+          velocidad: V{{ s }}
+          duracion_min: '{{ dur_m }}'
+          usuario: '{{ user_id }}'
+  dv_vmc_ducha_snapshot_prev:
+    alias: dv_vmc_ducha_snapshot_estado_previo
+    mode: single
+    sequence:
+    - variables:
+        prev_modo: '{{ ''auto'' if is_state(''input_boolean.dv_vmc_auto'',''on'')
+          else ''manual'' }}'
+        prev_speed: '{% if is_state(''input_boolean.dv_vmc_v3'',''on'') %}v3 {% elif
+          is_state(''input_boolean.dv_vmc_v2'',''on'') %}v2 {% elif is_state(''input_boolean.dv_vmc_v1'',''on'')
+          %}v1 {% else %}off {% endif %}'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dv_vmc_prev_modo
+      data:
+        option: '{{ prev_modo }}'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.dv_vmc_prev_speed
+      data:
+        option: '{{ prev_speed }}'
+  dv_vmc_ducha_force_auto:
+    alias: dv_vmc_ducha_forzar_auto
+    mode: single
+    sequence:
+    - service: input_boolean.turn_on
+      target:
+        entity_id: input_boolean.dv_vmc_auto
+    - service: input_boolean.turn_off
+      target:
+        entity_id: input_boolean.dv_vmc_auto_lock
+  dv_vmc_ducha_restore_prev:
+    alias: dv_vmc_ducha_restaurar_estado_previo
+    mode: single
+    sequence:
+    - variables:
+        prev_modo: '{{ states(''input_select.dv_vmc_prev_modo'') }}'
+        prev_speed: '{{ states(''input_select.dv_vmc_prev_speed'') }}'
+    - choose:
+      - conditions: '{{ prev_modo == ''auto'' }}'
+        sequence:
+        - service: input_boolean.turn_on
+          target:
+            entity_id: input_boolean.dv_vmc_auto
+      default:
+      - service: input_boolean.turn_off
+        target:
+          entity_id: input_boolean.dv_vmc_auto
+      - choose:
+        - conditions: '{{ prev_speed == ''v3'' }}'
+          sequence:
+          - service: script.dv_vmc_set_speed
+            data:
+              speed: 3
+        - conditions: '{{ prev_speed == ''v2'' }}'
+          sequence:
+          - service: script.dv_vmc_set_speed
+            data:
+              speed: 2
+        - conditions: '{{ prev_speed == ''v1'' }}'
+          sequence:
+          - service: script.dv_vmc_set_speed
+            data:
+              speed: 1
+        - conditions: '{{ prev_speed == ''off'' }}'
+          sequence:
+          - service: script.dv_vmc_set_speed
+            data:
+              speed: 1
+  dv_vmc_cancel_override:
+    alias: dv_vmc_cancelar_override
+    mode: single
+    sequence:
+    - service: timer.cancel
+      target:
+        entity_id:
+        - timer.dv_vmc_override
+        - timer.dv_vmc_ducha_override
+    - service: input_boolean.turn_off
+      target:
+        entity_id:
+        - input_boolean.dv_vmc_override_v2
+        - input_boolean.dv_vmc_override_v3
+    - service: script.dv_vmc_log_evento
+      data:
+        nivel: INFO
+        mensaje: Override cancelado
+        datos_adicionales:
+          usuario: '{{ user_id }}'
+    - choose:
+      - conditions:
+        - condition: state
+          entity_id: input_boolean.dv_vmc_auto
+          state: 'on'
+        - condition: state
+          entity_id: input_boolean.dv_vmc_auto_lock
+          state: 'off'
+        sequence:
+        - service: script.dv_vmc_set_speed
+          data:
+            speed: 1
+        - delay: 00:00:35
+        - service: automation.trigger
+          target:
+            entity_id: automation.dv_vmc_control_principal_stage_1_2
+      - conditions:
+        - condition: state
+          entity_id: input_boolean.dv_vmc_auto
+          state: 'off'
+        sequence:
+        - service: script.dv_vmc_set_speed
+          data:
+            speed: 1
+  dv_vmc_reset_filtros_horas:
+    alias: dv_vmc_reset_horas_de_filtro
+    mode: single
+    sequence:
+    - variables:
+        total: '{{ states(''sensor.dv_vmc_maquina_horas_total'') | float(none) }}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ total is not none }}'
+        sequence:
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.dv_vmc_filtros_horas_offset
+          data:
+            value: '{{ total | round(2) }}'
+        - service: input_boolean.turn_off
+          target:
+            entity_id: input_boolean.dv_vmc_filtros_aviso_enviado
+        - service: persistent_notification.dismiss
+          data:
+            notification_id: dv_vmc_filtros
+        - service: script.dv_vmc_log_evento
+          data:
+            nivel: INFO
+            mensaje: Reset horas de filtro (mantenimiento)
+            datos_adicionales:
+              horas_totales: '{{ total | round(2) }}'
+              offset_aplicado: '{{ total | round(2) }}'
+      default:
+      - service: script.dv_vmc_log_evento
+        data:
+          nivel: WARN
+          mensaje: Reset horas de filtro NO aplicado (sensor horas total no disponible)
+          datos_adicionales:
+            sensor: sensor.dv_vmc_maquina_horas_total
+  dv_vmc_run_self_test:
+    alias: dv_vmc_self_test_diagnostico
+    mode: single
+    sequence:
+    - variables:
+        bad:
+        - unknown
+        - unavailable
+        - none
+        - ''
+        req_raw: '{{ state_attr(''sensor.dv_vmc_hw_contract'',''required'') }}'
+        req: "{% if req_raw is string %}\n  {{ (req_raw | default('[]')) | from_json\
+          \ }}\n{% elif req_raw is iterable %}\n  {{ req_raw | list }}\n{% else %}\n\
+          \  {{ [] }}\n{% endif %}"
+        ns: '{% set x = namespace(err=[], warn=[]) %} {{ x }}
+
+          '
+    - variables:
+        contract_ok: '{{ is_state(''binary_sensor.dv_vmc_hw_contract_ok'',''on'')
+          }}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ not contract_ok }}'
+        sequence:
+        - variables:
+            _x: '{% set ns = namespace(err=[]) %} {{ ns }}
+
+              '
+        - service: logbook.log
+          data:
+            name: dv_vmc_dv
+            message: 'Self-test: HW contract KO (faltan entidades requeridas).'
+    - variables:
+        missing_list: "{% set ns = namespace(m=[]) %} {% for k in req %}\n  {% set\
+          \ e = state_attr('sensor.dv_vmc_hw_map', k) %}\n  {% if e is none %}\n \
+          \   {% set ns.m = ns.m + [k ~ '=(none)'] %}\n  {% else %}\n    {% set st\
+          \ = states(e) %}\n    {% if st in bad %}\n      {% set ns.m = ns.m + [k\
+          \ ~ '=' ~ e ~ ':' ~ st] %}\n    {% endif %}\n  {% endif %}\n{% endfor %}\
+          \ {{ ns.m }}"
+    - variables:
+        v2: '{{ is_state(''binary_sensor.dv_vmc_hw_v2'',''on'') }}'
+        v3: '{{ is_state(''binary_sensor.dv_vmc_hw_v3'',''on'') }}'
+        doble_rele: '{{ v2 and v3 }}'
+    - variables:
+        co2_v2: '{{ states(''input_number.dv_vmc_co2_v2_threshold'')|float(none) }}'
+        co2_v3: '{{ states(''input_number.dv_vmc_co2_v3_threshold'')|float(none) }}'
+        pm_v2: '{{ states(''input_number.dv_vmc_pm25_v2_threshold'')|float(none) }}'
+        pm_v3: '{{ states(''input_number.dv_vmc_pm25_v3_threshold'')|float(none) }}'
+        umbrales_ok: "{% set ok = true %} {% if co2_v2 is none or co2_v3 is none or\
+          \ pm_v2 is none or pm_v3 is none %}\n  {% set ok = false %}\n{% elif co2_v2\
+          \ >= co2_v3 %}\n  {% set ok = false %}\n{% elif pm_v2 >= pm_v3 %}\n  {%\
+          \ set ok = false %}\n{% endif %} {{ ok }}"
+    - variables:
+        status: "{% set errs = [] %} {% set warns = [] %}\n{% if missing_list | count\
+          \ > 0 %}\n  {% set errs = errs + ['HW missing: ' ~ (missing_list | count)]\
+          \ %}\n{% endif %}\n{% if doble_rele %}\n  {% set errs = errs + ['Relés:\
+          \ V2 y V3 a la vez'] %}\n{% endif %}\n{% if not umbrales_ok %}\n  {% set\
+          \ warns = warns + ['Umbrales: revisar V2<V3 (CO2/PM)'] %}\n{% endif %}\n\
+          {% if errs | count == 0 and warns | count == 0 %}\n  OK\n{% else %}\n  {%\
+          \ if errs | count > 0 %}\n    ERROR: {{ errs | join(' · ') }}\n  {% else\
+          \ %}\n    WARN: {{ warns | join(' · ') }}\n  {% endif %}\n{% endif %}"
+    - service: logbook.log
+      data:
+        name: dv_vmc_dv
+        message: '🧪 Self-test: {{ status }}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ status != ''OK'' }}'
+        sequence:
+        - service: persistent_notification.create
+          data:
+            title: DV · Self-test
+            message: 'Resultado: {{ status }} {% if missing_list | count > 0 %} \n\nHW
+              missing ({{ missing_list | count }}): - {{ missing_list | join(''\n-
+              '') }} {% endif %}'
+    - choose:
+      - conditions:
+        - condition: template
+          value_template: '{{ states(''script.dv_vmc_log_evento'') not in [''unknown'',''unavailable'',''none'','''']
+            }}'
+        sequence:
+        - service: script.dv_vmc_log_evento
+          data:
+            nivel: '{{ ''ERROR'' if status.startswith(''ERROR'') else (''WARNING''
+              if status.startswith(''WARN'') else ''INFO'') }}'
+            mensaje: 'Self-test: {{ status }}'
+  dv_vmc_notify_throttled:
+    alias: dv_vmc_notify_throttled
+    mode: queued
+    max: 10
+    sequence:
+    - variables:
+        notify_target: '{{ states(''input_text.dv_vmc_notify_target'') if states(''input_text.dv_vmc_notify_target'')
+          not in [''unknown'',''unavailable'',''''] else ''notify.notify'' }}'
+        min_interval_s: '{{ states(''input_number.dv_vmc_notif_min_interval_s'')|int(0)
+          }}'
+        last_raw: '{{ states(''input_datetime.dv_vmc_notif_last_ts'') }}'
+        last_ts: "{% if last_raw in ['unknown','unavailable',''] %}\n  {{ none }}\n\
+          {% else %}\n  {{ as_timestamp(strptime(last_raw, '%Y-%m-%d %H:%M:%S')) }}\n\
+          {% endif %}"
+        now_ts: '{{ as_timestamp(now()) }}'
+        allow: "{% if min_interval_s|int(0) <= 0 %}\n  true\n{% elif last_ts is none\
+          \ %}\n  true\n{% else %}\n  {{ (now_ts - (last_ts|float(0))) >= (min_interval_s|int(0))\
+          \ }}\n{% endif %}"
+        msg: '{{ msg|default('''') }}'
+    - choose:
+      - conditions: '{{ allow and (msg|length > 0) }}'
+        sequence:
+        - service: notify.send_message
+          target:
+            entity_id: '{{ notify_target }}'
+          data:
+            message: '{{ msg }}'
+        - service: input_datetime.set_datetime
+          target:
+            entity_id: input_datetime.dv_vmc_notif_last_ts
+          data:
+            datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'

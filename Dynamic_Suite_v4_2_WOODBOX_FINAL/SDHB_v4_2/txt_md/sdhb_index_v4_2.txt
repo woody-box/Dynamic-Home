@@ -1,0 +1,194 @@
+SDHB (Suite Dynamic Home Bus) — INDEX (Suite v4.2 · BUS v4.2)
+==============================================================
+
+Archivos BUS (fuente de verdad)
+------------------------------
+- sdhb_bus_helpers_v4_2.yaml (helpers) — SHA256: 0a005e4676e18a228873de8a1f523575f65f0242246811636aa8b8c4c43d5c9d
+- suite_dynamic_home_bus_v4_2.yaml (logic) — SHA256: 7bc95c93cb046355bd1c91c9b23c1fdf602fb991ca9f1eaa30c20b1e72291d65
+- sdhb_bus_automations_v4_2.yaml (automations) — SHA256: 3b7299008c9936c64511f7561259c575b5da0bcaf7bd4e5024467ac0fc0ea7fc
+
+Qué es SDHB
+-----------
+SDHB es un “bus de intents” entre módulos (DS, DC, DV). Permite:
+- publicar intents (peticiones) con prioridad y TTL,
+- resolver un “winner” por target (dc_zoneXX / dv_vmc / ds_wX),
+- consumir winners en los módulos y coordinar comportamiento.
+
+Naming contractual (producto)
+-----------------------------
+- Targets DC: dc_zone01..dc_zone08
+- Target DV: dv_vmc
+- Targets DS: ds_w1..ds_w8
+- Fachadas: f1..f4
+
+Intents oficiales (superconjunto bus)
+--------------------------------
+- request_boost
+- request_eco
+- request_freecool
+- request_normal
+- request_preheat
+
+Observabilidad (v4.2)
+--------------------
+- counter.sdhb_error_count + sensor.sdhb_error_count: contador de eventos sdhb_error (reset diario).
+- sensor.sdhb_feedback_summary: resumen de feedback_applied (conteo + lista).
+- Guard publish: si payload > 250 chars, dispara sdhb_error(payload_truncated) y almacena payload seguro.
+- request_privacy
+- request_quiet
+- request_solar_gain
+- request_solar_shield
+- request_weather_protect
+
+Entidades principales creadas por el BUS
+----------------------------------------
+- input_boolean:
+  - input_boolean.sdhb_dc_zone01_enabled
+  - input_boolean.sdhb_dc_zone01_feedback_applied
+  - input_boolean.sdhb_dc_zone02_enabled
+  - input_boolean.sdhb_dc_zone02_feedback_applied
+  - input_boolean.sdhb_dc_zone03_enabled
+  - input_boolean.sdhb_dc_zone03_feedback_applied
+  - input_boolean.sdhb_dc_zone04_enabled
+  - input_boolean.sdhb_dc_zone04_feedback_applied
+  - input_boolean.sdhb_dc_zone05_enabled
+  - input_boolean.sdhb_dc_zone05_feedback_applied
+  - input_boolean.sdhb_dc_zone06_enabled
+  - input_boolean.sdhb_dc_zone06_feedback_applied
+  - input_boolean.sdhb_dc_zone07_enabled
+  - input_boolean.sdhb_dc_zone07_feedback_applied
+  - input_boolean.sdhb_dc_zone08_enabled
+  - input_boolean.sdhb_dc_zone08_feedback_applied
+  - input_boolean.sdhb_ds_w10_enabled
+  - input_boolean.sdhb_ds_w10_feedback_applied
+  - input_boolean.sdhb_ds_w11_enabled
+  - input_boolean.sdhb_ds_w11_feedback_applied
+  - input_boolean.sdhb_ds_w12_enabled
+  - input_boolean.sdhb_ds_w12_feedback_applied
+  - input_boolean.sdhb_ds_w1_enabled
+  - input_boolean.sdhb_ds_w1_feedback_applied
+  - input_boolean.sdhb_ds_w2_enabled
+  - input_boolean.sdhb_ds_w2_feedback_applied
+  - input_boolean.sdhb_ds_w3_enabled
+  - input_boolean.sdhb_ds_w3_feedback_applied
+  - input_boolean.sdhb_ds_w4_enabled
+  - input_boolean.sdhb_ds_w4_feedback_applied
+  - input_boolean.sdhb_ds_w5_enabled
+  - input_boolean.sdhb_ds_w5_feedback_applied
+  - input_boolean.sdhb_ds_w6_enabled
+  - input_boolean.sdhb_ds_w6_feedback_applied
+  - input_boolean.sdhb_ds_w7_enabled
+  - input_boolean.sdhb_ds_w7_feedback_applied
+  - input_boolean.sdhb_ds_w8_enabled
+  - input_boolean.sdhb_ds_w8_feedback_applied
+  - input_boolean.sdhb_ds_w9_enabled
+  - input_boolean.sdhb_ds_w9_feedback_applied
+  - input_boolean.sdhb_dv_2_enabled
+  - input_boolean.sdhb_dv_2_feedback_applied
+  - input_boolean.sdhb_dv_3_enabled
+  - input_boolean.sdhb_dv_3_feedback_applied
+  - input_boolean.sdhb_dv_vmc_enabled
+  - input_boolean.sdhb_dv_vmc_feedback_applied
+  - input_boolean.sdhb_enabled
+  - input_boolean.sdhb_flag_dc_zone01_dew_prerisk
+  - input_boolean.sdhb_flag_dc_zone01_dew_risk
+  - input_boolean.sdhb_flag_dc_zone02_dew_prerisk
+  - input_boolean.sdhb_flag_dc_zone02_dew_risk
+  - input_boolean.sdhb_flag_dc_zone03_dew_prerisk
+  - input_boolean.sdhb_flag_dc_zone03_dew_risk
+  - input_boolean.sdhb_flag_dc_zone04_dew_prerisk
+  - input_boolean.sdhb_flag_dc_zone04_dew_risk
+  - input_boolean.sdhb_flag_ds_zone01_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone01_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone01_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone01_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone02_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone02_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone02_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone02_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone03_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone03_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone03_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone03_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone04_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone04_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone04_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone04_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone05_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone05_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone05_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone05_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone06_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone06_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone06_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone06_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone07_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone07_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone07_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone07_f4_solar_shield
+  - input_boolean.sdhb_flag_ds_zone08_f1_solar_shield
+  - input_boolean.sdhb_flag_ds_zone08_f2_solar_shield
+  - input_boolean.sdhb_flag_ds_zone08_f3_solar_shield
+  - input_boolean.sdhb_flag_ds_zone08_f4_solar_shield
+  - input_boolean.sdhb_lock
+
+- scripts:
+  - script.sdhb_clear_intent
+  - script.sdhb_feedback
+  - script.sdhb_heartbeat
+  - script.sdhb_publish_intent
+
+- sensors/template (names):
+  - sensor.sdhb_bus_stats
+  - sensor.sdhb_intent_effective
+  - sensor.sdhb_modules_health
+  - sensor.sdhb_version
+  - sensor.sdhb_winner_dc_zone01
+  - sensor.sdhb_winner_dc_zone02
+  - sensor.sdhb_winner_dc_zone03
+  - sensor.sdhb_winner_dc_zone04
+  - sensor.sdhb_winner_dc_zone05
+  - sensor.sdhb_winner_dc_zone06
+  - sensor.sdhb_winner_dc_zone07
+  - sensor.sdhb_winner_dc_zone08
+  - sensor.sdhb_winner_ds_w1
+  - sensor.sdhb_winner_ds_w10
+  - sensor.sdhb_winner_ds_w11
+  - sensor.sdhb_winner_ds_w12
+  - sensor.sdhb_winner_ds_w2
+  - sensor.sdhb_winner_ds_w3
+  - sensor.sdhb_winner_ds_w4
+  - sensor.sdhb_winner_ds_w5
+  - sensor.sdhb_winner_ds_w6
+  - sensor.sdhb_winner_ds_w7
+  - sensor.sdhb_winner_ds_w8
+  - sensor.sdhb_winner_ds_w9
+  - sensor.sdhb_winner_dv_2
+  - sensor.sdhb_winner_dv_3
+  - sensor.sdhb_winner_dv_vmc
+  - sensor.sdhb_winner_global
+  - sensor.suite_dynamic_home_bus_version
+
+
+Nota: aliases DC por zona (shorthand): z1..z8 (zone01..zone08).
+
+- Optional tests: sdhb_testing_integration_optional_v4_2.yaml (SDHB integration tests)
+
+- sdhb/sdhb_testing_e2e_optional_v4_2.yaml (optional) — E2E tests DC→SDHB→DS
+- SDHB Contracts: txt_md/sdhb_contracts_v4_2.md (y sdhb/sdhb_contracts_v4_2.yaml como referencia en YAML)
+- Optional: sdhb/sdhb_testing_recovery_optional_v4_2.yaml (TTL expiry & fallback tests)
+- Recovery tests extended: clear_intent + republish after expiry (sdhb_testing_recovery_optional_v4_2.yaml)
+
+Slots reservados: ds_w9..ds_w12 y dv_vmc02/dv_vmc03 existen para escalado (pueden quedar sin uso en instalación mínima).
+
+Nota: el bus valida payload JSON; si es inválido dispara sdhb_error invalid_payload_json y descarta el publish.
+
+Nuevos helpers:
+- input_number.sdhb_feedback_ack_cooldown_s (anti-spam ACK)
+- input_number.sdhb_winner_event_rate_limit_s (rate limit eventos)
+
+
+Roadmap extra aplicado:
+- sdhb_ttl_cleanup_5m: limpia slots expirados cada 5 min (cosmético + claridad de helpers)
+- sdhb_startup_feedback_guard: limpia feedback_applied sucios al arrancar
+- sensor.sdhb_intent_history: historial corto (~15) de cambios de winner (via evento sdhb_winner_changed)

@@ -1,0 +1,27 @@
+Dynamic Suite v4.2 - AppDaemon pack (modules + SDHB + tools)
+Generated: 2026-02-24T16:10:57
+
+Contains:
+- DC/DV/DS modules migrated to AppDaemon services
+- SDHB module (bus) as-is
+- suite_tools (mass cloning tools)
+- AppDaemon apps (backup+golden)
+
+Install order suggestion:
+1) Install AppDaemon apps (dynamic_suite_appdaemon_apps_v4_2.zip contents) into AppDaemon add-on
+2) Install SDHB bus package
+3) Install DC, DV, DS packages
+4) Install suite_tools if desired
+
+- DC_v4_2_hotfix_p13_appdaemon.zip
+  sha256: 0670b65fbff17a25bc1a77f2046454777129b268bc25c899a3d2a1bcf5339f70
+- DS_v4_2_hotfix_p19_appdaemon.zip
+  sha256: 28396bd3fe28a96e215e51ea3ecfee4cfefe040fddd694a9cc39936f1434bd72
+- DV_v4_2_hotfix_p19_appdaemon.zip
+  sha256: d4ac1849e07eb5002019bf3c02b08b03768972996ada0f9c3fd98fa949960102
+- SDHB_v4_2_hotfix_p17.zip
+  sha256: 020716ea449844f9b658bb5ee6b007c42ebd844f12445ab6ae61d1b89fb60756
+- dynamic_suite_appdaemon_apps_v4_2.zip
+  sha256: e7816ca55ecc31523d128e3fa7f2b948e111343b4c305417745850eb98d79598
+- suite_tools_v4_2_complete_v3.zip
+  sha256: 049ff9d39f6ab9987421d69ba1af09003096b2c36cc383885f1838e8eae76806

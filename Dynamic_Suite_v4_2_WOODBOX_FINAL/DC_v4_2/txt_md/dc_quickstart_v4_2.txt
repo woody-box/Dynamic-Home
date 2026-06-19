@@ -1,0 +1,101 @@
+DC (Dynamic Climate) — QUICKSTART (v4.2 compact · fix_final)
+===========================================================
+
+Este quickstart conserva el enfoque del dc_quickstart_v3_9 (pasos + verificación),
+pero con los nombres reales de v4.2 compact y el BUS SDHB separado.
+
+1) Copiar YAML obligatorios (DC)
+--------------------------------
+Copia a /config/packages/:
+
+COMMON:
+- dc_common_inputs.yaml
+- dc_common_logic.yaml
+- dc_common_scripts.yaml
+
+ZONE01:
+- dc_zone01_inputs.yaml
+- dc_zone01_core.yaml
+- dc_zone01_automations.yaml
+- dc_zone01_sdhb.yaml
+- dc_zone01_observability.yaml
+
+2) Instalar BUS/SDHB (si quieres coordinación)
+----------------------------------------------
+Copia a /config/packages/ el BUS:
+- suite_dynamic_home_bus_v4_2.yaml
+
+Luego:
+- input_boolean.sdhb_enabled = ON (cuando quieras activar coordinación)
+
+3) AppDaemons (solo si quieres backup/restore)
+--------------------------------------------------
+Copia los .py a /config/AppDaemons/ y habilita en configuration.yaml:
+  AppDaemon:
+
+Scripts esperados:
+- dc_common_backup_save.py / dc_common_backup_restore.py
+- dc_zone01_backup_save.py / dc_zone01_backup_restore.py
+
+4) Ajustes mínimos en Home Assistant
+------------------------------------
+- input_number.dc_zones_total:
+  - pon 1 si solo has cargado zone01
+  - IMPORTANTÍSIMO: si pones N>1, debes tener instaladas zone02..zoneN
+    (si no, los scripts master llamarán scripts inexistentes)
+- input_text.dc_zoneXX_label: opcional (solo UI)
+
+5) Reinicio y verificación rápida
+---------------------------------
+Tras reiniciar Home Assistant:
+
+A) Verifica que el core está cargado
+- scripts:
+  - script.dc_init_fabrica_common
+  - script.dc_init_fabrica_all
+- automatizaciones principales de zone01 (aplicar consigna / control loop)
+
+B) Verifica que el pipeline “habla”
+- sensores de observabilidad de zone01:
+  - target_raw / target_final (según tus sensores actuales)
+  - reason codes / health (si aplica)
+
+C) Verifica BUS (si está instalado)
+- scripts SDHB:
+  - script.sdhb_publish_intent
+  - script.sdhb_heartbeat
+  - script.sdhb_feedback
+- winners:
+  - sensor.sdhb_winner_dc_zone01
+
+6) Reset / backup (uso práctico)
+--------------------------------
+- Reset completo:
+  - script.dc_init_fabrica_all
+- Backup completo:
+  - script.dc_backup_all_save
+  - script.dc_backup_all_restore
+
+7) (Opcional) tests/sim
+-----------------------
+Si quieres activar simulación/tests:
+- carga dc_testing_optional.yaml
+(esto no es recomendable en producción)
+
+Troubleshooting rápido
+----------------------
+- Si DC no aplica consignas:
+  - revisa que la automatización de “aplicar consigna” esté activa
+  - revisa que los sensores base no estén unknown/unavailable
+- Si BUS no influye:
+  - comprueba input_boolean.sdhb_enabled = ON
+  - comprueba winners (sensor.sdhb_winner_dc_zone01)
+  - comprueba que dc_zone01_sdhb.yaml esté cargado
+
+Optional tests:
+- dc_zone01_testing_golden_scenarios_optional_v4_2.yaml (golden record/verify)
+
+Optional tests:
+- dc_testing_backup_cycle_optional.yaml (backup-save-restore)
+
+NOTE (AppDaemon): backup/restore & golden via AppDaemon services; files stored under /config/dynamic_suite/.

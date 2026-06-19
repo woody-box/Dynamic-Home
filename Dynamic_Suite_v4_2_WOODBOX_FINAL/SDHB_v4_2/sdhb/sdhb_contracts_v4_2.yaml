@@ -1,0 +1,87 @@
+# Dynamic Home Bus (SDHB) — Contracts (v4.2)
+#
+# Purpose
+# - Define the canonical vocabulary used across the suite (DC / DV / DS).
+# - Provide stable semantics for intents, targets, priorities and feedback ACK.
+# - This file is documentation-first. It is SAFE to include as a package (no entities defined)
+#   but it is mainly a reference for developers and future extensions.
+#
+# ------------------------------------------------------------------------------
+# 1) Targets
+# ------------------------------------------------------------------------------
+# Canonical target namespaces:
+# - DC zones:        dc_zone01 .. dc_zone08
+# - DS windows:      ds_w1 .. ds_w8
+# - DS facades:      ds_f000 .. ds_f359   (degrees azimuth, 000..359; 3-digit zero padded)
+# - DV (single VMC): dv
+#
+# Notes:
+# - ds_fXXX is a naming convention; group expansion can be done by the publisher (DC) or by
+#   future optional bus routing. Current recommended approach: publisher expands ds_fXXX -> ds_wX.
+#
+# ------------------------------------------------------------------------------
+# 2) Intents dictionary (canonical)
+# ------------------------------------------------------------------------------
+# Intents are short strings. Keep them stable once published.
+#
+# Core intents (current):
+# - request_preheat         : preheat / anticipación térmica (DC/DV según estrategia).
+# - request_solar_gain      : favorecer ganancia solar (DC/DS según estrategia).
+# - request_normal          : modo normal (neutral; típico en DV).
+# - request_boost           : modo boost (DV).
+# - request_weather_protect  : protect against adverse weather (wind/rain). Highest priority for DS.
+# - request_solar_shield     : limit opening due to solar gain / glare (DS).
+# - request_privacy          : privacy clamp (DS) — soportado por el bus (options).
+# - request_quiet            : reduce noise / gentle behavior (DV and/or DS respect).
+# - request_eco              : energy-saving / low power preference.
+# - request_freecool         : enable free-cooling coordination (future; optional).
+#
+# ------------------------------------------------------------------------------
+# 3) Priorities (global canonical)
+# ------------------------------------------------------------------------------
+# Global canonical priority tiers used by tests and recommended across modules:
+# - 90: request_weather_protect
+# - 80: request_solar_shield
+# - 70: request_privacy
+# - 60: request_quiet
+# - 50: request_eco
+#
+# Modules can publish different numeric values, but recommended to keep ordering consistent.
+#
+# ------------------------------------------------------------------------------
+# 4) TTL / cooldown guidance
+# ------------------------------------------------------------------------------
+# - TTL is required for intents that represent transient conditions.
+# - Recommended TTL:
+#   - weather_protect: 300..900s depending on forecast granularity
+#   - solar_shield   : 300..1800s
+#   - privacy        : 1800..7200s (often schedule-driven)
+#   - quiet / eco    : 600..3600s
+#
+# ------------------------------------------------------------------------------
+# 5) Feedback ACK contract (consumer -> bus)
+# ------------------------------------------------------------------------------
+# Consumers (e.g., DS) should acknowledge the winner intent they received for their target.
+#
+# ACK fields (recommended):
+# - source  : string, e.g. "ds_w1"
+# - target  : string, e.g. "ds_w1"
+# - intent  : string, e.g. "request_solar_shield"
+# - status  : accepted | ignored | blocked | none
+# - applied : true | false
+# - reason  : short code, examples:
+#    - bus_disabled
+#    - module_disabled
+#    - consume_disabled
+#    - gate_off
+#    - quiet_respect_disabled
+#    - weather_protect
+#    - rain
+#    - wind_cap
+#    - sleep_mode
+# - ts      : ISO timestamp or HA now()
+#
+# Recommended behavior:
+# - Send ACK only when status/reason changes, and rate-limit (cooldown) to avoid spam.
+# - If no winner intent applies, status should be "none".
+#

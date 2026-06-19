@@ -1,0 +1,1488 @@
+# ============================================================================
+# Dynamic Shutter · DS W2 · Logic (calc/runtime/observability/forecast)
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction: inputs/logic/sdhb + global common/bus)
+# ============================================================================
+template:
+- sensor:
+  - name: ds_w2_safe_sensors_version
+    unique_id: ds_w2_safe_sensors_version
+    state: '4.2'
+  - name: ds_w2_t_in_validation_reason
+    unique_id: ds_w2_t_in_validation_reason
+    icon: mdi:check-decagram
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','t_in_enabled') %} {% set\
+      \ e = state_attr('sensor.ds_w2_hw_map','t_in_entity') %} {% if not en %}\n \
+      \ disabled\n{% elif not e %}\n  missing_entity\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  unavailable\n{% else %}\n  {% set v = states(e) | float(none) %}\n \
+      \ {% if v is none %}\n    nan\n  {% elif v < -40 or v > 60 %}\n    out_of_range\n\
+      \  {% else %}\n    ok\n  {% endif %}\n{% endif %}"
+    attributes:
+      entity: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''t_in_entity'') %} {%
+        if e %}{{ e }}{% else %}{{ none }}{% endif %}'
+      value: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''t_in_entity'') %} {%
+        if e and states(e) not in [''unknown'',''unavailable'',''none'',''''] %}{{
+        states(e) }}{% else %}{{ none }}{% endif %}'
+      min: -40
+      max: 60
+      unit: °C
+  - name: ds_w2_t_out_validation_reason
+    unique_id: ds_w2_t_out_validation_reason
+    icon: mdi:check-decagram
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','t_out_enabled') %} {% set\
+      \ e = state_attr('sensor.ds_w2_hw_map','t_out_entity') %} {% if not en %}\n\
+      \  disabled\n{% elif not e %}\n  missing_entity\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  unavailable\n{% else %}\n  {% set v = states(e) | float(none) %}\n \
+      \ {% if v is none %}\n    nan\n  {% elif v < -40 or v > 60 %}\n    out_of_range\n\
+      \  {% else %}\n    ok\n  {% endif %}\n{% endif %}"
+    attributes:
+      entity: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''t_out_entity'') %}
+        {% if e %}{{ e }}{% else %}{{ none }}{% endif %}'
+      value: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''t_out_entity'') %} {%
+        if e and states(e) not in [''unknown'',''unavailable'',''none'',''''] %}{{
+        states(e) }}{% else %}{{ none }}{% endif %}'
+      min: -40
+      max: 60
+      unit: °C
+  - name: ds_w2_dew_in_validation_reason
+    unique_id: ds_w2_dew_in_validation_reason
+    icon: mdi:check-decagram
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','dew_in_enabled') %} {% set\
+      \ e = state_attr('sensor.ds_w2_hw_map','dew_in_entity') %} {% if not en %}\n\
+      \  disabled\n{% elif not e %}\n  missing_entity\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  unavailable\n{% else %}\n  {% set v = states(e) | float(none) %}\n \
+      \ {% if v is none %}\n    nan\n  {% elif v < -40 or v > 60 %}\n    out_of_range\n\
+      \  {% else %}\n    ok\n  {% endif %}\n{% endif %}"
+    attributes:
+      entity: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''dew_in_entity'') %}
+        {% if e %}{{ e }}{% else %}{{ none }}{% endif %}'
+      value: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''dew_in_entity'') %}
+        {% if e and states(e) not in [''unknown'',''unavailable'',''none'',''''] %}{{
+        states(e) }}{% else %}{{ none }}{% endif %}'
+      min: -40
+      max: 60
+      unit: °C
+  - name: ds_w2_dew_out_validation_reason
+    unique_id: ds_w2_dew_out_validation_reason
+    icon: mdi:check-decagram
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','dew_out_enabled') %} {%\
+      \ set e = state_attr('sensor.ds_w2_hw_map','dew_out_entity') %} {% if not en\
+      \ %}\n  disabled\n{% elif not e %}\n  missing_entity\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  unavailable\n{% else %}\n  {% set v = states(e) | float(none) %}\n \
+      \ {% if v is none %}\n    nan\n  {% elif v < -40 or v > 60 %}\n    out_of_range\n\
+      \  {% else %}\n    ok\n  {% endif %}\n{% endif %}"
+    attributes:
+      entity: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''dew_out_entity'') %}
+        {% if e %}{{ e }}{% else %}{{ none }}{% endif %}'
+      value: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''dew_out_entity'') %}
+        {% if e and states(e) not in [''unknown'',''unavailable'',''none'',''''] %}{{
+        states(e) }}{% else %}{{ none }}{% endif %}'
+      min: -40
+      max: 60
+      unit: °C
+  - name: ds_w2_lux_out_validation_reason
+    unique_id: ds_w2_lux_out_validation_reason
+    icon: mdi:check-decagram
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','lux_out_enabled') %} {%\
+      \ set e = state_attr('sensor.ds_w2_hw_map','lux_out_entity') %} {% if not en\
+      \ %}\n  disabled\n{% elif not e %}\n  missing_entity\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  unavailable\n{% else %}\n  {% set v = states(e) | float(none) %}\n \
+      \ {% if v is none %}\n    nan\n  {% elif v < 0 or v > 200000 %}\n    out_of_range\n\
+      \  {% else %}\n    ok\n  {% endif %}\n{% endif %}"
+    attributes:
+      entity: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''lux_out_entity'') %}
+        {% if e %}{{ e }}{% else %}{{ none }}{% endif %}'
+      value: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''lux_out_entity'') %}
+        {% if e and states(e) not in [''unknown'',''unavailable'',''none'',''''] %}{{
+        states(e) }}{% else %}{{ none }}{% endif %}'
+      min: 0
+      max: 200000
+      unit: lux
+  - name: ds_w2_wind_validation_reason
+    unique_id: ds_w2_wind_validation_reason
+    icon: mdi:check-decagram
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','wind_enabled') %} {% set\
+      \ e = state_attr('sensor.ds_w2_hw_map','wind_entity') %} {% if not en %}\n \
+      \ disabled\n{% elif not e %}\n  missing_entity\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  unavailable\n{% else %}\n  {% set v = states(e) | float(none) %}\n \
+      \ {% if v is none %}\n    nan\n  {% elif v < 0 or v > 200 %}\n    out_of_range\n\
+      \  {% else %}\n    ok\n  {% endif %}\n{% endif %}"
+    attributes:
+      entity: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''wind_entity'') %} {%
+        if e %}{{ e }}{% else %}{{ none }}{% endif %}'
+      value: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''wind_entity'') %} {%
+        if e and states(e) not in [''unknown'',''unavailable'',''none'',''''] %}{{
+        states(e) }}{% else %}{{ none }}{% endif %}'
+      min: 0
+      max: 200
+      unit: km/h
+  - name: ds_w2_cover_pos_raw
+    unique_id: ds_w2_cover_pos_raw
+    unit_of_measurement: '%'
+    availability: "{% if is_state('input_boolean.ds_w2_sim_enabled','on') %}\n  {{\
+      \ states('input_number.ds_w2_sim_cover_pos_pct') not in ['unknown','unavailable','none','']\
+      \ }}\n{% else %}\n  {% set e = state_attr('sensor.ds_w2_hw_map','cover_entity')\
+      \ %}\n  {{ e and (state_attr(e,'current_position') is not none) }}\n{% endif\
+      \ %}\n"
+    state: "{% if is_state('input_boolean.ds_w2_sim_enabled','on') %}\n  {{ states('input_number.ds_w2_sim_cover_pos_pct')|int(0)\
+      \ }}\n{% else %}\n  {% set e = state_attr('sensor.ds_w2_hw_map','cover_entity')\
+      \ %}\n  {% set p = (state_attr(e,'current_position') if e else none) %}\n  {%\
+      \ if p is not none %}\n    {{ p|int }}\n  {% else %}\n    {{ none }}\n  {% endif\
+      \ %}\n{% endif %}\n"
+  - name: ds_w2_t_in_safe
+    unique_id: ds_w2_t_in_safe
+    unit_of_measurement: °C
+    availability: '{{ is_state(''sensor.ds_w2_t_in_validation_reason'',''ok'') }}'
+    state: "{% set e = state_attr('sensor.ds_w2_hw_map','t_in_entity') %} {% if e\
+      \ and states(e) not in ['unknown','unavailable','none',''] %}\n  {{ states(e)\
+      \ | float }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_t_in_validation_reason'') }}'
+  - name: ds_w2_t_out_safe
+    unique_id: ds_w2_t_out_safe
+    unit_of_measurement: °C
+    availability: '{{ is_state(''sensor.ds_w2_t_out_validation_reason'',''ok'') }}'
+    state: "{% set e = state_attr('sensor.ds_w2_hw_map','t_out_entity') %} {% if e\
+      \ and states(e) not in ['unknown','unavailable','none',''] %}\n  {{ states(e)\
+      \ | float }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_t_out_validation_reason'') }}'
+  - name: ds_w2_dew_in_safe
+    unique_id: ds_w2_dew_in_safe
+    unit_of_measurement: °C
+    availability: '{{ is_state(''sensor.ds_w2_dew_in_validation_reason'',''ok'') }}'
+    state: "{% set e = state_attr('sensor.ds_w2_hw_map','dew_in_entity') %} {% if\
+      \ e and states(e) not in ['unknown','unavailable','none',''] %}\n  {{ states(e)\
+      \ | float }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_dew_in_validation_reason'') }}'
+  - name: ds_w2_dew_out_safe
+    unique_id: ds_w2_dew_out_safe
+    unit_of_measurement: °C
+    availability: '{{ is_state(''sensor.ds_w2_dew_out_validation_reason'',''ok'')
+      }}'
+    state: "{% set e = state_attr('sensor.ds_w2_hw_map','dew_out_entity') %} {% if\
+      \ e and states(e) not in ['unknown','unavailable','none',''] %}\n  {{ states(e)\
+      \ | float }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_dew_out_validation_reason'') }}'
+  - name: ds_w2_lux_out_safe
+    unique_id: ds_w2_lux_out_safe
+    unit_of_measurement: lx
+    availability: '{{ is_state(''sensor.ds_w2_lux_out_validation_reason'',''ok'')
+      }}'
+    state: "{% set e = state_attr('sensor.ds_w2_hw_map','lux_out_entity') %} {% if\
+      \ e and states(e) not in ['unknown','unavailable','none',''] %}\n  {{ states(e)\
+      \ | float }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_lux_out_validation_reason'') }}'
+  - name: ds_w2_wind_safe
+    unique_id: ds_w2_wind_safe
+    unit_of_measurement: km/h
+    availability: '{{ is_state(''sensor.ds_w2_wind_validation_reason'',''ok'') }}'
+    state: "{% set e = state_attr('sensor.ds_w2_hw_map','wind_entity') %} {% if e\
+      \ and states(e) not in ['unknown','unavailable','none',''] %}\n  {{ states(e)\
+      \ | float }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_wind_validation_reason'') }}'
+- binary_sensor:
+  - name: ds_w2_solar_shield_active
+    unique_id: ds_w2_solar_shield_active
+    state: '{ is_state(''sensor.ds_w2_target_reason'', ''summer_solar_shield'') }'
+  - name: ds_w2_rain_detected
+    unique_id: ds_w2_rain_detected
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','rain_enabled') %} {% set\
+      \ e = state_attr('sensor.ds_w2_hw_map','rain_entity') %} {% if not en %}\n \
+      \ false\n{% elif not e %}\n  true\n{% elif states(e) in ['unknown','unavailable','none','']\
+      \ %}\n  true\n{% else %}\n  {% set thr = states('input_number.ds_w2_rain_threshold')|float(0.1)\
+      \ %}\n  {% set s = states(e) %}\n  {% if s in ['on','off'] %}\n    {{ is_state(e,'on')\
+      \ }}\n  {% else %}\n    {{ (s|float(0)) > thr }}\n  {% endif %}\n{% endif %}"
+- sensor:
+  - name: ds_w2_template_logic_version
+    unique_id: ds_w2_template_logic_version
+    state: '4.2'
+- binary_sensor:
+  - name: ds_w2_sun_effective
+    unique_id: ds_w2_sun_effective
+    state: "{% set off = states('input_number.ds_w2_offset_edificios_min')|int(0)\
+      \ %} {% set rising = as_datetime(state_attr('sun.sun','next_rising')) %} {%\
+      \ set setting = as_datetime(state_attr('sun.sun','next_setting')) %} {% if rising\
+      \ is none or setting is none %}\n  false\n{% else %}\n  {% set start = rising\
+      \ + timedelta(minutes=off) %}\n  {% set end = setting - timedelta(minutes=off)\
+      \ %}\n  {{ now() >= start and now() <= end }}\n{% endif %}\n"
+  - name: ds_w2_is_night
+    unique_id: ds_w2_is_night
+    state: "{% if states('sensor.ds_w2_lux_out_eff') not in ['unknown','unavailable','none','']\
+      \ %}\n  {{ (states('sensor.ds_w2_lux_out_eff')|float(999999)) <= (states('input_number.ds_w2_lux_night_max')|float(30))\
+      \ }}\n{% else %}\n  {{ (states('sensor.ds_w2_sun_el_eff')|float(-90)) <= 0 }}\n\
+      {% endif %}\n"
+  - name: ds_w2_is_night_lux_sun
+    unique_id: ds_w2_is_night_lux_sun
+    state: '{{ is_state(''binary_sensor.ds_w2_is_night'',''on'') }}'
+  - name: ds_w2_is_cloudy
+    unique_id: ds_w2_is_cloudy
+    state: "{% if states('sensor.ds_w2_lux_out_eff') not in ['unknown','unavailable','none','']\
+      \ %}\n  {% set lux = states('sensor.ds_w2_lux_out_eff')|float(0) %}\n  {% set\
+      \ day_min = states('input_number.ds_w2_lux_day_min')|float(2900) %}\n  {% set\
+      \ cloudy_max = states('input_number.ds_w2_lux_cloudy_max')|float(2900) %}\n\
+      \  {{ lux >= day_min and lux <= cloudy_max }}\n{% else %}\n  false\n{% endif\
+      \ %}\n"
+- binary_sensor:
+  - name: ds_w2_wind_cap_raw_active
+    unique_id: ds_w2_wind_cap_raw_active
+    state: "{% set meteo_on = is_state('input_boolean.ds_w2_weather_protect_enabled','on')\
+      \ %} {% set wind_ok = states('sensor.ds_w2_wind_eff') not in ['unknown','unavailable','none','']\
+      \ %} {% set wind = states('sensor.ds_w2_wind_eff')|float(none) %} {% set start\
+      \ = states('input_number.ds_w2_wind_limit_kmh')|float(40) %} {% set hyst = states('input_number.ds_w2_wind_cap_hyst_kmh')|float(5)\
+      \ %} {% set release = start - hyst %} {% if not meteo_on or not wind_ok or wind\
+      \ is none %}\n  false\n{% else %}\n  {% if is_state(this.entity_id,'on') %}\n\
+      \    {{ wind >= release }}\n  {% else %}\n    {{ wind >= start }}\n  {% endif\
+      \ %}\n{% endif %}\n"
+  - name: ds_w2_wind_cap_active
+    unique_id: ds_w2_wind_cap_active
+    state: "{% set meteo_on = is_state('input_boolean.ds_w2_weather_protect_enabled','on')\
+      \ %} {% if not meteo_on %}\n  false\n{% else %}\n  {% set raw_on = is_state('binary_sensor.ds_w2_wind_cap_raw_active','on')\
+      \ %}\n  {% set hold_ok = states('input_datetime.ds_w2_wind_cap_hold_until')\
+      \ not in ['unknown','unavailable','none',''] %}\n  {% set hold_ts = as_timestamp(states('input_datetime.ds_w2_wind_cap_hold_until'))\
+      \ if hold_ok else none %}\n  {% set hold_active = hold_ts is not none and as_timestamp(now())\
+      \ < hold_ts %}\n  {{ raw_on or hold_active }}\n{% endif %}\n"
+- sensor:
+  - name: ds_w2_solar_impact_pct
+    unique_id: ds_w2_solar_impact_pct
+    unit_of_measurement: '%'
+    state: "{% set win_az = states('input_number.ds_w2_orientacion_deg')|float(0)\
+      \ %} {% set H = states('input_number.ds_w2_altura_cm')|float(1) %} {% set L\
+      \ = states('input_number.ds_w2_voladizo_cm')|float(0) %} {% set span = states('input_number.ds_w2_angulo_fachada_deg')|float(180)\
+      \ %} {% set half = span / 2 %} {% set sun_az = states('sensor.ds_w2_sun_az_eff')|float(0)\
+      \ %} {% set sun_el = states('sensor.ds_w2_sun_el_eff')|float(-90) %}\n{% set\
+      \ diff = ((sun_az - win_az + 540) % 360) - 180 %} {% set in_front = (diff|abs)\
+      \ <= half %} {% set sol_ok = is_state('binary_sensor.ds_w2_sun_effective_eff','on')\
+      \ %}\n{% if sun_el <= 0 %}\n  {% set exposed = 0 %}\n{% else %}\n  {% set sombra\
+      \ = L * tan(sun_el * pi / 180) %}\n  {% set shaded = (sombra / H) %}\n  {% if\
+      \ shaded < 0 %}{% set shaded = 0 %}{% endif %}\n  {% if shaded > 1 %}{% set\
+      \ shaded = 1 %}{% endif %}\n  {% set exposed = 1 - shaded %}\n{% endif %}\n\
+      {% set impact = (in_front and sol_ok) and exposed or 0 %} {% set step10 = (impact\
+      \ * 10) | round(0, 'floor') / 10 %} {{ (step10 * 100) | int }}\n"
+  - name: ds_w2_solar_impact_0_100
+    unique_id: ds_w2_solar_impact_0_100
+    unit_of_measurement: '%'
+    state: '{{ states(''sensor.ds_w2_solar_impact_pct'')|int(0) }}'
+  - name: ds_w2_hvac_mode
+    unique_id: ds_w2_hvac_mode
+    state: "{% set en = state_attr('sensor.ds_w2_hw_map','climate_enabled') %} {%\
+      \ set c = state_attr('sensor.ds_w2_hw_map','climate_entity') %} {% if en and\
+      \ c %}\n  {{ states(c) }}\n{% else %}\n  none\n{% endif %}\n"
+  - name: ds_w2_cover_pos_eff
+    unique_id: ds_w2_cover_pos_eff
+    unit_of_measurement: '%'
+    state: "{# Posición lógica actual (0-100). Si cover_inverted=on, invierte. Soporta\
+      \ simulador. #} {% set inv = is_state('input_boolean.ds_w2_cover_inverted','on')\
+      \ %} {% if is_state('input_boolean.ds_w2_sim_enabled','on') %}\n  {% set raw\
+      \ = states('input_number.ds_w2_sim_cover_pos_pct')|int(none) %}\n{% else %}\n\
+      \  {% set e = state_attr('sensor.ds_w2_hw_map','cover_entity') %}\n  {% set\
+      \ raw = state_attr(e,'current_position') if e else none %}\n{% endif %} {% if\
+      \ raw is none %}\n  {{ none }}\n{% else %}\n  {{ (100 - (raw|int)) if inv else\
+      \ (raw|int) }}\n{% endif %}\n"
+  - name: ds_w2_target_decision_json
+    unique_id: ds_w2_target_decision_json
+    state: "{# --------------------------------------------------------------------\n\
+      \   DECISIÓN ÚNICA (v1_1)\n   Calcula una sola vez la consigna objetivo y devuelve\
+      \ JSON:\n   {\"pos\": <0-100>, \"reason\": \"<CODE>\"}\n   --------------------------------------------------------------------\
+      \ #}\n\n{% set pos = 100 %} {% set reason = 'default' %} {% set branch = 'default'\
+      \ %} {% set detail = {} %}\n{# --- Override lock/hold ------------------------------------------------\
+      \ #} {% set ov_mode = states('input_select.ds_w2_override_mode') %} {% set ov_pos\
+      \ = states('input_number.ds_w2_override_position_pct')|int(0) %} {% set hold_until\
+      \ = states('input_datetime.ds_w2_hold_until') %} {% set hold_ok = false %} {%\
+      \ set override_until = states('input_datetime.ds_w2_override_until') %} {% set\
+      \ ttl_ok = false %} {% if hold_until not in ['unknown','unavailable','none','']\
+      \ %}\n  {% set hu = as_datetime(hold_until) %}\n  {% if hu is not none and now()\
+      \ < hu %}\n    {% set hold_ok = true %}\n  {% endif %}\n{% endif %} {% if override_until\
+      \ not in ['unknown','unavailable','none',''] %}\n  {% set ou = as_datetime(override_until)\
+      \ %}\n  {% if ou is not none and now() < ou %}\n    {% set ttl_ok = true %}\n\
+      \  {% endif %}\n{% endif %}\n{% if ov_mode == 'lock' %}\n  {% set pos = ov_pos\
+      \ %}\n  {% set reason = 'ov_lock' %}\n  {% set branch = 'override.lock' %}\n\
+      {% elif ov_mode == 'hold' and hold_ok %}\n  {% set pos = ov_pos %}\n  {% set\
+      \ reason = 'ov_hold' %}\n  {% set branch = 'override.hold' %}\n{% elif ov_mode\
+      \ == 'ttl' and ttl_ok %}\n  {% set pos = ov_pos %}\n  {% set reason = 'ov_ttl'\
+      \ %}\n  {% set branch = 'override.ttl' %}\n{% else %}\n\n  {% set hvac = states('sensor.ds_w2_hvac_mode')\
+      \ %}\n  {% set is_cool = (hvac == 'cool') %}\n  {% set is_heat = (hvac == 'heat')\
+      \ %}\n\n  {% set impact = states('sensor.ds_w2_solar_impact_0_100')|int(0) %}\n\
+      \  {% set night = is_state('binary_sensor.ds_w2_is_night_lux_sun','on') %}\n\
+      \n  {% set t_in_ok = states('sensor.ds_w2_t_in_eff') not in ['unknown','unavailable','none','']\
+      \ %}\n  {% set t_out_ok = states('sensor.ds_w2_t_out_eff') not in ['unknown','unavailable','none','']\
+      \ %}\n  {% set t_in = states('sensor.ds_w2_t_in_eff')|float(none) %}\n  {% set\
+      \ t_out = states('sensor.ds_w2_t_out_eff')|float(none) %}\n\n  {% set hot_delta\
+      \ = states('input_number.ds_w2_delta_hot_out')|float(0.8) %}\n  {% set free_delta\
+      \ = states('input_number.ds_w2_delta_freecool')|float(0.8) %}\n\n  {% set summer_min\
+      \ = states('input_number.ds_w2_summer_min_open_pct')|int(20) %}\n  {% set free_max\
+      \ = states('input_number.ds_w2_freecool_max_open_pct')|int(60) %}\n  {% set\
+      \ winter_night = states('input_number.ds_w2_winter_night_pct')|int(0) %}\n\n\
+      \  {# --- Meteo protect (lluvia/viento) -----------------------------------\
+      \ #}\n  {% set meteo_on = is_state('input_boolean.ds_w2_weather_protect_enabled','on')\
+      \ %}\n  {% set raining = is_state('binary_sensor.ds_w2_rain_detected_eff','on')\
+      \ %}\n  {% set wind_ok = states('sensor.ds_w2_wind_eff') not in ['unknown','unavailable','none','']\
+      \ %}\n  {% set wind = states('sensor.ds_w2_wind_eff')|float(none) %}\n  {% set\
+      \ wind_limit = states('input_number.ds_w2_wind_limit_kmh')|float(40) %}\n  {%\
+      \ set wind_span = states('input_number.ds_w2_wind_cap_span_kmh')|float(20) %}\n\
+      \  {% set wind_hyst = states('input_number.ds_w2_wind_cap_hyst_kmh')|float(5)\
+      \ %}\n  {% set meteo_max_open = states('input_number.ds_w2_weather_max_open_pct')|int(30)\
+      \ %}\n  {% set rain_pos = states('input_number.ds_w2_rain_close_pct')|int(0)\
+      \ %}\n\n  {% if meteo_on and raining %}\n    {% set pos = rain_pos %}\n    {%\
+      \ set reason = 'meteo_rain' %}\n    {% set branch = 'meteo.rain' %}\n    {%\
+      \ set detail = {'rain_pos': rain_pos} %}\n  {% else %}\n\n    {# --- Sleep mode:\
+      \ bloquea aperturas por freecool --------------------- #}\n    {% set sleep\
+      \ = is_state('input_boolean.ds_w2_sleep_mode','on') %}\n\n    {# --- Privacidad\
+      \ por hora (desde/hasta) ------------------------------ #}\n    {% set priv_en\
+      \ = is_state('input_boolean.ds_w2_privacy_enabled','on') %}\n    {% set priv_from\
+      \ = states('input_datetime.ds_w2_privacy_from') %}\n    {% set priv_until =\
+      \ states('input_datetime.ds_w2_privacy_until') %}\n    {% set priv_pos = states('input_number.ds_w2_privacy_position_pct')|int(40)\
+      \ %}\n    {% set priv_active = false %}\n    {% if priv_en\n          and priv_from\
+      \ not in ['unknown','unavailable','none','']\n          and priv_until not in\
+      \ ['unknown','unavailable','none',''] %}\n      {% set pf = today_at(priv_from)\
+      \ %}\n      {% set pu = today_at(priv_until) %}\n      {% if pf is not none\
+      \ and pu is not none %}\n        {# Si el usuario pone una hora \"until\" menor/equal\
+      \ que \"from\", interpretamos rango cruzando medianoche #}\n        {% if pu\
+      \ <= pf %}\n          {% set pu = pu + timedelta(days=1) %}\n        {% endif\
+      \ %}\n        {% if now() >= pf and now() < pu %}\n          {% set priv_active\
+      \ = true %}\n        {% endif %}\n      {% endif %}\n    {% endif %}\n\n   \
+      \ {% if priv_active %}\n      {% set pos = priv_pos %}\n      {% set reason\
+      \ = 'privacy_time' %}\n      {% set branch = 'privacy.time' %}\n      {% set\
+      \ detail = {'from': priv_from, 'until': priv_until, 'pos': priv_pos} %}\n  \
+      \  {% else %}\n\n      {# --- Free cooling (verano) ----------------------------------------\
+      \ #}\n      {% set free_ok = (is_cool and night and t_in_ok and t_out_ok and\
+      \ (t_out is not none) and (t_in is not none) and (t_out <= (t_in - free_delta)))\
+      \ %}\n      {% if free_ok and (not sleep) %}\n        {% set pos = free_max\
+      \ %}\n        {% set reason = 'freecool_night' %}\n        {% set branch = 'summer.freecool'\
+      \ %}\n        {% set detail = {'t_in': t_in, 't_out': t_out, 'delta': free_delta,\
+      \ 'max_open': free_max} %}\n      {% else %}\n\n        {# --- Summer shield\
+      \ (verano + sol + fuera más caliente) ----------- #}\n        {% set shield_ok\
+      \ = (is_cool and (impact > 0) and t_in_ok and t_out_ok and (t_out is not none)\
+      \ and (t_in is not none) and (t_out >= (t_in + hot_delta))) %}\n        {% if\
+      \ shield_ok %}\n          {% set raw = 100 - impact %}\n          {% if raw\
+      \ < summer_min %}{% set raw = summer_min %}{% endif %}\n          {% set pos\
+      \ = (raw/10)|round(0,'floor')*10 %}\n          {% set reason = 'summer_solar_shield'\
+      \ %}\n          {% set branch = 'summer.shield' %}\n          {% set detail\
+      \ = {'impact_pct': impact, 't_in': t_in, 't_out': t_out, 'hot_delta': hot_delta,\
+      \ 'min_open': summer_min} %}\n        {% else %}\n\n          {# --- Winter\
+      \ gain / night insulation --------------------------- #}\n          {% if is_heat\
+      \ and (impact > 0) %}\n            {% set pos = 100 %}\n            {% set reason\
+      \ = 'winter_solar_gain' %}\n            {% set branch = 'winter.gain' %}\n \
+      \           {% set detail = {'impact_pct': impact} %}\n          {% elif is_heat\
+      \ and (impact == 0) %}\n            {% set pos = winter_night %}\n         \
+      \   {% set reason = 'winter_night_insulate' %}\n            {% set branch =\
+      \ 'winter.night' %}\n            {% set detail = {'night_pct': winter_night}\
+      \ %}\n          {% else %}\n            {% set pos = 100 %}\n            {%\
+      \ set reason = 'default' %}\n            {% set branch = 'default' %}\n    \
+      \      {% endif %}\n\n        {% endif %}\n      {% endif %}\n    {% endif %}\n\
+      \  {% endif %}\n{% endif %}\n\n\n\n {# --- Wind cap avanzado (cap + histéresis)\
+      \ ------------------------------- #}\n {% set wind_cap_active = is_state('binary_sensor.ds_w2_wind_cap_active','on')\
+      \ %}\n {% set cap_pct = 100 %}\n {% if meteo_on and wind_ok and wind is not\
+      \ none and wind_span|float(0) > 0 and wind >= wind_limit %}\n   {% set ratio\
+      \ = (wind - wind_limit) / (wind_span|float(1)) %}\n   {% if ratio < 0 %}{% set\
+      \ ratio = 0 %}{% endif %}\n   {% if ratio > 1 %}{% set ratio = 1 %}{% endif\
+      \ %}\n   {% set raw = 100 - ratio * (100 - meteo_max_open) %}\n   {% if raw\
+      \ < meteo_max_open %}{% set raw = meteo_max_open %}{% endif %}\n   {% if raw\
+      \ > 100 %}{% set raw = 100 %}{% endif %}\n   {% set cap_pct = (raw/10)|round(0,'floor')*10\
+      \ %}\n {% elif meteo_on and wind_ok and wind is not none and wind >= wind_limit\
+      \ %}\n   {# fallback si span=0: cap fijo como antes #}\n   {% set cap_pct =\
+      \ meteo_max_open %}\n {% endif %}\n\n {% if wind_cap_active and (pos|int(100))\
+      \ > (cap_pct|int(100)) and reason != 'meteo_rain' %}\n   {% set detail = (detail\
+      \ | default({})) %}\n   {% set detail = dict(detail, **{'wind_kmh': wind, 'wind_limit_kmh':\
+      \ wind_limit, 'cap_pct': cap_pct, 'prev_reason': reason, 'prev_branch': branch\
+      \ }) %}\n   {% set pos = cap_pct %}\n   {% set reason = 'meteo_wind_cap' %}\n\
+      \   {% set branch = 'meteo.wind_cap' %}\n {% endif %}\n\n {# --- SDHB (Suite\
+      \ Bus) clamp (Sprint 4) ---------------------------------- #}\n{% set sdhb_en\
+      \ = is_state('input_boolean.ds_w2_sdhb_enabled','on') %} {% set req_solar_shield\
+      \ = is_state('binary_sensor.ds_w2_sdhb_request_solar_shield','on') %} {% set\
+      \ shield_max = states('input_number.ds_w2_sdhb_solar_shield_max_open_pct')|int(30)\
+      \ %}\n{# --- SDHB quiet (request_quiet) ----------------------------------------\
+      \ #} {% set req_quiet = is_state('binary_sensor.ds_w2_sdhb_request_quiet','on')\
+      \ %} {% if sdhb_en and req_quiet and reason not in ['ov_lock','ov_hold','ov_ttl','meteo_rain','meteo_wind_cap','privacy_time']\
+      \ %}\n  {% set cur = states('sensor.ds_w2_cover_pos_eff') %}\n  {% if cur not\
+      \ in ['unknown','unavailable','none',''] %}\n    {% set pos = cur|int(pos|int(100))\
+      \ %}\n  {% endif %}\n  {% set reason = 'sdhb_quiet' %}\n  {% set branch = 'sdhb.quiet'\
+      \ %}\n{% endif %}\n\n{# Si el bus pide SHIELD, limitamos apertura máxima (sin\
+      \ interferir con razones críticas) #} {% if sdhb_en and req_solar_shield and\
+      \ (pos|int(100)) > shield_max %}\n  {% set pos = shield_max %}\n  {% if reason\
+      \ not in ['ov_lock','ov_hold','ov_ttl','meteo_rain','meteo_wind_cap','privacy_time']\
+      \ %}\n    {% set reason = 'sdhb_solar_shield' %}\n    {% set branch = 'sdhb.solar_shield'\
+      \ %}\n    {% set detail = {'shield_max': shield_max} %}\n  {% endif %}\n{% endif\
+      \ %}\n\n{# --- Slew rate (movimiento por pasos) --------------------------------\
+      \ #} {% set slew_en = is_state('input_boolean.ds_w2_slew_enabled','on') %} {%\
+      \ set slew_step = states('input_number.ds_w2_slew_step_pct')|int(10) %} {% set\
+      \ curp = states('sensor.ds_w2_cover_pos_eff') %} {% if slew_en and (curp not\
+      \ in ['unknown','unavailable','none','']) and reason not in ['ov_lock','ov_hold','ov_ttl','meteo_rain','meteo_wind_cap','privacy_time']\
+      \ %}\n  {% set curi = curp|int(0) %}\n  {% set tar = pos|int(100) %}\n  {% if\
+      \ (tar - curi)|abs > slew_step %}\n    {% set pos = (curi + (slew_step if tar\
+      \ > curi else -slew_step)) %}\n    {% set detail = detail | combine({'slew_applied':\
+      \ true, 'slew_from': curi, 'slew_target': tar, 'slew_step': slew_step }) %}\n\
+      \    {% set branch = branch ~ '.slew' %}\n  {% endif %}\n{% endif %}\n{{ {'pos':\
+      \ (pos|int(100)), 'reason': reason, 'reason_slug': (reason|string)|lower|replace('\
+      \ ','_'), 'branch': branch, 'detail': detail } | to_json }}\n"
+  - name: ds_w2_target_position
+    unique_id: ds_w2_target_position
+    unit_of_measurement: '%'
+    state: "{% set raw = states('sensor.ds_w2_target_decision_json') %} {% if raw\
+      \ in ['unknown','unavailable','none',''] %}\n  {{ none }}\n{% else %}\n  {%\
+      \ set d = raw | from_json %}\n  {{ d.pos | int(100) }}\n{% endif %}"
+  - name: ds_w2_target_reason
+    unique_id: ds_w2_target_reason
+    state: "{% set raw = states('sensor.ds_w2_target_decision_json') %} {% if raw\
+      \ in ['unknown','unavailable','none',''] %}\n  none\n{% else %}\n  {% set d\
+      \ = raw | from_json %}\n  {{ d.reason if d.reason is defined else 'none' }}\n\
+      {% endif %}"
+  - name: ds_w2_target_position_pct
+    unique_id: ds_w2_target_position_pct
+    unit_of_measurement: '%'
+    state: "{% set s = states('sensor.ds_w2_target_decision_json') %} {% if s not\
+      \ in ['unknown','unavailable','none',''] %}\n  {% set d = s | from_json %}\n\
+      \  {{ d.pos | int(100) }}\n{% else %}\n  {{ 100 }}\n{% endif %}\n"
+- sensor:
+  - name: ds_w2_main_defaults_version
+    unique_id: ds_w2_main_defaults_version
+    state: '4.2'
+  - name: ds_w2_scripts_version
+    unique_id: ds_w2_scripts_version
+    state: '4.2'
+- sensor:
+  - name: ds_w2_main_automations_version
+    unique_id: ds_w2_main_automations_version
+    state: '4.2'
+- binary_sensor:
+  - name: ds_w2_rain_detected_eff
+    unique_id: ds_w2_rain_detected_eff
+    state: "{% if is_state('input_boolean.ds_w2_sim_enabled','on') %}\n  {{ is_state('input_boolean.ds_w2_sim_rain','on')\
+      \ }}\n{% else %}\n  {% set en = state_attr('sensor.ds_w2_hw_map','rain_enabled')\
+      \ %}\n  {% set e = state_attr('sensor.ds_w2_hw_map','rain_entity') %}\n  {%\
+      \ if not en %}\n    false\n  {% elif not e %}\n    true\n  {% elif states(e)\
+      \ in ['unknown','unavailable','none',''] %}\n    true\n  {% else %}\n    {%\
+      \ set thr = states('input_number.ds_w2_rain_threshold')|float(0.1) %}\n    {%\
+      \ set s = states(e) %}\n    {% if s in ['on','off'] %}\n      {{ is_state(e,'on')\
+      \ }}\n    {% else %}\n      {{ (s|float(0)) > thr }}\n    {% endif %}\n  {%\
+      \ endif %}\n{% endif %}"
+    attributes:
+      source: '{% if is_state(''input_boolean.ds_w2_sim_enabled'',''on'') %}sim{%
+        else %}hw{% endif %}'
+      reason: "{% if is_state('input_boolean.ds_w2_sim_enabled','on') %}\n  sim\n\
+        {% else %}\n  {% set en = state_attr('sensor.ds_w2_hw_map','rain_enabled')\
+        \ %}\n  {% set e = state_attr('sensor.ds_w2_hw_map','rain_entity') %}\n  {%\
+        \ if not en %}disabled{% elif not e %}missing_entity{% elif states(e) in ['unknown','unavailable','none','']\
+        \ %}unavailable{% else %}ok{% endif %}\n{% endif %}"
+  - name: ds_w2_sun_effective_eff
+    unique_id: ds_w2_sun_effective_eff
+    state: "{% if is_state('input_boolean.ds_w2_sim_enabled','on') %}\n  {{ is_state('input_boolean.ds_w2_sim_sun_effective','on')\
+      \ }}\n{% else %}\n  {{ is_state('binary_sensor.ds_w2_sun_effective','on') }}\n\
+      {% endif %}"
+    attributes:
+      source: '{% if is_state(''input_boolean.ds_w2_sim_enabled'',''on'') %}sim{%
+        else %}logic{% endif %}'
+- sensor:
+  - name: ds_w2_decision_debug_json
+    unique_id: ds_w2_decision_debug_json
+    icon: mdi:bug-outline
+    state: "{% set d = states('sensor.ds_w2_target_decision_json') %} {% if d in ['unknown','unavailable','none','']\
+      \ %}\n  {{ {'pos': 100, 'reason': 'DEFAULT', 'note': 'decision_json_unavailable'}\
+      \ | to_json }}\n{% else %}\n  {% set j = d | from_json %}\n\n  {% set hvac =\
+      \ states('sensor.ds_w2_hvac_mode') %}\n  {% set impact = states('sensor.ds_w2_solar_impact_0_100')|int(0)\
+      \ %}\n  {% set night = is_state('binary_sensor.ds_w2_is_night_lux_sun','on')\
+      \ %}\n  {% set sleep = is_state('input_boolean.ds_w2_sleep_mode','on') %}\n\n\
+      \  {% set ov_mode = states('input_select.ds_w2_override_mode') %}\n  {% set\
+      \ ov_pos = states('input_number.ds_w2_override_position_pct')|int(0) %}\n  {%\
+      \ set hold_until = states('input_datetime.ds_w2_hold_until') %}\n\n  {% set\
+      \ meteo_on = is_state('input_boolean.ds_w2_weather_protect_enabled','on') %}\n\
+      \  {% set raining = is_state('binary_sensor.ds_w2_rain_detected_eff','on') %}\n\
+      \  {% set wind_kmh = states('sensor.ds_w2_wind_eff')|float(none) %}\n  {% set\
+      \ wind = states('sensor.ds_w2_wind_eff') %}\n  {% set t_in_c = states('sensor.ds_w2_t_in_eff')|float(none)\
+      \ %}\n  {% set t_out_c = states('sensor.ds_w2_t_out_eff')|float(none) %}\n\n\
+      \  {% set priv_en = is_state('input_boolean.ds_w2_privacy_enabled','on') %}\n\
+      \  {% set priv_from = states('input_datetime.ds_w2_privacy_from') %}\n  {% set\
+      \ priv_until = states('input_datetime.ds_w2_privacy_until') %}\n  {% set priv_active\
+      \ = false %}\n  {% if priv_en\n        and priv_from not in ['unknown','unavailable','none','']\n\
+      \        and priv_until not in ['unknown','unavailable','none',''] %}\n    {%\
+      \ set pf = today_at(priv_from) %}\n    {% set pu = today_at(priv_until) %}\n\
+      \    {% if pf is not none and pu is not none %}\n      {% if pu <= pf %}{% set\
+      \ pu = pu + timedelta(days=1) %}{% endif %}\n      {% if now() >= pf and now()\
+      \ < pu %}{% set priv_active = true %}{% endif %}\n    {% endif %}\n  {% endif\
+      \ %}\n\n  {{ {\n    'pos': (j.pos|int(100)),\n    'reason': (j.reason|string),\n\
+      \    'branch': (j.branch if j.branch is defined else 'n/a'),\n    'detail':\
+      \ (j.detail if j.detail is defined else {}),\n    'hvac': hvac,\n    'impact':\
+      \ impact,\n    't_in_c': t_in_c,\n    't_out_c': t_out_c,\n    'wind_kmh': wind_kmh,\n\
+      \    'night': night,\n    'sleep': sleep,\n    'override_mode': ov_mode,\n \
+      \   'override_pos': ov_pos,\n    'hold_until': hold_until,\n    'privacy_active':\
+      \ priv_active,\n    'weather_protect': meteo_on,\n    'raining': raining,\n\
+      \    'wind_safe': wind,\n    'health': states('sensor.ds_w2_health')\n  } |\
+      \ to_json }}\n{% endif %}\n"
+- sensor:
+  - name: ds_w2_health
+    unique_id: ds_w2_health
+    icon: mdi:heart-pulse
+    state: "{% set missing_critical = [] %} {% set missing_optional = [] %}\n{% set\
+      \ cover = state_attr('sensor.ds_w2_hw_map','cover_entity') %} {% set cover_ok\
+      \ = cover and states(cover) not in ['unknown','unavailable','none',''] %} {%\
+      \ if not cover_ok %}\n  {% set missing_critical = missing_critical + ['cover_entity']\
+      \ %}\n{% endif %}\n{# Opcionales (solo si enabled) #} {% set climate_en = state_attr('sensor.ds_w2_hw_map','climate_enabled')\
+      \ %} {% set climate = state_attr('sensor.ds_w2_hw_map','climate_entity') %}\
+      \ {% set climate_ok = (not climate_en) or (climate and states(climate) not in\
+      \ ['unknown','unavailable','none','']) %} {% if climate_en and not climate_ok\
+      \ %}\n  {% set missing_optional = missing_optional + ['climate_entity'] %}\n\
+      {% endif %}\n{% set t_in_en = state_attr('sensor.ds_w2_hw_map','t_in_enabled')\
+      \ %} {% set t_in = state_attr('sensor.ds_w2_hw_map','t_in_entity') %} {% set\
+      \ t_in_ok = (not t_in_en) or (t_in and states(t_in) not in ['unknown','unavailable','none',''])\
+      \ %} {% if t_in_en and not t_in_ok %}\n  {% set missing_optional = missing_optional\
+      \ + ['t_in_entity'] %}\n{% endif %}\n{% set t_out_en = state_attr('sensor.ds_w2_hw_map','t_out_enabled')\
+      \ %} {% set t_out = state_attr('sensor.ds_w2_hw_map','t_out_entity') %} {% set\
+      \ t_out_ok = (not t_out_en) or (t_out and states(t_out) not in ['unknown','unavailable','none',''])\
+      \ %} {% if t_out_en and not t_out_ok %}\n  {% set missing_optional = missing_optional\
+      \ + ['t_out_entity'] %}\n{% endif %}\n{% set lux_en = state_attr('sensor.ds_w2_hw_map','lux_out_enabled')\
+      \ %} {% set lux = state_attr('sensor.ds_w2_hw_map','lux_out_entity') %} {% set\
+      \ lux_ok = (not lux_en) or (lux and states(lux) not in ['unknown','unavailable','none',''])\
+      \ %} {% if lux_en and not lux_ok %}\n  {% set missing_optional = missing_optional\
+      \ + ['lux_out_entity'] %}\n{% endif %}\n{% set rain_en = state_attr('sensor.ds_w2_hw_map','rain_enabled')\
+      \ %} {% set rain = state_attr('sensor.ds_w2_hw_map','rain_entity') %} {% set\
+      \ rain_ok = (not rain_en) or (rain and states(rain) not in ['unknown','unavailable','none',''])\
+      \ %} {% if rain_en and not rain_ok %}\n  {% set missing_optional = missing_optional\
+      \ + ['rain_entity'] %}\n{% endif %}\n{% set wind_en = state_attr('sensor.ds_w2_hw_map','wind_enabled')\
+      \ %} {% set wind = state_attr('sensor.ds_w2_hw_map','wind_entity') %} {% set\
+      \ wind_ok = (not wind_en) or (wind and states(wind) not in ['unknown','unavailable','none',''])\
+      \ %} {% if wind_en and not wind_ok %}\n  {% set missing_optional = missing_optional\
+      \ + ['wind_entity'] %}\n{% endif %}\n{% if missing_critical | length > 0 %}\n\
+      \  error\n{% elif missing_optional | length > 0 %}\n  degraded\n{% else %}\n\
+      \  ok\n{% endif %}\n"
+    attributes:
+      golden_last_result: '{{ states(''input_text.ds_w2_golden_last_result'') }}'
+      cover_ok: '{% set cover = state_attr(''sensor.ds_w2_hw_map'',''cover_entity'')
+        %} {{ cover and states(cover) not in [''unknown'',''unavailable'',''none'','''']
+        }}
+
+        '
+      climate_ok: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''climate_enabled'')
+        %} {% set e = state_attr(''sensor.ds_w2_hw_map'',''climate_entity'') %} {{
+        (not en) or (e and states(e) not in [''unknown'',''unavailable'',''none'',''''])
+        }}
+
+        '
+      t_in_ok: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''t_in_enabled'') %}
+        {% set e = state_attr(''sensor.ds_w2_hw_map'',''t_in_entity'') %} {{ (not
+        en) or (e and states(e) not in [''unknown'',''unavailable'',''none'',''''])
+        }}
+
+        '
+      t_out_ok: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''t_out_enabled'')
+        %} {% set e = state_attr(''sensor.ds_w2_hw_map'',''t_out_entity'') %} {{ (not
+        en) or (e and states(e) not in [''unknown'',''unavailable'',''none'',''''])
+        }}
+
+        '
+      lux_out_ok: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''lux_out_enabled'')
+        %} {% set e = state_attr(''sensor.ds_w2_hw_map'',''lux_out_entity'') %} {{
+        (not en) or (e and states(e) not in [''unknown'',''unavailable'',''none'',''''])
+        }}
+
+        '
+      rain_ok: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''rain_enabled'') %}
+        {% set e = state_attr(''sensor.ds_w2_hw_map'',''rain_entity'') %} {{ (not
+        en) or (e and states(e) not in [''unknown'',''unavailable'',''none'',''''])
+        }}
+
+        '
+      wind_ok: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''wind_enabled'') %}
+        {% set e = state_attr(''sensor.ds_w2_hw_map'',''wind_entity'') %} {{ (not
+        en) or (e and states(e) not in [''unknown'',''unavailable'',''none'',''''])
+        }}
+
+        '
+      missing_critical: "{% set miss = [] %} {% set cover = state_attr('sensor.ds_w2_hw_map','cover_entity')\
+        \ %} {% if not (cover and states(cover) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['cover_entity'] %}\n{% endif %} {{ miss | to_json\
+        \ }}\n"
+      missing_optional: "{% set miss = [] %}\n{% set climate_en = state_attr('sensor.ds_w2_hw_map','climate_enabled')\
+        \ %} {% set climate = state_attr('sensor.ds_w2_hw_map','climate_entity') %}\
+        \ {% if climate_en and not (climate and states(climate) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['climate_entity'] %}\n{% endif %}\n{% set t_in_en\
+        \ = state_attr('sensor.ds_w2_hw_map','t_in_enabled') %} {% set t_in = state_attr('sensor.ds_w2_hw_map','t_in_entity')\
+        \ %} {% if t_in_en and not (t_in and states(t_in) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['t_in_entity'] %}\n{% endif %}\n{% set t_out_en\
+        \ = state_attr('sensor.ds_w2_hw_map','t_out_enabled') %} {% set t_out = state_attr('sensor.ds_w2_hw_map','t_out_entity')\
+        \ %} {% if t_out_en and not (t_out and states(t_out) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['t_out_entity'] %}\n{% endif %}\n{% set lux_en\
+        \ = state_attr('sensor.ds_w2_hw_map','lux_out_enabled') %} {% set lux = state_attr('sensor.ds_w2_hw_map','lux_out_entity')\
+        \ %} {% if lux_en and not (lux and states(lux) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['lux_out_entity'] %}\n{% endif %}\n{% set rain_en\
+        \ = state_attr('sensor.ds_w2_hw_map','rain_enabled') %} {% set rain = state_attr('sensor.ds_w2_hw_map','rain_entity')\
+        \ %} {% if rain_en and not (rain and states(rain) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['rain_entity'] %}\n{% endif %}\n{% set wind_en\
+        \ = state_attr('sensor.ds_w2_hw_map','wind_enabled') %} {% set wind = state_attr('sensor.ds_w2_hw_map','wind_entity')\
+        \ %} {% if wind_en and not (wind and states(wind) not in ['unknown','unavailable','none',''])\
+        \ %}\n  {% set miss = miss + ['wind_entity'] %}\n{% endif %}\n{{ miss | to_json\
+        \ }}\n"
+  - name: ds_w2_stage2_inputs_version
+    unique_id: ds_w2_stage2_inputs_version
+    state: '4.2'
+- sensor:
+  - name: ds_w2_stage2_observability_version
+    unique_id: ds_w2_stage2_observability_version
+    state: '4.2'
+  - name: ds_w2_modules_loaded_json
+    unique_id: ds_w2_modules_loaded_json
+    state: "{% set m = {\n  'template_logic': states('sensor.ds_w2_template_logic_version'),\n\
+      \  'inputs': states('sensor.ds_w2_inputs_version'),\n  'automations': states('sensor.ds_w2_main_automations_version'),\n\
+      \  'scripts': states('sensor.ds_w2_scripts_version'),\n  'safe_sensors': states('sensor.ds_w2_safe_sensors_version'),\n\
+      \  'stage2': states('sensor.ds_w2_stage2_observability_version'),\n  'stage3':\
+      \ states('sensor.ds_w2_stage3_tests_version'),\n  'stage4': states('sensor.ds_w2_stage4_sdhb_version'),\n\
+      \  'stage5_sim': states('sensor.ds_w2_stage5_sim_version'),\n  'stage5_golden':\
+      \ states('sensor.ds_w2_stage5_golden_version')\n} %} {{ m | to_json }}\n"
+- binary_sensor:
+  - name: ds_w2_modules_loaded_ok
+    unique_id: ds_w2_modules_loaded_ok
+    state: "{% set raw = states('sensor.ds_w2_modules_loaded_json') %} {% if raw in\
+      \ ['unknown','unavailable','none',''] %}\n  false\n{% else %}\n  {% set m =\
+      \ raw | from_json %}\n  {% set vals = m.values() | list %}\n  {% set bad = vals\
+      \ | select('in',['unknown','unavailable','none','']) | list | length %}\n  {%\
+      \ set uniq = vals | unique | list | length %}\n  {{ (bad == 0) and (uniq ==\
+      \ 1) and (vals | length > 0) }}\n{% endif %}\n"
+    attributes:
+      version: "{% set raw = states('sensor.ds_w2_modules_loaded_json') %} {% if raw\
+        \ in ['unknown','unavailable','none',''] %}\n  {{ none }}\n{% else %}\n  {%\
+        \ set m = raw | from_json %}\n  {% set vals = m.values() | list %}\n  {{ (vals\
+        \ | unique | list | first) if (vals|length>0) else none }}\n{% endif %}\n"
+      bad_count: "{% set raw = states('sensor.ds_w2_modules_loaded_json') %} {% if\
+        \ raw in ['unknown','unavailable','none',''] %}\n  {{ none }}\n{% else %}\n\
+        \  {% set m = raw | from_json %}\n  {% set vals = m.values() | list %}\n \
+        \ {{ (vals | select('in',['unknown','unavailable','none','']) | list | length)\
+        \ }}\n{% endif %}\n"
+      unique_versions: "{% set raw = states('sensor.ds_w2_modules_loaded_json') %}\
+        \ {% if raw in ['unknown','unavailable','none',''] %}\n  {{ none }}\n{% else\
+        \ %}\n  {% set m = raw | from_json %}\n  {% set vals = m.values() | list %}\n\
+        \  {{ vals | unique | list }}\n{% endif %}\n"
+- sensor:
+  - name: ds_w2_addon_forecast_version
+    unique_id: ds_w2_addon_forecast_version
+    state: '4.2'
+  - name: ds_w2_forecast_entity
+    unique_id: ds_w2_forecast_entity
+    state: '{% set en = state_attr(''sensor.ds_w2_hw_map'',''forecast_enabled'') %}
+      {% set e  = state_attr(''sensor.ds_w2_hw_map'',''forecast_entity'') %} {% if
+      en and e %}{{ e }}{% else %}none{% endif %}'
+  - name: ds_w2_forecast_tmax_tomorrow_validation_reason
+    unique_id: ds_w2_forecast_tmax_tomorrow_validation_reason
+    icon: mdi:alert-circle-outline
+    state: "{% set en = is_state('input_boolean.ds_w2_forecast_enabled','on') %} {%\
+      \ if not en %}forecast_disabled{% else %}\n  {% set e = state_attr('sensor.ds_w2_hw_map','forecast_entity')\
+      \ %}\n  {% if not e %}forecast_entity_missing{% else %}\n    {% set daily =\
+      \ state_attr(e,'daily') %}\n    {% if daily is none %}daily_missing{% elif daily\
+      \ is not sequence %}daily_not_sequence\n    {% elif (daily|count) <= 1 %}daily_too_short{%\
+      \ elif daily[1] is not mapping %}daily_1_not_mapping\n    {% elif daily[1].temp\
+      \ is not mapping %}temp_not_mapping{% elif daily[1].temp.max is none %}tmax_missing\n\
+      \    {% else %}ok{% endif %}\n  {% endif %}\n{% endif %}"
+  - name: ds_w2_forecast_tmin_tonight_validation_reason
+    unique_id: ds_w2_forecast_tmin_tonight_validation_reason
+    icon: mdi:alert-circle-outline
+    state: "{% set en = is_state('input_boolean.ds_w2_forecast_enabled','on') %} {%\
+      \ if not en %}forecast_disabled{% else %}\n  {% set e = state_attr('sensor.ds_w2_hw_map','forecast_entity')\
+      \ %}\n  {% if not e %}forecast_entity_missing{% else %}\n    {% set daily =\
+      \ state_attr(e,'daily') %}\n    {% if daily is none %}daily_missing{% elif daily\
+      \ is not sequence %}daily_not_sequence\n    {% elif (daily|count) <= 0 %}daily_too_short{%\
+      \ elif daily[0] is not mapping %}daily_0_not_mapping\n    {% elif daily[0].temp\
+      \ is not mapping %}temp_not_mapping{% elif daily[0].temp.min is none %}tmin_missing\n\
+      \    {% else %}ok{% endif %}\n  {% endif %}\n{% endif %}"
+  - name: ds_w2_forecast_tmax_tomorrow
+    unique_id: ds_w2_forecast_tmax_tomorrow
+    unit_of_measurement: °C
+    availability: "{{ is_state('input_boolean.ds_w2_forecast_enabled','on')\n   and\
+      \ is_state('sensor.ds_w2_forecast_tmax_tomorrow_validation_reason','ok') }}"
+    state: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''forecast_entity'') %}
+      {% set daily = state_attr(e,''daily'') if e else none %} {{ daily[1].temp.max
+      | float }}'
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_forecast_tmax_tomorrow_validation_reason'')
+        }}'
+      forecast_entity: '{{ state_attr(''sensor.ds_w2_hw_map'',''forecast_entity'')
+        }}'
+  - name: ds_w2_forecast_tmin_tonight
+    unique_id: ds_w2_forecast_tmin_tonight
+    unit_of_measurement: °C
+    availability: "{{ is_state('input_boolean.ds_w2_forecast_enabled','on')\n   and\
+      \ is_state('sensor.ds_w2_forecast_tmin_tonight_validation_reason','ok') }}"
+    state: '{% set e = state_attr(''sensor.ds_w2_hw_map'',''forecast_entity'') %}
+      {% set daily = state_attr(e,''daily'') if e else none %} {{ daily[0].temp.min
+      | float }}'
+    attributes:
+      validation_reason: '{{ states(''sensor.ds_w2_forecast_tmin_tonight_validation_reason'')
+        }}'
+      forecast_entity: '{{ state_attr(''sensor.ds_w2_hw_map'',''forecast_entity'')
+        }}'
+  - name: ds_w2_addon_modules_loaded_version
+    unique_id: ds_w2_addon_modules_loaded_version
+    state: '4.2'
+  - name: ds_w2_modules_loaded
+    unique_id: ds_w2_modules_loaded
+    icon: mdi:package-variant-check
+    state: "{% set sentinels = {\n  'core':          'sensor.ds_w2_hw_map_version',\n\
+      \  'logic':         'sensor.ds_w2_template_logic_version',\n  'runtime':   \
+      \    'sensor.ds_w2_main_automations_version',\n  'observability': 'sensor.ds_w2_stage2_observability_version',\n\
+      \  'testing':       'sensor.ds_w2_stage3_tests_version',\n  'sdhb':        \
+      \  'sensor.ds_w2_stage4_sdhb_version',\n  'forecast':      'sensor.ds_w2_addon_forecast_version'\n\
+      } %} {% set bad = ['unknown','unavailable','none',''] %} {% set loaded = []\
+      \ %} {% for name, ent in sentinels.items() %}\n  {% if states(ent) not in bad\
+      \ %}\n    {% set loaded = loaded + [name] %}\n  {% endif %}\n{% endfor %} {{\
+      \ loaded | count }} / {{ sentinels | count }}"
+    attributes:
+      loaded: "{% set sentinels = {\n  'core':          'sensor.ds_w2_hw_map_version',\n\
+        \  'logic':         'sensor.ds_w2_template_logic_version',\n  'runtime': \
+        \      'sensor.ds_w2_main_automations_version',\n  'observability': 'sensor.ds_w2_stage2_observability_version',\n\
+        \  'testing':       'sensor.ds_w2_stage3_tests_version',\n  'sdhb':      \
+        \    'sensor.ds_w2_stage4_sdhb_version',\n  'forecast':      'sensor.ds_w2_addon_forecast_version'\n\
+        } %} {% set bad = ['unknown','unavailable','none',''] %} {% set loaded = []\
+        \ %} {% for name, ent in sentinels.items() %}\n  {% if states(ent) not in\
+        \ bad %}\n    {% set loaded = loaded + [name] %}\n  {% endif %}\n{% endfor\
+        \ %} {{ loaded }}"
+      missing: '{% set all = [''core'',''logic'',''runtime'',''observability'',''testing'',''sdhb'',''forecast'']
+        %} {% set loaded = state_attr(''sensor.ds_w2_modules_loaded'',''loaded'')
+        %} {% set loaded = loaded if loaded is sequence else [] %} {{ all | reject(''in'',
+        loaded) | list }}'
+      versions: "{% set sentinels = {\n  'core':          'sensor.ds_w2_hw_map_version',\n\
+        \  'logic':         'sensor.ds_w2_template_logic_version',\n  'runtime': \
+        \      'sensor.ds_w2_main_automations_version',\n  'observability': 'sensor.ds_w2_stage2_observability_version',\n\
+        \  'testing':       'sensor.ds_w2_stage3_tests_version',\n  'sdhb':      \
+        \    'sensor.ds_w2_stage4_sdhb_version',\n  'forecast':      'sensor.ds_w2_addon_forecast_version'\n\
+        } %} {% set out = dict() %} {% for name, ent in sentinels.items() %}\n  {%\
+        \ set _ = out.update({ name: states(ent) }) %}\n{% endfor %} {{ out }}"
+- binary_sensor:
+  - name: ds_w2_forecast_hot_tomorrow
+    unique_id: ds_w2_forecast_hot_tomorrow
+    availability: '{{ states(''sensor.ds_w2_forecast_tmax_tomorrow'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    state: '{% set t = states(''sensor.ds_w2_forecast_tmax_tomorrow'')|float(none)
+      %} {% set thr = states(''input_number.ds_w2_forecast_hot_threshold'')|float(32)
+      %} {{ t is not none and t >= thr }}'
+  - name: ds_w2_forecast_cold_tonight
+    unique_id: ds_w2_forecast_cold_tonight
+    availability: '{{ states(''sensor.ds_w2_forecast_tmin_tonight'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    state: '{% set t = states(''sensor.ds_w2_forecast_tmin_tonight'')|float(none)
+      %} {% set thr = states(''input_number.ds_w2_forecast_cold_threshold'')|float(6)
+      %} {{ t is not none and t <= thr }}'
+script:
+  ds_w2_init_fabrica:
+    alias: ds_w2_init_fabrica
+    mode: single
+    sequence:
+    - variables:
+        f: sensor.ds_w2_fabrica
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_orientacion_deg
+      data:
+        value: '{{ state_attr(f,''orientacion_deg'')|float(91) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_altura_cm
+      data:
+        value: '{{ state_attr(f,''altura_cm'')|float(220) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_voladizo_cm
+      data:
+        value: '{{ state_attr(f,''voladizo_cm'')|float(0) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_offset_edificios_min
+      data:
+        value: '{{ state_attr(f,''offset_edificios_min'')|float(0) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_angulo_fachada_deg
+      data:
+        value: '{{ state_attr(f,''angulo_fachada_deg'')|float(180) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_lux_day_min
+      data:
+        value: '{{ state_attr(f,''lux_day_min'')|float(2900) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_lux_cloudy_max
+      data:
+        value: '{{ state_attr(f,''lux_cloudy_max'')|float(2900) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_lux_night_max
+      data:
+        value: '{{ state_attr(f,''lux_night_max'')|float(30) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_summer_min_open_pct
+      data:
+        value: '{{ state_attr(f,''summer_min_open_pct'')|float(20) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_delta_hot_out
+      data:
+        value: '{{ state_attr(f,''delta_hot_out'')|float(0.8) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_delta_freecool
+      data:
+        value: '{{ state_attr(f,''delta_freecool'')|float(0.8) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_freecool_max_open_pct
+      data:
+        value: '{{ state_attr(f,''freecool_max_open_pct'')|float(60) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_winter_night_pct
+      data:
+        value: '{{ state_attr(f,''winter_night_pct'')|float(0) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_wind_limit_kmh
+      data:
+        value: '{{ state_attr(f,''wind_limit_kmh'')|float(40) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_weather_max_open_pct
+      data:
+        value: '{{ state_attr(f,''weather_max_open_pct'')|float(30) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_rain_threshold
+      data:
+        value: '{{ state_attr(f,''rain_threshold'')|float(0.1) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_rain_close_pct
+      data:
+        value: '{{ state_attr(f,''rain_close_pct'')|float(0) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_privacy_position_pct
+      data:
+        value: '{{ state_attr(f,''privacy_position_pct'')|float(40) }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.ds_w2_privacy_from
+      data:
+        time: '{{ state_attr(f,''privacy_from_hhmm'') }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_min_change_pct
+      data:
+        value: '{{ state_attr(f,''min_change_pct'')|float(10) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_min_time_between_moves_min
+      data:
+        value: '{{ state_attr(f,''min_time_between_moves_min'')|float(15) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_forecast_hot_threshold
+      data:
+        value: '{{ state_attr(f,''forecast_hot_threshold'')|float(32) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_forecast_cold_threshold
+      data:
+        value: '{{ state_attr(f,''forecast_cold_threshold'')|float(6) }}'
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_forecast_preclose_time_hhmm
+      data:
+        value: '{{ state_attr(f,''forecast_preclose_time_hhmm'')|int(2200) }}'
+  ds_w2_override_clear:
+    alias: ds_w2_override_clear
+    mode: single
+    sequence:
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ds_w2_override_mode
+      data:
+        option: auto
+  ds_w2_override_lock:
+    alias: ds_w2_override_lock
+    mode: single
+    fields:
+      position:
+        description: 0-100
+        example: 30
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_override_position_pct
+      data:
+        value: '{{ position|int(0) }}'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ds_w2_override_mode
+      data:
+        option: lock
+  ds_w2_override_hold_minutes:
+    alias: ds_w2_override_hold_minutes
+    mode: single
+    fields:
+      position:
+        description: 0-100
+        example: 40
+      minutes:
+        description: hold duration
+        example: 120
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_override_position_pct
+      data:
+        value: '{{ position|int(0) }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.ds_w2_hold_until
+      data:
+        datetime: '{{ (now() + timedelta(minutes=minutes|int(60))).strftime(''%Y-%m-%d
+          %H:%M:%S'') }}'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ds_w2_override_mode
+      data:
+        option: hold
+  ds_w2_override_ttl_minutes:
+    alias: ds_w2_override_ttl_minutes
+    mode: single
+    fields:
+      position:
+        description: 0-100
+        example: 30
+      minutes:
+        description: duración en minutos
+        example: 120
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_override_position_pct
+      data:
+        value: '{{ position|int(30) }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.ds_w2_override_until
+      data:
+        datetime: '{{ (now() + timedelta(minutes=minutes|int(60))).strftime(''%Y-%m-%d
+          %H:%M:%S'') }}'
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ds_w2_override_mode
+      data:
+        option: ttl
+  ds_w2_override_ttl_until_sunrise:
+    alias: ds_w2_override_ttl_until_sunrise
+    mode: single
+    fields:
+      position:
+        description: 0-100
+        example: 30
+      offset_min:
+        description: minutos extra (puede ser negativo)
+        example: 0
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_override_position_pct
+      data:
+        value: '{{ position|int(30) }}'
+    - variables:
+        ts: '{{ as_datetime(state_attr(''sun.sun'',''next_rising'')) }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.ds_w2_override_until
+      data:
+        datetime: "{% if ts is not none %}\n  {{ (ts + timedelta(minutes=offset_min|int(0))).strftime('%Y-%m-%d\
+          \ %H:%M:%S') }}\n{% else %}\n  {{ (now() + timedelta(hours=6)).strftime('%Y-%m-%d\
+          \ %H:%M:%S') }}\n{% endif %}"
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ds_w2_override_mode
+      data:
+        option: ttl
+  ds_w2_override_ttl_until_sunset:
+    alias: ds_w2_override_ttl_until_sunset
+    mode: single
+    fields:
+      position:
+        description: 0-100
+        example: 30
+      offset_min:
+        description: minutos extra (puede ser negativo)
+        example: 0
+    sequence:
+    - service: input_number.set_value
+      target:
+        entity_id: input_number.ds_w2_override_position_pct
+      data:
+        value: '{{ position|int(30) }}'
+    - variables:
+        ts: '{{ as_datetime(state_attr(''sun.sun'',''next_setting'')) }}'
+    - service: input_datetime.set_datetime
+      target:
+        entity_id: input_datetime.ds_w2_override_until
+      data:
+        datetime: "{% if ts is not none %}\n  {{ (ts + timedelta(minutes=offset_min|int(0))).strftime('%Y-%m-%d\
+          \ %H:%M:%S') }}\n{% else %}\n  {{ (now() + timedelta(hours=6)).strftime('%Y-%m-%d\
+          \ %H:%M:%S') }}\n{% endif %}"
+    - service: input_select.select_option
+      target:
+        entity_id: input_select.ds_w2_override_mode
+      data:
+        option: ttl
+  ds_w2_apply_now:
+    alias: ds_w2_apply_now
+    mode: single
+    sequence:
+    - variables:
+        cover_e: '{{ state_attr(''sensor.ds_w2_hw_map'',''cover_entity'') }}'
+        cover_ok: '{{ cover_e is not none and states(cover_e) not in [''unknown'',''unavailable'',''none'','''']
+          }}'
+        pos: '{{ states(''sensor.ds_w2_target_position'')|int(100) }}'
+        interlock_en: '{{ is_state(''input_boolean.ds_w2_interlock_enabled'',''on'')
+          }}'
+        interlock_notify_en: '{{ is_state(''input_boolean.ds_w2_interlock_notify_enabled'',''on'')
+          }}'
+        interlock_wait_s: '{{ states(''input_number.ds_w2_interlock_wait_s'')|int(30)
+          }}'
+        interlock_tol: '{{ states(''input_number.ds_w2_interlock_tol_pct'')|int(3)
+          }}'
+        expected_raw: '{% set v = pos|int(100) %}{% if is_state(''input_boolean.ds_w2_cover_inverted'',''on'')
+          %}{{ 100 - v }}{% else %}{{ v }}{% endif %}'
+    - choose:
+      - conditions: '{{ cover_ok }}'
+        sequence:
+        - service: cover.set_cover_position
+          target:
+            entity_id: '{{ cover_e }}'
+          data:
+            position: '{{ expected_raw|int(0) }}'
+        - service: input_datetime.set_datetime
+          target:
+            entity_id: input_datetime.ds_w2_last_move_ts
+          data:
+            datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+        - service: input_number.set_value
+          target:
+            entity_id: input_number.ds_w2_last_target_pct
+          data:
+            value: '{{ pos }}'
+        - choose:
+          - conditions: '{{ interlock_en == "True" and cover_ok }}'
+            sequence:
+            - delay: '{{ interlock_wait_s|int(30) }}'
+            - variables:
+                cur_raw_1: '{{ state_attr(cover_e,''current_position'')|int(-999)
+                  }}'
+                ok_1: '{{ (cur_raw_1 - (expected_raw|int(-999))) | abs <= (interlock_tol|int(3))
+                  }}'
+            - choose:
+              - conditions: '{{ not ok_1 }}'
+                sequence:
+                - service: cover.set_cover_position
+                  target:
+                    entity_id: '{{ cover_e }}'
+                  data:
+                    position: '{{ expected_raw|int(0) }}'
+                - delay: '{{ interlock_wait_s|int(30) }}'
+                - variables:
+                    cur_raw_2: '{{ state_attr(cover_e,''current_position'')|int(-999)
+                      }}'
+                    ok_2: '{{ (cur_raw_2 - (expected_raw|int(-999))) | abs <= (interlock_tol|int(3))
+                      }}'
+                - choose:
+                  - conditions: '{{ not ok_2 }}'
+                    sequence:
+                    - service: system_log.write
+                      data:
+                        level: warning
+                        logger: dynamic_shutter.ds_w2
+                        message: 'ds_w2: interlock FAIL (apply_now): expected_raw={{
+                          expected_raw }}, cur_raw={{ cur_raw_2 }}, tol={{ interlock_tol
+                          }}, pos={{ pos }}'
+                    - choose:
+                      - conditions: '{{ interlock_notify_en == ''True'' and states(''input_text.ds_w2_notify_target_entity'')
+                          not in [''unknown'',''unavailable'',''none'',''''] }}'
+                        sequence:
+                        - service: notify.send_message
+                          target:
+                            entity_id: '{{ states(''input_text.ds_w2_notify_target_entity'')
+                              }}'
+                          data:
+                            message: 'ds_w2 interlock FAIL (apply_now): expected={{
+                              expected_raw }}, got={{ cur_raw_2 }}, tol={{ interlock_tol
+                              }}, pos={{ pos }}'
+      default:
+      - service: system_log.write
+        data:
+          level: warning
+          logger: dynamic_shutter.ds_w2
+          message: 'ds_w2_apply_now skipped: cover_entity unavailable (cover_e={{
+            cover_e }}, state={{ states(cover_e) if cover_e else ''none'' }})'
+  ds_w2_run_self_test:
+    alias: ds_w2_run_self_test
+    mode: single
+    sequence:
+    - service: system_log.write
+      data:
+        level: info
+        logger: dynamic_shutter.ds_w2
+        message: 'DS W2 self-test: start | health={{ states(''sensor.ds_w2_health'')
+          }}
+
+          '
+    - service: system_log.write
+      data:
+        level: info
+        logger: dynamic_shutter.ds_w2
+        message: 'cover={{ state_attr(''sensor.ds_w2_hw_map'',''cover_entity'') }}
+          state={{ states(state_attr(''sensor.ds_w2_hw_map'',''cover_entity'')) }}
+
+          '
+    - service: system_log.write
+      data:
+        level: info
+        logger: dynamic_shutter.ds_w2
+        message: 'decision={{ states(''sensor.ds_w2_target_decision_json'') }}
+
+          '
+    - service: system_log.write
+      data:
+        level: info
+        logger: dynamic_shutter.ds_w2
+        message: 'debug={{ states(''sensor.ds_w2_decision_debug_json'') }}
+
+          '
+    - service: system_log.write
+      data:
+        level: info
+        logger: dynamic_shutter.ds_w2
+        message: 'notify_enabled={{ states(''input_boolean.ds_w2_health_alert_notify_enabled'')
+          }} target={{ states(''input_text.ds_w2_notify_target_entity'') }}
+
+          '
+    - service: system_log.write
+      data:
+        level: info
+        logger: dynamic_shutter.ds_w2
+        message: 'DS W2 self-test: end'
+automation:
+- id: ds_w2_apply_target_5m
+  unique_id: ds_w2_apply_target_5m
+  alias: ds_w2_apply_target_5m
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /5
+  - platform: state
+    entity_id:
+    - sensor.ds_w2_target_position
+    - input_select.ds_w2_override_mode
+    - input_boolean.ds_w2_sleep_mode
+    - input_boolean.ds_w2_privacy_enabled
+    - input_boolean.ds_w2_weather_protect_enabled
+  variables:
+    cover_e: '{{ state_attr(''sensor.ds_w2_hw_map'',''cover_entity'') }}'
+    cover_ok: '{{ cover_e is not none and states(cover_e) not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+    target: '{{ states(''sensor.ds_w2_target_position'')|int(100) }}'
+    reason: '{{ states(''sensor.ds_w2_target_reason'') }}'
+    sdhb_en: '{{ is_state(''input_boolean.ds_w2_sdhb_enabled'',''on'') }}'
+    quiet_req: '{{ is_state(''binary_sensor.ds_w2_sdhb_request_quiet'',''on'') }}'
+    quiet_respect: '{{ is_state(''input_boolean.ds_w2_sdhb_quiet_respect_enabled'',''on'')
+      }}'
+    quiet_active: '{{ (sdhb_en == ''True'') and (quiet_respect == ''True'') and (quiet_req
+      == ''True'') }}'
+    critical_reason: '{{ reason in [''ov_lock'',''ov_hold'',''ov_ttl'',''meteo_rain'',''meteo_wind_cap'',''privacy_time'']
+      }}'
+    last_target: '{{ states(''input_number.ds_w2_last_target_pct'')|int(-999) }}'
+    min_change: '{{ states(''input_number.ds_w2_min_change_pct'')|int(10) }}'
+    slew_en: '{{ is_state(''input_boolean.ds_w2_slew_enabled'',''on'') }}'
+    slew_step: '{{ states(''input_number.ds_w2_slew_step_pct'')|int(10) }}'
+    cur_pos: "{% if cover_ok %}\n  {{ (state_attr(cover_e,'current_position')|int(-1))\
+      \ }}\n{% else %}\n  {{ -1 }}\n{% endif %}\n"
+    interlock_en: '{{ is_state(''input_boolean.ds_w2_interlock_enabled'',''on'') }}'
+    interlock_notify_en: '{{ is_state(''input_boolean.ds_w2_interlock_notify_enabled'',''on'')
+      }}'
+    interlock_wait_s: '{{ states(''input_number.ds_w2_interlock_wait_s'')|int(30)
+      }}'
+    interlock_tol: '{{ states(''input_number.ds_w2_interlock_tol_pct'')|int(3) }}'
+    min_dt_min: '{{ states(''input_number.ds_w2_min_time_between_moves_min'')|int(15)
+      }}'
+    last_ts: '{{ states(''input_datetime.ds_w2_last_move_ts'') }}'
+    last_ts_dt: "{% if last_ts not in ['unknown','unavailable','none',''] %}\n  {{\
+      \ as_datetime(last_ts) }}\n{% else %}\n  {{ none }}\n{% endif %}\n"
+    dt_ok: "{% if last_ts_dt is none %}\n  true\n{% else %}\n  {{ (now() - last_ts_dt).total_seconds()\
+      \ >= (min_dt_min * 60) }}\n{% endif %}\n"
+    change_ok: '{{ (target - last_target) | abs >= min_change }}'
+  condition:
+  - condition: template
+    value_template: '{{ cover_e is not none }}'
+  action:
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ quiet_active and (not critical_reason) and cover_ok and
+          dt_ok and change_ok }}'
+      sequence:
+      - service: system_log.write
+        data:
+          level: info
+          logger: dynamic_shutter.ds_w2
+          message: 'ds_w2: DS W2: quiet_active por SDHB, se omite movimiento no crítico
+            (reason={{ reason }}, target={{ target }}).
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ (not cover_ok) and dt_ok and change_ok }}'
+      sequence:
+      - service: system_log.write
+        data:
+          level: warning
+          logger: dynamic_shutter.ds_w2
+          message: 'ds_w2: DS W2: No se puede aplicar target. cover={{ cover_e }}
+            está {{ states(cover_e) }} (target={{ target }}).
+
+            '
+    - conditions:
+      - condition: template
+        value_template: '{{ cover_ok and dt_ok and change_ok }}'
+      sequence:
+      - variables:
+          position_to_set: "{{ target | int(0) }}"
+      - service: cover.set_cover_position
+        target:
+          entity_id: '{{ cover_e }}'
+        data:
+          position: "{% set v = position_to_set|int(target|int(100)) %} {% if is_state('input_boolean.ds_w2_cover_inverted','on')\
+            \ %}\n  {{ 100 - v }}\n{% else %}\n  {{ v }}\n{% endif %}\n"
+      - choose:
+        - conditions: '{{ interlock_en == "True" and cover_ok }}'
+          sequence:
+          - variables:
+              expected_raw: '{% set v = position_to_set|int(target|int(100)) %}{%
+                if is_state(''input_boolean.ds_w2_cover_inverted'',''on'') %}{{ 100
+                - v }}{% else %}{{ v }}{% endif %}'
+          - delay: '{{ interlock_wait_s|int(30) }}'
+          - variables:
+              cur_raw_1: '{% if cover_ok %}{{ state_attr(cover_e,''current_position'')|int(-999)
+                }}{% else %}{{ -999 }}{% endif %}'
+              ok_1: '{{ (cur_raw_1 - (expected_raw|int(-999))) | abs <= (interlock_tol|int(3))
+                }}'
+          - choose:
+            - conditions: '{{ not ok_1 }}'
+              sequence:
+              - service: cover.set_cover_position
+                target:
+                  entity_id: '{{ cover_e }}'
+                data:
+                  position: '{{ expected_raw|int(0) }}'
+              - delay: '{{ interlock_wait_s|int(30) }}'
+              - variables:
+                  cur_raw_2: '{% if cover_ok %}{{ state_attr(cover_e,''current_position'')|int(-999)
+                    }}{% else %}{{ -999 }}{% endif %}'
+                  ok_2: '{{ (cur_raw_2 - (expected_raw|int(-999))) | abs <= (interlock_tol|int(3))
+                    }}'
+              - choose:
+                - conditions: '{{ not ok_2 }}'
+                  sequence:
+                  - service: system_log.write
+                    data:
+                      level: warning
+                      logger: dynamic_shutter.ds_w2
+                      message: 'ds_w2: interlock FAIL (apply_target): expected_raw={{
+                        expected_raw }}, cur_raw={{ cur_raw_2 }}, tol={{ interlock_tol
+                        }}, reason={{ reason }}, target={{ target }}'
+                  - choose:
+                    - conditions: '{{ interlock_notify_en == ''True'' and states(''input_text.ds_w2_notify_target_entity'')
+                        not in [''unknown'',''unavailable'',''none'',''''] }}'
+                      sequence:
+                      - service: notify.send_message
+                        target:
+                          entity_id: '{{ states(''input_text.ds_w2_notify_target_entity'')
+                            }}'
+                        data:
+                          message: 'ds_w2 interlock FAIL (apply_target): expected={{
+                            expected_raw }}, got={{ cur_raw_2 }}, tol={{ interlock_tol
+                            }}, reason={{ reason }}, target={{ target }}'
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ds_w2_last_move_ts
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.ds_w2_last_target_pct
+        data:
+          value: '{{ target }}'
+- id: ds_w2_forecast_preclose_daily
+  unique_id: ds_w2_forecast_preclose_daily
+  alias: ds_w2_forecast_preclose_daily
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: '0'
+  condition:
+  - condition: state
+    entity_id: input_boolean.ds_w2_forecast_enabled
+    state: 'on'
+  - condition: template
+    value_template: '{% set hhmm = states(''input_number.ds_w2_forecast_preclose_time_hhmm'')|int(2200)
+      %} {% set h = (hhmm // 100) | int %} {% set m = (hhmm % 100) | int %} {{ now().hour
+      == h and now().minute == m }}
+
+      '
+  - condition: state
+    entity_id: binary_sensor.ds_w2_forecast_hot_tomorrow
+    state: 'on'
+  action:
+  - service: cover.set_cover_position
+    target:
+      entity_id: '{{ state_attr(''sensor.ds_w2_hw_map'',''cover_entity'') }}'
+    data:
+      position: '{{ states(''input_number.ds_w2_summer_min_open_pct'')|int(20) }}'
+- id: ds_w2_override_ttl_expiry_watch
+  unique_id: ds_w2_override_ttl_expiry_watch
+  alias: ds_w2_override_ttl_expiry_watch
+  mode: single
+  trigger:
+  - platform: time_pattern
+    minutes: /1
+  - platform: state
+    entity_id:
+    - input_select.ds_w2_override_mode
+    - input_datetime.ds_w2_override_until
+  variables:
+    ov_mode: '{{ states(''input_select.ds_w2_override_mode'') }}'
+    until_s: '{{ states(''input_datetime.ds_w2_override_until'') }}'
+    until_dt: "{% if until_s not in ['unknown','unavailable','none',''] %}\n  {{ as_datetime(until_s)\
+      \ }}\n{% else %}\n  {{ none }}\n{% endif %}"
+    expired: '{{ (until_dt is not none) and (now() >= until_dt) }}'
+  condition:
+  - condition: template
+    value_template: '{{ ov_mode == ''ttl'' and expired }}'
+  action:
+  - service: input_select.select_option
+    target:
+      entity_id: input_select.ds_w2_override_mode
+    data:
+      option: auto
+  - service: system_log.write
+    data:
+      level: info
+      logger: dynamic_shutter.ds_w2
+      message: 'DS W2: override TTL expirado -> vuelve a auto.'
+- id: ds_w2_wind_cap_hold_latch
+  unique_id: ds_w2_wind_cap_hold_latch
+  alias: ds_w2_wind_cap_hold_latch
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: binary_sensor.ds_w2_wind_cap_raw_active
+    to: 'on'
+  - platform: state
+    entity_id: input_boolean.ds_w2_weather_protect_enabled
+    to: 'off'
+  action:
+  - variables:
+      hold_min: '{{ states(''input_number.ds_w2_wind_cap_hold_min'')|int(0) }}'
+      ts_target: "{% if trigger.entity_id == 'binary_sensor.ds_w2_wind_cap_raw_active'\
+        \ %}\n  {{ as_timestamp(now() + timedelta(minutes=hold_min)) }}\n{% else %}\n\
+        \  {{ as_timestamp(now()) }}\n{% endif %}"
+      dt: '{{ ts_target | timestamp_custom(''%Y-%m-%d %H:%M:%S'', true) }}'
+  - service: input_datetime.set_datetime
+    target:
+      entity_id: input_datetime.ds_w2_wind_cap_hold_until
+    data:
+      datetime: '{{ dt }}'
+- id: ds_w2_health_alert
+  alias: ds_w2_health_alert
+  mode: single
+  trigger:
+  - platform: state
+    entity_id: sensor.ds_w2_health
+  condition:
+  - condition: template
+    value_template: '{{ trigger.to_state is not none and trigger.to_state.state in
+      [''degraded'',''error''] }}
+
+      '
+  - condition: template
+    value_template: "{% set cd = states('input_number.ds_w2_health_alert_cooldown_min')\
+      \ %} {% if cd in ['unknown','unavailable','none',''] %}\n  true\n{% else %}\n\
+      \  {% set cooldown_s = (cd|float(0)) * 60 %}\n  {% set last = states('input_datetime.ds_w2_health_last_alert')\
+      \ %}\n  {% if last in ['unknown','unavailable','none',''] %}\n    true\n  {%\
+      \ else %}\n    {% set last_dt = as_datetime(last) %}\n    {% if last_dt is none\
+      \ %}\n      true\n    {% else %}\n      {{ (as_timestamp(now()) - as_timestamp(last_dt))\
+      \ >= cooldown_s }}\n    {% endif %}\n  {% endif %}\n{% endif %}\n"
+  action:
+  - service: system_log.write
+    data:
+      level: warning
+      logger: dynamic_shutter.ds_w2
+      message: 'DS W2 health={{ states(''sensor.ds_w2_health'') }} | missing_critical={{
+        state_attr(''sensor.ds_w2_health'',''missing_critical'') }} | missing_optional={{
+        state_attr(''sensor.ds_w2_health'',''missing_optional'') }}
+
+        '
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: input_boolean.ds_w2_health_alert_notify_enabled
+        state: 'on'
+      - condition: template
+        value_template: '{% set tgt = states(''input_text.ds_w2_notify_target_entity'')
+          %} {{ tgt not in [''unknown'',''unavailable'',''none'',''''] and tgt.startswith(''notify.'')
+          }}
+
+          '
+      sequence:
+      - service: notify.send_message
+        target:
+          entity_id: '{{ states(''input_text.ds_w2_notify_target_entity'') }}'
+        data:
+          message: 'DS W2 health={{ states(''sensor.ds_w2_health'') }}\nmissing_critical={{
+            state_attr(''sensor.ds_w2_health'',''missing_critical'') }}\nmissing_optional={{
+            state_attr(''sensor.ds_w2_health'',''missing_optional'') }}
+
+            '
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ states(''input_datetime.ds_w2_health_last_alert'') not
+          in [''unknown'',''unavailable''] }}
+
+          '
+      sequence:
+      - service: input_datetime.set_datetime
+        target:
+          entity_id: input_datetime.ds_w2_health_last_alert
+        data:
+          datetime: '{{ now().strftime(''%Y-%m-%d %H:%M:%S'') }}'
+input_datetime:
+  ds_w2_health_last_alert:
+    name: ds_w2_health_last_alert
+    has_date: true
+    has_time: true
+input_number:
+  ds_w2_health_alert_cooldown_min:
+    name: ds_w2_health_alert_cooldown_min
+    min: 0
+    max: 360
+    step: 5
+    mode: box
+    unit_of_measurement: min
+    icon: mdi:timer-outline
+    initial: 30
+input_boolean:
+  ds_w2_health_alert_notify_enabled:
+    name: ds_w2_health_alert_notify_enabled
+    icon: mdi:message-alert-outline
+    initial: false
+input_text:
+  ds_w2_notify_target_entity:
+    name: ds_w2_notify_target_entity
+    icon: mdi:send
+    initial: notify.telegram_bot_8023650581_4609211440

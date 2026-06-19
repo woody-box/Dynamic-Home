@@ -1,0 +1,87 @@
+# ==========================================================
+# DV · Testing Optional · Hostile Outside (WAQI AQI)
+# v4.2
+#
+# Objetivo:
+# - Validar el mapeo por tramos del AQI exterior → cap (3/2/1/0)
+# - Sin depender de sensores reales: usa un input_number de test y
+#   apunta el override dv_vmc_outdoor_aqi_entity_override a ese helper.
+#
+# Nota:
+# - Este archivo es opcional y NO se recomienda en producción.
+# ==========================================================
+
+input_number:
+  dv_vmc_test_outdoor_aqi:
+    name: dv_vmc_test_outdoor_aqi
+    icon: mdi:beaker-outline
+    min: 0
+    max: 500
+    step: 1
+    mode: box
+    initial: 40
+
+input_text:
+  dv_vmc_test_hostile_outside_last_result:
+    name: dv_vmc_test_hostile_outside_last_result
+    icon: mdi:clipboard-text
+    max: 255
+    initial: ""
+
+script:
+  dv_vmc_test_hostile_outside_run:
+    alias: dv_vmc_test_hostile_outside_run
+    mode: single
+    sequence:
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.dv_vmc_outdoor_aqi_entity_override
+        data:
+          value: "input_number.dv_vmc_test_outdoor_aqi"
+
+      - service: input_boolean.turn_on
+        target:
+          entity_id: input_boolean.dv_vmc_hostile_outside_enabled
+
+      - variables:
+          cases:
+            - {aqi: 40, expect: 3, label: "OK(<50)"}
+            - {aqi: 70, expect: 2, label: "MEDIOCRE(50-100)"}
+            - {aqi: 120, expect: 1, label: "MALO(100-150)"}
+            - {aqi: 180, expect: 0, label: "MUY_MALO(>=150)"}
+
+      - variables:
+          report: ""
+
+      - repeat:
+          for_each: "{{ cases }}"
+          sequence:
+            - service: input_number.set_value
+              target:
+                entity_id: input_number.dv_vmc_test_outdoor_aqi
+              data:
+                value: "{{ repeat.item.aqi }}"
+            - delay: "00:00:02"
+            - variables:
+                got: "{{ states('sensor.dv_vmc_hostile_outside_cap')|int(-1) }}"
+                ok: "{{ got == (repeat.item.expect|int) }}"
+                line: "{{ repeat.item.label }} aqi={{ repeat.item.aqi }} got={{ got }} expect={{ repeat.item.expect }} ok={{ ok }}"
+            - variables:
+                report: >-
+                  {% if report|length == 0 %}
+                    {{ line }}
+                  {% else %}
+                    {{ report ~ " | " ~ line }}
+                  {% endif %}
+
+      - service: input_text.set_value
+        target:
+          entity_id: input_text.dv_vmc_test_hostile_outside_last_result
+        data:
+          value: "{{ report[:255] }}"
+
+      - service: logbook.log
+        data:
+          name: dv_vmc_dv
+          message: "🧪 HostileOutside test → {{ states('input_text.dv_vmc_test_hostile_outside_last_result') }}"
+

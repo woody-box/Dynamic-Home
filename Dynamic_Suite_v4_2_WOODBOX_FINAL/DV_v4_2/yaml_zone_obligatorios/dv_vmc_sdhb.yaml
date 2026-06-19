@@ -1,0 +1,202 @@
+# ============================================================================
+# Dynamic Ventilation · DV VMC · SDHB (publish/consume/feedback/heartbeat)
+# ----------------------------------------------------------------------------
+# version: 4.2
+# changelog: v4.2 (compaction into inputs/logic/automations/sdhb/observability)
+# ============================================================================
+input_boolean:
+  dv_vmc_sdhb_enabled:
+    name: dv_vmc_sdhb_enabled
+    icon: mdi:lan-connect
+  dv_vmc_sdhb_consume_enabled:
+    name: dv_vmc_sdhb_consume_intents
+    icon: mdi:arrow-decision
+template:
+- sensor:
+  - name: dv_vmc_addon_sdhb_version
+    unique_id: dv_vmc_addon_sdhb_version
+    state: '4.2'
+  - name: dv_vmc_sdhb_winner_entity
+    unique_id: dv_vmc_sdhb_winner_entity
+    icon: mdi:trophy
+    state: '{%- set winner = state_attr(''sensor.dv_vmc_hw_map'',''sdhb_winner_entity'')
+      -%} {%- set slot = state_attr(''sensor.dv_vmc_hw_map'',''sdhb_source_slot'')
+      -%} {%- set slot_norm = slot if slot not in [none,'''',''unknown'',''unavailable'']
+      else ''dv_vmc'' -%} {%- set fallback = ''sensor.sdhb_winner_'' ~ slot_norm -%}
+      {{ winner if winner not in [none,'''',''unknown'',''unavailable''] else fallback
+      }}'
+- sensor:
+  - name: dv_vmc_sdhb_unavailable_reason
+    unique_id: dv_vmc_sdhb_unavailable_reason
+    icon: mdi:information-outline
+    state: "{% if not is_state('input_boolean.sdhb_enabled','on') %}\n  bus_global_disabled\n\
+      {% elif not is_state('input_boolean.dv_vmc_sdhb_enabled','on') %}\n  instance_disabled\n\
+      {% else %}\n  ok\n{% endif %}\n"
+    attributes:
+      sdhb_global: '{{ states(''input_boolean.sdhb_enabled'') }}'
+      dv_instance: '{{ states(''input_boolean.dv_vmc_sdhb_enabled'') }}'
+  - name: dv_vmc_sdhb_state
+    unique_id: dv_vmc_sdhb_state
+    availability: '{{ is_state(''input_boolean.sdhb_enabled'',''on'') and is_state(''input_boolean.dv_vmc_sdhb_enabled'',''on'')
+      }}
+
+      '
+    state: "{% if is_state('binary_sensor.dv_vmc_hw_pwr','off') %}\n  off\n{% else\
+      \ %}\n  {% set v = states('sensor.dv_vmc_velocidad_real')|int(1) %}\n  {% if\
+      \ v == 3 %}v3\n  {% elif v == 2 %}v2\n  {% else %}v1\n  {% endif %}\n{% endif\
+      \ %}\n"
+    attributes:
+      module: dv
+      instance: home
+      mode: '{% set v = states(''sensor.dv_vmc_velocidad_real'')|int(1) %} {% if v
+        == 3 %}v3 {% elif v == 2 %}v2 {% else %}v1 {% endif %}
+
+        '
+      auto: '{{ is_state(''input_boolean.dv_vmc_auto'',''on'') }}'
+      permitida: '{{ is_state(''binary_sensor.dv_vmc_permitida'',''on'') }}'
+      dew_risk: '{{ is_state(''binary_sensor.dv_vmc_dew_risk_any'',''on'') }}'
+      co2: '{{ states(''sensor.dv_vmc_co2_safe'')|float(none) }}'
+      pm25: '{{ states(''sensor.dv_vmc_pm25_safe'')|float(none) }}'
+      t_in: '{{ states(''sensor.dv_vmc_t_casa_safe'')|float(none) if ''sensor.dv_vmc_t_casa_safe''
+        in states else none }}'
+      t_out: '{{ states(''sensor.dv_vmc_t_exterior_safe'')|float(none) if ''sensor.dv_vmc_t_exterior_safe''
+        in states else none }}'
+      dp_in: '{{ states(''sensor.dv_vmc_dp_casa_safe'')|float(none) }}'
+      dp_out: '{{ states(''sensor.dv_vmc_dp_exterior_safe'')|float(none) }}'
+      intent: "{% set consume = is_state('input_boolean.dv_vmc_sdhb_consume_enabled','on')\
+        \ %} {% set w = states('sensor.dv_vmc_sdhb_winner_entity') %} {% if not consume\
+        \ %}\n  unknown\n{% else %}\n  {{ states(w) if states(w) not in ['unknown','unavailable']\
+        \ else states('sensor.sdhb_intent_effective') }}\n{% endif %}"
+      priority: 50
+      lock: "{% if is_state('timer.dv_vmc_override','active') or is_state('timer.dv_vmc_ducha_override','active')\
+        \ %}\n  manual\n{% else %}\n  none\n{% endif %}\n"
+  - name: dv_vmc_sdhb_intent_matched
+    unique_id: dv_vmc_sdhb_intent_matched
+    availability: '{{ is_state(''input_boolean.sdhb_enabled'',''on'') and is_state(''input_boolean.dv_vmc_sdhb_enabled'',''on'')
+      }}
+
+      '
+    state: "{% set consume = is_state('input_boolean.dv_vmc_sdhb_consume_enabled','on')\
+      \ %} {% set w = states('sensor.dv_vmc_sdhb_winner_entity') %} {% set intent\
+      \ = states(w) if states(w) not in ['unknown','unavailable'] else states('sensor.sdhb_intent_effective')\
+      \ %} {% set tgt = state_attr(w,'target') if state_attr(w,'target') not in [none,'unknown','unavailable']\
+      \ else state_attr('sensor.sdhb_intent_effective','target') %} {% if (not consume)\
+      \ or intent in ['unknown','unavailable','none',''] or intent == 'none' %}\n\
+      \  none\n{% else %}\n  {% if tgt in [none,'','unknown','unavailable'] %}\n \
+      \   {{ intent }}\n  {% elif tgt in ['dv_vmc','dv'] %}\n    {{ intent\
+      \ }}\n  {% else %}\n    none\n  {% endif %}\n{% endif %}\n"
+    attributes:
+      intent: "{% set consume = is_state('input_boolean.dv_vmc_sdhb_consume_enabled','on')\
+        \ %} {% set w = states('sensor.dv_vmc_sdhb_winner_entity') %} {% if not consume\
+        \ %}\n  unknown\n{% else %}\n  {{ states(w) if states(w) not in ['unknown','unavailable']\
+        \ else states('sensor.sdhb_intent_effective') }}\n{% endif %}"
+      target: "{% set consume = is_state('input_boolean.dv_vmc_sdhb_consume_enabled','on')\
+        \ %} {% set w = states('sensor.dv_vmc_sdhb_winner_entity') %} {% if not consume\
+        \ %}\n  unknown\n{% else %}\n  {{ state_attr(w,'target') if state_attr(w,'target')\
+        \ not in [none,'unknown','unavailable'] else state_attr('sensor.sdhb_intent_effective','target')\
+        \ }}\n{% endif %}"
+      source: "{% set consume = is_state('input_boolean.dv_vmc_sdhb_consume_enabled','on')\
+        \ %} {% set w = states('sensor.dv_vmc_sdhb_winner_entity') %} {% if not consume\
+        \ %}\n  unknown\n{% else %}\n  {{ state_attr(w,'source') if state_attr(w,'source')\
+        \ not in [none,'unknown','unavailable'] else state_attr('sensor.sdhb_intent_effective','source')\
+        \ }}\n{% endif %}"
+      priority: '{{ state_attr(''sensor.sdhb_intent_effective'',''priority'') }}'
+      expires_at: '{{ state_attr(''sensor.sdhb_intent_effective'',''expires_at'')
+        }}'
+      payload: "{% set consume = is_state('input_boolean.dv_vmc_sdhb_consume_enabled','on')\
+        \ %} {% set w = states('sensor.dv_vmc_sdhb_winner_entity') %} {% if not consume\
+        \ %}\n  unknown\n{% else %}\n  {{ state_attr(w,'payload') if state_attr(w,'payload')\
+        \ not in [none,'unknown','unavailable'] else state_attr('sensor.sdhb_intent_effective','payload')\
+        \ }}\n{% endif %}"
+automation:
+  # hotfix: removed dv_vmc_sdhb_export_speed_intent (DV should export metrics/feedback, not intents)
+- id: dv_vmc_sdhb_publish_home_speed_metric
+  alias: dv_vmc_sdhb_publish_home_speed_metric
+  mode: queued
+  max: 4
+  max_exceeded: discard
+  trigger:
+  - platform: homeassistant
+    event: start
+  - platform: state
+    entity_id: sensor.dv_vmc_velocidad_real
+  condition:
+  - condition: state
+    entity_id: input_boolean.dv_vmc_sdhb_export_enabled
+    state: 'on'
+  - condition: template
+    value_template: '{{ states(''input_number.sdhb_metric_dv_vmc_speed'') not in [''unknown'',''unavailable'',''none'','''']
+      }}'
+  action:
+  - variables:
+      v: '{% set s = states(''sensor.dv_vmc_velocidad_real'') %} {% set n = s|int(0)
+        %} {% if n in [1,2,3] %}{{ n }}{% else %}0{% endif %}'
+  - service: input_number.set_value
+    target:
+      entity_id: input_number.sdhb_metric_dv_vmc_speed
+    data:
+      value: '{{ v|int(0) }}'
+- id: dv_vmc_sdhb_heartbeat
+  alias: dv_vmc_sdhb_heartbeat
+  mode: queued
+  trigger:
+  - platform: homeassistant
+    event: start
+  - platform: time_pattern
+    minutes: /2
+  condition:
+  - condition: state
+    entity_id: input_boolean.sdhb_enabled
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.dv_vmc_sdhb_enabled
+    state: 'on'
+  action:
+  - service: script.sdhb_heartbeat
+    data:
+      source: '{% set s = state_attr(''sensor.dv_vmc_hw_map'',''sdhb_source_slot'')
+        %} {{ s if s not in [none,'''',''unknown'',''unavailable''] else ''dv_vmc''
+        }}'
+      details: dv
+- id: dv_vmc_sdhb_feedback_ack
+  alias: dv_vmc_sdhb_feedback_ack
+  mode: queued
+  trigger:
+  - platform: state
+    entity_id: sensor.dv_vmc_sdhb_intent_matched
+  condition:
+  - condition: state
+    entity_id: input_boolean.sdhb_enabled
+    state: 'on'
+  - condition: state
+    entity_id: input_boolean.dv_vmc_sdhb_enabled
+    state: 'on'
+  action:
+  - variables:
+      intent: '{{ states(''sensor.dv_vmc_sdhb_intent_matched'') }}'
+      auto: '{{ is_state(''input_boolean.dv_vmc_auto'',''on'') }}'
+      man_override: '{{ is_state(''timer.dv_vmc_override'',''active'') }}'
+      ducha_override: '{{ is_state(''timer.dv_vmc_ducha_override'',''active'') }}'
+      supported: '{{ intent in [''request_quiet'',''request_eco'',''request_weather_protect'',''request_freecool'',''request_normal'',''request_boost'']
+        }}'
+      applied: '{{ intent not in [''none'',''unknown'',''unavailable'',''''] and auto
+        and (not man_override) and (not ducha_override) and supported }}'
+      status: "{% if intent in ['none','unknown','unavailable',''] or intent == 'none'\
+        \ %}\n  none\n{% elif applied %}\n  accepted\n{% else %}\n  ignored\n{% endif\
+        \ %}\n"
+      reason: "{% if intent in ['none','unknown','unavailable',''] or intent == 'none'\
+        \ %}\n  no_intent\n{% elif not supported %}\n  intent_not_supported\n{% elif\
+        \ not auto %}\n  not_auto\n{% elif man_override %}\n  manual_override_active\n\
+        {% elif ducha_override %}\n  shower_override_active\n{% else %}\n  not_applied\n\
+        {% endif %}\n"
+      details: auto={{ auto }}, man={{ man_override }}, ducha={{ ducha_override }}
+  - service: script.sdhb_feedback
+    data:
+      source: '{% set s = state_attr(''sensor.dv_vmc_hw_map'',''sdhb_source_slot'')
+        %} {{ s if s not in [none,'''',''unknown'',''unavailable''] else ''dv_vmc''
+        }}'
+      status: '{{ status }}'
+      intent_received: '{{ intent }}'
+      applied: '{{ applied }}'
+      reason: '{{ reason }}'
+      details: '{{ details }}'
