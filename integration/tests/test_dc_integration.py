@@ -1,0 +1,110 @@
+"""Home Assistant integration tests for the DC (climate) module.
+
+Covers the config flow (menu -> climate), entity creation, and the full
+multi-module triangle: DC in cool mode publishes ``request_solar_shield`` to the
+shared SDHB hub, and a DS shutter sharing that hub clamps its cover.
+"""
+
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.components.climate import HVACMode
+from homeassistant.const import ATTR_TEMPERATURE
+from homeassistant.data_entry_flow import FlowResultType
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from custom_components.dynamic_home import const
+
+CLIMATE = {
+    const.CONF_NAME: "Salon",
+    const.CONF_MODULE: const.MODULE_CLIMATE,
+    const.CONF_DC_T_INT: "sensor.salon_temp",
+    const.CONF_DC_T_EXT: "sensor.ext_temp",
+    const.CONF_DC_TARGET: "ds",
+}
+
+SHUTTER = {
+    const.CONF_NAME: "Persiana",
+    const.CONF_MODULE: const.MODULE_SHUTTER,
+    const.CONF_COVER: "cover.salon_real",
+    const.CONF_FACADE_AZIMUTH: 180.0,
+}
+
+
+def _seed(hass: HomeAssistant) -> None:
+    hass.states.async_set("sensor.salon_temp", "27")
+    hass.states.async_set("sensor.ext_temp", "33")
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180, "elevation": 30})
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+
+
+async def _add(hass: HomeAssistant, data: dict, title: str) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=const.DOMAIN, data=data, title=title)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_climate_config_flow(hass: HomeAssistant) -> None:
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": "user"})
+    assert result["type"] == FlowResultType.MENU
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "climate"})
+    assert result["step_id"] == "climate"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={const.CONF_NAME: "Salon",
+                    const.CONF_DC_T_INT: "sensor.salon_temp",
+                    const.CONF_DC_TARGET: "ds"})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][const.CONF_MODULE] == const.MODULE_CLIMATE
+
+
+async def test_setup_creates_climate(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    assert entry.state is ConfigEntryState.LOADED
+    assert hass.states.get("climate.salon") is not None
+
+
+async def test_full_triangle_dc_drives_ds(hass: HomeAssistant) -> None:
+    """DC (cool) -> bus request_solar_shield -> DS cover clamps to 30%."""
+    _seed(hass)
+    dc_entry = await _add(hass, CLIMATE, "Salon")
+    ds_entry = await _add(hass, SHUTTER, "Persiana")
+
+    dc = hass.data[const.DOMAIN][dc_entry.entry_id]
+    ds = hass.data[const.DOMAIN][ds_entry.entry_id]
+
+    # Put the climate zone into cooling.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.COOL},
+        blocking=True)
+    await hass.async_block_till_done()
+
+    # DC published a solar-shield intent to the bus...
+    assert dc.data.published_intent == "request_solar_shield"
+
+    # ...which DS consumes on its next evaluation, clamping the cover.
+    await ds.async_refresh()
+    await hass.async_block_till_done()
+    assert ds.data.reason == "sdhb_solar_shield"
+    assert ds.data.pos == 30
+    assert hass.states.get("cover.persiana").attributes["current_position"] == 30
+
+
+async def test_climate_manual_setpoint_is_override(hass: HomeAssistant) -> None:
+    _seed(hass)
+    await _add(hass, CLIMATE, "Salon")
+    await hass.services.async_call(
+        "climate", "set_temperature",
+        {"entity_id": "climate.salon", ATTR_TEMPERATURE: 21.0}, blocking=True)
+    await hass.async_block_till_done()
+    state = hass.states.get("climate.salon")
+    assert state.attributes["temperature"] == 21.0
+    assert state.attributes["reason"] == "override"

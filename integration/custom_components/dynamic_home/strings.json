@@ -6,7 +6,8 @@
         "description": "¿Qué módulo quieres añadir?",
         "menu_options": {
           "vmc": "Ventilación (VMC)",
-          "shutter": "Persiana"
+          "shutter": "Persiana",
+          "climate": "Clima (zona)"
         }
       },
       "vmc": {
@@ -38,6 +39,16 @@
           "ds_t_out": "Temperatura exterior (opcional)",
           "wind": "Viento km/h (opcional)",
           "rain": "Lluvia (opcional)"
+        }
+      },
+      "climate": {
+        "title": "Dynamic Climate (Zona)",
+        "description": "Zona climática. Publica al bus solar-gain (calor) / solar-shield (frío) hacia las persianas indicadas.",
+        "data": {
+          "name": "Nombre",
+          "dc_t_int": "Temperatura interior",
+          "dc_t_ext": "Temperatura exterior (opcional)",
+          "ds_target": "Target de persianas en el bus (p.ej. ds)"
         }
       }
     },

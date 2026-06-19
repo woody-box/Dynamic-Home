@@ -4,10 +4,12 @@ Port de la suite YAML (`../Dynamic_Suite_v4_2_WOODBOX_FINAL/`) a una
 **integración de Home Assistant**. Módulos portados:
 - **DV** (ventilación / VMC) → entidad `fan` — ver `SPEC.md`.
 - **DS** (persianas) → entidad `cover` — ver `SPEC_DS.md`.
+- **DC** (clima / zona) → entidad `climate` — ver `SPEC_DC.md`.
 
-Ambos comparten un **bus SDHB en memoria** (`SdhbHub`): cuando un módulo publica
-una intención (p.ej. `request_solar_shield`), los demás la consumen y coordinan.
-El config flow ofrece un **menú** para añadir una VMC o una persiana.
+Los tres comparten un **bus SDHB en memoria** (`SdhbHub`): **DC es el cerebro** y
+publica intenciones (`request_solar_gain`/`request_solar_shield`) que **DS y DV
+consumen** y coordinan. El config flow ofrece un **menú** para añadir VMC,
+persiana o zona de clima.
 
 ## Estructura
 
@@ -49,10 +51,11 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **56/56 verde** (29 DV + 21 DS engine + 3 DV + 3 DS integración).
-Los tests de integración verifican que la integración **se carga en HA**, crea
-`fan.vmc` / `cover.*` + helpers, que la velocidad sube a V3 con CO₂ alto, y que
-una intención `request_solar_shield` en el bus compartido **clampa la persiana**.
+Estado actual: **75/75 verde** (29 DV + 21 DS + 16 DC engine · 3 DV + 3 DS + 4 DC
+integración). Los tests verifican que la integración **se carga en HA**, crea
+`fan` / `cover` / `climate` + helpers, y el **triángulo completo**: una zona DC
+en modo cool publica al bus y la persiana DS se clampa a 30% — coordinación
+multi-módulo end-to-end.
 
 ## Qué cubre
 

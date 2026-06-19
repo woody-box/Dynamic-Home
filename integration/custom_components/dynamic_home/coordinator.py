@@ -23,6 +23,7 @@ from homeassistant.util import dt as dt_util
 from . import const
 from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
+from .dc_engine import DcConfig, DcInputs, DcDecision, decide as decide_climate
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ class SdhbHub:
                 priority: int = 50) -> None:
         self._slots[source] = {"intent": intent, "target": target,
                                "priority": priority}
+
+    def clear(self, source: str) -> None:
+        """Remove a source's intent from the bus."""
+        self._slots.pop(source, None)
 
     def winner(self, target: str) -> str:
         """Highest-priority intent whose target matches ``target`` or is broadcast."""
@@ -261,3 +266,68 @@ class DsCoordinator(DataUpdateCoordinator):
             sun_effective=sun_above,
         )
         return decide_cover(cfg, self.ds_state, ins)
+
+
+class DcCoordinator(DataUpdateCoordinator):
+    """Evaluates the DC (climate) pipeline and PUBLISHES intents to the bus.
+
+    DC is the brain: while heating it publishes ``request_solar_gain`` and while
+    cooling ``request_solar_shield`` to its shutter target, so DS reacts. It also
+    consumes intents aimed at itself (self-bias) from the same shared hub.
+    """
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry,
+                 hub: SdhbHub) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{const.DOMAIN}_dc",
+            update_interval=timedelta(seconds=const.UPDATE_INTERVAL_S),
+        )
+        self.entry = entry
+        self.hub = hub
+        self.hvac_mode = "off"          # desired mode, set from the climate entity
+        self.override_active = False
+        self.override_temp: float | None = None
+        self._source = f"dc_{entry.entry_id[:8]}"
+
+    def _hw(self, key: str) -> str | None:
+        return self.entry.data.get(key)
+
+    def _num(self, key: str) -> float | None:
+        ent = self._hw(key)
+        if not ent:
+            return None
+        st = self.hass.states.get(ent)
+        if st is None or st.state in ("unknown", "unavailable", "none", ""):
+            return None
+        try:
+            return float(st.state)
+        except (TypeError, ValueError):
+            return None
+
+    def _sun_elevation(self) -> float | None:
+        st = self.hass.states.get("sun.sun")
+        return st.attributes.get("elevation") if st else None
+
+    async def _async_update_data(self) -> DcDecision:
+        ins = DcInputs(
+            hvac_mode=self.hvac_mode,
+            t_int=self._num(const.CONF_DC_T_INT),
+            t_ext=self._num(const.CONF_DC_T_EXT),
+            sun_elevation=self._sun_elevation(),
+            sdhb_intent=self.hub.winner("dc"),
+            override_active=self.override_active,
+            override_temp=self.override_temp,
+        )
+        decision = decide_climate(DcConfig(), ins)
+
+        # Publish the resulting intent to the shutter target (or clear it).
+        target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
+        if decision.published_intent != "none":
+            self.hub.publish(source=self._source,
+                             intent=decision.published_intent,
+                             target=target, priority=70)
+        else:
+            self.hub.clear(self._source)
+        return decision

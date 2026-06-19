@@ -8,10 +8,12 @@ DOMAIN = "dynamic_home"
 CONF_MODULE = "module"
 MODULE_VMC = "vmc"
 MODULE_SHUTTER = "shutter"
+MODULE_CLIMATE = "climate_zone"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number"]
 PLATFORMS_SHUTTER: list[str] = ["cover"]
+PLATFORMS_CLIMATE: list[str] = ["climate"]
 
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"
@@ -37,6 +39,11 @@ CONF_DS_T_OUT = "ds_t_out"
 CONF_WIND = "wind"
 CONF_RAIN = "rain"
 CONF_FACADE_AZIMUTH = "facade_azimuth_deg"
+
+# --- Config entry keys: Climate (DC) ---
+CONF_DC_T_INT = "dc_t_int"        # required: indoor temperature sensor
+CONF_DC_T_EXT = "dc_t_ext"        # optional: outdoor temperature sensor
+CONF_DC_TARGET = "ds_target"      # shutter target the zone drives (default "ds")
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

@@ -61,6 +61,15 @@ STEP_SHUTTER_SCHEMA = vol.Schema(
     }
 )
 
+STEP_CLIMATE_SCHEMA = vol.Schema(
+    {
+        vol.Required(const.CONF_NAME, default="Zona"): str,
+        vol.Required(const.CONF_DC_T_INT): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_DC_T_EXT): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_DC_TARGET, default="ds"): str,
+    }
+)
+
 
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
@@ -70,7 +79,7 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Entry point: choose which module to add."""
         return self.async_show_menu(
-            step_id="user", menu_options=["vmc", "shutter"])
+            step_id="user", menu_options=["vmc", "shutter", "climate"])
 
     async def async_step_vmc(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
@@ -90,6 +99,17 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
                 title=user_input[const.CONF_NAME], data=data)
         return self.async_show_form(
             step_id="shutter", data_schema=STEP_SHUTTER_SCHEMA)
+
+    async def async_step_climate(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            await self.async_set_unique_id(
+                f"dc_{user_input[const.CONF_DC_T_INT]}")
+            self._abort_if_unique_id_configured()
+            data = {**user_input, const.CONF_MODULE: const.MODULE_CLIMATE}
+            return self.async_create_entry(
+                title=user_input[const.CONF_NAME], data=data)
+        return self.async_show_form(
+            step_id="climate", data_schema=STEP_CLIMATE_SCHEMA)
 
     @staticmethod
     @callback

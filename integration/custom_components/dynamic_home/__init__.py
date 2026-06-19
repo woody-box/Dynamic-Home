@@ -10,12 +10,15 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from . import const
-from .coordinator import DvCoordinator, DsCoordinator, SdhbHub
+from .coordinator import DvCoordinator, DsCoordinator, DcCoordinator, SdhbHub
 
 
 def _platforms(entry: ConfigEntry) -> list[str]:
-    if entry.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER:
+    module = entry.data.get(const.CONF_MODULE)
+    if module == const.MODULE_SHUTTER:
         return const.PLATFORMS_SHUTTER
+    if module == const.MODULE_CLIMATE:
+        return const.PLATFORMS_CLIMATE
     return const.PLATFORMS_VMC
 
 
@@ -24,8 +27,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hub: SdhbHub = hass.data.setdefault(const.DOMAIN, {}).setdefault(
         "_hub", SdhbHub())
 
-    if entry.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER:
+    module = entry.data.get(const.CONF_MODULE)
+    if module == const.MODULE_SHUTTER:
         coordinator = DsCoordinator(hass, entry, hub)
+    elif module == const.MODULE_CLIMATE:
+        coordinator = DcCoordinator(hass, entry, hub)
     else:
         coordinator = DvCoordinator(hass, entry, hub)
         coordinator.async_setup_listeners()
