@@ -10,7 +10,7 @@ from dc_engine import (  # noqa: E402
     DcConfig, DcInputs, decide, base_active, bias_exterior, sdhb_self_bias,
     assemble_target, quantize_step, publish_intent, is_night, sunlit_facades,
     bias_vmc, trend_bias, brake_bias, forecast_bias, dew_point, dew_risk,
-    facade_bias, INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
+    facade_bias, compute_lead, INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
 )
 
 
@@ -142,6 +142,22 @@ def test_decide_dew_risk_forces_off_via_engine():
     cfg = _cfg()
     d = decide(cfg, DcInputs(hvac_mode="cool", t_int=24, dew_risk=True))
     assert d.action == "off" and d.reason == "off_dew"
+
+
+def test_compute_lead_grows_with_temp_gap():
+    cfg = _cfg(lead_base_h=1.0, lead_per_degree_h=0.05, lead_min_h=0.5, lead_max_h=3.0)
+    # small gap -> near base
+    assert compute_lead(cfg, 21, 20) == 1.05
+    # big gap -> clamped to max
+    assert compute_lead(cfg, 22, -20) == 3.0
+    # no data -> fallback trend_lead_h
+    assert compute_lead(cfg, None, 5) == cfg.trend_lead_h
+
+
+def test_trend_bias_uses_dynamic_lead():
+    cfg = _cfg(trend_max_shift=1.0)
+    # cph 0.2, lead 2.0 -> shift -0.4
+    assert trend_bias(cfg, 0.2, 2.0) == -0.4
 
 
 def test_facade_bias_eases_demand_with_open_sunlit_facades():

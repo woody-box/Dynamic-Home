@@ -101,6 +101,6 @@ al bus y muestra la consigna). El modo de la zona se restaura tras reiniciar HA
 - ✅ Pipeline base + bias_exterior + límites + clamp + quantize (con tests).
 - ✅ Publicación al bus (heat→gain / cool→shield) y consumo (self-bias).
 - ✅ **Triángulo completo** verificado en HA: DC(cool) → bus → DS clampa.
-- ⏳ Biases restantes (fachadas/forecast/tendencia/lead) con sus fórmulas,
-  dew-risk a partir de punto de rocío real, ventana/override por UI,
-  y multi-zona (`zone02..zone08`).
+- ✅ Biases: exterior, vmc, tendencia, freno, forecast (weather), fachadas.
+- ✅ Dew-risk real (Magnus) y lead dinámico (anticipación por inercia).
+- ⏳ Pendiente: multi-zona avanzada y sub-leads solar/viento finos.

@@ -51,7 +51,7 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **103/103 verde** (29 DV + 24 DS + 33 DC + 5 bus engine · 3 DV +
+Estado actual: **106/106 verde** (35 DV + 24 DS + 35 DC + 5 bus engine · 3 DV +
 3 DS + 4 DC + 2 multi-instancia + 3 ciclo de vida integración). Los tests verifican que la
 integración **se carga en HA**, crea `fan` / `cover` / `climate` + helpers, el
 **triángulo completo** (DC en cool → bus → DS se clampa) y el **targeting solar
@@ -82,7 +82,8 @@ estrechas solo reaccionan con el sol casi de frente.
 - **Gate `permitida`**: programación semanal (con wrap nocturno) + permiso extra.
 - **Failsafe**: sensores vitales KO → V1, trip-counter → lockout, startup grace.
 - **Boost por ducha** vía ΔRH (histéresis + hold).
-- **Umbrales adaptativos** (el engine los consume cuando se aportan).
+- **Umbrales adaptativos** (percentiles 7d en buffer rodante + switch).
+- **Telemetría VMC** (horas por velocidad/máquina/filtro + reset).
 - Config flow + options flow.
 - Entidad `fan` con preset modes y driver de 3 relés.
 

@@ -78,6 +78,7 @@ class DvConfig:
 
     # Adaptive thresholds (SPEC §7) — engine uses them when provided & ready.
     adaptive_enabled: bool = False
+    adaptive_min_samples: int = 100   # min readings before percentiles are used
 
 
 @dataclass

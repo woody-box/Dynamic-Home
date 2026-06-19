@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import logging
 import math
+from collections import deque
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
@@ -56,6 +57,10 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.machine_hours = 0.0
         self.filter_hours = 0.0
         self._accum_ts: float | None = None
+        # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
+        self.adaptive_enabled = False
+        self._co2_hist: deque[float] = deque(maxlen=10080)
+        self._pm_hist: deque[float] = deque(maxlen=10080)
 
     def _accumulate(self, now_ts: float) -> None:
         """Add elapsed time to the running-hours counters."""
@@ -87,7 +92,30 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         cfg.hostile_enabled = bool(self._hw(const.CONF_AQI))
         cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
                                   self._hw(const.CONF_HUM_EXT))
+        cfg.adaptive_enabled = self.adaptive_enabled
         return cfg
+
+    def _update_adaptive(self, cfg: DvConfig, co2: float | None,
+                         pm: float | None) -> tuple:
+        """Append readings and derive adaptive thresholds from percentiles.
+
+        Returns (co2_v2, co2_v3, pm_v2, pm_v3), each None until enough samples.
+        """
+        if co2 is not None and 0 <= co2 <= 5000:
+            self._co2_hist.append(co2)
+        if pm is not None and 0 <= pm <= 500:
+            self._pm_hist.append(pm)
+        if not self.adaptive_enabled:
+            return (None, None, None, None)
+
+        def pct(hist: deque, p: float) -> float | None:
+            if len(hist) < cfg.adaptive_min_samples:
+                return None
+            s = sorted(hist)
+            return s[min(len(s) - 1, int(p / 100.0 * len(s)))]
+
+        return (pct(self._co2_hist, 90), pct(self._co2_hist, 95),
+                pct(self._pm_hist, 90), pct(self._pm_hist, 95))
 
     def _age_s(self, key: str) -> float:
         """Seconds since the source entity last changed (large if missing)."""
@@ -145,9 +173,18 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self._accumulate(now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
 
+        co2_raw = self._num(const.CONF_CO2)
+        pm_raw = self._num(const.CONF_PM25)
+        a_co2_v2, a_co2_v3, a_pm_v2, a_pm_v3 = self._update_adaptive(
+            cfg, co2_raw, pm_raw)
+
         ins = DvInputs(
-            co2_raw=self._num(const.CONF_CO2),
-            pm_raw=self._num(const.CONF_PM25),
+            co2_raw=co2_raw,
+            pm_raw=pm_raw,
+            adaptive_co2_v2=a_co2_v2,
+            adaptive_co2_v3=a_co2_v3,
+            adaptive_pm_v2=a_pm_v2,
+            adaptive_pm_v3=a_pm_v3,
             t_in=self._num(const.CONF_T_IN),
             t_ext=self._num(const.CONF_T_EXT),
             aqi=self._num(const.CONF_AQI),

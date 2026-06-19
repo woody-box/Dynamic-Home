@@ -19,7 +19,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import const
-from .coordinator import DsCoordinator
 
 
 @dataclass(frozen=True)
@@ -27,11 +26,11 @@ class _ToggleDesc:
     key: str
     name: str
     icon: str
-    getter: Callable[[DsCoordinator], bool]
-    setter: Callable[[DsCoordinator, bool], None]
+    getter: Callable
+    setter: Callable
 
 
-_SWITCHES: tuple[_ToggleDesc, ...] = (
+_SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
     _ToggleDesc(
         "privacy", "Privacy", "mdi:blinds-horizontal",
         lambda c: c.privacy_enabled,
@@ -42,15 +41,25 @@ _SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c, v: setattr(c, "lock_enabled", v)),
 )
 
+_VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
+    _ToggleDesc(
+        "adaptive", "Adaptive thresholds", "mdi:brain",
+        lambda c: c.adaptive_enabled,
+        lambda c, v: setattr(c, "adaptive_enabled", v)),
+)
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
-    coordinator: DsCoordinator = hass.data[const.DOMAIN][entry.entry_id]
-    async_add_entities(DsToggle(coordinator, entry, d) for d in _SWITCHES)
+    coordinator = hass.data[const.DOMAIN][entry.entry_id]
+    module = entry.data.get(const.CONF_MODULE)
+    descs = (_SHUTTER_SWITCHES if module == const.MODULE_SHUTTER
+             else _VMC_SWITCHES)
+    async_add_entities(DsToggle(coordinator, entry, d) for d in descs)
 
 
 class DsToggle(SwitchEntity, RestoreEntity):
-    """A shutter override/privacy toggle backed by the coordinator."""
+    """A toggle backed by a coordinator attribute (shutter or VMC)."""
 
     _attr_has_entity_name = True
 

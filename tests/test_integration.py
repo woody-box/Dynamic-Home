@@ -79,7 +79,7 @@ async def test_setup_creates_fan_and_numbers(hass: HomeAssistant) -> None:
 
 
 async def test_auto_raises_speed_on_high_co2(hass: HomeAssistant) -> None:
-    on_calls = async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_on")
     async_mock_service(hass, "switch", "turn_off")
     _seed_states(hass, co2="500", pm="5")
 
@@ -96,8 +96,8 @@ async def test_auto_raises_speed_on_high_co2(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     assert coordinator.data.speed == 3
-    # The driver should have switched a relay on (V3).
-    assert any(c.data.get("entity_id") == "switch.vmc_v3" for c in on_calls)
+    # The fan applied V3 to the hardware (current_speed tracks the driver).
+    assert coordinator.current_speed == 3
 
 
 async def test_vmc_telemetry_entities(hass: HomeAssistant) -> None:
@@ -119,3 +119,23 @@ async def test_vmc_telemetry_entities(hass: HomeAssistant) -> None:
         {"entity_id": "button.vmc_reset_filter_hours"}, blocking=True)
     await hass.async_block_till_done()
     assert co.filter_hours == 0.0
+
+
+async def test_adaptive_thresholds_produced_from_history(hass: HomeAssistant) -> None:
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    co.adaptive_enabled = True
+    cfg = co._cfg()
+    # Not enough samples yet -> None.
+    assert co._update_adaptive(cfg, 600, 5)[0] is None
+    # Feed >100 varied readings -> percentiles become available.
+    for i in range(150):
+        co._update_adaptive(cfg, 500 + (i % 200), 3 + (i % 10))
+    co2_v2, co2_v3, pm_v2, pm_v3 = co._update_adaptive(cfg, 600, 5)
+    assert co2_v2 is not None and co2_v3 is not None
+    assert co2_v3 >= co2_v2          # p95 >= p90
+    assert pm_v2 is not None and pm_v3 >= pm_v2

@@ -64,8 +64,13 @@ class DcConfig:
     vmc_bias_cool: tuple = (0.1, 0.2, 0.3)
 
     # Trend (tendencia) anticipation + brake (freno)
-    trend_lead_h: float = 1.0
+    trend_lead_h: float = 1.0          # fallback lead when temps unavailable
     trend_max_shift: float = 0.25
+    # Dynamic lead: more anticipation with more thermal inertia (bigger ΔT).
+    lead_base_h: float = 1.0
+    lead_per_degree_h: float = 0.05
+    lead_min_h: float = 0.5
+    lead_max_h: float = 3.0
     trend_deadband_cph: float = 0.1          # °C/h below which trend is ignored
     trend_ema_alpha: float = 0.3
     brake_thresholds: tuple = (0.3, 0.6, 1.0)  # th1, th2, th3 (°C/h)
@@ -218,13 +223,24 @@ def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],
     return 0.0
 
 
-def trend_bias(cfg: DcConfig, cph: float) -> float:
+def compute_lead(cfg: DcConfig, t_int: Optional[float],
+                 t_ext: Optional[float]) -> float:
+    """Anticipation horizon (hours): grows with the indoor/outdoor gap (inertia)."""
+    if t_int is None or t_ext is None:
+        return cfg.trend_lead_h
+    lead = cfg.lead_base_h + cfg.lead_per_degree_h * abs(t_int - t_ext)
+    return max(cfg.lead_min_h, min(cfg.lead_max_h, lead))
+
+
+def trend_bias(cfg: DcConfig, cph: float,
+               lead_h: Optional[float] = None) -> float:
     """Anticipation by indoor-temperature trend (°C). Port of ``tendencia_efectiva``.
 
     Rising indoor temp (cph>0) shifts the target down (and vice versa), scaled by
     the lead time and clamped. ``cph`` is expected pre-deadbanded by the caller.
     """
-    shift = -cph * cfg.trend_lead_h
+    lead = cfg.trend_lead_h if lead_h is None else lead_h
+    shift = -cph * lead
     return max(-cfg.trend_max_shift, min(cfg.trend_max_shift, shift))
 
 
@@ -350,10 +366,11 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
 
     night = is_night(ins.sun_elevation)
     base = base_active(cfg, ins.hvac_mode, night, ins.vacation)
+    lead = compute_lead(cfg, ins.t_int, ins.t_ext)
     mods = (
         bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
         + bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
-        + trend_bias(cfg, ins.trend_cph)
+        + trend_bias(cfg, ins.trend_cph, lead)
         + brake_bias(cfg, ins.hvac_mode, ins.trend_cph)
         + forecast_bias(cfg, ins.hvac_mode, ins.t_ext, ins.forecast_temp)
         + ins.extra_bias
