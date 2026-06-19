@@ -189,4 +189,4 @@ se hace un pulso de `sw_v2` (~800 ms) para "despertar" el motor. Flag
 | relés vía `apply_hardware_speed` | método `_apply_speed()` de la entidad `fan` |
 | `sensor.dv_vmc_velocidad_real` | estado de la entidad `fan` |
 | `sdhb_intent_matched` + bus YAML | hub SDHB en memoria (coordinator compartido) |
-| golden tests YAML | `tests/test_engine.py` (pytest) |
+| golden tests YAML | `tests/test_dv_engine.py` (pytest) |

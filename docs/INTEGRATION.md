@@ -19,28 +19,33 @@ integration/
 ├── custom_components/dynamic_home/
 │   ├── manifest.json
 │   ├── const.py
-│   ├── engine.py                    # ★ Lógica de decisión PURA (sin deps HA, testeable)
-│   ├── coordinator.py               # Puente HA → engine + hub SDHB en memoria
+│   ├── dv_engine.py                 # ★ Lógica de decisión PURA DV (sin deps HA, testeable)
+│   ├── dc_engine.py                 # ★ Lógica de decisión PURA DC (clima)
+│   ├── ds_engine.py                 # ★ Lógica de decisión PURA DS (persiana)
+│   ├── coordinator.py               # Shim que re-exporta los coordinators + SdhbHub
+│   ├── coordinator_dv.py            # Puente HA → engine DV
+│   ├── coordinator_dc.py            # Puente HA → engine DC (+ publica al bus)
+│   ├── coordinator_ds.py            # Puente HA → engine DS
 │   ├── config_flow.py               # Asistente UI (reemplaza los REPLACE_* del hw_map)
 │   ├── fan.py                       # Entidad fan (auto / v1 / v2 / v3) + driver de relés
 │   ├── number.py                    # Umbrales IAQ como entidades number
 │   └── strings.json                 # Textos UI (ES)
 └── tests/
-    └── test_engine.py               # 16 tests del engine (sustituyen los golden YAML)
+    └── test_dv_engine.py            # tests del engine DV (sustituyen los golden YAML)
 ```
 
 ## Idea clave
 
-La lógica de control vive en `engine.py` **sin dependencias de Home Assistant**:
-es Python puro, lo que permite probarla en CI sin levantar HA. Los wrappers
-(`coordinator`, `fan`, `number`) solo traducen estado de HA a `engine.DvInputs`
-y aplican el resultado a los relés.
+La lógica de control vive en los `*_engine.py` **sin dependencias de Home
+Assistant**: es Python puro, lo que permite probarla en CI sin levantar HA. Los
+wrappers (`coordinator_*`, `fan`, `number`) solo traducen estado de HA a los
+`*Inputs` del engine y aplican el resultado a los relés.
 
 ## Probar
 
 **Engine (lógica pura, sin dependencias):**
 ```bash
-python integration/tests/test_engine.py
+python integration/tests/test_dv_engine.py
 ```
 
 **Integración completa dentro de un Home Assistant simulado** (config flow,

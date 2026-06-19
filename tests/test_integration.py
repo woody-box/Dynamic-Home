@@ -2,7 +2,7 @@
 
 Run inside the harness:  python -m pytest integration/tests/test_integration.py -q
 These exercise the real HA wrappers (config_flow, coordinator, fan), unlike
-test_engine.py which tests the pure logic.
+test_dv_engine.py which tests the pure logic.
 """
 
 from homeassistant.config_entries import ConfigEntryState
