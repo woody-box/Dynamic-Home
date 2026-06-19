@@ -166,6 +166,11 @@ class DsCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.hub = hub
         self.ds_state = DsState()
+        # UI-controlled state (set by the shutter's switch/number entities).
+        self.privacy_enabled = False
+        self.privacy_pct = 40
+        self.lock_enabled = False
+        self.lock_pct = 50
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
@@ -237,6 +242,7 @@ class DsCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> DsDecision:
         cfg = self._cfg()
+        cfg.privacy_pos_pct = int(self.privacy_pct)
         winner = self.hub.winner(self._listen_targets())
         sun_az, sun_el, sun_above = self._sun()
 
@@ -249,6 +255,9 @@ class DsCoordinator(DataUpdateCoordinator):
             raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
             current_pos=self._current_pos(),
+            privacy_active=self.privacy_enabled,
+            override_mode="lock" if self.lock_enabled else "none",
+            override_pos=int(self.lock_pct),
             sdhb_allow_override=winner not in ("none", "unknown", ""),
             sdhb_request_solar_shield=winner == "request_solar_shield",
             sdhb_request_quiet=winner == "request_quiet",

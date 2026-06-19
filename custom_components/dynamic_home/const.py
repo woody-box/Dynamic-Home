@@ -12,7 +12,7 @@ MODULE_CLIMATE = "climate_zone"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number"]
-PLATFORMS_SHUTTER: list[str] = ["cover"]
+PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number"]
 PLATFORMS_CLIMATE: list[str] = ["climate"]
 
 # --- Config entry keys: VMC (DV) hardware map ---

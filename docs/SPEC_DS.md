@@ -65,5 +65,5 @@ impact = (in_front y sun_effective) ? exposed : 0   → cuantizado a 10%
 - ✅ Consumo del bus compartido (demo cross-módulo: DC→`request_solar_shield`→DS clampa).
 - ✅ Multi-instancia con targeting por fachada: cada persiana escucha en `ds`
   (broadcast) y en su fachada `ds_fXXX`; DC dirige intents a una fachada concreta.
-- ⏳ Override/privacidad/hold por UI (timers), facade span/voladizo en el flow,
+- ⏳ Override (lock) y privacidad por UI (switch + number, con RestoreEntity); pendiente hold/ttl con timers y voladizo en el flow;
   detección de lluvia por umbral analógico.
