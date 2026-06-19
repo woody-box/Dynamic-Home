@@ -1,0 +1,37 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Dynamic Ventilation (VMC)",
+        "description": "Selecciona las entidades de tu VMC. Los campos opcionales habilitan free-cooling (temperaturas) y el cap por AQI exterior.",
+        "data": {
+          "name": "Nombre",
+          "sw_pwr": "Relé encendido (power)",
+          "sw_v2": "Relé velocidad 2",
+          "sw_v3": "Relé velocidad 3",
+          "co2": "Sensor CO₂",
+          "pm25": "Sensor PM2.5",
+          "t_in": "Temperatura interior (opcional)",
+          "t_ext": "Temperatura exterior (opcional)",
+          "outdoor_aqi_entity": "AQI exterior (opcional)"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Esta VMC ya está configurada."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Umbrales IAQ",
+        "data": {
+          "co2_v2": "Umbral CO₂ → V2 (ppm)",
+          "co2_v3": "Umbral CO₂ → V3 (ppm)",
+          "pm_v2": "Umbral PM2.5 → V2 (µg/m³)",
+          "pm_v3": "Umbral PM2.5 → V3 (µg/m³)"
+        }
+      }
+    }
+  }
+}
