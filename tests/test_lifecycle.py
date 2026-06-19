@@ -1,7 +1,7 @@
 """Lifecycle / regression tests for the audit fixes.
 
 - Removing a climate zone clears its bus intents (no ghost solar-shield).
-- The options flow only applies to the VMC module.
+- The options flow exposes tunables per module (VMC / shutter / climate).
 """
 
 from homeassistant.components.climate import HVACMode
@@ -52,7 +52,8 @@ async def test_unload_climate_clears_bus(hass: HomeAssistant) -> None:
     assert hub.winner({"ds", "ds_f180"}) == "none"
 
 
-async def test_options_flow_aborts_for_shutter(hass: HomeAssistant) -> None:
+async def test_options_flow_tunes_shutter(hass: HomeAssistant) -> None:
+    """The shutter exposes DS tunables; saving them feeds the engine config."""
     hass.states.async_set("cover.real", "open", {"supported_features": 15})
     entry = await _add(hass, {
         const.CONF_NAME: "Sur", const.CONF_MODULE: const.MODULE_SHUTTER,
@@ -60,8 +61,35 @@ async def test_options_flow_aborts_for_shutter(hass: HomeAssistant) -> None:
     }, "Sur")
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] == FlowResultType.ABORT
-    assert result["reason"] == "no_options"
+    assert result["type"] == FlowResultType.FORM
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={const.OPT_DS_WIND_LIMIT: 55.0})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co._cfg().wind_limit_kmh == 55.0
+
+
+async def test_options_flow_tunes_climate(hass: HomeAssistant) -> None:
+    """The climate zone exposes DC tunables (base setpoints, condensation...)."""
+    hass.states.async_set("sensor.zona_temp", "21")
+    entry = await _add(hass, {
+        const.CONF_NAME: "Zona", const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.zona_temp",
+    }, "Zona")
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.FORM
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={const.OPT_DC_BASE_HEAT: 21.0})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co._cfg().base_heat_day == 21.0
 
 
 async def test_option_change_does_not_reload_or_reset_state(hass: HomeAssistant) -> None:

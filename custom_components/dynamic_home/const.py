@@ -53,11 +53,44 @@ CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
 CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
 CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout
 
-# --- Options keys (tunables, mirror engine.DvConfig) ---
+# --- Options keys (tunables, mirror the engine *Config dataclasses) ---
+# VMC (Dv).
 OPT_CO2_V2 = "co2_v2"
 OPT_CO2_V3 = "co2_v3"
 OPT_PM_V2 = "pm_v2"
 OPT_PM_V3 = "pm_v3"
+
+# Shutter (DS).
+OPT_DS_WIND_LIMIT = "ds_wind_limit_kmh"
+OPT_DS_WEATHER_MAX_OPEN = "ds_weather_max_open_pct"
+OPT_DS_SHIELD_MAX_OPEN = "ds_shield_max_open_pct"
+OPT_DS_WINTER_NIGHT = "ds_winter_night_pct"
+OPT_DS_SLEW_STEP = "ds_slew_step_pct"
+
+# Climate (DC).
+OPT_DC_BASE_HEAT = "dc_base_heat_day"
+OPT_DC_BASE_COOL = "dc_base_cool_day"
+OPT_DC_DELTA_NIGHT = "dc_delta_night"
+OPT_DC_DEW_SPREAD = "dc_dew_spread_min"
+OPT_DC_MAX_MODS_HEAT = "dc_max_mods_heat"
+OPT_DC_MAX_MODS_COOL = "dc_max_mods_cool"
+
+# Defaults for the tunables above (must match the engine dataclass defaults).
+DS_DEFAULTS = {
+    OPT_DS_WIND_LIMIT: 40.0,
+    OPT_DS_WEATHER_MAX_OPEN: 30,
+    OPT_DS_SHIELD_MAX_OPEN: 30,
+    OPT_DS_WINTER_NIGHT: 0,
+    OPT_DS_SLEW_STEP: 10,
+}
+DC_DEFAULTS = {
+    OPT_DC_BASE_HEAT: 22.5,
+    OPT_DC_BASE_COOL: 26.5,
+    OPT_DC_DELTA_NIGHT: 0.5,
+    OPT_DC_DEW_SPREAD: 2.0,
+    OPT_DC_MAX_MODS_HEAT: 0.8,
+    OPT_DC_MAX_MODS_COOL: 0.8,
+}
 
 # How often the coordinator re-evaluates the control pipeline (seconds).
 UPDATE_INTERVAL_S = 60
