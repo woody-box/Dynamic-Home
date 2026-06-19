@@ -53,6 +53,7 @@
           "dc_vmc": "VMC fan/sensor (opcional, bias de compensación VMC)",
           "dc_humidity": "Humedad interior (opcional, protección antirrocío)",
           "dc_weather": "Meteo/weather (opcional, bias por previsión)",
+          "dc_wind": "Sensor de viento (opcional, modelo de lead)",
           "ds_target": "Target de persianas en el bus (p.ej. ds)"
         }
       }

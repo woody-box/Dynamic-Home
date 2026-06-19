@@ -152,6 +152,8 @@ def test_compute_lead_grows_with_temp_gap():
     assert compute_lead(cfg, 22, -20) == 3.0
     # no data -> fallback trend_lead_h
     assert compute_lead(cfg, None, 5) == cfg.trend_lead_h
+    # wind adds lead (0.02 h/km/h)
+    assert compute_lead(cfg, 21, 20, wind=50) == 1.05 + 0.02 * 50
 
 
 def test_trend_bias_uses_dynamic_lead():

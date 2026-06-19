@@ -103,4 +103,5 @@ al bus y muestra la consigna). El modo de la zona se restaura tras reiniciar HA
 - ✅ **Triángulo completo** verificado en HA: DC(cool) → bus → DS clampa.
 - ✅ Biases: exterior, vmc, tendencia, freno, forecast (weather), fachadas.
 - ✅ Dew-risk real (Magnus) y lead dinámico (anticipación por inercia).
-- ⏳ Pendiente: multi-zona avanzada y sub-leads solar/viento finos.
+- ✅ Lead dinámico con término de viento (más pérdidas → más anticipación).
+- ⏳ Pendiente (marginal): sub-lead solar fino y multi-zona avanzada.

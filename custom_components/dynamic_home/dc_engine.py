@@ -69,6 +69,7 @@ class DcConfig:
     # Dynamic lead: more anticipation with more thermal inertia (bigger ΔT).
     lead_base_h: float = 1.0
     lead_per_degree_h: float = 0.05
+    lead_wind_h_per_kmh: float = 0.02   # wind increases losses -> more lead
     lead_min_h: float = 0.5
     lead_max_h: float = 3.0
     trend_deadband_cph: float = 0.1          # °C/h below which trend is ignored
@@ -108,6 +109,8 @@ class DcInputs:
     # Forecast extreme temperature in the look-ahead window (max for heat, min
     # for cool); None disables the forecast bias.
     forecast_temp: Optional[float] = None
+    # Outdoor wind (km/h) for the lead model; None ignores the wind term.
+    wind: Optional[float] = None
 
     # Bus intent targeted at DC (consumed -> self bias).
     sdhb_intent: str = "none"
@@ -223,12 +226,16 @@ def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],
     return 0.0
 
 
-def compute_lead(cfg: DcConfig, t_int: Optional[float],
-                 t_ext: Optional[float]) -> float:
-    """Anticipation horizon (hours): grows with the indoor/outdoor gap (inertia)."""
+def compute_lead(cfg: DcConfig, t_int: Optional[float], t_ext: Optional[float],
+                 wind: Optional[float] = None) -> float:
+    """Anticipation horizon (hours): grows with the indoor/outdoor gap (inertia)
+    and with wind (higher heat losses)."""
     if t_int is None or t_ext is None:
-        return cfg.trend_lead_h
-    lead = cfg.lead_base_h + cfg.lead_per_degree_h * abs(t_int - t_ext)
+        lead = cfg.trend_lead_h
+    else:
+        lead = cfg.lead_base_h + cfg.lead_per_degree_h * abs(t_int - t_ext)
+    if wind is not None:
+        lead += cfg.lead_wind_h_per_kmh * max(0.0, wind)
     return max(cfg.lead_min_h, min(cfg.lead_max_h, lead))
 
 
@@ -366,7 +373,7 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
 
     night = is_night(ins.sun_elevation)
     base = base_active(cfg, ins.hvac_mode, night, ins.vacation)
-    lead = compute_lead(cfg, ins.t_int, ins.t_ext)
+    lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
     mods = (
         bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
         + bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)

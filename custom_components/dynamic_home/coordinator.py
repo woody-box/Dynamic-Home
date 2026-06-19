@@ -494,6 +494,7 @@ class DcCoordinator(DataUpdateCoordinator):
             trend_cph=self._update_trend(cfg, t_int, now_ts),
             dew_risk=dew_risk(cfg, self.hvac_mode, t_int, rh),
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
+            wind=self._num(const.CONF_DC_WIND),
             extra_bias=facade_b,
         )
         decision = decide_climate(cfg, ins)

@@ -57,6 +57,20 @@ input_number:
     max: 100
     step: 1
     initial: 100
+  dh_test_humedad:
+    name: "DH Test · Humedad interior"
+    min: 0
+    max: 100
+    step: 1
+    initial: 50
+    unit_of_measurement: "%"
+  dh_test_viento:
+    name: "DH Test · Viento"
+    min: 0
+    max: 120
+    step: 1
+    initial: 10
+    unit_of_measurement: "km/h"
 
 # --- Sensores con device_class (lo que el config flow espera) ---
 template:
@@ -81,6 +95,15 @@ template:
         unit_of_measurement: "°C"
         device_class: temperature
         state: "{{ states('input_number.dh_test_text') | float(0) }}"
+      - name: "DH Test Humedad"
+        unique_id: dh_test_humedad_sensor
+        unit_of_measurement: "%"
+        device_class: humidity
+        state: "{{ states('input_number.dh_test_humedad') | float(0) }}"
+      - name: "DH Test Viento"
+        unique_id: dh_test_viento_sensor
+        unit_of_measurement: "km/h"
+        state: "{{ states('input_number.dh_test_viento') | float(0) }}"
   # --- Relés falsos como switches (espejo de los input_boolean) ---
   - switch:
       - name: "DH Test Relé PWR"
@@ -167,3 +190,24 @@ climate:
     ac_mode: false
     cold_tolerance: 0.3
     hot_tolerance: 0.3
+
+# ============================================================================
+# Mapeo en el alta de la integración (config flow)
+# ----------------------------------------------------------------------------
+# VMC:
+#   power/V2/V3   -> switch.dh_test_rele_pwr / _v2 / _v3
+#   CO2 / PM2.5   -> sensor.dh_test_co2 / sensor.dh_test_pm25
+# Persiana Sur:  cover.dh_test_persiana_sur  · azimut 180 · span 180
+# Persiana Norte: cover.dh_test_persiana_norte · azimut 0 · span 180
+# Clima:
+#   temp interior   -> sensor.dh_test_temp_interior
+#   temp exterior   -> sensor.dh_test_temp_exterior
+#   termostato      -> climate.dh_test_termostato   (heat-only)
+#   VMC (bias)      -> fan.<tu_vmc>                  (opcional)
+#   humedad interior-> sensor.dh_test_humedad        (opcional, rocío)
+#   weather         -> tu weather real, p.ej. weather.forecast_home (opcional)
+#   viento          -> sensor.dh_test_viento         (opcional, lead)
+#
+# Nota weather: no se puede falsear un weather con get_forecasts en YAML;
+# apunta dc_weather a tu integración de meteo real (met.no, AEMET, etc.).
+# ============================================================================

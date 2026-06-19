@@ -49,6 +49,7 @@ CONF_DC_CLIMATE = "dc_climate"    # optional: real thermostat DC drives
 CONF_DC_VMC = "dc_vmc"            # optional: VMC fan/sensor for the VMC bias
 CONF_DC_HUMIDITY = "dc_humidity"  # optional: indoor RH for dew-point protection
 CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
+CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"
