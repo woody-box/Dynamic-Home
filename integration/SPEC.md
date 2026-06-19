@@ -160,13 +160,22 @@ se hace un pulso de `sw_v2` (~800 ms) para "despertar" el motor. Flag
 
 ---
 
-## 7. Fuera del PoC (extensiones posteriores)
+## 7. Estado de las extensiones
 
-- Adaptive thresholds (percentiles 7d que ajustan umbrales V2/V3).
-- Programación semanal por día (hoy `input_datetime` por día) ⇒ scheduler nativo.
-- Boost por ducha vía humedad/ΔRH + override timers.
+**Implementado en `engine.py` (con tests):**
+- ✅ Programación semanal por día (`in_schedule`, con wrap nocturno) → gate `permitida`.
+- ✅ `permitida = auto AND (NOT lockout) AND (en_horario OR permiso_extra)`.
+- ✅ Failsafe: sensores vitales KO (stale/invalid) → fuerza V1; trip-counter en
+  ventana → `lockout` durante M min; `startup_grace` suprime falsos KO al arrancar.
+- ✅ Boost por ducha vía ΔRH (`update_shower`, con histéresis on/off + hold).
+- ✅ Umbrales adaptativos: el engine los usa cuando `adaptive_enabled` y se aportan.
+
+**Pendiente (siguiente iteración):**
+- Cálculo de los percentiles 7d que alimentan los umbrales adaptativos (vía
+  estadísticas del recorder); el engine ya sabe consumirlos.
 - Telemetría: utility_meter de horas por velocidad, consumo, aviso de filtros.
 - Self-test, backup/restore (innecesario: el config entry persiste solo).
+- Multi-VMC (`dv_2`, `dv_3`).
 
 ---
 

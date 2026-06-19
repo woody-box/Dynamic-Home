@@ -17,9 +17,11 @@ CONF_PM25 = "pm25"
 CONF_T_IN = "t_in"
 CONF_T_EXT = "t_ext"
 CONF_AQI = "outdoor_aqi_entity"
+CONF_HUM_BATH = "hum_bath"
+CONF_HUM_EXT = "hum_ext"
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
-OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI)
+OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT)
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

@@ -44,24 +44,28 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **19/19 verde** (16 engine + 3 integración). Los tests de
+Estado actual: **32/32 verde** (29 engine + 3 integración). Los tests de
 integración verifican que la integración **se carga en HA**, crea `fan.vmc` +
 los `number`, y que al subir el CO₂ del sensor la velocidad pasa a V3 y se
 conmuta el relé correcto.
 
-## Qué cubre el PoC
+## Qué cubre
 
 - Pipeline de decisión IAQ completo: EMA, histéresis V1/V2/V3, free-cooling,
   pre-riesgo de rocío, dry mode, intents SDHB (quiet/boost/freecool), cap por
-  AQI hostil y anti-flapping. Ver `SPEC.md`.
+  AQI hostil y anti-flapping.
+- **Gate `permitida`**: programación semanal (con wrap nocturno) + permiso extra.
+- **Failsafe**: sensores vitales KO → V1, trip-counter → lockout, startup grace.
+- **Boost por ducha** vía ΔRH (histéresis + hold).
+- **Umbrales adaptativos** (el engine los consume cuando se aportan).
 - Config flow + options flow.
 - Entidad `fan` con preset modes y driver de 3 relés.
 
-## Fuera del PoC (siguiente iteración)
+## Siguiente iteración
 
-Adaptive thresholds, programación semanal, failsafe/trip-counter, boost por
-ducha (ΔRH), telemetría (horas/consumo/filtros), y portar DC y DS sobre el
-mismo `SdhbHub`. Ver `SPEC.md §7`.
+Cálculo de percentiles 7d para los umbrales adaptativos (estadísticas del
+recorder), telemetría (horas/consumo/filtros), multi-VMC, y portar DC y DS
+sobre el mismo `SdhbHub`. Ver `SPEC.md §7`.
 
 > Estado: PoC validado. El `engine.py` está cubierto por tests unitarios y los
 > wrappers de HA se han ejecutado y verificado dentro de un Home Assistant de

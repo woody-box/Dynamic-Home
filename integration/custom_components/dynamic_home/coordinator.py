@@ -18,6 +18,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from homeassistant.util import dt as dt_util
 
 from . import const
 from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
@@ -65,7 +66,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.hub = hub
         self.state_data = DvState()
         self.current_speed = 1
+        self.auto_mode = True
         self._iaq_dirty = False
+        self._setup_ts = dt_util.utcnow().timestamp()
 
     # --- config helpers ---
     def _hw(self, key: str) -> str | None:
@@ -81,7 +84,19 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         cfg.freecool_enabled = bool(self._hw(const.CONF_T_IN) and
                                     self._hw(const.CONF_T_EXT))
         cfg.hostile_enabled = bool(self._hw(const.CONF_AQI))
+        cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
+                                  self._hw(const.CONF_HUM_EXT))
         return cfg
+
+    def _age_s(self, key: str) -> float:
+        """Seconds since the source entity last changed (large if missing)."""
+        ent = self._hw(key)
+        if not ent:
+            return 1e9
+        st = self.hass.states.get(ent)
+        if st is None:
+            return 1e9
+        return (dt_util.utcnow() - st.last_updated).total_seconds()
 
     def _num(self, key: str) -> float | None:
         ent = self._hw(key)
@@ -112,10 +127,21 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.hass.async_create_task(self.async_request_refresh())
 
     # --- the actual update ---
+    def _rh_delta(self) -> float | None:
+        bath = self._num(const.CONF_HUM_BATH)
+        ext = self._num(const.CONF_HUM_EXT)
+        if bath is None or ext is None:
+            return None
+        return bath - ext
+
     async def _async_update_data(self) -> DvDecision:
         cfg = self._cfg()
         trigger_is_iaq = self._iaq_dirty
         self._iaq_dirty = False
+
+        now = dt_util.now()  # local time for the weekly schedule
+        now_ts = now.timestamp()
+        grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
 
         ins = DvInputs(
             co2_raw=self._num(const.CONF_CO2),
@@ -124,9 +150,16 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             t_ext=self._num(const.CONF_T_EXT),
             aqi=self._num(const.CONF_AQI),
             current_speed=self.current_speed,
-            permitida=True,  # PoC: schedule/failsafe gate goes here later
+            permitida=None,  # computed by the engine (schedule + failsafe gate)
+            auto_mode=self.auto_mode,
             sdhb_intent=self.hub.winner("dv"),
             trigger_is_iaq=trigger_is_iaq,
+            now_ts=now_ts,
+            weekday=now.weekday(),
+            minute_of_day=now.hour * 60 + now.minute,
+            co2_age_s=self._age_s(const.CONF_CO2),
+            pm_age_s=self._age_s(const.CONF_PM25),
+            startup_grace_active=grace_active,
+            rh_delta=self._rh_delta(),
         )
-        decision = decide(cfg, self.state_data, ins)
-        return decision
+        return decide(cfg, self.state_data, ins)

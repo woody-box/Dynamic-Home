@@ -13,7 +13,9 @@
           "pm25": "Sensor PM2.5",
           "t_in": "Temperatura interior (opcional)",
           "t_ext": "Temperatura exterior (opcional)",
-          "outdoor_aqi_entity": "AQI exterior (opcional)"
+          "outdoor_aqi_entity": "AQI exterior (opcional)",
+          "hum_bath": "Humedad baño (opcional, boost ducha)",
+          "hum_ext": "Humedad exterior (opcional, boost ducha)"
         }
       }
     },
