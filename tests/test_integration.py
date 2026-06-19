@@ -139,3 +139,31 @@ async def test_adaptive_thresholds_produced_from_history(hass: HomeAssistant) ->
     assert co2_v2 is not None and co2_v3 is not None
     assert co2_v3 >= co2_v2          # p95 >= p90
     assert pm_v2 is not None and pm_v3 >= pm_v2
+
+
+async def test_dry_mode_anticondensation(hass: HomeAssistant) -> None:
+    """Dry mode ventilates when indoor air is near its dew point."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    hass.states.async_set("sensor.t_in", "22")
+    hass.states.async_set("sensor.t_ext", "10")
+    hass.states.async_set("sensor.rh_in", "95")   # humid indoor -> dew risk
+    hass.states.async_set("sensor.rh_ext", "50")  # drier outside
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW,
+        const.CONF_T_IN: "sensor.t_in", const.CONF_T_EXT: "sensor.t_ext",
+        const.CONF_HUM_IN: "sensor.rh_in", const.CONF_HUM_EXT: "sensor.rh_ext",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    co.dry_mode_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # Stage-3 dry mode active -> ventilates (drier outside air).
+    assert co.data.reason == "dry_mode"
+    assert co.data.speed >= 2

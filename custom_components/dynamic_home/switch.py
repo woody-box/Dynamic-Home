@@ -50,6 +50,10 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
         "bootstrap", "Startup kick", "mdi:fan-auto",
         lambda c: c.bootstrap_enabled,
         lambda c, v: setattr(c, "bootstrap_enabled", v)),
+    _ToggleDesc(
+        "dry_mode", "Dry mode", "mdi:water-percent",
+        lambda c: c.dry_mode_enabled,
+        lambda c, v: setattr(c, "dry_mode_enabled", v)),
 )
 
 

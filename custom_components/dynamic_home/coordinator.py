@@ -28,7 +28,7 @@ from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
 from .dc_engine import (
     DcConfig, DcInputs, DcDecision, decide as decide_climate, sunlit_facades,
-    dew_risk, facade_bias,
+    dew_risk, facade_bias, dew_point,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,6 +59,8 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self._accum_ts: float | None = None
         # Startup bootstrap kick (opt-in, hardware quirk).
         self.bootstrap_enabled = False
+        # Dry-mode (anti-condensation ventilation) toggle.
+        self.dry_mode_enabled = False
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)
@@ -165,6 +167,17 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             return None
         return bath - ext
 
+    def _dew(self, cfg: DvConfig) -> tuple[bool, float | None]:
+        """(dew_risk, dp_diff) for dry-mode from indoor/outdoor temp+RH."""
+        t_in = self._num(const.CONF_T_IN)
+        t_ext = self._num(const.CONF_T_EXT)
+        dp_in = dew_point(t_in, self._num(const.CONF_HUM_IN))
+        dp_out = dew_point(t_ext, self._num(const.CONF_HUM_EXT))
+        risk = dp_in is not None and t_in is not None and \
+            (t_in - dp_in) < cfg.dew_spread_min
+        dp_diff = (dp_in - dp_out) if (dp_in is not None and dp_out is not None) else None
+        return risk, dp_diff
+
     async def _async_update_data(self) -> DvDecision:
         cfg = self._cfg()
         trigger_is_iaq = self._iaq_dirty
@@ -179,6 +192,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         pm_raw = self._num(const.CONF_PM25)
         a_co2_v2, a_co2_v3, a_pm_v2, a_pm_v3 = self._update_adaptive(
             cfg, co2_raw, pm_raw)
+        dew_r, dp_diff = self._dew(cfg)
 
         ins = DvInputs(
             co2_raw=co2_raw,
@@ -202,6 +216,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             pm_age_s=self._age_s(const.CONF_PM25),
             startup_grace_active=grace_active,
             rh_delta=self._rh_delta(),
+            dry_mode=self.dry_mode_enabled,
+            dew_risk=dew_r,
+            dp_diff=dp_diff,
         )
         return decide(cfg, self.state_data, ins)
 

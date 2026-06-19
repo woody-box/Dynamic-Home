@@ -44,6 +44,7 @@ STEP_USER_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_AQI): _entity("sensor"),
         vol.Optional(const.CONF_HUM_BATH): _entity("sensor", "humidity"),
         vol.Optional(const.CONF_HUM_EXT): _entity("sensor", "humidity"),
+        vol.Optional(const.CONF_HUM_IN): _entity("sensor", "humidity"),
     }
 )
 
