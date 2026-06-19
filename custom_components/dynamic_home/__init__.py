@@ -48,7 +48,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[const.DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, _platforms(entry))
-    entry.async_on_unload(entry.add_update_listener(_async_reload))
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     return True
 
 
@@ -57,11 +57,23 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(
         entry, _platforms(entry))
     if unloaded:
+        coordinator = hass.data[const.DOMAIN].get(entry.entry_id)
+        # A climate zone must release its bus intents so shutters don't stay
+        # clamped to a ghost solar-shield after the zone is removed/reloaded.
+        if isinstance(coordinator, DcCoordinator):
+            coordinator.clear_published()
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
     return unloaded
 
 
-async def _async_reload(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload entry when options change."""
-    await hass.config_entries.async_reload(entry.entry_id)
+async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Apply option changes by refreshing — NOT reloading.
+
+    The coordinators read options live each cycle, so a refresh picks up new
+    thresholds immediately without throwing away runtime state (EMA, failsafe
+    counters, trend history).
+    """
+    coordinator = hass.data[const.DOMAIN].get(entry.entry_id)
+    if coordinator is not None:
+        await coordinator.async_request_refresh()

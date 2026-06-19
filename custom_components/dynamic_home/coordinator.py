@@ -12,7 +12,9 @@ holds the winning intent for the ``dv`` target.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+import math
+from collections import deque
+from datetime import time as dtime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -26,6 +28,7 @@ from .engine import DvConfig, DvState, DvInputs, DvDecision, decide
 from .ds_engine import DsConfig, DsState, DsInputs, DsDecision, decide_cover
 from .dc_engine import (
     DcConfig, DcInputs, DcDecision, decide as decide_climate, sunlit_facades,
+    dew_risk, facade_bias, dew_point,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,8 +50,40 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.state_data = DvState()
         self.current_speed = 1
         self.auto_mode = True
+        self.preset = "auto"            # mirrored from the fan, for the mode sensor
         self._iaq_dirty = False
         self._setup_ts = dt_util.utcnow().timestamp()
+        # Telemetry (hours), accumulated between updates; persisted by sensors.
+        self.speed_hours = {1: 0.0, 2: 0.0, 3: 0.0}
+        self.machine_hours = 0.0
+        self.filter_hours = 0.0
+        self._accum_ts: float | None = None
+        # Startup bootstrap kick (opt-in, hardware quirk).
+        self.bootstrap_enabled = False
+        # Dry-mode (anti-condensation ventilation) toggle.
+        self.dry_mode_enabled = False
+        # Weekly schedule (same daily window every day).
+        self.schedule_enabled = False
+        self.schedule_on = dtime(7, 0)
+        self.schedule_off = dtime(23, 0)
+        # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
+        self.adaptive_enabled = False
+        self._co2_hist: deque[float] = deque(maxlen=10080)
+        self._pm_hist: deque[float] = deque(maxlen=10080)
+
+    def _accumulate(self, now_ts: float) -> None:
+        """Add elapsed time to the running-hours counters."""
+        if self._accum_ts is not None:
+            dt_h = (now_ts - self._accum_ts) / 3600.0
+            spd = self.current_speed
+            if spd in (1, 2, 3) and dt_h > 0:
+                self.speed_hours[spd] += dt_h
+                self.machine_hours += dt_h
+                self.filter_hours += dt_h
+        self._accum_ts = now_ts
+
+    def reset_filter_hours(self) -> None:
+        self.filter_hours = 0.0
 
     # --- config helpers ---
     def _hw(self, key: str) -> str | None:
@@ -66,7 +101,35 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         cfg.hostile_enabled = bool(self._hw(const.CONF_AQI))
         cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
                                   self._hw(const.CONF_HUM_EXT))
+        cfg.adaptive_enabled = self.adaptive_enabled
+        if self.schedule_enabled and self.schedule_on and self.schedule_off:
+            on_m = self.schedule_on.hour * 60 + self.schedule_on.minute
+            off_m = self.schedule_off.hour * 60 + self.schedule_off.minute
+            cfg.schedule_enabled = True
+            cfg.schedule = {d: (on_m, off_m) for d in range(7)}
         return cfg
+
+    def _update_adaptive(self, cfg: DvConfig, co2: float | None,
+                         pm: float | None) -> tuple:
+        """Append readings and derive adaptive thresholds from percentiles.
+
+        Returns (co2_v2, co2_v3, pm_v2, pm_v3), each None until enough samples.
+        """
+        if co2 is not None and 0 <= co2 <= 5000:
+            self._co2_hist.append(co2)
+        if pm is not None and 0 <= pm <= 500:
+            self._pm_hist.append(pm)
+        if not self.adaptive_enabled:
+            return (None, None, None, None)
+
+        def pct(hist: deque, p: float) -> float | None:
+            if len(hist) < cfg.adaptive_min_samples:
+                return None
+            s = sorted(hist)
+            return s[min(len(s) - 1, int(p / 100.0 * len(s)))]
+
+        return (pct(self._co2_hist, 90), pct(self._co2_hist, 95),
+                pct(self._pm_hist, 90), pct(self._pm_hist, 95))
 
     def _age_s(self, key: str) -> float:
         """Seconds since the source entity last changed (large if missing)."""
@@ -114,6 +177,17 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             return None
         return bath - ext
 
+    def _dew(self, cfg: DvConfig) -> tuple[bool, float | None]:
+        """(dew_risk, dp_diff) for dry-mode from indoor/outdoor temp+RH."""
+        t_in = self._num(const.CONF_T_IN)
+        t_ext = self._num(const.CONF_T_EXT)
+        dp_in = dew_point(t_in, self._num(const.CONF_HUM_IN))
+        dp_out = dew_point(t_ext, self._num(const.CONF_HUM_EXT))
+        risk = dp_in is not None and t_in is not None and \
+            (t_in - dp_in) < cfg.dew_spread_min
+        dp_diff = (dp_in - dp_out) if (dp_in is not None and dp_out is not None) else None
+        return risk, dp_diff
+
     async def _async_update_data(self) -> DvDecision:
         cfg = self._cfg()
         trigger_is_iaq = self._iaq_dirty
@@ -121,18 +195,29 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
         now = dt_util.now()  # local time for the weekly schedule
         now_ts = now.timestamp()
+        self._accumulate(now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
 
+        co2_raw = self._num(const.CONF_CO2)
+        pm_raw = self._num(const.CONF_PM25)
+        a_co2_v2, a_co2_v3, a_pm_v2, a_pm_v3 = self._update_adaptive(
+            cfg, co2_raw, pm_raw)
+        dew_r, dp_diff = self._dew(cfg)
+
         ins = DvInputs(
-            co2_raw=self._num(const.CONF_CO2),
-            pm_raw=self._num(const.CONF_PM25),
+            co2_raw=co2_raw,
+            pm_raw=pm_raw,
+            adaptive_co2_v2=a_co2_v2,
+            adaptive_co2_v3=a_co2_v3,
+            adaptive_pm_v2=a_pm_v2,
+            adaptive_pm_v3=a_pm_v3,
             t_in=self._num(const.CONF_T_IN),
             t_ext=self._num(const.CONF_T_EXT),
             aqi=self._num(const.CONF_AQI),
             current_speed=self.current_speed,
             permitida=None,  # computed by the engine (schedule + failsafe gate)
             auto_mode=self.auto_mode,
-            sdhb_intent=self.hub.winner("dv"),
+            sdhb_intent=self.hub.winner("dv", now_ts),
             trigger_is_iaq=trigger_is_iaq,
             now_ts=now_ts,
             weekday=now.weekday(),
@@ -141,6 +226,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             pm_age_s=self._age_s(const.CONF_PM25),
             startup_grace_active=grace_active,
             rh_delta=self._rh_delta(),
+            dry_mode=self.dry_mode_enabled,
+            dew_risk=dew_r,
+            dp_diff=dp_diff,
         )
         return decide(cfg, self.state_data, ins)
 
@@ -164,6 +252,11 @@ class DsCoordinator(DataUpdateCoordinator):
         self.entry = entry
         self.hub = hub
         self.ds_state = DsState()
+        # UI-controlled state (set by the shutter's switch/number entities).
+        self.privacy_enabled = False
+        self.privacy_pct = 40
+        self.lock_enabled = False
+        self.lock_pct = 50
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
@@ -235,7 +328,9 @@ class DsCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> DsDecision:
         cfg = self._cfg()
-        winner = self.hub.winner(self._listen_targets())
+        cfg.privacy_pos_pct = int(self.privacy_pct)
+        now_ts = dt_util.utcnow().timestamp()
+        winner = self.hub.winner(self._listen_targets(), now_ts)
         sun_az, sun_el, sun_above = self._sun()
 
         ins = DsInputs(
@@ -247,6 +342,9 @@ class DsCoordinator(DataUpdateCoordinator):
             raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
             current_pos=self._current_pos(),
+            privacy_active=self.privacy_enabled,
+            override_mode="lock" if self.lock_enabled else "none",
+            override_pos=int(self.lock_pct),
             sdhb_allow_override=winner not in ("none", "unknown", ""),
             sdhb_request_solar_shield=winner == "request_solar_shield",
             sdhb_request_quiet=winner == "request_quiet",
@@ -278,8 +376,21 @@ class DcCoordinator(DataUpdateCoordinator):
         self.hvac_mode = "off"          # desired mode, set from the climate entity
         self.override_active = False
         self.override_temp: float | None = None
-        self._source = f"dc_{entry.entry_id[:8]}"
+        self.vacation_enabled = False
+        self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
+        self.dew_point_c: float | None = None   # observability
+        self.dew_risk_active = False
+        # Trend (indoor temp derivative) state.
+        self._prev_tint: float | None = None
+        self._prev_ts: float | None = None
+        self._cph: float = 0.0
+
+    def clear_published(self) -> None:
+        """Remove all bus slots owned by this zone (called on unload/reload)."""
+        for src in self._active_sources:
+            self.hub.clear(src)
+        self._active_sources = set()
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
@@ -296,6 +407,14 @@ class DcCoordinator(DataUpdateCoordinator):
         except (TypeError, ValueError):
             return None
 
+    def _is_on(self, key: str) -> bool:
+        ent = self._hw(key)
+        return bool(ent) and self.hass.states.is_state(ent, "on")
+
+    def indoor_temperature(self) -> float | None:
+        """Current indoor temperature of the zone (for the climate entity)."""
+        return self._num(const.CONF_DC_T_INT)
+
     def _sun(self) -> tuple[float | None, float | None]:
         st = self.hass.states.get("sun.sun")
         if st is None:
@@ -309,43 +428,132 @@ class DcCoordinator(DataUpdateCoordinator):
         spans = {v["key"]: v.get("span", 180.0) for v in reg.values()}
         return facades, spans
 
-    def _publish(self, desired: dict) -> None:
+    def _publish(self, desired: dict, now_ts: float | None = None) -> None:
         """Reconcile the bus slots this DC owns with ``desired`` (key->(intent,target))."""
         for stale in self._active_sources - set(desired):
             self.hub.clear(stale)
         for src, (intent, target) in desired.items():
+            # TTL so a stale zone's intent expires on its own (matches the YAML).
             self.hub.publish(source=src, intent=intent, target=target,
-                             priority=70)
+                             priority=70, ttl_s=1800, now_ts=now_ts)
         self._active_sources = set(desired)
 
+    def _vmc_speed(self) -> int | None:
+        """VMC speed 1/2/3 from the configured entity (fan percentage or sensor)."""
+        ent = self._hw(const.CONF_DC_VMC)
+        if not ent:
+            return None
+        st = self.hass.states.get(ent)
+        if st is None or st.state in ("unknown", "unavailable", "none", ""):
+            return None
+        if ent.startswith("fan."):
+            if st.state != "on":
+                return None
+            pct = st.attributes.get("percentage")
+            if not pct:
+                return None
+            return min(3, max(1, math.ceil(pct / (100 / 3))))
+        try:
+            v = int(float(st.state))
+            return v if v in (1, 2, 3) else None
+        except (TypeError, ValueError):
+            return None
+
+    def _update_trend(self, cfg: DcConfig, t_int: float | None,
+                      now_ts: float) -> float:
+        """EMA-smoothed indoor-temp derivative (°C/h), with a deadband."""
+        if t_int is None:
+            self._prev_tint, self._prev_ts = None, None
+            return self._cph
+        if self._prev_tint is not None and self._prev_ts is not None:
+            dt_h = (now_ts - self._prev_ts) / 3600.0
+            if dt_h > 0:
+                raw = (t_int - self._prev_tint) / dt_h
+                a = cfg.trend_ema_alpha
+                self._cph = a * raw + (1 - a) * self._cph
+        self._prev_tint, self._prev_ts = t_int, now_ts
+        return 0.0 if abs(self._cph) < cfg.trend_deadband_cph else self._cph
+
+    async def _forecast_temp(self, cfg: DcConfig, hvac: str) -> float | None:
+        """Extreme forecast temp in the look-ahead window (max heat / min cool)."""
+        ent = self._hw(const.CONF_DC_WEATHER)
+        if not ent or hvac not in ("heat", "cool"):
+            return None
+        try:
+            resp = await self.hass.services.async_call(
+                "weather", "get_forecasts",
+                {"entity_id": ent, "type": "hourly"},
+                blocking=True, return_response=True)
+        except Exception:  # noqa: BLE001 — weather entity may not support it
+            return None
+        forecasts = (resp or {}).get(ent, {}).get("forecast", [])
+        end = dt_util.utcnow() + timedelta(hours=cfg.forecast_window_h)
+        temps = []
+        for f in forecasts:
+            ts = dt_util.parse_datetime(f.get("datetime", "")) if f.get("datetime") else None
+            t = f.get("temperature")
+            if ts is not None and t is not None and ts <= end:
+                temps.append(float(t))
+        if not temps:
+            return None
+        return max(temps) if hvac == "heat" else min(temps)
+
+    def _facade_openness(self, lit: set) -> float:
+        """Mean 0..1 shutter opening of the sunlit facades (0 if none)."""
+        reg = self.hass.data.get(const.DOMAIN, {}).get("_facades", {})
+        vals = []
+        for eid, fac in reg.items():
+            if fac["key"] in lit:
+                ds = self.hass.data[const.DOMAIN].get(eid)
+                if ds is not None and ds.data is not None:
+                    vals.append(ds.data.pos / 100.0)
+        return sum(vals) / len(vals) if vals else 0.0
+
     async def _async_update_data(self) -> DcDecision:
+        cfg = DcConfig()
         sun_az, sun_el = self._sun()
+        t_int = self._num(const.CONF_DC_T_INT)
+        rh = self._num(const.CONF_DC_HUMIDITY)
+        now_ts = dt_util.utcnow().timestamp()
+
+        self.dew_point_c = dew_point(t_int, rh)
+        self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
+
+        facades, spans = self._registered_facades()
+        lit = sunlit_facades(sun_az, sun_el, facades, spans)
+        facade_b = facade_bias(cfg, self.hvac_mode, self._facade_openness(lit))
+
         ins = DcInputs(
             hvac_mode=self.hvac_mode,
-            t_int=self._num(const.CONF_DC_T_INT),
+            t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,
-            sdhb_intent=self.hub.winner("dc"),
+            sdhb_intent=self.hub.winner("dc", now_ts),
             override_active=self.override_active,
             override_temp=self.override_temp,
+            vmc_speed=self._vmc_speed(),
+            trend_cph=self._update_trend(cfg, t_int, now_ts),
+            forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
+            wind=self._num(const.CONF_DC_WIND),
+            vacation=self.vacation_enabled,
+            window_lockout=self._is_on(const.CONF_DC_WINDOW),
+            dew_risk=self.dew_risk_active,
+            extra_bias=facade_b,
         )
-        decision = decide_climate(DcConfig(), ins)
+        decision = decide_climate(cfg, ins)
 
         intent = decision.published_intent
         if intent == "none":
             desired = {}
+        elif lit:
+            # Dynamic: target only the sunlit facades.
+            desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}
+        elif facades and sun_el is not None:
+            # Facades known but none sunlit -> publish nothing.
+            desired = {}
         else:
-            facades, spans = self._registered_facades()
-            lit = sunlit_facades(sun_az, sun_el, facades, spans)
-            if lit:
-                # Dynamic: target only the sunlit facades.
-                desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}
-            elif facades and sun_el is not None:
-                # Facades known but none sunlit -> publish nothing.
-                desired = {}
-            else:
-                # Fallback: broadcast to the configured target.
-                target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
-                desired = {self._source: (intent, target)}
-        self._publish(desired)
+            # Fallback: broadcast to the configured target.
+            target = self.entry.data.get(const.CONF_DC_TARGET) or "ds"
+            desired = {self._source: (intent, target)}
+        self._publish(desired, now_ts)
         return decision

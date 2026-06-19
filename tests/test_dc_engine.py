@@ -9,7 +9,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
 from dc_engine import (  # noqa: E402
     DcConfig, DcInputs, decide, base_active, bias_exterior, sdhb_self_bias,
     assemble_target, quantize_step, publish_intent, is_night, sunlit_facades,
-    INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
+    bias_vmc, trend_bias, brake_bias, forecast_bias, dew_point, dew_risk,
+    facade_bias, compute_lead, INTENT_SOLAR_GAIN, INTENT_SOLAR_SHIELD,
 )
 
 
@@ -68,6 +69,113 @@ def test_assemble_target_clamps_mods_and_range():
     assert assemble_target(cfg, "heat", 22.5, 5.0, 0.0, False) == 23.5
     # range clamp: huge base
     assert assemble_target(cfg, "heat", 40, 0, 0, False) == 26.0
+
+
+def test_bias_vmc_heat_only_when_outside_colder():
+    cfg = _cfg(vmc_bias_heat=(0.1, 0.2, 0.3))
+    # outside colder (delta<0) at V2 -> +0.2
+    assert bias_vmc(cfg, "heat", 2, 21, 5) == 0.2
+    # outside warmer (delta>0) -> 0 in heat
+    assert bias_vmc(cfg, "heat", 2, 21, 25) == 0.0
+    # speed off -> 0
+    assert bias_vmc(cfg, "heat", None, 21, 5) == 0.0
+
+
+def test_bias_vmc_cool_sign():
+    cfg = _cfg(vmc_bias_cool=(0.1, 0.2, 0.3))
+    # outside hotter (delta>0) -> more cooling (negative)
+    assert bias_vmc(cfg, "cool", 3, 26, 33) == -0.3
+    # outside colder (delta<0) -> ease cooling (positive)
+    assert bias_vmc(cfg, "cool", 3, 26, 20) == 0.3
+
+
+def test_trend_bias_anticipates_and_clamps():
+    cfg = _cfg(trend_lead_h=1.0, trend_max_shift=0.25)
+    # rising 0.2 °C/h -> shift -0.2
+    assert trend_bias(cfg, 0.2) == -0.2
+    # rising fast -> clamped to -0.25
+    assert trend_bias(cfg, 5.0) == -0.25
+
+
+def test_brake_bias_only_when_trend_helps_mode():
+    cfg = _cfg(brake_thresholds=(0.3, 0.6, 1.0), brake_biases=(0.1, 0.2, 0.3))
+    # heating and warming fast (>=th3) -> brake down 0.3
+    assert brake_bias(cfg, "heat", 1.2) == -0.3
+    # heating but cooling -> no brake
+    assert brake_bias(cfg, "heat", -1.2) == 0.0
+    # cooling and cooling (cph<0) at th2 -> +0.2
+    assert brake_bias(cfg, "cool", -0.7) == 0.2
+
+
+def test_forecast_bias_brake_only():
+    cfg = _cfg(forecast_gain=0.1, forecast_cap=0.5)
+    # heating, forecast warmer than now (dT=+4) -> ease -0.4
+    assert forecast_bias(cfg, "heat", 5, 9) == -0.4
+    # heating, forecast colder -> no ease
+    assert forecast_bias(cfg, "heat", 5, 2) == 0.0
+    # clamp at cap
+    assert forecast_bias(cfg, "heat", 0, 20) == -0.5
+    # no forecast data -> 0
+    assert forecast_bias(cfg, "heat", 5, None) == 0.0
+
+
+def test_dew_point_magnus():
+    # 25°C / 50% RH -> ~13.9°C dew point
+    dp = dew_point(25, 50)
+    assert 13.5 < dp < 14.3
+    assert dew_point(None, 50) is None
+    assert dew_point(25, 0) is None
+
+
+def test_dew_risk_only_in_cool_and_near_dewpoint():
+    cfg = _cfg(dew_spread_min=2.0)
+    # cool, indoor 24 with dew point ~22.5 (90% RH) -> spread 1.5 < 2 -> risk
+    assert dew_risk(cfg, "cool", 24, 90) is True
+    # cool, dry air -> low dew point -> no risk
+    assert dew_risk(cfg, "cool", 24, 40) is False
+    # heat -> never dew risk
+    assert dew_risk(cfg, "heat", 24, 95) is False
+
+
+def test_decide_dew_risk_forces_off_via_engine():
+    # cool with high humidity -> engine off_dew when caller passes dew_risk
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="cool", t_int=24, dew_risk=True))
+    assert d.action == "off" and d.reason == "off_dew"
+
+
+def test_compute_lead_grows_with_temp_gap():
+    cfg = _cfg(lead_base_h=1.0, lead_per_degree_h=0.05, lead_min_h=0.5, lead_max_h=3.0)
+    # small gap -> near base
+    assert compute_lead(cfg, 21, 20) == 1.05
+    # big gap -> clamped to max
+    assert compute_lead(cfg, 22, -20) == 3.0
+    # no data -> fallback trend_lead_h
+    assert compute_lead(cfg, None, 5) == cfg.trend_lead_h
+    # wind adds lead (0.02 h/km/h)
+    assert compute_lead(cfg, 21, 20, wind=50) == 1.05 + 0.02 * 50
+
+
+def test_trend_bias_uses_dynamic_lead():
+    cfg = _cfg(trend_max_shift=1.0)
+    # cph 0.2, lead 2.0 -> shift -0.4
+    assert trend_bias(cfg, 0.2, 2.0) == -0.4
+
+
+def test_facade_bias_eases_demand_with_open_sunlit_facades():
+    cfg = _cfg(facade_gain_heat=0.3, facade_gain_cool=0.3)
+    assert facade_bias(cfg, "heat", 1.0) == -0.3   # fully open & sunlit
+    assert facade_bias(cfg, "heat", 0.5) == -0.15
+    assert facade_bias(cfg, "cool", 1.0) == -0.3
+    assert facade_bias(cfg, "off", 1.0) == 0.0
+
+
+def test_decide_combines_biases():
+    cfg = _cfg(base_heat_day=22.0, vmc_bias_heat=(0, 0.5, 0), step=0.5)
+    # base 22.0 + vmc bias 0.5 (V2, outside colder) -> 22.5
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=21, t_ext=5,
+                             sun_elevation=20, vmc_speed=2))
+    assert d.target == 22.5
 
 
 def test_sdhb_self_bias():

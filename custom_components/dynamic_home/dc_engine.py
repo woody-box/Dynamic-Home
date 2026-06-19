@@ -15,7 +15,8 @@ No Home Assistant imports: unit-testable and reused by the HA climate wrapper.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import math
+from dataclasses import dataclass, field
 from typing import Optional
 
 # Intents DC publishes to the shutters depending on its mode.
@@ -58,6 +59,37 @@ class DcConfig:
     sdhb_bias_solar_gain_heat: float = -0.5
     sdhb_bias_solar_shield_cool: float = 0.5
 
+    # VMC compensation bias (°C, per speed) — abs magnitudes.
+    vmc_bias_heat: tuple = (0.1, 0.2, 0.3)   # v1, v2, v3
+    vmc_bias_cool: tuple = (0.1, 0.2, 0.3)
+
+    # Trend (tendencia) anticipation + brake (freno)
+    trend_lead_h: float = 1.0          # fallback lead when temps unavailable
+    trend_max_shift: float = 0.25
+    # Dynamic lead: more anticipation with more thermal inertia (bigger ΔT).
+    lead_base_h: float = 1.0
+    lead_per_degree_h: float = 0.05
+    lead_wind_h_per_kmh: float = 0.02   # wind increases losses -> more lead
+    lead_min_h: float = 0.5
+    lead_max_h: float = 3.0
+    trend_deadband_cph: float = 0.1          # °C/h below which trend is ignored
+    trend_ema_alpha: float = 0.3
+    brake_thresholds: tuple = (0.3, 0.6, 1.0)  # th1, th2, th3 (°C/h)
+    brake_biases: tuple = (0.1, 0.2, 0.3)      # b1, b2, b3
+
+    # Forecast anticipation
+    forecast_gain: float = 0.1
+    forecast_cap: float = 0.5
+    forecast_window_h: float = 6.0
+
+    # Dew-point protection (radiant cooling): risk when indoor temp is within
+    # this margin of the dew point.
+    dew_spread_min: float = 2.0
+
+    # Facade solar-gain bias: max °C correction at full openness on sunlit facades.
+    facade_gain_heat: float = 0.3
+    facade_gain_cool: float = 0.3
+
 
 @dataclass
 class DcInputs:
@@ -67,9 +99,18 @@ class DcInputs:
     sun_elevation: Optional[float] = None
     vacation: bool = False
 
-    # Sum of the other biases (vmc + facades + forecast + trend + brake),
-    # computed by the caller. Defaults to 0.
+    # Catch-all for biases not yet wired (e.g. per-facade solar gain), in °C.
     extra_bias: float = 0.0
+
+    # VMC speed (1/2/3) for the VMC compensation bias; None disables it.
+    vmc_speed: Optional[int] = None
+    # Indoor temperature rate of change (°C/h), EMA-smoothed by the caller.
+    trend_cph: float = 0.0
+    # Forecast extreme temperature in the look-ahead window (max for heat, min
+    # for cool); None disables the forecast bias.
+    forecast_temp: Optional[float] = None
+    # Outdoor wind (km/h) for the lead model; None ignores the wind term.
+    wind: Optional[float] = None
 
     # Bus intent targeted at DC (consumed -> self bias).
     sdhb_intent: str = "none"
@@ -89,6 +130,7 @@ class DcDecision:
     target: Optional[float]
     reason: str
     published_intent: str  # what DC publishes to the shutters (or "none")
+    details: dict = field(default_factory=dict)  # pipeline breakdown (observability)
 
 
 # --------------------------------------------------------------------------- #
@@ -130,6 +172,124 @@ def bias_exterior(cfg: DcConfig, hvac: str, t_ext: Optional[float]) -> float:
     return 0.0
 
 
+def dew_point(t_c: Optional[float], rh: Optional[float]) -> Optional[float]:
+    """Dew point (°C) via the Magnus formula. None if inputs missing."""
+    if t_c is None or rh is None or rh <= 0:
+        return None
+    a, b = 17.27, 237.7
+    rh = min(100.0, max(1.0, rh))
+    gamma = (a * t_c) / (b + t_c) + math.log(rh / 100.0)
+    return round((b * gamma) / (a - gamma), 2)
+
+
+def dew_risk(cfg: DcConfig, hvac: str, t_int: Optional[float],
+             rh: Optional[float]) -> bool:
+    """Condensation risk for radiant cooling: only in cool, when the indoor
+    temperature is within ``dew_spread_min`` of the dew point."""
+    if hvac != "cool":
+        return False
+    dp = dew_point(t_int, rh)
+    if dp is None or t_int is None:
+        return False
+    return (t_int - dp) < cfg.dew_spread_min
+
+
+def facade_bias(cfg: DcConfig, hvac: str, openness: float) -> float:
+    """Solar-gain bias from sunlit, open facades (°C).
+
+    ``openness`` is the 0..1 aggregate shutter opening of the sunlit facades.
+    Solar gain through open sunlit windows eases the demand: it lowers the
+    setpoint pressure both when heating (sun warms -> heat less) and when cooling
+    (sun heats -> cool more). Bounded by the per-mode gain.
+    """
+    openness = max(0.0, min(1.0, openness))
+    if hvac == "heat":
+        return -cfg.facade_gain_heat * openness
+    if hvac == "cool":
+        return -cfg.facade_gain_cool * openness
+    return 0.0
+
+
+def bias_vmc(cfg: DcConfig, hvac: str, vmc_speed: Optional[int],
+             t_int: Optional[float], t_ext: Optional[float]) -> float:
+    """VMC compensation bias (°C). Port of ``dc_bias_vmc``."""
+    if vmc_speed not in (1, 2, 3) or t_int is None or t_ext is None:
+        return 0.0
+    delta = t_ext - t_int
+    if abs(delta) < 0.2:
+        return 0.0
+    if hvac == "heat":
+        b = abs(cfg.vmc_bias_heat[vmc_speed - 1])
+        return b if delta < 0 else 0.0
+    if hvac == "cool":
+        b = abs(cfg.vmc_bias_cool[vmc_speed - 1])
+        return -b if delta > 0 else b
+    return 0.0
+
+
+def compute_lead(cfg: DcConfig, t_int: Optional[float], t_ext: Optional[float],
+                 wind: Optional[float] = None) -> float:
+    """Anticipation horizon (hours): grows with the indoor/outdoor gap (inertia)
+    and with wind (higher heat losses)."""
+    if t_int is None or t_ext is None:
+        lead = cfg.trend_lead_h
+    else:
+        lead = cfg.lead_base_h + cfg.lead_per_degree_h * abs(t_int - t_ext)
+    if wind is not None:
+        lead += cfg.lead_wind_h_per_kmh * max(0.0, wind)
+    return max(cfg.lead_min_h, min(cfg.lead_max_h, lead))
+
+
+def trend_bias(cfg: DcConfig, cph: float,
+               lead_h: Optional[float] = None) -> float:
+    """Anticipation by indoor-temperature trend (°C). Port of ``tendencia_efectiva``.
+
+    Rising indoor temp (cph>0) shifts the target down (and vice versa), scaled by
+    the lead time and clamped. ``cph`` is expected pre-deadbanded by the caller.
+    """
+    lead = cfg.trend_lead_h if lead_h is None else lead_h
+    shift = -cph * lead
+    return max(-cfg.trend_max_shift, min(cfg.trend_max_shift, shift))
+
+
+def brake_bias(cfg: DcConfig, hvac: str, cph: float) -> float:
+    """Trend brake (°C). Port of ``freno_tendencia``: only brakes when the trend
+    already helps the active mode, by graduated thresholds."""
+    if hvac == "heat" and cph > 0:
+        abs_cph, sign = cph, -1
+    elif hvac == "cool" and cph < 0:
+        abs_cph, sign = -cph, 1
+    else:
+        return 0.0
+    th1, th2, th3 = cfg.brake_thresholds
+    b1, b2, b3 = cfg.brake_biases
+    if abs_cph >= th3:
+        mag = b3
+    elif abs_cph >= th2:
+        mag = b2
+    elif abs_cph >= th1:
+        mag = b1
+    else:
+        mag = 0.0
+    return sign * mag
+
+
+def forecast_bias(cfg: DcConfig, hvac: str, t_ext: Optional[float],
+                  forecast_temp: Optional[float]) -> float:
+    """Forecast anticipation (°C). Port of ``bias_forecast``.
+
+    Eases the setpoint when the forecast says the outside will help the active
+    mode (warming while heating / cooling while cooling). Brake-only, clamped.
+    """
+    if forecast_temp is None or t_ext is None or hvac not in ("heat", "cool"):
+        return 0.0
+    d_t = forecast_temp - t_ext
+    if (hvac == "heat" and d_t <= 0) or (hvac == "cool" and d_t >= 0):
+        return 0.0
+    raw = -(d_t * cfg.forecast_gain)
+    return max(-cfg.forecast_cap, min(cfg.forecast_cap, raw))
+
+
 def sdhb_self_bias(cfg: DcConfig, intent: str, hvac: str) -> float:
     """Bias applied when DC consumes a solar intent targeted at itself."""
     if intent == INTENT_SOLAR_GAIN and hvac == "heat":
@@ -140,9 +300,13 @@ def sdhb_self_bias(cfg: DcConfig, intent: str, hvac: str) -> float:
 
 
 def quantize_step(value: float, step: float) -> float:
-    """Round to the nearest multiple of ``step`` (step floored to 0.1)."""
+    """Round to the nearest multiple of ``step`` (half-up, matching the YAML).
+
+    Uses floor(x/step + 0.5) so exact ``.5`` boundaries round up consistently,
+    unlike Python's banker's rounding.
+    """
     step = max(step, 0.1)
-    return round(round(value / step) * step, 4)
+    return round(math.floor(value / step + 0.5) * step, 4)
 
 
 def assemble_target(cfg: DcConfig, hvac: str, base: float, mods_total: float,
@@ -210,9 +374,30 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
 
     night = is_night(ins.sun_elevation)
     base = base_active(cfg, ins.hvac_mode, night, ins.vacation)
-    mods = bias_exterior(cfg, ins.hvac_mode, ins.t_ext) + ins.extra_bias
+    lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
+    b_ext = bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
+    b_vmc = bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
+    b_trend = trend_bias(cfg, ins.trend_cph, lead)
+    b_brake = brake_bias(cfg, ins.hvac_mode, ins.trend_cph)
+    b_forecast = forecast_bias(cfg, ins.hvac_mode, ins.t_ext, ins.forecast_temp)
+    mods = b_ext + b_vmc + b_trend + b_brake + b_forecast + ins.extra_bias
     self_bias = sdhb_self_bias(cfg, ins.sdhb_intent, ins.hvac_mode)
     target = assemble_target(cfg, ins.hvac_mode, base, mods, self_bias,
                              ins.vacation)
+    target_raw = round(base + mods + self_bias, 2)
+    details = {
+        "base": round(base, 2),
+        "target_raw": target_raw,
+        "mods_total": round(mods, 2),
+        "lead_h": round(lead, 2),
+        "night": night,
+        "bias_exterior": round(b_ext, 2),
+        "bias_vmc": round(b_vmc, 2),
+        "bias_trend": round(b_trend, 2),
+        "bias_brake": round(b_brake, 2),
+        "bias_forecast": round(b_forecast, 2),
+        "bias_facade": round(ins.extra_bias, 2),
+        "sdhb_bias": round(self_bias, 2),
+    }
     return DcDecision(ins.hvac_mode, target, ins.hvac_mode,
-                      publish_intent(ins.hvac_mode))
+                      publish_intent(ins.hvac_mode), details=details)

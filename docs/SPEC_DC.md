@@ -22,10 +22,15 @@ target_final = quantize( clamp( base + clamp(Σ biases, ±lim) + sdhb_bias,
 - **base** (`base_active`): consigna base según modo y día/noche
   (noche = elevación solar ≤ −3°; en calor baja `delta_night`, en frío sube).
   Variantes de vacaciones.
-- **Σ biases**: suma de 6 correcciones en °C:
-  `exterior + fachadas + vmc + forecast + tendencia + freno`. Se **limita** a
-  `±max_mods` (0.8 por defecto). En el port, `bias_exterior` se calcula en el
-  engine; el resto se agrega como `extra_bias` (calculado por el coordinator).
+- **Σ biases**: suma de correcciones en °C, **limitada** a `±max_mods` (0.8 def):
+  - `bias_exterior` — compensación por temperatura exterior. ✅
+  - `bias_vmc` — compensación por la VMC (velocidad + delta T). ✅
+  - `trend` (tendencia) — anticipa por la deriva de T interior (°C/h). ✅
+  - `brake` (freno) — frena el overshoot cuando la tendencia ya ayuda al modo. ✅
+  - `forecast` — anticipa por la previsión (cableado a un `weather` opcional vía
+    `weather.get_forecasts`; extremo en la ventana de N horas). ✅
+  - `fachadas` — ganancia solar por fachada: la apertura de las persianas
+    soleadas modula la demanda (el sol entrando alivia calefacción/refrigeración). ✅
 - **sdhb_bias**: corrección por consumir una intención dirigida a DC
   (`solar_gain` en calor → −0.5; `solar_shield` en frío → +0.5).
 - **clamp** a `[min, max]` (heat/cool, variantes vacaciones).
@@ -41,7 +46,7 @@ cool:  t_ext ≥ u_calor       → +strong
 
 ## 3. Decisión de modo (rama)
 
-Precedencia: **override** → **dew_risk** (OFF) → **window_lockout** (OFF) →
+Precedencia: **override** → **dew_risk** (rocío real, Magnus; OFF) → **window_lockout** (OFF) →
 **heat/cool** (según demanda) → **off**. Override fija el target manual.
 
 ## 4. Publicación al bus (lo que hace de DC el cerebro)
@@ -82,11 +87,21 @@ una amplia (180°) durante medio día.
 | ~344 helpers `input_*` por zona | config entry + estado del coordinator |
 | termostato virtual | entidad `climate` gestionada |
 
+## 5.1 Actuación
+
+Si se configura un termostato real (`dc_climate`), la entidad `climate`
+gestionada lo conduce: aplica el modo (heat/cool/off) y la consigna calculada
+vía `climate.set_hvac_mode` / `climate.set_temperature`, solo cuando cambian (sin
+re-emitir cada ciclo). Sin termostato configurado, DC es *advisory* (solo publica
+al bus y muestra la consigna). El modo de la zona se restaura tras reiniciar HA
+(`RestoreEntity`).
+
 ## 6. Estado / pendiente
 
 - ✅ Pipeline base + bias_exterior + límites + clamp + quantize (con tests).
 - ✅ Publicación al bus (heat→gain / cool→shield) y consumo (self-bias).
 - ✅ **Triángulo completo** verificado en HA: DC(cool) → bus → DS clampa.
-- ⏳ Biases restantes (fachadas/forecast/tendencia/lead) con sus fórmulas,
-  dew-risk a partir de punto de rocío real, ventana/override por UI,
-  y multi-zona (`zone02..zone08`).
+- ✅ Biases: exterior, vmc, tendencia, freno, forecast (weather), fachadas.
+- ✅ Dew-risk real (Magnus) y lead dinámico (anticipación por inercia).
+- ✅ Lead dinámico con término de viento (más pérdidas → más anticipación).
+- ⏳ Pendiente (marginal): sub-lead solar fino y multi-zona avanzada.

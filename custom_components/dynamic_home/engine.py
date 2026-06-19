@@ -56,6 +56,7 @@ class DvConfig:
     # Dry mode (dew point)
     dry_v2_delta: float = 0.2
     dry_v3_delta: float = 1.0
+    dew_spread_min: float = 1.5      # indoor temp within this of dew point -> risk
 
     # Weekly schedule (SPEC §7): weekday(0=Mon..6=Sun) -> (on_min, off_min)
     # minutes from midnight. Empty/missing -> always allowed.
@@ -78,6 +79,7 @@ class DvConfig:
 
     # Adaptive thresholds (SPEC §7) — engine uses them when provided & ready.
     adaptive_enabled: bool = False
+    adaptive_min_samples: int = 100   # min readings before percentiles are used
 
 
 @dataclass

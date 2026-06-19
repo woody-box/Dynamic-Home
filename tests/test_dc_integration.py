@@ -108,3 +108,68 @@ async def test_climate_manual_setpoint_is_override(hass: HomeAssistant) -> None:
     state = hass.states.get("climate.salon")
     assert state.attributes["temperature"] == 21.0
     assert state.attributes["reason"] == "override"
+
+
+async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
+    """An open window forces OFF; vacation switch feeds the engine."""
+    _seed(hass)
+    hass.states.async_set("binary_sensor.ventana", "off")
+    entry = await _add(hass, {
+        const.CONF_NAME: "Salon", const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.salon_temp",
+        const.CONF_DC_WINDOW: "binary_sensor.ventana",
+        const.CONF_DC_TARGET: "ds",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"
+
+    # Open the window -> lockout -> OFF.
+    hass.states.async_set("binary_sensor.ventana", "on")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "off" and co.data.reason == "off_window"
+
+    # Vacation switch is registered and feeds the engine.
+    from homeassistant.helpers import entity_registry as er
+    assert er.async_get(hass).async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_vacation") is not None
+    co.vacation_enabled = True
+    hass.states.async_set("binary_sensor.ventana", "off")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"  # vacation uses the vacation base setpoint
+
+
+async def test_observability_sensors(hass: HomeAssistant) -> None:
+    """DC exposes pipeline values as diagnostic sensors for dashboards."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, {
+        const.CONF_NAME: "Salon", const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.salon_temp",
+        const.CONF_DC_T_EXT: "sensor.ext_temp", const.CONF_DC_TARGET: "ds",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    reg = er.async_get(hass)
+    for key in ("target", "base", "target_raw", "dew_point", "reason",
+                "bias_exterior", "bias_vmc", "bias_trend", "bias_brake",
+                "bias_forecast", "bias_facade", "sdhb_bias", "mods_total"):
+        assert reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is not None, key
+    assert reg.async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_dew_risk") is not None
+
+    # In heat the pipeline breakdown is populated.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
+    assert "bias_exterior" in co.data.details
+    assert co.data.details["base"] is not None

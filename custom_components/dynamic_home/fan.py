@@ -6,6 +6,7 @@ Preset modes: auto (engine decides) / v1 / v2 / v3 (manual). The logical speed
 
 from __future__ import annotations
 
+import asyncio
 import math
 
 from homeassistant.components.fan import FanEntity, FanEntityFeature
@@ -13,6 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
@@ -36,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     async_add_entities([DvFan(coordinator, entry)])
 
 
-class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
+class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     """Represents the VMC."""
 
     _attr_has_entity_name = True
@@ -50,12 +52,25 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_fan"
         self._preset = const.PRESET_AUTO
+        self._bootstrapped = False
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
             manufacturer="Dynamic Home",
             model="Dynamic Ventilation (VMC)",
         )
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the selected preset across restarts."""
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last and last.attributes.get("preset_mode") in const.PRESET_MODES:
+            self._preset = last.attributes["preset_mode"]
+            self.coordinator.preset = self._preset
+            # In a manual preset, re-assert the speed on the relays so the
+            # hardware matches the restored state (auto self-heals on its own).
+            if self._preset != const.PRESET_AUTO:
+                await self._apply_speed(self._logical_speed)
 
     # --- derived state ---
     @property
@@ -92,6 +107,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
     # --- commands ---
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         self._preset = preset_mode
+        self.coordinator.preset = preset_mode
         if preset_mode != const.PRESET_AUTO:
             await self._apply_speed(self._logical_speed)
         else:
@@ -105,6 +121,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
         speed = math.ceil(percentage_to_ranged_value(_SPEED_RANGE, percentage))
         self._preset = {1: const.PRESET_V1, 2: const.PRESET_V2,
                         3: const.PRESET_V3}[speed]
+        self.coordinator.preset = self._preset
         await self._apply_speed(speed)
         self.async_write_ha_state()
 
@@ -134,6 +151,13 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
             await self._switch(sw_pwr, False)
             return
         await self._switch(sw_pwr, True)
+        # Bootstrap kick: pulse V2 ~800 ms once after startup so the motor
+        # "wakes up" before settling on the target speed (opt-in, hardware quirk).
+        if self.coordinator.bootstrap_enabled and not self._bootstrapped:
+            self._bootstrapped = True
+            await self._switch(sw_v2, True)
+            await asyncio.sleep(0.8)
+            await self._switch(sw_v2, False)
         # Never V2 and V3 at once.
         await self._switch(sw_v2, speed == 2)
         await self._switch(sw_v3, speed == 3)

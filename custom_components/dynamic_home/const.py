@@ -11,9 +11,9 @@ MODULE_SHUTTER = "shutter"
 MODULE_CLIMATE = "climate_zone"
 
 # Platforms forwarded per module.
-PLATFORMS_VMC: list[str] = ["fan", "number"]
-PLATFORMS_SHUTTER: list[str] = ["cover"]
-PLATFORMS_CLIMATE: list[str] = ["climate"]
+PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time"]
+PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number"]
+PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"
@@ -27,6 +27,7 @@ CONF_T_EXT = "t_ext"
 CONF_AQI = "outdoor_aqi_entity"
 CONF_HUM_BATH = "hum_bath"
 CONF_HUM_EXT = "hum_ext"
+CONF_HUM_IN = "hum_in"            # optional: indoor RH for dry-mode/dew
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
 OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT)
@@ -45,6 +46,12 @@ CONF_FACADE_SPAN = "facade_span_deg"
 CONF_DC_T_INT = "dc_t_int"        # required: indoor temperature sensor
 CONF_DC_T_EXT = "dc_t_ext"        # optional: outdoor temperature sensor
 CONF_DC_TARGET = "ds_target"      # shutter target the zone drives (default "ds")
+CONF_DC_CLIMATE = "dc_climate"    # optional: real thermostat DC drives
+CONF_DC_VMC = "dc_vmc"            # optional: VMC fan/sensor for the VMC bias
+CONF_DC_HUMIDITY = "dc_humidity"  # optional: indoor RH for dew-point protection
+CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
+CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
+CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

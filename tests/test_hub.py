@@ -47,6 +47,22 @@ def test_clear_removes_source():
     assert h.winner("ds") == "none"
 
 
+def test_ttl_expires_intent():
+    h = SdhbHub()
+    h.publish("dc1", "request_solar_shield", target="ds", priority=70,
+              ttl_s=300, now_ts=1000)
+    # within TTL -> present
+    assert h.winner("ds", now_ts=1200) == "request_solar_shield"
+    # past TTL -> expired and pruned
+    assert h.winner("ds", now_ts=1400) == "none"
+
+
+def test_no_ttl_never_expires():
+    h = SdhbHub()
+    h.publish("dc1", "request_quiet", target="ds", priority=60)  # ttl_s=0
+    assert h.winner("ds", now_ts=10 ** 9) == "request_quiet"
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

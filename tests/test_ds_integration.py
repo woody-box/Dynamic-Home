@@ -97,3 +97,27 @@ async def test_bus_solar_shield_clamps_cover(hass: HomeAssistant) -> None:
     managed = hass.states.get("cover.salon")
     assert managed.attributes["current_position"] == 30
     assert managed.attributes["reason"] == "sdhb_solar_shield"
+
+
+async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
+    """Privacy clamps the cover; lock pins it (override) and wins over privacy."""
+    _seed(hass)  # sun below horizon, cover.salon_real without position
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # The switch entities wire to the coordinator state.
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": "switch.salon_privacy"}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.privacy_enabled is True
+
+    # Privacy ON -> cover goes to the privacy position (default 40).
+    await co.async_refresh()
+    assert co.data.reason == "privacy_time"
+    assert co.data.pos == 40
+
+    # Lock wins over privacy -> override pins to the lock position (default 50).
+    co.lock_enabled = True
+    await co.async_refresh()
+    assert co.data.reason == "ov_lock"
+    assert co.data.pos == 50
