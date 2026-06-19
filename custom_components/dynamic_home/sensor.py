@@ -6,8 +6,8 @@ across restarts), plus the current speed and decision reason for diagnostics.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
     RestoreSensor,
@@ -145,6 +145,7 @@ class ModeSensor(_Base):
 # DC (climate) diagnostic sensors — expose the pipeline for dashboards
 # --------------------------------------------------------------------------- #
 from homeassistant.const import UnitOfTemperature  # noqa: E402
+
 from .coordinator import DcCoordinator  # noqa: E402
 
 

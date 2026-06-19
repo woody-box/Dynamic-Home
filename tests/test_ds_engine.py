@@ -11,8 +11,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
                                 "custom_components", "dynamic_home"))
 
 from ds_engine import (  # noqa: E402
-    DsConfig, DsState, DsInputs, decide_cover, solar_impact, quantize10,
-    compute_wind_cap, update_wind_cap_active,
+    DsConfig,
+    DsInputs,
+    DsState,
+    decide_cover,
+    quantize10,
+    solar_impact,
+    update_wind_cap_active,
 )
 
 

@@ -1,7 +1,7 @@
 {
   "domain": "dynamic_home",
   "name": "Dynamic Home",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "config_flow": true,
   "documentation": "https://github.com/woody-box/dynamic-home",
   "issue_tracker": "https://github.com/woody-box/dynamic-home/issues",

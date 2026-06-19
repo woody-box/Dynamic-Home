@@ -5,9 +5,8 @@ the cross-module coordination: another module publishing ``request_solar_shield`
 to the shared SDHB hub makes the cover clamp.
 """
 
-import pytest
-from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,

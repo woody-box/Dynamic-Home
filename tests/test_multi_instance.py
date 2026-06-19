@@ -4,8 +4,8 @@ One DC zone + two DS shutters on different facades. DC (cooling) publishes a
 solar-shield intent to a single facade; only the shutter on that facade clamps.
 """
 
-from homeassistant.core import HomeAssistant
 from homeassistant.components.climate import HVACMode
+from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.dynamic_home import const

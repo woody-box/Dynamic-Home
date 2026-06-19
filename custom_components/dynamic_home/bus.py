@@ -8,8 +8,6 @@ highest-priority, non-expired intent matching their target(s).
 
 from __future__ import annotations
 
-from typing import Optional
-
 
 class SdhbHub:
     """Shared coordination bus across DC / DV / DS."""
@@ -19,7 +17,7 @@ class SdhbHub:
 
     def publish(self, source: str, intent: str, target: str,
                 priority: int = 50, ttl_s: float = 0,
-                now_ts: Optional[float] = None) -> None:
+                now_ts: float | None = None) -> None:
         expires_at = (now_ts + ttl_s) if (ttl_s and now_ts is not None) else None
         self._slots[source] = {"intent": intent, "target": target,
                                "priority": priority, "expires_at": expires_at}
@@ -28,14 +26,14 @@ class SdhbHub:
         """Remove a source's intent from the bus."""
         self._slots.pop(source, None)
 
-    def _prune(self, now_ts: Optional[float]) -> None:
+    def _prune(self, now_ts: float | None) -> None:
         if now_ts is None:
             return
         for src in [s for s, v in self._slots.items()
                     if v.get("expires_at") is not None and now_ts >= v["expires_at"]]:
             del self._slots[src]
 
-    def winner(self, targets, now_ts: Optional[float] = None) -> str:
+    def winner(self, targets, now_ts: float | None = None) -> str:
         """Highest-priority, non-expired intent matching the consumer's targets.
 
         ``targets`` may be a single target string or an iterable of targets the

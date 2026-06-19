@@ -2,7 +2,7 @@
 
 These run WITHOUT Home Assistant and replace the YAML "golden scenarios".
 Run with:  python -m pytest integration/tests/ -q
-       or:  python integration/tests/test_engine.py
+       or:  python integration/tests/test_dv_engine.py
 """
 
 import os
@@ -11,9 +11,17 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
                                 "custom_components", "dynamic_home"))
 
-from engine import (  # noqa: E402
-    DvConfig, DvState, DvInputs, decide, base_target, update_ema,
-    compute_freecool, in_schedule, update_failsafe, update_shower,
+from dv_engine import (  # noqa: E402
+    DvConfig,
+    DvInputs,
+    DvState,
+    base_target,
+    compute_freecool,
+    decide,
+    in_schedule,
+    update_ema,
+    update_failsafe,
+    update_shower,
 )
 
 

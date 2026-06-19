@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Optional
 
 # Reasons that must not be overridden by the soft caps (wind/SDHB/slew).
 PROTECTED = {"ov_lock", "ov_hold", "ov_ttl", "meteo_rain",
@@ -62,22 +61,22 @@ class DsInputs:
 
     # Climate context
     hvac_mode: str = "off"          # cool | heat | off
-    impact: Optional[int] = None    # solar impact 0..100; None -> compute from sun
+    impact: int | None = None    # solar impact 0..100; None -> compute from sun
     night: bool = False
-    t_in: Optional[float] = None
-    t_out: Optional[float] = None
+    t_in: float | None = None
+    t_out: float | None = None
     sleep_mode: bool = False
 
     # Weather protect
     weather_protect_enabled: bool = False
     raining: bool = False
-    wind: Optional[float] = None
+    wind: float | None = None
 
     # Privacy (time window resolved by the caller)
     privacy_active: bool = False
 
     # Current physical position (for slew + quiet freeze)
-    current_pos: Optional[int] = None
+    current_pos: int | None = None
 
     # SDHB bus consumption
     sdhb_allow_override: bool = False
@@ -86,8 +85,8 @@ class DsInputs:
     quiet_respect_enabled: bool = True
 
     # Sun geometry (used only when impact is None)
-    sun_azimuth: Optional[float] = None
-    sun_elevation: Optional[float] = None
+    sun_azimuth: float | None = None
+    sun_elevation: float | None = None
     sun_effective: bool = True
 
 
