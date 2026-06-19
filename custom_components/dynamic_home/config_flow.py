@@ -53,6 +53,8 @@ STEP_SHUTTER_SCHEMA = vol.Schema(
         vol.Required(const.CONF_COVER): _entity("cover"),
         vol.Required(const.CONF_FACADE_AZIMUTH, default=180): vol.All(
             vol.Coerce(float), vol.Range(min=0, max=359)),
+        vol.Required(const.CONF_FACADE_SPAN, default=180): vol.All(
+            vol.Coerce(float), vol.Range(min=10, max=360)),
         vol.Optional(const.CONF_CLIMATE): _entity("climate"),
         vol.Optional(const.CONF_DS_T_IN): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_DS_T_OUT): _entity("sensor", "temperature"),

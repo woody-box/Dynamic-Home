@@ -34,6 +34,7 @@
           "name": "Name",
           "cover": "Shutter (cover)",
           "facade_azimuth_deg": "Facade orientation (° azimuth, 0=N 90=E 180=S 270=W)",
+          "facade_span_deg": "Facade acceptance angle (° span, e.g. 90 = narrow, 180 = wide)",
           "climate": "Climate (optional, cool/heat mode)",
           "ds_t_in": "Indoor temperature (optional)",
           "ds_t_out": "Outdoor temperature (optional)",

@@ -34,6 +34,7 @@
           "name": "Nombre",
           "cover": "Persiana (cover)",
           "facade_azimuth_deg": "Orientación de la fachada (° azimut, 0=N 90=E 180=S 270=O)",
+          "facade_span_deg": "Ángulo de aceptación de la fachada (° span, p.ej. 90 = estrecho, 180 = amplio)",
           "climate": "Climatización (opcional, modo cool/heat)",
           "ds_t_in": "Temperatura interior (opcional)",
           "ds_t_out": "Temperatura exterior (opcional)",

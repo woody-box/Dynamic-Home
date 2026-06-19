@@ -111,6 +111,23 @@ def test_sunlit_no_sun_data_lights_nothing():
     assert sunlit_facades(None, None, _FACADES) == set()
 
 
+def test_sunlit_per_facade_span_narrows_match():
+    # A narrow 60° facade only counts the sun when nearly head-on.
+    facades = {"ds_f180": 180.0}
+    spans = {"ds_f180": 60.0}
+    # sun 35° off-axis: outside ±30 -> not lit
+    assert sunlit_facades(215, 30, facades, spans) == set()
+    # sun 20° off-axis: inside ±30 -> lit
+    assert sunlit_facades(200, 30, facades, spans) == {"ds_f180"}
+
+
+def test_sunlit_mixed_spans():
+    facades = {"ds_f180": 180.0, "ds_f090": 90.0}
+    spans = {"ds_f180": 180.0, "ds_f090": 40.0}  # east facade is narrow
+    # sun ESE (az 120): south (wide) lit; east (narrow, 30° off) not lit
+    assert sunlit_facades(120, 30, facades, spans) == {"ds_f180"}
+
+
 # --------------------------------------------------------------------------- #
 # decide
 # --------------------------------------------------------------------------- #

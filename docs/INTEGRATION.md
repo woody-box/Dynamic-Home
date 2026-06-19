@@ -51,8 +51,8 @@ pip install -r integration/requirements-test.txt
 cd integration && python -m pytest tests/ -q
 ```
 
-Estado actual: **85/85 verde** (29 DV + 21 DS + 20 DC + 5 bus engine · 3 DV +
-3 DS + 4 DC + 1 multi-instancia integración). Los tests verifican que la
+Estado actual: **88/88 verde** (29 DV + 21 DS + 23 DC + 5 bus engine · 3 DV +
+3 DS + 4 DC + 2 multi-instancia integración). Los tests verifican que la
 integración **se carga en HA**, crea `fan` / `cover` / `climate` + helpers, el
 **triángulo completo** (DC en cool → bus → DS se clampa) y el **targeting solar
 dinámico**: DC calcula qué fachadas ilumina el sol y dirige la intención solo
@@ -70,7 +70,9 @@ dígitos) y se registra en `hass.data`.
 `dc_engine.sunlit_facades()` qué fachadas están soleadas (sol sobre el horizonte
 y dentro del span de la fachada) y publica la intención a esas fachadas,
 reconciliando los slots del bus (limpia las que dejan de estar soleadas). Si no
-hay datos de sol/fachadas, hace fallback al target configurado.
+hay datos de sol/fachadas, hace fallback al target configurado. Cada persiana
+aporta su **ángulo de aceptación** (`facade_span_deg`), así que fachadas
+estrechas solo reaccionan con el sol casi de frente.
 
 ## Qué cubre
 

@@ -39,6 +39,7 @@ CONF_DS_T_OUT = "ds_t_out"
 CONF_WIND = "wind"
 CONF_RAIN = "rain"
 CONF_FACADE_AZIMUTH = "facade_azimuth_deg"
+CONF_FACADE_SPAN = "facade_span_deg"
 
 # --- Config entry keys: Climate (DC) ---
 CONF_DC_T_INT = "dc_t_int"        # required: indoor temperature sensor

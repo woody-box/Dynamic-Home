@@ -189,6 +189,7 @@ class DsCoordinator(DataUpdateCoordinator):
         az = self.entry.data.get(const.CONF_FACADE_AZIMUTH)
         if az is not None:
             cfg.facade_azimuth_deg = float(az)
+        cfg.facade_span_deg = self.facade_span
         return cfg
 
     @property
@@ -196,6 +197,11 @@ class DsCoordinator(DataUpdateCoordinator):
         """Bus target for this shutter's facade, e.g. ``ds_f180`` (3-digit azimuth)."""
         az = int(round(self.entry.data.get(const.CONF_FACADE_AZIMUTH, 0))) % 360
         return f"ds_f{az:03d}"
+
+    @property
+    def facade_span(self) -> float:
+        """Acceptance angle of this facade (degrees)."""
+        return float(self.entry.data.get(const.CONF_FACADE_SPAN, 180.0))
 
     def _listen_targets(self) -> set[str]:
         """Targets this shutter consumes: broadcast ``ds`` plus its facade."""
@@ -296,10 +302,12 @@ class DcCoordinator(DataUpdateCoordinator):
             return None, None
         return st.attributes.get("azimuth"), st.attributes.get("elevation")
 
-    def _registered_facades(self) -> dict:
-        """{facade_key: azimuth} of all shutters currently configured."""
+    def _registered_facades(self) -> tuple[dict, dict]:
+        """({facade_key: azimuth}, {facade_key: span}) of all shutters."""
         reg = self.hass.data.get(const.DOMAIN, {}).get("_facades", {})
-        return {v["key"]: v["az"] for v in reg.values()}
+        facades = {v["key"]: v["az"] for v in reg.values()}
+        spans = {v["key"]: v.get("span", 180.0) for v in reg.values()}
+        return facades, spans
 
     def _publish(self, desired: dict) -> None:
         """Reconcile the bus slots this DC owns with ``desired`` (key->(intent,target))."""
@@ -327,8 +335,8 @@ class DcCoordinator(DataUpdateCoordinator):
         if intent == "none":
             desired = {}
         else:
-            facades = self._registered_facades()
-            lit = sunlit_facades(sun_az, sun_el, facades)
+            facades, spans = self._registered_facades()
+            lit = sunlit_facades(sun_az, sun_el, facades, spans)
             if lit:
                 # Dynamic: target only the sunlit facades.
                 desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}

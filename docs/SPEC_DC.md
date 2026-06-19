@@ -67,6 +67,11 @@ los slots del bus: limpia las fachadas que dejan de estar soleadas (se reabren)
 y publica en las nuevas. Sin datos de sol/fachadas, hace fallback al target
 configurado.
 
+Cada persiana aporta su **ángulo de aceptación** (`facade_span_deg`): el sol
+ilumina la fachada solo si está dentro de `span/2` de su orientación. Una
+fachada estrecha (p.ej. 60°) solo reacciona cuando el sol está casi de frente;
+una amplia (180°) durante medio día.
+
 ## 5. Implementación
 
 | Hoy (YAML) | Integración |

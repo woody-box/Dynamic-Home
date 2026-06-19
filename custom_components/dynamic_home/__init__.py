@@ -36,6 +36,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         facades[entry.entry_id] = {
             "key": coordinator.facade_key,
             "az": float(entry.data.get(const.CONF_FACADE_AZIMUTH, 0)),
+            "span": coordinator.facade_span,
         }
     elif module == const.MODULE_CLIMATE:
         coordinator = DcCoordinator(hass, entry, hub)

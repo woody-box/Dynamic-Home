@@ -93,3 +93,42 @@ async def test_facade_targeted_multi_instance(hass: HomeAssistant) -> None:
     assert north_co.data.pos == 30
     assert south_co.data.pos == 100
     assert south_co.data.reason != "sdhb_solar_shield"
+
+
+async def test_narrow_facade_span_ignores_off_axis_sun(hass: HomeAssistant) -> None:
+    """A narrow facade is not targeted when the sun is off its axis."""
+    hass.states.async_set("sensor.salon_temp", "27")
+    hass.states.async_set("sensor.ext_temp", "33")
+    # Sun 40° off the south axis.
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 220, "elevation": 30})
+    hass.states.async_set("cover.south_real", "open", {"supported_features": 15})
+
+    await _add(hass, {
+        const.CONF_NAME: "Zona",
+        const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.salon_temp",
+        const.CONF_DC_T_EXT: "sensor.ext_temp",
+        const.CONF_DC_TARGET: "ds",
+    }, "Zona")
+    # Narrow 60° facade -> only lit within ±30° of due south.
+    south = await _add(hass, {
+        const.CONF_NAME: "Sur",
+        const.CONF_MODULE: const.MODULE_SHUTTER,
+        const.CONF_COVER: "cover.south_real",
+        const.CONF_FACADE_AZIMUTH: 180.0,
+        const.CONF_FACADE_SPAN: 60.0,
+    }, "Sur")
+
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.zona", "hvac_mode": HVACMode.COOL}, blocking=True)
+    await hass.async_block_till_done()
+
+    south_co = hass.data[const.DOMAIN][south.entry_id]
+    await south_co.async_refresh()
+    await hass.async_block_till_done()
+
+    # Sun is outside the narrow facade -> no shield, shutter stays open.
+    assert south_co.data.pos == 100
+    assert south_co.data.reason != "sdhb_solar_shield"
