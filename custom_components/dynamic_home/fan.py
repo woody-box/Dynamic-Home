@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
@@ -36,7 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     async_add_entities([DvFan(coordinator, entry)])
 
 
-class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
+class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     """Represents the VMC."""
 
     _attr_has_entity_name = True
@@ -56,6 +57,13 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity):
             manufacturer="Dynamic Home",
             model="Dynamic Ventilation (VMC)",
         )
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the selected preset across restarts."""
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last and last.attributes.get("preset_mode") in const.PRESET_MODES:
+            self._preset = last.attributes["preset_mode"]
 
     # --- derived state ---
     @property

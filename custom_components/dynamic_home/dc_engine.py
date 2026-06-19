@@ -15,6 +15,7 @@ No Home Assistant imports: unit-testable and reused by the HA climate wrapper.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Optional
 
@@ -140,9 +141,13 @@ def sdhb_self_bias(cfg: DcConfig, intent: str, hvac: str) -> float:
 
 
 def quantize_step(value: float, step: float) -> float:
-    """Round to the nearest multiple of ``step`` (step floored to 0.1)."""
+    """Round to the nearest multiple of ``step`` (half-up, matching the YAML).
+
+    Uses floor(x/step + 0.5) so exact ``.5`` boundaries round up consistently,
+    unlike Python's banker's rounding.
+    """
     step = max(step, 0.1)
-    return round(round(value / step) * step, 4)
+    return round(math.floor(value / step + 0.5) * step, 4)
 
 
 def assemble_target(cfg: DcConfig, hvac: str, base: float, mods_total: float,

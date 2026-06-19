@@ -278,8 +278,14 @@ class DcCoordinator(DataUpdateCoordinator):
         self.hvac_mode = "off"          # desired mode, set from the climate entity
         self.override_active = False
         self.override_temp: float | None = None
-        self._source = f"dc_{entry.entry_id[:8]}"
+        self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
+
+    def clear_published(self) -> None:
+        """Remove all bus slots owned by this zone (called on unload/reload)."""
+        for src in self._active_sources:
+            self.hub.clear(src)
+        self._active_sources = set()
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
@@ -295,6 +301,10 @@ class DcCoordinator(DataUpdateCoordinator):
             return float(st.state)
         except (TypeError, ValueError):
             return None
+
+    def indoor_temperature(self) -> float | None:
+        """Current indoor temperature of the zone (for the climate entity)."""
+        return self._num(const.CONF_DC_T_INT)
 
     def _sun(self) -> tuple[float | None, float | None]:
         st = self.hass.states.get("sun.sun")

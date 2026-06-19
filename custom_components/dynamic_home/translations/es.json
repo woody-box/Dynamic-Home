@@ -49,6 +49,7 @@
           "name": "Nombre",
           "dc_t_int": "Temperatura interior",
           "dc_t_ext": "Temperatura exterior (opcional)",
+          "dc_climate": "Termostato a controlar (opcional; solo informa si se deja vacío)",
           "ds_target": "Target de persianas en el bus (p.ej. ds)"
         }
       }
@@ -68,6 +69,9 @@
           "pm_v3": "Umbral PM2.5 → V3 (µg/m³)"
         }
       }
+    },
+    "abort": {
+      "no_options": "Este módulo no tiene opciones configurables."
     }
   }
 }

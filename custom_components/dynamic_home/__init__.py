@@ -57,6 +57,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     unloaded = await hass.config_entries.async_unload_platforms(
         entry, _platforms(entry))
     if unloaded:
+        coordinator = hass.data[const.DOMAIN].get(entry.entry_id)
+        # A climate zone must release its bus intents so shutters don't stay
+        # clamped to a ghost solar-shield after the zone is removed/reloaded.
+        if isinstance(coordinator, DcCoordinator):
+            coordinator.clear_published()
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
     return unloaded

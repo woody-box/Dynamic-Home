@@ -42,6 +42,7 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     def __init__(self, coordinator: DsCoordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._entry = entry
+        self._last_pos: int | None = None  # last position pushed to the hardware
         self._attr_unique_id = f"{entry.entry_id}_cover"
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
@@ -80,6 +81,7 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         await self._drive(0)
 
     async def _drive(self, position: int) -> None:
+        self._last_pos = position
         target = self._entry.data.get(const.CONF_COVER)
         if target:
             await self.hass.services.async_call(
@@ -89,6 +91,8 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data
-        if data is not None:
+        # Only command the hardware when the target actually changed, so we
+        # don't re-issue (and interrupt) the cover every cycle.
+        if data is not None and data.pos != self._last_pos:
             self.hass.async_create_task(self._drive(data.pos))
         super()._handle_coordinator_update()

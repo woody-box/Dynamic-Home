@@ -45,6 +45,7 @@ CONF_FACADE_SPAN = "facade_span_deg"
 CONF_DC_T_INT = "dc_t_int"        # required: indoor temperature sensor
 CONF_DC_T_EXT = "dc_t_ext"        # optional: outdoor temperature sensor
 CONF_DC_TARGET = "ds_target"      # shutter target the zone drives (default "ds")
+CONF_DC_CLIMATE = "dc_climate"    # optional: real thermostat DC drives
 
 # --- Options keys (tunables, mirror engine.DvConfig) ---
 OPT_CO2_V2 = "co2_v2"

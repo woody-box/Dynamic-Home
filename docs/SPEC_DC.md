@@ -82,6 +82,15 @@ una amplia (180°) durante medio día.
 | ~344 helpers `input_*` por zona | config entry + estado del coordinator |
 | termostato virtual | entidad `climate` gestionada |
 
+## 5.1 Actuación
+
+Si se configura un termostato real (`dc_climate`), la entidad `climate`
+gestionada lo conduce: aplica el modo (heat/cool/off) y la consigna calculada
+vía `climate.set_hvac_mode` / `climate.set_temperature`, solo cuando cambian (sin
+re-emitir cada ciclo). Sin termostato configurado, DC es *advisory* (solo publica
+al bus y muestra la consigna). El modo de la zona se restaura tras reiniciar HA
+(`RestoreEntity`).
+
 ## 6. Estado / pendiente
 
 - ✅ Pipeline base + bias_exterior + límites + clamp + quantize (con tests).

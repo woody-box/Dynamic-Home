@@ -68,6 +68,7 @@ STEP_CLIMATE_SCHEMA = vol.Schema(
         vol.Required(const.CONF_NAME, default="Zona"): str,
         vol.Required(const.CONF_DC_T_INT): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_DC_T_EXT): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_DC_CLIMATE): _entity("climate"),
         vol.Optional(const.CONF_DC_TARGET, default="ds"): str,
     }
 )
@@ -126,6 +127,10 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         self.entry = entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
+        # Only the VMC module exposes tunable options (IAQ thresholds).
+        if self.entry.data.get(const.CONF_MODULE) != const.MODULE_VMC:
+            return self.async_abort(reason="no_options")
+
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 

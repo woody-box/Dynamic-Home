@@ -49,6 +49,7 @@
           "name": "Name",
           "dc_t_int": "Indoor temperature",
           "dc_t_ext": "Outdoor temperature (optional)",
+          "dc_climate": "Thermostat to drive (optional; advisory if empty)",
           "ds_target": "Shutter target on the bus (e.g. ds)"
         }
       }
@@ -68,6 +69,9 @@
           "pm_v3": "PM2.5 → V3 threshold (µg/m³)"
         }
       }
+    },
+    "abort": {
+      "no_options": "No tunable options for this module."
     }
   }
 }
