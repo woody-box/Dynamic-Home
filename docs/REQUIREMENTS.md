@@ -1,10 +1,9 @@
 # Dynamic Home — Documento de Requisitos
 
 > Derivado de `docs/BACKLOG.md` (ideas F01–F35, perfiladas con el usuario).
-> **Versión 4 — Fases 0 (fundacionales), 1 (transversales + DC), 2 (DV) y 3 (DS)
-> en detalle**; el resto, en el roadmap (§3) para expandir fase a fase. Prioridad
-> por MoSCoW: **M** (Must) · **S** (Should) · **C** (Could). Cada requisito debe
-> ser verificable.
+> **Versión 5 — Fases 0–4 detalladas (documento completo)**. Prioridad por
+> MoSCoW: **M** (Must) · **S** (Should) · **C** (Could). Cada requisito debe ser
+> verificable.
 
 Estado actual del producto: v0.5.0 publicada en HACS (DV/DS/DC + bus SDHB en
 memoria, observabilidad 1:1, modo observación, config por UI por categoría).
@@ -69,8 +68,8 @@ F32 Presencia · F33 Weather. (Apoyo: F02 explicador del bus.)
 | **4** | Módulo nuevo | F34 Dynamic Energy (+ VE) |
 | **❄️** | Congeladas / fuera | F04 precio, F05 outdoor reset, F18 anti-helada |
 
-> El detalle de la Fase 4 se redactará al entrar la fase, partiendo del
-> perfilado ya cerrado en `docs/BACKLOG.md`.
+> Todas las fases (0–4) están detalladas en §4–§8, partiendo del perfilado
+> cerrado en `docs/BACKLOG.md`.
 
 ---
 
@@ -691,7 +690,138 @@ pelear con el resto de la lógica DS.
 
 ---
 
-## 8. Trazabilidad
+## 8. Fase 4 — Dynamic Energy (módulo nuevo) (detalle)
+
+Cerebro de energía al nivel de DC/DV/DS: **agrega** consumo/coste, **arbitra el
+límite de red** y **publica contexto energético al bus** para que el resto module
+su agresividad. **No comanda** a otros módulos (RNF-3/RNF-4). Consolida F03
+(anti-pico), F04 (precio) y F06 (coste).
+
+> ⚠️ **Testabilidad:** el autor no dispone de FV (probablemente tampoco batería ni
+> wallbox). Los requisitos de **excedente FV, batería y VE** quedan **pendientes de
+> validación externa**; lo testable por el autor es **red/anti-pico, coste/consumo,
+> tarifa** y la **mecánica del bus** con entradas simuladas. Marcados con (⚠️).
+
+### 8.1 · Núcleo del módulo y contexto del bus (F34)
+
+**Objetivo:** un módulo Energy que publica el estado energético de la casa al bus;
+cada consumidor (DC/DV/AC/DS) decide cómo reaccionar.
+
+- **REQ-ENG-1 (M):** módulo con **coordinator propio + motor puro**
+  (`energy_engine.py`) + publisher de bus, mismo patrón que DC/DV/DS (RNF-8).
+- **REQ-ENG-2 (M):** **publica contexto al bus, no comanda** — los módulos siguen
+  mandando sobre sí mismos y la **seguridad prevalece** (RNF-3).
+- **REQ-ENG-3 (M):** contexto publicado: `import_headroom_w` (margen hasta el ICP),
+  `tariff_state` (barato/normal/pico), `surplus_w` (⚠️ excedente FV),
+  `scarcity` (caro y sin excedente).
+- **REQ-ENG-4 (M):** **agnóstico (RNF-6)** — el usuario aporta las entidades
+  (consumo total, red import/export, FV, SoC batería); funciona con **subconjuntos**.
+- **REQ-ENG-5 (M):** **gating** — componentes FV/batería/VE **ocultos** si no se
+  aportan sus entidades (estilo F26).
+- **REQ-ENG-6 (M):** **resiliencia (RNF-7)** — degrada a lo disponible (sin medidor
+  de red → anti-pico por "N cargas" en vez de por kW).
+
+**Dependencias:** bus (RNF-4), F06 (entradas de consumo), F26 (patrón de gating).
+**Criterios de aceptación:**
+- ☐ Con solo medidor de red + precio, el módulo arranca y publica `import_headroom_w` y `tariff_state`.
+- ☐ Sin entidades FV, los campos de excedente no se exponen ni rompen el arranque.
+
+### 8.2 · Agregación de consumo y coste (consolida F06)
+
+**Objetivo:** sumar lo que cada módulo ya expone (F06) en una vista de casa e
+integrarlo en el panel de Energía de HA.
+
+- **REQ-EAG-1 (M):** **agrega** consumo (kWh) y coste (€) de los módulos
+  (DC/DV/DS) en totales de casa, sin duplicar la medición de cada uno.
+- **REQ-EAG-2 (M):** expone energía como `device_class: energy`,
+  `state_class: total_increasing` → **panel de Energía**.
+- **REQ-EAG-3 (S):** **balance de casa** (consumo total vs red import/export y
+  FV ⚠️), con coste neto si hay precio.
+
+**Dependencias:** F06 (REQ-ENE), sensor de red.
+**Criterios de aceptación:**
+- ☐ El total de casa coincide con la suma de los módulos + cargas declaradas.
+- ☐ La energía agregada aparece correctamente en el panel de Energía.
+
+### 8.3 · Tarifa y precio (consolida F04)
+
+**Objetivo:** traducir el precio (PVPC/Nordpool o tarifa plana) a un estado de
+tarifa que el resto usa para desplazar cargas flexibles. (F04, descongelada aquí.)
+
+- **REQ-TAR-1 (M):** acepta **sensor de precio** (variable) **o** precio/tramos
+  **fijos** configurables; **agnóstico de integración** (RNF-6).
+- **REQ-TAR-2 (M):** deriva `tariff_state` (barato/normal/pico) por umbrales
+  configurables y lo publica al bus.
+- **REQ-TAR-3 (S):** expone **horas baratas próximas** (ventana) para que DC/VE
+  planifiquen pre-acondicionamiento/carga.
+- **REQ-TAR-4 (C):** *(futuro)* alimentar el Adaptive Lead de DC para precalentar en
+  horas baratas (era la idea de F04; queda como mejora, no Must).
+
+**Dependencias:** F34 núcleo. **Habilita:** desplazamiento de cargas, F04.
+**Criterios de aceptación:**
+- ☐ Con un sensor de precio, `tariff_state` cambia según los umbrales definidos.
+- ☐ Sin sensor, los tramos fijos producen el mismo estado de forma determinista.
+
+### 8.4 · Anti-pico de red (consolida F03)
+
+**Objetivo:** mantener el import por debajo de la potencia contratada (ICP),
+escalonando/recortando cargas. Es la cara de red de F03, ahora dentro de Energy.
+
+- **REQ-EPK-1 (M):** **límite de import** por amperios/kW si hay medidor; por
+  **N cargas activas** si no (degradación, RNF-7).
+- **REQ-EPK-2 (M):** **arbitra vía bus** publicando `import_headroom_w`; el
+  escalonado real de cargas lo aplican los módulos / el hub (coherente con REQ-PIC).
+- **REQ-EPK-3 (M):** **gateado por F26** — desactivado con fuente comunitaria;
+  relevante en eléctrico/compresor y en picos de DS.
+- **REQ-EPK-4 (S):** prioridad de cola (desviación de confort vs prioridad manual)
+  y posible **bypass de confort** ante frío/calor severo.
+
+**Dependencias:** F03/REQ-PIC (misma lógica de escalonado), F26.
+**Criterios de aceptación:**
+- ☐ Al acercarse al ICP, `import_headroom_w` baja y las cargas no superan el límite.
+- ☐ Con fuente comunitaria, el anti-pico no actúa.
+
+### 8.5 · Autoconsumo / excedente FV (⚠️ validación externa)
+
+**Objetivo:** aprovechar el excedente FV para adelantar cargas flexibles, vía bus
+(sesgo, no comando).
+
+- **REQ-PVS-1 (M ⚠️):** calcula `surplus_w` (producción − consumo, con batería si
+  la hay) y lo publica al bus.
+- **REQ-PVS-2 (S ⚠️):** con excedente, **sesga** a DC/DV/VE para
+  **pre-acondicionar/cargar** (lead más agresivo, boost), respetando que cada
+  módulo decide y la seguridad manda.
+- **REQ-PVS-3 (S ⚠️):** política de **batería** (umbrales de SoC para priorizar
+  autoconsumo vs reserva) configurable.
+- **REQ-PVS-4 (M ⚠️):** todo **opt-in y gateado**: sin FV, esta sección no existe.
+
+**Dependencias:** F34 núcleo, entidades FV/batería del usuario.
+**Criterios de aceptación (pendientes de validación externa):**
+- ☐ Con excedente declarado, `surplus_w` es positivo y los módulos reciben el sesgo.
+- ☐ Sin FV, la sección está oculta y no afecta al resto.
+
+### 8.6 · Carga inteligente del VE (⚠️ validación externa)
+
+**Objetivo:** cargar el coche de excedente FV o en horas baratas, con mínimo
+garantizado y deadline.
+
+- **REQ-VE-1 (M ⚠️):** requiere **wallbox controlable** (entidad aportada);
+  **opt-in**, oculto si no existe.
+- **REQ-VE-2 (S ⚠️):** modos: **solo excedente FV**, **horas baratas** (tarifa),
+  o **mixto**; configurable.
+- **REQ-VE-3 (M ⚠️):** **mínimo garantizado + deadline** ("salir con X% a las
+  HH:MM") que prevalece sobre la optimización.
+- **REQ-VE-4 (M ⚠️):** participa en el **anti-pico** (la carga cede `headroom`
+  cuando la casa se acerca al ICP).
+
+**Dependencias:** F34 núcleo, REQ-TAR (horas baratas), REQ-PVS (excedente), wallbox.
+**Criterios de aceptación (pendientes de validación externa):**
+- ☐ En modo "horas baratas", la carga se concentra en los tramos baratos respetando el deadline.
+- ☐ Al acercarse al ICP, la carga del VE se reduce antes de recortar confort.
+
+---
+
+## 9. Trazabilidad
 
 Cada requisito procede de una idea perfilada en `docs/BACKLOG.md` (misma
 nomenclatura Fxx). Las decisiones de diseño y matices del usuario están en el
@@ -703,9 +833,14 @@ perfilado de cada Fxx; este documento las formaliza como requisitos verificables
 | 1 | REQ-MOD, REQ-CMF, REQ-SCH, REQ-REP, REQ-SVC, REQ-ENE, REQ-PIC, REQ-DEM, REQ-CYC, REQ-WIN, REQ-MOH, REQ-ADY | F01, F23, F21/F29, F07, F10, F06, F03, F27, F09, F20, F22, F31 |
 | 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM | F11, F12, F13, F14, F28, F30, F35 |
 | 3 | REQ-GEO, REQ-NOC, REQ-MET, REQ-AMA | F15, F16, F17, F19 |
+| 4 | REQ-ENG, REQ-EAG, REQ-TAR, REQ-EPK, REQ-PVS (⚠️), REQ-VE (⚠️) | F34, F03, F04, F06 |
 
-## 9. Pendiente de redactar
-- Detalle de **Fase 4** (al entrar la fase): Dynamic Energy (F34, +VE) — requiere
-  perfilar F34 en el backlog primero.
-- **Criterios de aceptación** ampliados y casos de prueba por requisito.
+Congeladas (fuera de fases): **F05** (outdoor reset), **F18** (anti-helada).
+**F04** (precio) se recupera dentro de la Fase 4 (REQ-TAR).
+
+## 10. Pendiente de redactar
+- **Criterios de aceptación** ampliados y casos de prueba por requisito (al entrar
+  cada fase a implementación).
 - **Plan de migración** desde la suite YAML del usuario (coexistencia vía modo observación).
+- **Validación externa** de los requisitos ⚠️ (FV/batería/VE) por un usuario con
+  esa instalación.
