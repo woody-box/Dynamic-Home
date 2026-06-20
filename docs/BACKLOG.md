@@ -264,12 +264,16 @@
   - Reutiliza todo el pipeline DC (consigna/biases/lead/anti-ciclado); el AC aporta lo suyo (dry nativo, fan, swing).
 
 ### F26 · Tipo de instalación / fuente de calor (config)
-- **Estado:** ☐ · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M
-- **Idea:** declarar por zona/sistema la instalación, en **dos dimensiones**:
-  - **Fuente:** aerotermia central compartida, aerotermia individual, radiante eléctrico, caldera de gas, AC…
-  - **Emisión:** suelo radiante, radiadores, convectores, aire por conductos (calor); radiante refrescante, fancoil, convectores (frío). Define la **inercia térmica**, que condiciona Adaptive Lead, freno y anti-ciclado.
-  Es **prerrequisito de F03** (anti-pico solo en eléctricas) y **F09** (anti-ciclado solo con compresor). Permite activar/ocultar comportamientos y ajustar defaults según la instalación.
-- **Perfilado:** _(pendiente — emergente de F03/F09; revisar pronto)_
+- **Estado:** ☑ revisada · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M-L
+- **Idea:** declarar la instalación (fuente + emisión) para activar/ocultar comportamientos y cargar presets. Base de F03, F09, F25.
+- **Perfilado:**
+  - **Asistente de instalación**, flujo: **Fuente → Sistema de emisión → evaluar características → mostrar/ocultar features + cargar presets** (defaults sensatos, editables luego en las opciones por categoría).
+  - **Defaults + gating duro:** además de precargar valores, **oculta de verdad** lo que no aplica.
+  - **Incluye la config de emisores de F25:** **primario + stage 2** (apoyo), su ámbito (zona/grupo/casa) y reconciliación.
+  - **Dos dimensiones:** *Fuente* (aerotermia central compartida / aerotermia individual / radiante eléctrico / caldera gas / AC…) y *Emisión* (suelo radiante / radiadores / convectores / conductos en calor; radiante refrescante / fancoil / conductos-split en frío). La emisión define la **inercia**.
+  - **Por zona** (radiante en salón, split en dormitorio…), **tratable global** si es una calefacción/AC sin zonificar.
+  - **Catálogo cerrado:** cada combinación fuente+emisión se **valida** (tiene dependencias a configurar antes de producción); no vale "meter cualquier cosa" sin evaluarla. *(Quizá un "personalizado" muy avanzado, pero por defecto cerrado.)*
+  - **Fuente comunitaria:** siempre circula fluido caliente/frío → **solo abrir la válvula** → **sin anti-ciclado (F09) ni anti-pico (F03)** (ambos OFF automáticamente).
 
 ### F27 · Señal de demanda/válvula real opcional (DC)
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media-Alta · **Esfuerzo:** S
@@ -337,7 +341,7 @@
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
 | **F24** | ☑ revisada | Tres niveles zona→grupo→casa; config dedicada; modo/perfil por ámbito; zonas propias (no Areas HA). |
 | **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
-| F26 | ☐ | Fundacional pendiente (tipo instalación + emisión). |
+| **F26** | ☑ revisada | Asistente fuente→emisión: defaults + gating; incluye primario/stage2 (F25); por zona o global; catálogo cerrado validado; comunitaria desactiva F03/F09. |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |
 | **F29** | ☑ fusionada | Programación por día → fusionada en F21. |
