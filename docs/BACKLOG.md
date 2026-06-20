@@ -75,9 +75,15 @@
 ## Robustez y mantenimiento
 
 ### F07 · HA Repairs sobre `degraded` ⭐
-- **Estado:** ☐ · **Módulos:** DV·DS·DC · **Valor:** Alta · **Esfuerzo:** S
+- **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Alta · **Esfuerzo:** S
 - **Idea:** cuando un sensor configurado desaparece o lleva obsoleto, emitir un *issue* accionable en Ajustes→Reparaciones (se apoya en el `binary_sensor degraded` ya existente).
-- **Perfilado:** _(pendiente)_
+- **Perfilado:**
+  - **Disparo:** entidad **ausente/renombrada** Y **obsoleta** (`unavailable`/`unknown` > X min, p.ej. 5 min) — igual que su YAML actual.
+  - **Solo fuentes requeridas** (las opcionales se ignoran).
+  - **Acción del botón:** **reabrir el config flow** del módulo para corregir el mapeo.
+  - **Un issue por módulo**, listando las fuentes que faltan (como su Telegram "DV HW MAP / SENSORES REQUERIDOS KO ... Missing (2): ...").
+  - **Extra opcional:** emitir además un **evento** (`dynamic_home_degraded`) para que quien quiera lo enrute a Telegram/notify (como hace hoy). Lo nativo es el *issue* de Reparaciones; el evento es para power-users.
+  - Se borra el issue al recuperarse la fuente (`async_delete_issue`).
 
 ### F08 · Vida del filtro VMC
 - **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
@@ -202,6 +208,7 @@
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
 | **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
-| F07–F23 | ☐ | Pendientes de revisar |
+| **F07** | ☑ revisada | Repairs por módulo (ausente + obsoleto >5min, solo requeridos); botón reabre config flow; + evento opcional para Telegram. |
+| F08–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
