@@ -105,9 +105,13 @@
   - Contexto: hoy el usuario solo protege por seguridad (anticondensación); el ciclado de compresor no lo gestiona en su aerotermia comunitaria, pero es relevante para instalaciones individuales.
 
 ### F10 · Servicios y eventos nativos
-- **Estado:** ☐ · **Módulos:** DV·DS·DC · **Valor:** Media · **Esfuerzo:** S
-- **Idea:** `dynamic_home.reset_learning`, `force_observe`, `recalibrate`… + eventos para automatizaciones.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** capa de acciones (servicios) + eventos propios para automatizar/dashboards.
+- **Perfilado:** (aceptado tal cual)
+  - **Ambos:** servicios (comodidad) + eventos (enganche para replicar su Telegram/notify).
+  - **Servicios:** `reset_learning` (Adaptive Lead), `boost` (módulo, minutos), `set_observe` (on/off), `reset_filter`, `recalibrate`/`refresh`.
+  - **Eventos:** `dynamic_home_degraded` (F07), `dynamic_home_conflict` (bus, F02), `dynamic_home_filter_due` (F08), `dynamic_home_mode_changed` (F01).
+  - **Prioridad:** *nice to have*; los **eventos primero** (para mantener el Telegram), los servicios después. No bloqueante.
 
 ## DV (ventilación)
 
@@ -240,7 +244,8 @@
 | **F07** | ☑ revisada | Repairs por módulo (ausente + obsoleto >5min, solo requeridos); botón reabre config flow; + evento opcional para Telegram. |
 | **F08** | ☑ revisada | Vida del filtro: intervalo configurable (3650 h), sensor % , reset existente, aviso por Repairs/notif. |
 | **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
-| F10–F23 | ☐ | Pendientes de revisar |
+| **F10** | ☑ revisada | Servicios (reset_learning/boost/observe/reset_filter/recalibrate) + eventos (degraded/conflict/filter_due/mode_changed); eventos primero. |
+| F11–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
