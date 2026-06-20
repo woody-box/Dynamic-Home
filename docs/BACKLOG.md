@@ -246,10 +246,19 @@
   - **Modo/perfil independiente por ámbito:** F01 (modo) y F21 (perfil) se aplican **por zona/grupo**, no solo global (p.ej. una habitación en "Sleep" sin afectar al resto). _(Esto es lo que se entendía por "presets por persona"; el "quién" lo gestiona HA con sus usuarios/dashboards.)_
   - **Zonas propias** (no reutilizar las Areas nativas de HA) para máximo control.
 
-### F25 · Módulo Dynamic AC (aire acondicionado)
-- **Estado:** ☐ · **Módulos:** nuevo (AC) · **Valor:** Alta · **Esfuerzo:** L
-- **Idea:** nuevo tipo de módulo para aire acondicionado, integrado en el bus y reactivo al modo global (F01). Validar que la arquitectura de coordinators/engines lo soporta sin fricción.
-- **Perfilado:** _(pendiente)_
+### F25 · Dynamic AC = emisor (no módulo aparte) + multi-emisor por zona
+- **Estado:** ☑ revisada · **Módulos:** DC (+ F26) · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** integrar AC sin crear un cerebro competidor; resolver zonas con varios emisores (radiante + AC).
+- **Perfilado:**
+  - **AC = un *tipo de emisor*** de la zona (encaja en F26 "emisión"), **no un módulo/clon que compite**. Un solo cerebro DC por zona evita "dos cerebros peleando".
+  - **Multi-emisor por zona con primario + apoyo (staging):** el primario lleva la consigna; el apoyo (p.ej. AC) entra cuando el primario **va por detrás** (desviación > umbral durante X tiempo) y se retira con histéresis.
+  - **Primario seleccionable por zona y por modo** (típico: radiante primario en `heat`, AC primario/apoyo en `cool` —rápido y deshumidifica, útil para F13).
+  - **Ámbito del emisor: zona / grupo / casa** (F24):
+    - **Split** → emisor de **zona**.
+    - **AC por conductos sin zonificar** → emisor **compartido** de grupo/casa que sirve a varias zonas.
+  - **Reconciliación del emisor compartido:** una unidad sin compuertas no puede dar temperaturas distintas por habitación → el cerebro reduce la demanda de las zonas del ámbito a **una sola orden** con política configurable (**zona peor parada** / prioridad / media). Por defecto: la peor parada en el sentido activo.
+  - **Casos:** solo AC → AC emisor único; solo radiante → como hoy; ambos → primario/apoyo.
+  - Reutiliza todo el pipeline DC (consigna/biases/lead/anti-ciclado); el AC aporta lo suyo (dry nativo, fan, swing).
 
 ### F26 · Tipo de instalación / fuente de calor (config)
 - **Estado:** ☐ · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M
@@ -324,7 +333,8 @@
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
 | **F24** | ☑ revisada | Tres niveles zona→grupo→casa; config dedicada; modo/perfil por ámbito; zonas propias (no Areas HA). |
-| F25, F26 | ☐ | Fundacionales pendientes (Dynamic AC; tipo instalación + emisión). |
+| **F25** | ☑ revisada | AC = emisor de DC (no módulo aparte); multi-emisor por zona primario/apoyo; ámbito zona/grupo/casa; reconciliación del compartido (peor parada). |
+| F26 | ☐ | Fundacional pendiente (tipo instalación + emisión). |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |
 | **F29** | ☑ fusionada | Programación por día → fusionada en F21. |
