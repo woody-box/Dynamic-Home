@@ -86,9 +86,14 @@
   - Se borra el issue al recuperarse la fuente (`async_delete_issue`).
 
 ### F08 · Vida del filtro VMC
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
 - **Idea:** % de vida del filtro + recordatorio al umbral, sobre `filter_hours` ya contabilizadas.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:** (réplica nativa de su sección "7) Filtros")
+  - **Intervalo configurable** `number` "Vida del filtro (h)", default **3650 h** (su valor de fábrica). Horas **totales simples** (no ponderadas por velocidad; ponderación queda como posible mejora futura).
+  - **Sensor "% de vida del filtro"** = 100·(1 − filter_hours/intervalo). Reset = el **botón existente** (mecanismo offset, como su `dv_filtros_horas_offset`).
+  - **Umbral único** (al 100% del intervalo). Pre-aviso al 90% queda opcional.
+  - **Aviso:** issue de **Repairs** (sistema de F07) + opción de notificación persistente / evento para Telegram (como sus toggles "Notificaciones persistentes / Telegram").
+  - Fecha/contador de último cambio: opcional, no por defecto.
 
 ### F09 · Anti-ciclado corto (DC)
 - **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
@@ -209,6 +214,7 @@
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
 | **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
 | **F07** | ☑ revisada | Repairs por módulo (ausente + obsoleto >5min, solo requeridos); botón reabre config flow; + evento opcional para Telegram. |
-| F08–F23 | ☐ | Pendientes de revisar |
+| **F08** | ☑ revisada | Vida del filtro: intervalo configurable (3650 h), sensor % , reset existente, aviso por Repairs/notif. |
+| F09–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
