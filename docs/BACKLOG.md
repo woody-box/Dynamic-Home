@@ -13,9 +13,19 @@
 ## Cross-módulo (bus SDHB)
 
 ### F01 · Modo global de la casa ⭐
-- **Estado:** ☐ · **Módulos:** DV·DS·DC · **Valor:** Alta · **Esfuerzo:** M
-- **Idea:** un `select` único (`Home/Away/Sleep/Boost/Eco`) que publica al bus y sesga los tres módulos a la vez (ej. *Sleep* = VMC≤V1, persianas a aislamiento nocturno, DC con banda ancha).
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DV·DS·DC (y futuros) · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** un control de "modo" (`Home/Away/Sleep/Boost/Eco`) que publica al bus y sesga todos los módulos a la vez.
+- **Perfilado:**
+  - **Modos base** `Home/Away/Sleep/Boost/Eco` válidos, pero el **comportamiento por modo es configurable** (no hardcodeado). Caso de uso clave: en `Sleep`, la VMC baja a velocidad baja por **ruido (WAF)**. Mínimo configurable por modo: cap de velocidad VMC; ideal: un "perfil" por módulo y modo.
+  - **Vive en el BUS**, no en DC: el modo (incl. `Away`/vacaciones) existe aunque DC no esté instalado. El **modo vacaciones del bus sustituye** al toggle `vacation` de DC.
+  - **Por grupos de zona**, no solo global (ver F24): p.ej. `salón-cocina`, `habitaciones`, `baños`; cada persona puede gestionar su grupo con su preset. Probable "modo casa" global + override por grupo.
+  - **Extensible** a módulos futuros (Dynamic AC, F25): un módulo nuevo solo tiene que leer el modo del bus.
+  - **Jerarquía de autoridad (de más a menos):**
+    1. **Override manual** (explícito, temporizado) — única forma de saltarse el horario.
+    2. **Horario / schedule** — si dice OFF a las 21:00, se apaga.
+    3. **Manual** (preset normal del usuario) — gana al modo.
+    4. **Modo** (global / de grupo) — capa base.
+    > Nota: un preset manual normal NO se salta el horario; solo el override manual sí (como en el YAML).
 
 ### F02 · Explicador de conflictos del bus ⭐
 - **Estado:** ☐ · **Módulos:** DV·DS·DC · **Valor:** Alta · **Esfuerzo:** S
@@ -137,9 +147,23 @@
 - **Idea:** un único mando que escala la agresividad de los biases.
 - **Perfilado:** _(pendiente)_
 
+## Fundacionales (emergentes de la revisión)
+
+### F24 · Agrupación de zonas + presets por persona
+- **Estado:** ☐ · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** agrupar entidades en zonas lógicas (`salón-cocina`, `habitaciones`, `baños`) y que cada persona gestione su grupo con su preset/modo. Es prerrequisito de F01 por grupos.
+- **Perfilado:** _(pendiente — afecta a la arquitectura; revisar antes que features que dependan de zonas)_
+
+### F25 · Módulo Dynamic AC (aire acondicionado)
+- **Estado:** ☐ · **Módulos:** nuevo (AC) · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** nuevo tipo de módulo para aire acondicionado, integrado en el bus y reactivo al modo global (F01). Validar que la arquitectura de coordinators/engines lo soporta sin fricción.
+- **Perfilado:** _(pendiente)_
+
 ---
 
 ## Registro de revisión
 | ID | Estado | Decisión resumida |
 |----|--------|-------------------|
-| F01–F23 | ☐ | Pendiente de revisar una a una |
+| **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
+| F02–F23 | ☐ | Pendientes de revisar |
+| F24, F25 | ☐ | Fundacionales emergentes; revisar pronto |
