@@ -116,9 +116,12 @@
 ## DV (ventilación)
 
 ### F11 · Ventilación anticipatoria (derivada CO₂/PM)
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** M
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** M
 - **Idea:** pre-ventilar cuando CO₂/PM suben rápido (ya hay EMAs; falta la derivada), análogo al lead de DC.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:** (modelado como el **refuerzo de ducha/humedad**, pero con calidad de aire)
+  - Disparo por la **derivada** (pendiente) de **CO₂ y PM** (EMA-suavizada), con **umbral on/off** y **hold** (anti-transitorio), igual que `shower_rh_delta_on/off` + `shower_hold_s`.
+  - **Anticipación suave:** la pendiente fuerte adelanta el salto de velocidad (V2/V3) antes de cruzar el umbral de nivel.
+  - Ambos contaminantes; ampliable a VOC/NOx vía F30.
 
 ### F12 · Horas de silencio (cap nocturno)
 - **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
@@ -245,7 +248,8 @@
 | **F08** | ☑ revisada | Vida del filtro: intervalo configurable (3650 h), sensor % , reset existente, aviso por Repairs/notif. |
 | **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
 | **F10** | ☑ revisada | Servicios (reset_learning/boost/observe/reset_filter/recalibrate) + eventos (degraded/conflict/filter_due/mode_changed); eventos primero. |
-| F11–F23 | ☐ | Pendientes de revisar |
+| **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
+| F12–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
