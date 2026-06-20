@@ -238,9 +238,13 @@
 ## Fundacionales (emergentes de la revisión)
 
 ### F24 · Agrupación de zonas + presets por persona
-- **Estado:** ☐ · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
-- **Idea:** agrupar entidades en zonas lógicas (`salón-cocina`, `habitaciones`, `baños`) y que cada persona gestione su grupo con su preset/modo. Es prerrequisito de F01 por grupos.
-- **Perfilado:** _(pendiente — afecta a la arquitectura; revisar antes que features que dependan de zonas)_
+- **Estado:** ☑ revisada · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** agrupar entidades en zonas lógicas y que cada ámbito tenga su modo/perfil propio. Prerrequisito de F01/F21/F23 "por grupos".
+- **Perfilado:**
+  - **Tres niveles: zona → grupo de zonas → casa** (p.ej. *Habitación principal → Habitaciones → Casa*; o *Habitación niños → Planta 1 → Chalet*).
+  - **Configuración dedicada** para definir **zonas y grupos** (qué módulos pertenecen a cada zona, qué zonas forman cada grupo) — no solo un campo por módulo.
+  - **Modo/perfil independiente por ámbito:** F01 (modo) y F21 (perfil) se aplican **por zona/grupo**, no solo global (p.ej. una habitación en "Sleep" sin afectar al resto). _(Esto es lo que se entendía por "presets por persona"; el "quién" lo gestiona HA con sus usuarios/dashboards.)_
+  - **Zonas propias** (no reutilizar las Areas nativas de HA) para máximo control.
 
 ### F25 · Módulo Dynamic AC (aire acondicionado)
 - **Estado:** ☐ · **Módulos:** nuevo (AC) · **Valor:** Alta · **Esfuerzo:** L
@@ -319,6 +323,9 @@
 | **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
-| F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
-| **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
-| F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
+| **F24** | ☑ revisada | Tres niveles zona→grupo→casa; config dedicada; modo/perfil por ámbito; zonas propias (no Areas HA). |
+| F25, F26 | ☐ | Fundacionales pendientes (Dynamic AC; tipo instalación + emisión). |
+| **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
+| **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |
+| **F29** | ☑ fusionada | Programación por día → fusionada en F21. |
+| F28, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador; IAQ extendido). |
