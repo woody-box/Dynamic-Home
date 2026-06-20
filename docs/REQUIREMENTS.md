@@ -1,10 +1,10 @@
 # Dynamic Home — Documento de Requisitos
 
 > Derivado de `docs/BACKLOG.md` (ideas F01–F35, perfiladas con el usuario).
-> **Versión 3 — Fases 0 (fundacionales), 1 (transversales + DC) y 2 (DV) en
-> detalle**; el resto, en el roadmap (§3) para expandir fase a fase. Prioridad por
-> MoSCoW: **M** (Must) · **S** (Should) · **C** (Could). Cada requisito debe ser
-> verificable.
+> **Versión 4 — Fases 0 (fundacionales), 1 (transversales + DC), 2 (DV) y 3 (DS)
+> en detalle**; el resto, en el roadmap (§3) para expandir fase a fase. Prioridad
+> por MoSCoW: **M** (Must) · **S** (Should) · **C** (Could). Cada requisito debe
+> ser verificable.
 
 Estado actual del producto: v0.5.0 publicada en HACS (DV/DS/DC + bus SDHB en
 memoria, observabilidad 1:1, modo observación, config por UI por categoría).
@@ -69,7 +69,7 @@ F32 Presencia · F33 Weather. (Apoyo: F02 explicador del bus.)
 | **4** | Módulo nuevo | F34 Dynamic Energy (+ VE) |
 | **❄️** | Congeladas / fuera | F04 precio, F05 outdoor reset, F18 anti-helada |
 
-> El detalle de Fases 3–4 se redactará al entrar cada fase, partiendo del
+> El detalle de la Fase 4 se redactará al entrar la fase, partiendo del
 > perfilado ya cerrado en `docs/BACKLOG.md`.
 
 ---
@@ -594,7 +594,104 @@ de calidad de aire complementario a la VMC.
 
 ---
 
-## 7. Trazabilidad
+## 7. Fase 3 — DS (persianas) (detalle)
+
+Eleva el módulo DS de "todo/nada por % fijo" a control fino: sombreado por
+geometría solar real, estrategia de inercia nocturna estacional, protección
+anticipatoria por alertas meteo y apertura gradual al amanecer. Todo **coordinado
+con la lógica DS existente** (free-cooling, viento/lluvia) y bajo "seguridad
+manda".
+
+### 7.1 · Sombreado geométrico real (F15)
+
+**Objetivo:** calcular la penetración solar por geometría y cerrar **solo lo
+necesario** (proteger X metros de suelo), no todo/nada.
+
+- **REQ-GEO-1 (M):** **objetivo de control configurable**: no dejar que el sol
+  directo penetre más de **X metros** de suelo.
+- **REQ-GEO-2 (M):** **cálculo de penetración** = f(elevación y azimut del sol,
+  geometría de la ventana, voladizo) → % de cierre que tapa justo esa penetración
+  hasta el objetivo de metros.
+- **REQ-GEO-3 (S):** **geometría ampliada opcional** — además de
+  `window_height_cm` + `overhang_cm`, **altura de alféizar** (suelo→ventana) y
+  **profundidad útil de la sala**.
+- **REQ-GEO-4 (M):** actuación **por pasos** (p.ej. 25/50/75), no continua (el slew
+  suaviza y evita mover la persiana cada poco).
+- **REQ-GEO-5 (M):** **fallback** — si faltan datos de geometría, comportamiento
+  actual (% fijo de solar shield).
+
+**Dependencias:** DS, posición/azimut del sol (HA), F33 (opcional, nubosidad).
+**Criterios de aceptación:**
+- ☐ Con sol bajo, la persiana cierra más; con sol alto, menos, para mantener X m.
+- ☐ Sin geometría configurada, aplica el % fijo actual sin error.
+
+### 7.2 · Aislamiento nocturno estacional (F16)
+
+**Objetivo:** cerrar en noche de invierno (aislar) / abrir en noche de verano
+(refrescar masa), ampliando `winter_night_pct`.
+
+- **REQ-NOC-1 (M):** **estación por el MODO del climatizador de la zona**: `heat`
+  → cara invierno (**cerrar para aislar**); `cool` → cara verano (**abrir/purga
+  nocturna**).
+- **REQ-NOC-2 (M):** **activable por zona**.
+- **REQ-NOC-3 (M):** **noche = sol bajo el horizonte**.
+- **REQ-NOC-4 (M):** **no duplicar free-cooling** — la cara de verano se
+  **coordina** con el free-cooling existente; lo distintivo es la **estrategia de
+  inercia** (abrir de noche para pre-acondicionar la masa y empezar el día
+  siguiente con ventaja, incluso en condiciones marginales). _Condiciones térmicas
+  exactas (ext vs int, consigna) a detallar en implementación._
+- **REQ-NOC-5 (M):** **seguridad manda** (viento/lluvia/override por encima del
+  aislamiento).
+
+**Dependencias:** DS, modo del `climate` de la zona (F25), free-cooling existente.
+**Criterios de aceptación:**
+- ☐ En `heat`, al caer la noche la persiana cierra para aislar.
+- ☐ En `cool`, la apertura nocturna no entra en conflicto con el free-cooling.
+
+### 7.3 · Avisos meteo (tormenta/granizo) (F17)
+
+**Objetivo:** alerta meteo → **protección preventiva** (anticipa el granizo, no
+reacciona cuando ya cae). Capa anticipatoria sobre la protección viento/lluvia
+actual.
+
+- **REQ-MET-1 (M):** **fuente genérica y agnóstica** — el usuario enchufa un
+  `binary_sensor` de "alerta meteo" (de cualquier proveedor/template); **no atarse
+  a un proveedor** (RNF-6; AEMET es poco fiable).
+- **REQ-MET-2 (S):** un disparo genérico "alerta → proteger" + **opcional** entradas
+  separadas (granizo/tormenta vs viento) con **posiciones de protección distintas**.
+- **REQ-MET-3 (M):** **posición de protección configurable** (no siempre cerrar del
+  todo; a veces media protege mejor las lamas).
+- **REQ-MET-4 (M):** **hold configurable** tras levantarse la alerta (mantener
+  protegido X min).
+- **REQ-MET-5 (M):** **complementa** la protección por viento/lluvia **actuales** ya
+  existentes (esto es la capa anticipatoria).
+
+**Dependencias:** DS, F33 (puede proveer la alerta), protección viento/lluvia.
+**Criterios de aceptación:**
+- ☐ Activar el `binary_sensor` de alerta lleva la persiana a la posición de protección.
+- ☐ Al desactivarse, mantiene la protección el `hold` configurado antes de soltar.
+
+### 7.4 · Apertura gradual al amanecer (F19)
+
+**Objetivo:** subir la persiana poco a poco al amanecer (despertar natural), sin
+pelear con el resto de la lógica DS.
+
+- **REQ-AMA-1 (M):** **opt-in por zona** (p.ej. salón por las mañanas; dormitorio
+  según preferencia).
+- **REQ-AMA-2 (M):** **rampa por pasos de % + duración entre pasos**, configurable
+  por zona.
+- **REQ-AMA-3 (M):** **disparo por amanecer** (sol).
+- **REQ-AMA-4 (M):** **coordinación** — si la persiana **ya está abierta** (p.ej.
+  free-cooling en verano), la rampa **no actúa**; seguridad manda.
+
+**Dependencias:** DS, amanecer (sol), free-cooling/F16.
+**Criterios de aceptación:**
+- ☐ Al amanecer, la persiana sube por pasos según la rampa configurada.
+- ☐ Si ya estaba abierta por free-cooling, la rampa no la mueve.
+
+---
+
+## 8. Trazabilidad
 
 Cada requisito procede de una idea perfilada en `docs/BACKLOG.md` (misma
 nomenclatura Fxx). Las decisiones de diseño y matices del usuario están en el
@@ -605,8 +702,10 @@ perfilado de cada Fxx; este documento las formaliza como requisitos verificables
 | 0 | REQ-ZON, REQ-INS, REQ-EMI, REQ-PRE, REQ-WEA | F24, F26, F25, F32, F33 |
 | 1 | REQ-MOD, REQ-CMF, REQ-SCH, REQ-REP, REQ-SVC, REQ-ENE, REQ-PIC, REQ-DEM, REQ-CYC, REQ-WIN, REQ-MOH, REQ-ADY | F01, F23, F21/F29, F07, F10, F06, F03, F27, F09, F20, F22, F31 |
 | 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM | F11, F12, F13, F14, F28, F30, F35 |
+| 3 | REQ-GEO, REQ-NOC, REQ-MET, REQ-AMA | F15, F16, F17, F19 |
 
-## 8. Pendiente de redactar
-- Detalle de **Fases 3–4** (al entrar cada fase): DS y Dynamic Energy.
+## 9. Pendiente de redactar
+- Detalle de **Fase 4** (al entrar la fase): Dynamic Energy (F34, +VE) — requiere
+  perfilar F34 en el backlog primero.
 - **Criterios de aceptación** ampliados y casos de prueba por requisito.
 - **Plan de migración** desde la suite YAML del usuario (coexistencia vía modo observación).
