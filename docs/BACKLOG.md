@@ -341,9 +341,17 @@
   - **Salida:** publica estado por zona al bus; cada módulo decide (setback, persianas…). Opción de disparos directos configurables.
 
 ### F33 · Dynamic Weather (proveedor de datos)
-- **Estado:** ☐ · **Módulos:** núcleo · **Valor:** Alta · **Esfuerzo:** M
+- **Estado:** ☑ revisada · **Módulos:** núcleo · **Valor:** Alta · **Esfuerzo:** M
 - **Idea:** capa meteo **resiliente y agnóstica** (Open-Meteo/OWM/…), con `availability`, que sirve forecast/alertas a DC (forecast bias), DS (F17 avisos) y free-cooling. Evita depender de integraciones inestables (AEMET).
-- **Perfilado:** _(pendiente)_
+- **Perfilado:**
+  - **No depende de placas solares** (eso es F34/Energy): F33 da **forecast + alertas**, todo testable sin FV. Consumidores: **DC** (forecast bias), **DS** (F17 avisos), **free-cooling** (previsión para purga nocturna).
+  - **Multi-fuente con fallback** (lo que motiva la feature): el problema real es que **AEMET se desconecta ~5 min de cada 4** → no atarse a un proveedor. Varias fuentes en cascada (p.ej. Open-Meteo libre como primaria + OWM/met.no/AEMET como respaldo); si la activa cae (sin `availability` o datos viejos), pasa a la siguiente.
+  - **Configuración tipo `meteo_sources.yaml` compartido:** lista priorizada de fuentes (igual que el usuario ya se monta sus REST con `availability`). Reutilizable por todos los nodos/zonas para no duplicar lógica.
+  - **Agnóstico (RNF-6):** el usuario puede **enchufar su propio `weather`/sensores** en vez de (o además de) las fuentes integradas. La feature **no obliga** a usar las integradas.
+  - **Forecast** expuesto (temp, precip, viento, nubosidad…) consumible por DC y free-cooling; **alertas** genéricas consumibles por DS (F17, "alerta → proteger").
+  - **lat/lon configurables**; **sin claves obligatorias** para la fuente libre, **clave opcional** para la de pago.
+  - **Resiliencia/observabilidad:** exponer qué fuente está activa y desde cuándo (para depurar caídas); marcar `unavailable` solo si **todas** las fuentes fallan (degradación, RNF-7).
+  - **Fuera de alcance F33:** nada de energía/FV (eso es F34).
 
 ### F34 · Dynamic Energy (módulo)
 - **Estado:** ☐ · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
@@ -391,3 +399,4 @@
 | **F29** | ☑ fusionada | Programación por día → fusionada en F21. |
 | **F28** | ☑ revisada | Eficiencia recuperador (3 sondas, sin expulsión) + inferencia bypass (aviso solo si desplome inesperado). |
 | **F30** | ☑ revisada | IAQ extendido: actúan solo CO₂/PM2.5; VOC informativo; NOx descartado; exteriores observación + hostil. |
+| **F33** | ☑ revisada | Weather agnóstico multi-fuente con fallback (AEMET poco fiable); meteo_sources.yaml compartido; forecast→DC/free-cooling, alertas→DS; sin FV (eso es F34). |
