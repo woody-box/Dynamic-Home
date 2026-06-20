@@ -324,7 +324,33 @@
 
 ---
 
-## Registro de revisión
+## Módulos futuros (candidatos de la "suite")
+> De una lluvia de 15 iconos, estos son los que encajan con el ADN de Dynamic Home
+> (coordinación por bus + control predictivo/adaptativo). El resto (Music, Robot,
+> Unraid, Network, TV, Office) quedan fuera; Suite = el paraguas (= Dynamic Home).
+
+### F32 · Dynamic Presence (enabler transversal)
+- **Estado:** ☐ · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** detección de presencia (away/home/sleep, por zona) que alimenta modos (F01), perfiles (F21), setback de DC/DV y coordinación con luces/persianas. Transversal, como las zonas (F24).
+- **Perfilado:** _(pendiente — empezar por aquí)_
+
+### F33 · Dynamic Weather (proveedor de datos)
+- **Estado:** ☐ · **Módulos:** núcleo · **Valor:** Alta · **Esfuerzo:** M
+- **Idea:** capa meteo **resiliente y agnóstica** (Open-Meteo/OWM/…), con `availability`, que sirve forecast/alertas a DC (forecast bias), DS (F17 avisos) y free-cooling. Evita depender de integraciones inestables (AEMET).
+- **Perfilado:** _(pendiente)_
+
+### F34 · Dynamic Energy (módulo)
+- **Estado:** ☐ · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** cerebro de energía: FV/batería/red/autoconsumo + **carga inteligente del VE** (garaje). Consolida F03 (anti-pico), F04 (precio), F06 (coste). Coordina a los grandes consumidores (DC/DV/AC) vía bus.
+- **Perfilado:** _(pendiente)_
+
+### F35 · Campana extractora coordinada (cocina → DV)
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** sinergia de cocina (no módulo aparte): cuando el **PM interior sube** (air fryer / cocinar) y la **campana extractora** (domotizada) está **apagada/baja**, **encenderla/subirla** para limpiar el aire. La campana = actuador extra de calidad de aire, complementario a la VMC.
+- **Perfilado:**
+  - Entrada: entidad de la campana (`fan`/`switch`) + nivel objetivo.
+  - Disparo por **PM interior** (nivel y/o derivada, reusa F11) por encima de umbral; retira al normalizar (histéresis/hold).
+  - Opcional: subir también la VMC en paralelo.
 | ID | Estado | Decisión resumida |
 |----|--------|-------------------|
 | **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
