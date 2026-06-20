@@ -330,9 +330,15 @@
 > Unraid, Network, TV, Office) quedan fuera; Suite = el paraguas (= Dynamic Home).
 
 ### F32 · Dynamic Presence (enabler transversal)
-- **Estado:** ☐ · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
+- **Estado:** ☑ revisada · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** detección de presencia (away/home/sleep, por zona) que alimenta modos (F01), perfiles (F21), setback de DC/DV y coordinación con luces/persianas. Transversal, como las zonas (F24).
-- **Perfilado:** _(pendiente — empezar por aquí)_
+- **Perfilado:**
+  - **Fusión de fuentes** (el valor real, no consumir un solo sensor): **PIR** (reacción rápida) + **mmWave** (presencia sostenida/quieto) + **BLE tipo Bermuda con beacons dedicados** (identidad + habitación, sin gastar batería del móvil) + **móvil GPS/WiFi** (Casa/Fuera).
+  - **Estados:** por zona `Ocupada/Vacía`; global `Casa/Fuera/Durmiendo`. Anti-flapping (no marcar vacía por estar quieto).
+  - **Máquina de ocupación direccional en la puerta:** combinar **contacto de puerta + movimiento interior por orden de eventos** (movimiento→puerta = salió; puerta→movimiento = entró) + BLE (quién queda/se va). Estado: Ocupada mientras haya presencia interior; Vacía cuando se apaga la última + hubo apertura reciente.
+  - **Dormido:** franja horaria + sin movimiento, o zona "cama" del mmWave, o modo manual.
+  - **Hardware recomendado (genérico):** PIR en zonas de paso; mmWave en estancias de estar/dormir; BLE (Bermuda + beacons) para identidad; móvil para casa/fuera.
+  - **Salida:** publica estado por zona al bus; cada módulo decide (setback, persianas…). Opción de disparos directos configurables.
 
 ### F33 · Dynamic Weather (proveedor de datos)
 - **Estado:** ☐ · **Módulos:** núcleo · **Valor:** Alta · **Esfuerzo:** M
