@@ -6,6 +6,11 @@
 > y se implementarán en una fase posterior.
 
 **Leyenda de estado:** ☐ pendiente · 🔄 en discusión · ☑ revisada (perfilada) · ❄️ congelada
+
+## Pendientes para el próximo release
+- **PR a `home-assistant/brands`** con `docs/brand/icon.png` + `icon@2x.png` (icono en HA/HACS).
+- **Bump de versión + notas** al cortar el release (incluir iconos y lo que entre).
+
 **Valor:** Alta / Media / Baja · **Esfuerzo:** S (pequeño) / M (medio) / L (grande)
 
 ---
@@ -319,7 +324,39 @@
 
 ---
 
-## Registro de revisión
+## Módulos futuros (candidatos de la "suite")
+> De una lluvia de 15 iconos, estos son los que encajan con el ADN de Dynamic Home
+> (coordinación por bus + control predictivo/adaptativo). El resto (Music, Robot,
+> Unraid, Network, TV, Office) quedan fuera; Suite = el paraguas (= Dynamic Home).
+
+### F32 · Dynamic Presence (enabler transversal)
+- **Estado:** ☑ revisada · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** detección de presencia (away/home/sleep, por zona) que alimenta modos (F01), perfiles (F21), setback de DC/DV y coordinación con luces/persianas. Transversal, como las zonas (F24).
+- **Perfilado:**
+  - **Fusión de fuentes** (el valor real, no consumir un solo sensor): **PIR** (reacción rápida) + **mmWave** (presencia sostenida/quieto) + **BLE tipo Bermuda con beacons dedicados** (identidad + habitación, sin gastar batería del móvil) + **móvil GPS/WiFi** (Casa/Fuera).
+  - **Estados:** por zona `Ocupada/Vacía`; global `Casa/Fuera/Durmiendo`. Anti-flapping (no marcar vacía por estar quieto).
+  - **Máquina de ocupación direccional en la puerta:** combinar **contacto de puerta + movimiento interior por orden de eventos** (movimiento→puerta = salió; puerta→movimiento = entró) + BLE (quién queda/se va). Estado: Ocupada mientras haya presencia interior; Vacía cuando se apaga la última + hubo apertura reciente.
+  - **Dormido:** franja horaria + sin movimiento, o zona "cama" del mmWave, o modo manual.
+  - **Hardware recomendado (genérico):** PIR en zonas de paso; mmWave en estancias de estar/dormir; BLE (Bermuda + beacons) para identidad; móvil para casa/fuera.
+  - **Salida:** publica estado por zona al bus; cada módulo decide (setback, persianas…). Opción de disparos directos configurables.
+
+### F33 · Dynamic Weather (proveedor de datos)
+- **Estado:** ☐ · **Módulos:** núcleo · **Valor:** Alta · **Esfuerzo:** M
+- **Idea:** capa meteo **resiliente y agnóstica** (Open-Meteo/OWM/…), con `availability`, que sirve forecast/alertas a DC (forecast bias), DS (F17 avisos) y free-cooling. Evita depender de integraciones inestables (AEMET).
+- **Perfilado:** _(pendiente)_
+
+### F34 · Dynamic Energy (módulo)
+- **Estado:** ☐ · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** cerebro de energía: FV/batería/red/autoconsumo + **carga inteligente del VE** (garaje). Consolida F03 (anti-pico), F04 (precio), F06 (coste). Coordina a los grandes consumidores (DC/DV/AC) vía bus.
+- **Perfilado:** _(pendiente)_
+
+### F35 · Campana extractora coordinada (cocina → DV)
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** sinergia de cocina (no módulo aparte): cuando el **PM interior sube** (air fryer / cocinar) y la **campana extractora** (domotizada) está **apagada/baja**, **encenderla/subirla** para limpiar el aire. La campana = actuador extra de calidad de aire, complementario a la VMC.
+- **Perfilado:**
+  - Entrada: entidad de la campana (`fan`/`switch`) + nivel objetivo.
+  - Disparo por **PM interior** (nivel y/o derivada, reusa F11) por encima de umbral; retira al normalizar (histéresis/hold).
+  - Opcional: subir también la VMC en paralelo.
 | ID | Estado | Decisión resumida |
 |----|--------|-------------------|
 | **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
