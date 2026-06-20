@@ -6,6 +6,11 @@
 > y se implementarán en una fase posterior.
 
 **Leyenda de estado:** ☐ pendiente · 🔄 en discusión · ☑ revisada (perfilada) · ❄️ congelada
+
+## Pendientes para el próximo release
+- **PR a `home-assistant/brands`** con `docs/brand/icon.png` + `icon@2x.png` (icono en HA/HACS).
+- **Bump de versión + notas** al cortar el release (incluir iconos y lo que entre).
+
 **Valor:** Alta / Media / Baja · **Esfuerzo:** S (pequeño) / M (medio) / L (grande)
 
 ---
