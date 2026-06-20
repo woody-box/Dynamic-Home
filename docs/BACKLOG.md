@@ -198,10 +198,14 @@
 
 ## DC (clima)
 
-### F20 · Detección de ventana por caída de temperatura
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
-- **Idea:** lockout por derivada brusca de temperatura cuando no hay sensor de ventana.
-- **Perfilado:** _(pendiente)_
+### F20 · Detección de ventana abierta
+- **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
+- **Idea:** pausar el clima si se abre una ventana (no calentar/enfriar a la calle).
+- **Perfilado:**
+  - **Sensor de ventana real primero:** mantener el `window_lockout` por `binary_sensor` (detección directa, sin cálculo) — opción preferente cuando existe.
+  - **Inferencia por caída de temperatura** como **fallback/red extra** (con o sin sensor): derivada brusca **+ coherencia con la demanda** (cae mientras calientas / sube mientras enfrías = sospechoso) para evitar falsos positivos.
+  - **Recuperación:** al estabilizarse/recuperar la temperatura **o** por timeout, lo que ocurra antes.
+  - **Activable por zona**, sensibilidad configurable.
 
 ### F21 · Perfiles horarios de consigna
 - **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
@@ -264,6 +268,15 @@
 - **Idea:** aceptar más contaminantes como disparadores además de CO2/PM2.5: **VOC, NOx** interior; y exterior **CO/PM10/NO2/SO2/O3** + índice. Enlaza con F11 (anticipatoria).
 - **Perfilado:** _(pendiente)_
 
+### F31 · Aviso/aprovechamiento de espacio adyacente (terraza/galería)
+- **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
+- **Idea:** usar la temperatura de un **espacio adyacente** (terraza acristalada, galería) con una **puerta** que comunica, para avisar/aprovechar.
+- **Perfilado:** (advisory; requiere sensor de temperatura del espacio adyacente)
+  - **En `heat`:** si el adyacente está mucho **más caliente** (p.ej. salón 20 °C, terraza al sol 50 °C) → **avisar para abrir la puerta** y calentar gratis (ganancia solar gratuita).
+  - **En `cool`:** si el adyacente está mucho más caliente (interior 26 °C, terraza 50 °C) → **avisar/alarma si se abre la puerta** (no meter ese calor mientras enfrías).
+  - Por defecto **advisory** (notificación/evento); actuación automática no aplica (no se puede abrir/cerrar una puerta), aunque podría sesgar decisiones vía bus.
+  - Umbrales de ΔT configurables; por zona.
+
 ---
 
 ## Registro de revisión
@@ -288,7 +301,9 @@
 | **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
 | **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |
 | **F19** | ☑ revisada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
-| F20–F23 | ☐ | Pendientes de revisar |
+| **F20** | ☑ revisada | Ventana abierta: sensor real primero + inferencia por caída temp (coherente con demanda); recuperación por estabilización/timeout. |
+| **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
+| F21–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
