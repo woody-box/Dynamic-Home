@@ -1,9 +1,10 @@
 # Dynamic Home — Documento de Requisitos
 
 > Derivado de `docs/BACKLOG.md` (ideas F01–F35, perfiladas con el usuario).
-> **Versión 2 — Fases 0 (fundacionales) y 1 (transversales + DC) en detalle**;
-> el resto, en el roadmap (§3) para expandir fase a fase. Prioridad por MoSCoW:
-> **M** (Must) · **S** (Should) · **C** (Could). Cada requisito debe ser verificable.
+> **Versión 3 — Fases 0 (fundacionales), 1 (transversales + DC) y 2 (DV) en
+> detalle**; el resto, en el roadmap (§3) para expandir fase a fase. Prioridad por
+> MoSCoW: **M** (Must) · **S** (Should) · **C** (Could). Cada requisito debe ser
+> verificable.
 
 Estado actual del producto: v0.5.0 publicada en HACS (DV/DS/DC + bus SDHB en
 memoria, observabilidad 1:1, modo observación, config por UI por categoría).
@@ -68,7 +69,7 @@ F32 Presencia · F33 Weather. (Apoyo: F02 explicador del bus.)
 | **4** | Módulo nuevo | F34 Dynamic Energy (+ VE) |
 | **❄️** | Congeladas / fuera | F04 precio, F05 outdoor reset, F18 anti-helada |
 
-> El detalle de Fases 2–4 se redactará al entrar cada fase, partiendo del
+> El detalle de Fases 3–4 se redactará al entrar cada fase, partiendo del
 > perfilado ya cerrado en `docs/BACKLOG.md`.
 
 ---
@@ -451,7 +452,149 @@ galería) comunicado por una puerta, para **avisar/aprovechar** (advisory).
 
 ---
 
-## 6. Trazabilidad
+## 6. Fase 2 — DV (ventilación) (detalle)
+
+Profundiza el módulo DV: anticipación por calidad de aire, respeto del ruido,
+secado físicamente correcto, boost, diagnóstico del recuperador, IAQ ampliado y
+sinergia con la campana de cocina. Reutiliza patrones ya existentes en DV (EMAs,
+`dry_mode`, `dp_diff`, timer de override).
+
+### 6.1 · Ventilación anticipatoria (F11)
+
+**Objetivo:** pre-ventilar cuando CO₂/PM **suben rápido** (derivada), análogo al
+lead de DC; modelado como el refuerzo de ducha/humedad pero con calidad de aire.
+
+- **REQ-ANT-1 (M):** disparo por la **derivada (pendiente)** de **CO₂ y PM**
+  (EMA-suavizada), con **umbral on/off** y **hold** anti-transitorio (patrón
+  `shower_rh_delta_on/off` + `shower_hold_s`).
+- **REQ-ANT-2 (M):** **anticipación suave** — una pendiente fuerte **adelanta** el
+  salto de velocidad (V2/V3) antes de cruzar el umbral de nivel absoluto.
+- **REQ-ANT-3 (S):** ampliable a VOC/NOx vía F30 (sin que estos **actúen** por
+  defecto, REQ-IAQ).
+- **REQ-ANT-4 (M):** umbrales, hold y constante de la EMA **configurables**
+  (RNF-1); off por defecto si no se activa.
+
+**Dependencias:** DV (EMAs existentes), F30 (contaminantes), F32 (presencia opc.).
+**Criterios de aceptación:**
+- ☐ Una subida brusca de CO₂ eleva la velocidad antes de alcanzar el umbral fijo.
+- ☐ Un pico transitorio dentro del `hold` no provoca oscilación de velocidad.
+
+### 6.2 · Horas de silencio (F12)
+
+**Objetivo:** franja en la que la VMC no supera cierta velocidad por ruido (WAF),
+distinta del schedule de encendido.
+
+- **REQ-SIL-1 (M):** nivel máximo seleccionable en la franja: **`OFF / V1 / V2`**
+  (V3 = sin cap). `OFF` cubre "apagar la máquina a ciertas horas".
+- **REQ-SIL-2 (M):** **franja propia** (hora inicio/fin + nivel máx) **y**
+  reutilizable por el **modo Sleep (F01)** (Sleep aplica el cap configurado).
+- **REQ-SIL-3 (M):** **excepción de seguridad** — un umbral **crítico** de CO₂/PM
+  **cede el cap** y sube igual (salud > silencio).
+- **REQ-SIL-4 (S):** **por día** opcional (enlaza con el programador F21).
+
+**Dependencias:** F01 (Sleep), F21 (por día), DV.
+**Criterios de aceptación:**
+- ☐ Dentro de la franja con cap `V1`, la VMC no supera V1 salvo umbral crítico.
+- ☐ Activar `Sleep` aplica el mismo cap sin configurar la franja aparte.
+
+### 6.3 · Secado por punto de rocío (F13)
+
+**Objetivo:** ventilar para secar **solo si el aire exterior es más seco**
+(comparar puntos de rocío), no por HR relativa. Mejora del `dry_mode` actual.
+
+- **REQ-DRY-1 (M):** **criterio: punto de rocío** — ventilar para secar si
+  `dp_out < dp_in − margen` (usa el `dp_diff` ya calculado en el coordinator).
+- **REQ-DRY-2 (M):** **sustituye/mejora el `dry_mode`** existente, que pasa a
+  **gatear por `dp_diff`** en lugar de por HR relativa.
+- **REQ-DRY-3 (M):** **margen ("corta ventaja") configurable** — no ventilar por
+  diferencias mínimas.
+- **REQ-DRY-4 (M):** **histéresis on/off regulable** para no conmutar en el límite.
+- **REQ-DRY-5 (S):** si la zona tiene AC con **dry nativo** (REQ-EMI-6), puede
+  usarse como alternativa/refuerzo al secado por ventilación.
+
+**Dependencias:** DV (`dp_diff`), F22 (lo invoca), F25 (dry nativo AC).
+**Criterios de aceptación:**
+- ☐ Con el exterior más húmedo (`dp_out ≥ dp_in − margen`), el secado **no** ventila.
+- ☐ Con ventaja clara de rocío, ventila; al estrecharse el margen, no oscila (histéresis).
+
+### 6.4 · Boost (V3 temporizado) (F14)
+
+**Objetivo:** forzar V3 N minutos con auto-reversión, reutilizando el timer de
+override existente.
+
+- **REQ-BST-1 (M):** **duración configurable** (`number` "minutos de boost"),
+  nada hardcodeado.
+- **REQ-BST-2 (M):** **solo V3** mientras dura; auto-revierte al expirar.
+- **REQ-BST-3 (M):** se expone como **servicio** `dynamic_home.boost` (parte de
+  F10/REQ-SVC); un `button` queda como azúcar opcional.
+- **REQ-BST-4 (M):** **re-disparar reinicia** el temporizador.
+
+**Dependencias:** F10 (servicio), timer de override (existe).
+**Criterios de aceptación:**
+- ☐ Invocar `boost(15 min)` fija V3 y vuelve al estado previo a los 15 min.
+- ☐ Re-invocar durante el boost reinicia la cuenta atrás.
+
+### 6.5 · Eficiencia del recuperador (F28)
+
+**Objetivo:** sensor de rendimiento del recuperador + inferencia de bypass/fallo,
+con **3 sondas** (la de expulsión NO interviene).
+
+- **REQ-EFF-1 (M):** **η = (T_insuflación − T_absorción_aire_nuevo) /
+  (T_extracción_viciado − T_absorción_aire_nuevo)** — rendimiento de impulsión,
+  válido en ambos sentidos (recupera calor o frescor).
+- **REQ-EFF-2 (M):** **3 sondas opcionales**; si faltan, el sensor **no se expone**
+  (RNF-6/RNF-7).
+- **REQ-EFF-3 (S):** exponer estado **"recuperación activa / bypass"** — η ~0 con
+  ΔT significativo ⇒ no hay recuperación.
+- **REQ-EFF-4 (S):** **avisar solo si el desplome es inesperado/sostenido** (no se
+  distingue siempre bypass intencionado de suciedad/fallo solo por temperaturas →
+  evitar falsas alarmas).
+
+**Dependencias:** DV, F07 (aviso vía Repairs/evento).
+**Criterios de aceptación:**
+- ☐ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin las sondas, no aparece.
+- ☐ Un desplome puntual de η no dispara aviso; uno sostenido e inesperado sí.
+
+### 6.6 · IAQ extendido (F30)
+
+**Objetivo:** aceptar más contaminantes, pero con **acción acotada** a los que
+tienen sentido sanitario en el caso objetivo.
+
+- **REQ-IAQ-1 (M):** **actúan (suben velocidad): solo CO₂ y PM2.5** (como hoy).
+- **REQ-IAQ-2 (M):** **VOC (COV): informativo/observación**, no actúa.
+- **REQ-IAQ-3 (M):** **NOx descartado** de momento (no presente en el caso del
+  usuario); estructura abierta a añadirlo si aparece.
+- **REQ-IAQ-4 (S):** **contaminantes exteriores** (CO/PM10/NO2/SO2/O3/índice):
+  **solo observación**, y alimentan el **"exterior hostil"** para no ventilar en
+  días muy malos.
+
+**Dependencias:** DV, F11 (deriva sobre los que actúan), F33 (exterior).
+**Criterios de aceptación:**
+- ☐ Subir VOC no cambia la velocidad; subir CO₂/PM2.5 sí.
+- ☐ Con exterior hostil activo, no se ventila pese a IAQ interior mejorable.
+
+### 6.7 · Campana extractora coordinada (F35)
+
+**Objetivo:** sinergia de cocina — cuando el **PM interior sube** (air fryer /
+cocinar) y la **campana** está apagada/baja, encenderla/subirla. Actuador extra
+de calidad de aire complementario a la VMC.
+
+- **REQ-CAM-1 (M):** entrada: **entidad de la campana** (`fan`/`switch`) + nivel
+  objetivo configurable.
+- **REQ-CAM-2 (M):** **disparo por PM interior** (nivel y/o derivada, reusa F11)
+  por encima de umbral; **retira al normalizar** (histéresis/hold).
+- **REQ-CAM-3 (S):** opción de **subir también la VMC en paralelo**.
+- **REQ-CAM-4 (M):** **opt-in** — solo activo si el usuario aporta la campana; no
+  asume hardware (RNF-6).
+
+**Dependencias:** F11 (derivada PM), DV.
+**Criterios de aceptación:**
+- ☐ Un pico de PM con la campana apagada la enciende al nivel objetivo.
+- ☐ Al normalizar el PM (con hold), la campana vuelve a su estado previo.
+
+---
+
+## 7. Trazabilidad
 
 Cada requisito procede de una idea perfilada en `docs/BACKLOG.md` (misma
 nomenclatura Fxx). Las decisiones de diseño y matices del usuario están en el
@@ -461,8 +604,9 @@ perfilado de cada Fxx; este documento las formaliza como requisitos verificables
 |------|-----------|-----------------|
 | 0 | REQ-ZON, REQ-INS, REQ-EMI, REQ-PRE, REQ-WEA | F24, F26, F25, F32, F33 |
 | 1 | REQ-MOD, REQ-CMF, REQ-SCH, REQ-REP, REQ-SVC, REQ-ENE, REQ-PIC, REQ-DEM, REQ-CYC, REQ-WIN, REQ-MOH, REQ-ADY | F01, F23, F21/F29, F07, F10, F06, F03, F27, F09, F20, F22, F31 |
+| 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM | F11, F12, F13, F14, F28, F30, F35 |
 
-## 7. Pendiente de redactar
-- Detalle de **Fases 2–4** (al entrar cada fase): DV, DS y Dynamic Energy.
+## 8. Pendiente de redactar
+- Detalle de **Fases 3–4** (al entrar cada fase): DS y Dynamic Energy.
 - **Criterios de aceptación** ampliados y casos de prueba por requisito.
 - **Plan de migración** desde la suite YAML del usuario (coexistencia vía modo observación).
