@@ -26,7 +26,8 @@ integration/
 │   ├── coordinator_dv.py            # Puente HA → engine DV
 │   ├── coordinator_dc.py            # Puente HA → engine DC (+ publica al bus)
 │   ├── coordinator_ds.py            # Puente HA → engine DS
-│   ├── config_flow.py               # Asistente UI (reemplaza los REPLACE_* del hw_map)
+│   ├── config_flow.py               # Asistente UI + opciones por categoría
+│   ├── options_spec.py              # Catálogo de parámetros ajustables (por categoría)
 │   ├── fan.py                       # Entidad fan (auto / v1 / v2 / v3) + driver de relés
 │   ├── number.py                    # Umbrales IAQ como entidades number
 │   └── strings.json                 # Textos UI (ES)

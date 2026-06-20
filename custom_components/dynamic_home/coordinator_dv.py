@@ -22,6 +22,7 @@ from . import const
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import DvConfig, DvDecision, DvInputs, DvState, decide
+from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -87,12 +88,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         return self.entry.data.get(key)
 
     def _cfg(self) -> DvConfig:
-        o = self.entry.options
         cfg = DvConfig()
-        cfg.co2_v2 = o.get(const.OPT_CO2_V2, cfg.co2_v2)
-        cfg.co2_v3 = o.get(const.OPT_CO2_V3, cfg.co2_v3)
-        cfg.pm_v2 = o.get(const.OPT_PM_V2, cfg.pm_v2)
-        cfg.pm_v3 = o.get(const.OPT_PM_V3, cfg.pm_v3)
+        apply_options(cfg, self.entry.options, const.MODULE_VMC)
+        # Gates driven by hardware presence / switches, not by user options.
         cfg.freecool_enabled = bool(self._hw(const.CONF_T_IN) and
                                     self._hw(const.CONF_T_EXT))
         cfg.hostile_enabled = bool(self._hw(const.CONF_AQI))

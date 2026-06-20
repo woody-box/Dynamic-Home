@@ -61,10 +61,15 @@ async def test_options_flow_tunes_shutter(hass: HomeAssistant) -> None:
     }, "Sur")
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    assert result["type"] == FlowResultType.FORM
+    assert result["type"] == FlowResultType.MENU
 
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], user_input={const.OPT_DS_WIND_LIMIT: 55.0})
+        result["flow_id"], {"next_step_id": "cat_wind"})
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "cat_wind"
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input={"wind_limit_kmh": 55.0})
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
 
@@ -81,10 +86,14 @@ async def test_options_flow_tunes_climate(hass: HomeAssistant) -> None:
     }, "Zona")
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] == FlowResultType.MENU
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "cat_setpoints"})
     assert result["type"] == FlowResultType.FORM
 
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], user_input={const.OPT_DC_BASE_HEAT: 21.0})
+        result["flow_id"], user_input={"base_heat_day": 21.0})
     assert result["type"] == FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
 
