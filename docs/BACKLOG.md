@@ -188,9 +188,13 @@
 - **Perfilado:** _Congelada — marginal para el clima español y persianas enrollables. Reconsiderar para climas fríos / lamas exteriores (venecianas)._
 
 ### F19 · Apertura gradual al amanecer
-- **Estado:** ☐ · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** M
-- **Idea:** simulación de salida del sol, opcionalmente ligada a una alarma.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** M
+- **Idea:** subir la persiana poco a poco al amanecer (despertar natural).
+- **Perfilado:**
+  - **Opt-in por zona** (a unos les gusta en el dormitorio, a otros no; en su caso el **salón** por las mañanas).
+  - **Rampa por pasos de % + duración entre pasos**, configurable por zona.
+  - **Disparo por amanecer** (sol).
+  - **Coordinación:** si la persiana **ya está abierta** (p.ej. free-cooling en verano), la rampa **no hace nada**; no pelea con el resto de lógica DS. Seguridad manda.
 
 ## DC (clima)
 
@@ -283,7 +287,8 @@
 | **F16** | ☑ revisada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
 | **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
 | **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |
-| F19–F23 | ☐ | Pendientes de revisar |
+| **F19** | ☑ revisada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
+| F20–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
