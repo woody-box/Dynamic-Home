@@ -96,9 +96,13 @@
   - Fecha/contador de último cambio: opcional, no por defecto.
 
 ### F09 · Anti-ciclado corto (DC)
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
+- **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media (alta con compresor) · **Esfuerzo:** M
 - **Idea:** tiempos mínimos ON/OFF para proteger compresores; el aprendizaje ya mide la tasa, así que hay datos.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:**
+  - **Protege con:** `min ON`, `min OFF` **y** `máx arranques/hora` (default **6/h**).
+  - **Gated por F26:** **oculto** en gas, eléctrico y aerotermia comunitaria; **visible/activo** con **compresor** (aerotermia o AC individual). El **sistema de emisión** (suelo radiante / radiadores / fancoil / conductos…) también influye en los valores por inercia.
+  - **La seguridad manda:** ante riesgo de condensación u orden de seguridad, el anti-ciclado **cede** (apaga aunque no se cumpla el min ON).
+  - Contexto: hoy el usuario solo protege por seguridad (anticondensación); el ciclado de compresor no lo gestiona en su aerotermia comunitaria, pero es relevante para instalaciones individuales.
 
 ### F10 · Servicios y eventos nativos
 - **Estado:** ☐ · **Módulos:** DV·DS·DC · **Valor:** Media · **Esfuerzo:** S
@@ -190,8 +194,11 @@
 
 ### F26 · Tipo de instalación / fuente de calor (config)
 - **Estado:** ☐ · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M
-- **Idea:** declarar por zona/sistema el tipo de instalación: aerotermia central compartida, aerotermia individual, radiante eléctrico, caldera de gas, etc. Es **prerrequisito de F03** (anti-pico solo en eléctricas) y condiciona otras (p.ej. F09 anti-ciclado, que aplica a compresores/aerotermia). Permite activar/ocultar comportamientos específicos según la instalación.
-- **Perfilado:** _(pendiente — emergente de F03; revisar pronto)_
+- **Idea:** declarar por zona/sistema la instalación, en **dos dimensiones**:
+  - **Fuente:** aerotermia central compartida, aerotermia individual, radiante eléctrico, caldera de gas, AC…
+  - **Emisión:** suelo radiante, radiadores, convectores, aire por conductos (calor); radiante refrescante, fancoil, convectores (frío). Define la **inercia térmica**, que condiciona Adaptive Lead, freno y anti-ciclado.
+  Es **prerrequisito de F03** (anti-pico solo en eléctricas) y **F09** (anti-ciclado solo con compresor). Permite activar/ocultar comportamientos y ajustar defaults según la instalación.
+- **Perfilado:** _(pendiente — emergente de F03/F09; revisar pronto)_
 
 ### F27 · Señal de demanda/válvula real opcional (DC)
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media-Alta · **Esfuerzo:** S
@@ -215,6 +222,7 @@
 | **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
 | **F07** | ☑ revisada | Repairs por módulo (ausente + obsoleto >5min, solo requeridos); botón reabre config flow; + evento opcional para Telegram. |
 | **F08** | ☑ revisada | Vida del filtro: intervalo configurable (3650 h), sensor % , reset existente, aviso por Repairs/notif. |
-| F09–F23 | ☐ | Pendientes de revisar |
+| **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
+| F10–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
