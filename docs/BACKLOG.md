@@ -354,9 +354,26 @@
   - **Fuera de alcance F33:** nada de energía/FV (eso es F34).
 
 ### F34 · Dynamic Energy (módulo)
-- **Estado:** ☐ · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
+- **Estado:** ☑ revisada · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** cerebro de energía: FV/batería/red/autoconsumo + **carga inteligente del VE** (garaje). Consolida F03 (anti-pico), F04 (precio), F06 (coste). Coordina a los grandes consumidores (DC/DV/AC) vía bus.
-- **Perfilado:** _(pendiente)_
+- **⚠️ Testabilidad:** el autor **no tiene placas solares** (probablemente tampoco batería/wallbox) → la parte **FV/batería/excedente/VE no es testable por el autor**: queda **pendiente de validación externa**. Sí testable por el autor: **anti-pico de red, coste/consumo, precio/tarifa** y la **mecánica del bus** con entradas simuladas.
+- **Perfilado:**
+  - **Es un MÓDULO** (cerebro de energía) al nivel de DC/DV/DS: coordinator propio + publica al bus. **No actúa directamente** sobre otros módulos; publica **contexto energético** y cada módulo decide (RNF-3 seguridad/autoridad, RNF-4 bus). Nada de "comandar" DC/DV.
+  - **Agnóstico (RNF-6):** el usuario enchufa sus sensores (producción FV, SoC batería, import/export de red, consumo total). Funciona con **subconjuntos**: sin FV/batería → solo **red + precio + anti-pico**.
+  - **Gating (F26-style):** componentes FV / batería / VE **ocultos** si no se aportan sus entidades.
+  - **Consolida tres ideas previas:**
+    - **F06 (coste/consumo):** Energy **agrega** lo que cada módulo ya expone (consumo total, coste total, balance casa). Reutiliza el panel de Energía de HA.
+    - **F03 (anti-pico):** proteger el **ICP / potencia contratada** limitando el import; escalonar/recortar (shed) cargas. **Testable sin placas** (solo límite de red).
+    - **F04 (precio):** tramos barato/normal/pico (PVPC/Nordpool o tarifa plana) → estado de tarifa al bus. **Testable con sensor de precio** sin placas. (F04 estaba congelada; Energy es su hogar natural.)
+  - **Contexto energético publicado al bus** (lo que consumen DC/DV/AC/DS):
+    - `surplus_w` — excedente FV disponible → permite **pre-acondicionar agresivo** (lead de DC, boost DV, carga VE) cuando sobra sol.
+    - `import_headroom_w` — margen hasta el ICP → alimenta el anti-pico (F03).
+    - `tariff_state` (barato/normal/pico) → desplazar cargas flexibles a horas baratas.
+    - `scarcity` (caro + sin excedente) → aflojar la agresividad.
+  - **Optimización de autoconsumo (advisory/sesgo, no comando):** desplazar cargas **flexibles** (pre-heat/cool de DC vía Adaptive Lead, boost DV, VE, ACS si la hay) a ventanas de excedente/baratas, **vía bus**; cada módulo sigue mandando sobre sí mismo y la seguridad prevalece.
+  - **Carga inteligente del VE (garaje), opt-in:** cargar de **excedente FV** o en **horas baratas**, con **mínimo garantizado + deadline** ("salir con X% a las HH:MM"). Requiere **wallbox controlable**; oculto si no se aporta.
+  - **Resiliencia (RNF-7):** si faltan fuentes clave, degrada a lo disponible (p.ej. sin medidor de red, no hay anti-pico por kW → cae a "N cargas").
+  - **Encaje arquitectónico:** reutiliza el patrón motor puro (`energy_engine.py`) + coordinator + publisher de bus; el bus ya arbitra por prioridad/TTL.
 
 ### F35 · Campana extractora coordinada (cocina → DV)
 - **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
@@ -400,3 +417,5 @@
 | **F28** | ☑ revisada | Eficiencia recuperador (3 sondas, sin expulsión) + inferencia bypass (aviso solo si desplome inesperado). |
 | **F30** | ☑ revisada | IAQ extendido: actúan solo CO₂/PM2.5; VOC informativo; NOx descartado; exteriores observación + hostil. |
 | **F33** | ☑ revisada | Weather agnóstico multi-fuente con fallback (AEMET poco fiable); meteo_sources.yaml compartido; forecast→DC/free-cooling, alertas→DS; sin FV (eso es F34). |
+| **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
+| **F35** | ☑ revisada | Campana coordinada (PM interior → encender campana; opt-in; reusa F11). |
