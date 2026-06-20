@@ -48,12 +48,9 @@ jobs:
       - name: Hassfest
         uses: home-assistant/actions/hassfest@master
 
-      # HACS validation is advisory here: the repo is private and some checks
-      # are about public-store publishing (topics, brands...). It still runs and
-      # surfaces findings, but does not block CI.
+      # Blocking: the repo is public with topics set, so HACS should pass fully.
       - name: HACS validation
         uses: hacs/action@main
-        continue-on-error: true
         with:
           category: integration
           ignore: brands
