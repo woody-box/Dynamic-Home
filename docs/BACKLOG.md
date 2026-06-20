@@ -163,9 +163,14 @@
   - **Fallback:** si faltan datos de geometría → comportamiento actual (% fijo de solar shield).
 
 ### F16 · Aislamiento nocturno estacional
-- **Estado:** ☐ · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** S
+- **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** S
 - **Idea:** cerrar en noche de invierno (aislar) / abrir en noche de verano (refrescar); ampliar `winter_night_pct`.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:**
+  - **Estación por el MODO del climatizador de la zona:** `heat` → cara invierno (**cerrar para aislar**); `cool` → cara verano (**abrir/purga nocturna**).
+  - **Activable por zona.**
+  - **No duplicar free-cooling:** la cara de verano se **coordina** con el free-cooling existente. Lo distintivo es la **estrategia de inercia**: en cool, abrir de noche para **pre-acondicionar la masa** y empezar el día siguiente con ventaja, incluso en condiciones marginales (zona en/por encima de consigna). _Condiciones térmicas exactas (ext vs int, consigna) a detallar en implementación._
+  - **Noche = sol bajo horizonte.**
+  - **Seguridad manda** (viento/lluvia/override por encima del aislamiento).
 
 ### F17 · Avisos meteo (tormenta/granizo)
 - **Estado:** ☐ · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** M
@@ -270,7 +275,8 @@
 | **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |
 | **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
 | **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
-| F16–F23 | ☐ | Pendientes de revisar |
+| **F16** | ☑ revisada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
+| F17–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
