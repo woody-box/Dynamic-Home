@@ -182,6 +182,15 @@
 - **Idea:** declarar por zona/sistema el tipo de instalación: aerotermia central compartida, aerotermia individual, radiante eléctrico, caldera de gas, etc. Es **prerrequisito de F03** (anti-pico solo en eléctricas) y condiciona otras (p.ej. F09 anti-ciclado, que aplica a compresores/aerotermia). Permite activar/ocultar comportamientos específicos según la instalación.
 - **Perfilado:** _(pendiente — emergente de F03; revisar pronto)_
 
+### F27 · Señal de demanda/válvula real opcional (DC)
+- **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media-Alta · **Esfuerzo:** S
+- **Idea:** entrada opcional por zona con la **demanda real** (no inferida de `t_int` vs `target`), que mejora la precisión del **Adaptive Lead** y da **horas de frío/calor exactas** (F06).
+- **Perfilado:**
+  - **Tres fuentes admitidas** (el usuario elige): (a) `hvac_action` del `climate` (heating/cooling/idle); (b) **helpers explícitos** de demanda frío/calor (como sus `Salón frío` / `Salón calor`); (c) **estado real del relé/potencia** (Shelly) — la más fiable.
+  - **Por qué (c) es la mejor:** captura también la actuación del **termostato analógico de backup** (vía entrada SW del Shelly), que el `hvac_action` del climate **no ve**. Es la "verdad de campo" de si la válvula está abierta.
+  - Si se aporta, el motor usa esta señal como `valve_open` en lugar de inferirla; si no, sigue infiriéndola (comportamiento actual).
+  - **Coexistencia con backup hardware:** Dynamic Home controla por el relé normalmente, pero debe **convivir** con que el termostato analógico pueda actuar el relé por la entrada SW si cae la domótica (no pelearse; detectar el estado real).
+
 ---
 
 ## Registro de revisión
@@ -195,3 +204,4 @@
 | **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
 | F07–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
+| **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
