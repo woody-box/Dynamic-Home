@@ -207,10 +207,15 @@
   - **Recuperación:** al estabilizarse/recuperar la temperatura **o** por timeout, lo que ocurra antes.
   - **Activable por zona**, sensibilidad configurable.
 
-### F21 · Perfiles horarios de consigna
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
-- **Idea:** consignas por franja (laborable/finde), como el schedule de DV.
-- **Perfilado:** _(pendiente)_
+### F21 · Programador semanal (consigna/velocidad)
+- **Estado:** ☑ revisada · **Módulos:** DC + DV · **Valor:** Media · **Esfuerzo:** M
+- **Idea:** consignas/velocidad por franja y día de la semana (equivalente a su "Programador Semanal").
+- **Perfilado:**
+  - **Unificado: un "Programador Semanal" común** reutilizable por **DC** (consigna) y **DV** (velocidad/encendido). **Fusiona F29.**
+  - **Máximo 4 tramos por día**, por día de la semana.
+  - **DC:** el perfil fija la **consigna BASE**; DC **modula encima** con sus biases (como su "Flujo de Consigna": Base → biases → TARGET). **Consigna absoluta**, no offset.
+  - **DV:** el perfil fija velocidad/encendido base por tramo.
+  - **Presencia prevista:** arquitectura preparada para que, más adelante, la **presencia** (away/home) ajuste sobre el "plan" del perfil. Dejar el hook.
 
 ### F22 · Índice de moho
 - **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** S
@@ -259,9 +264,9 @@
 - **Perfilado:** _(pendiente)_
 
 ### F29 · Programación por día (DV)
-- **Estado:** ☐ · **Módulos:** DV (y DC, ver F21) · **Valor:** Media · **Esfuerzo:** S
-- **Idea:** schedule **por día de la semana** (horario general + override por día, como su "Programador Semanal" 8:00/20:00 con lunes 7:40). Hoy es una sola ventana para todos los días; el `DvConfig.schedule` ya soporta por-día internamente, falta UI/entidades.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada (fusionada en F21) · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** schedule por día de la semana (general + override por día).
+- **Perfilado:** **Fusionada en F21** (programador semanal común DC+DV, 4 tramos/día, por día). Ver F21.
 
 ### F30 · IAQ extendido (más contaminantes)
 - **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** M
@@ -303,7 +308,8 @@
 | **F19** | ☑ revisada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
 | **F20** | ☑ revisada | Ventana abierta: sensor real primero + inferencia por caída temp (coherente con demanda); recuperación por estabilización/timeout. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
-| F21–F23 | ☐ | Pendientes de revisar |
+| **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
+| F22, F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
