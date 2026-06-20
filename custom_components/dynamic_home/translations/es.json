@@ -66,27 +66,258 @@
     "step": {
       "init": {
         "title": "Parámetros ajustables",
+        "menu_options": {
+          "cat_iaq": "Umbrales de calidad de aire",
+          "cat_smoothing": "Suavizado de sensores",
+          "cat_freecool": "Free-cooling",
+          "cat_hostile": "Exterior hostil",
+          "cat_dry": "Anticondensación",
+          "cat_failsafe": "Failsafe y arranque",
+          "cat_shower": "Refuerzo de ducha",
+          "cat_adaptive_iaq": "Umbrales adaptativos",
+          "cat_positions": "Posiciones de persiana",
+          "cat_thermal": "Deltas térmicos",
+          "cat_wind": "Protección de viento",
+          "cat_slew": "Slew rate",
+          "cat_geometry": "Geometría de ventana",
+          "cat_setpoints": "Consignas base",
+          "cat_limits": "Límites de consigna",
+          "cat_exterior": "Bias exterior",
+          "cat_bus": "Bias del bus",
+          "cat_vmc": "Bias VMC",
+          "cat_trend": "Tendencia y lead",
+          "cat_brake": "Freno de tendencia",
+          "cat_forecast": "Forecast",
+          "cat_adaptive_lead": "Lead adaptativo",
+          "cat_condensation": "Condensación",
+          "cat_facade": "Bias de fachadas"
+        }
+      },
+      "cat_iaq": {
+        "title": "Umbrales de calidad de aire",
         "data": {
-          "co2_v2": "Umbral CO₂ → V2 (ppm)",
-          "co2_v3": "Umbral CO₂ → V3 (ppm)",
-          "pm_v2": "Umbral PM2.5 → V2 (µg/m³)",
-          "pm_v3": "Umbral PM2.5 → V3 (µg/m³)",
-          "ds_wind_limit_kmh": "Límite de viento (km/h)",
-          "ds_weather_max_open_pct": "Apertura máx. con protección meteo (%)",
-          "ds_shield_max_open_pct": "Apertura máx. con protección solar (%)",
-          "ds_winter_night_pct": "Apertura nocturna en invierno (%)",
-          "ds_slew_step_pct": "Slew rate por ciclo (%)",
-          "dc_base_heat_day": "Consigna base calefacción (°C)",
-          "dc_base_cool_day": "Consigna base refrigeración (°C)",
-          "dc_delta_night": "Atenuación nocturna (°C)",
-          "dc_dew_spread_min": "Margen de condensación (°C)",
-          "dc_max_mods_heat": "Bias máx. calefacción (°C)",
-          "dc_max_mods_cool": "Bias máx. refrigeración (°C)"
+          "co2_v2": "CO₂ → V2 (ppm)",
+          "co2_v3": "CO₂ → V3 (ppm)",
+          "pm_v2": "PM2.5 → V2 (µg/m³)",
+          "pm_v3": "PM2.5 → V3 (µg/m³)",
+          "co2_hys": "Histéresis CO₂ (ppm)",
+          "pm_hys": "Histéresis PM2.5 (µg/m³)"
+        }
+      },
+      "cat_smoothing": {
+        "title": "Suavizado de sensores",
+        "data": {
+          "co2_ema_enabled": "Suavizar CO₂ (EMA)",
+          "pm_ema_enabled": "Suavizar PM2.5 (EMA)",
+          "co2_ema_alpha": "Alpha EMA CO₂",
+          "pm_ema_alpha": "Alpha EMA PM2.5"
+        }
+      },
+      "cat_freecool": {
+        "title": "Free-cooling",
+        "data": {
+          "freecool_t_ext_min": "Temp. ext. mínima (°C)",
+          "freecool_delta_on": "ΔT activación (°C)",
+          "freecool_delta_off": "ΔT desactivación (°C)"
+        }
+      },
+      "cat_hostile": {
+        "title": "Exterior hostil",
+        "data": {
+          "hostile_t1": "Umbral AQI 1",
+          "hostile_t2": "Umbral AQI 2",
+          "hostile_t3": "Umbral AQI 3"
+        }
+      },
+      "cat_dry": {
+        "title": "Anticondensación",
+        "data": {
+          "dry_v2_delta": "ΔT seco V2 (°C)",
+          "dry_v3_delta": "ΔT seco V3 (°C)",
+          "dew_spread_min": "Margen punto rocío (°C)"
+        }
+      },
+      "cat_failsafe": {
+        "title": "Failsafe y arranque",
+        "data": {
+          "stale_threshold_s": "Sensor obsoleto (s)",
+          "startup_grace_s": "Gracia de arranque (s)",
+          "trip_window_s": "Ventana de fallos (s)",
+          "trip_limit": "Límite de fallos",
+          "lockout_s": "Bloqueo (s)"
+        }
+      },
+      "cat_shower": {
+        "title": "Refuerzo de ducha",
+        "data": {
+          "shower_rh_delta_on": "Δ HR activación (%)",
+          "shower_rh_delta_off": "Δ HR desactivación (%)",
+          "shower_hold_s": "Mantener (s)",
+          "shower_level": "Velocidad de ducha"
+        }
+      },
+      "cat_adaptive_iaq": {
+        "title": "Umbrales adaptativos",
+        "data": {
+          "adaptive_min_samples": "Muestras mínimas"
+        }
+      },
+      "cat_positions": {
+        "title": "Posiciones de persiana",
+        "data": {
+          "rain_close_pct": "Cierre por lluvia (%)",
+          "freecool_max_open_pct": "Free-cool máx. (%)",
+          "summer_min_open_pct": "Verano mín. (%)",
+          "winter_night_pct": "Noche invierno (%)",
+          "weather_max_open_pct": "Meteo máx. (%)",
+          "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)"
+        }
+      },
+      "cat_thermal": {
+        "title": "Deltas térmicos",
+        "data": {
+          "freecool_delta": "ΔT free-cool (°C)",
+          "hot_delta": "ΔT calor (°C)"
+        }
+      },
+      "cat_wind": {
+        "title": "Protección de viento",
+        "data": {
+          "wind_limit_kmh": "Límite de viento (km/h)",
+          "wind_cap_span_kmh": "Rango cap viento (km/h)",
+          "wind_cap_hyst_kmh": "Histéresis cap viento (km/h)"
+        }
+      },
+      "cat_slew": {
+        "title": "Slew rate",
+        "data": {
+          "slew_enabled": "Limitar slew rate",
+          "slew_step_pct": "Paso slew (%)"
+        }
+      },
+      "cat_geometry": {
+        "title": "Geometría de ventana",
+        "data": {
+          "window_height_cm": "Altura ventana (cm)",
+          "overhang_cm": "Voladizo (cm)"
+        }
+      },
+      "cat_setpoints": {
+        "title": "Consignas base",
+        "data": {
+          "base_heat_day": "Base calor (°C)",
+          "base_cool_day": "Base frío (°C)",
+          "delta_night": "Atenuación nocturna (°C)",
+          "vac_base_heat_day": "Vacaciones calor (°C)",
+          "vac_base_cool_day": "Vacaciones frío (°C)"
+        }
+      },
+      "cat_limits": {
+        "title": "Límites de consigna",
+        "data": {
+          "target_min_heat": "Calor mín. (°C)",
+          "target_max_heat": "Calor máx. (°C)",
+          "target_min_cool": "Frío mín. (°C)",
+          "target_max_cool": "Frío máx. (°C)",
+          "step": "Paso de cuantización (°C)",
+          "max_mods_heat": "Bias máx. calor (°C)",
+          "max_mods_cool": "Bias máx. frío (°C)"
+        }
+      },
+      "cat_exterior": {
+        "title": "Bias exterior",
+        "data": {
+          "ext_cold_threshold": "Umbral frío (°C)",
+          "ext_hot_threshold": "Umbral calor (°C)",
+          "bias_ext_heat_strong": "Calor fuerte (°C)",
+          "bias_ext_heat_mild": "Calor suave (°C)",
+          "bias_ext_cool_strong": "Frío fuerte (°C)",
+          "bias_ext_cool_mild": "Frío suave (°C)",
+          "insulation_factor": "Factor aislamiento"
+        }
+      },
+      "cat_bus": {
+        "title": "Bias del bus",
+        "data": {
+          "sdhb_bias_solar_gain_heat": "Ganancia solar calor (°C)",
+          "sdhb_bias_solar_shield_cool": "Protección solar frío (°C)"
+        }
+      },
+      "cat_vmc": {
+        "title": "Bias VMC",
+        "data": {
+          "vmc_bias_heat_1": "Bias calor V 1",
+          "vmc_bias_heat_2": "Bias calor V 2",
+          "vmc_bias_heat_3": "Bias calor V 3",
+          "vmc_bias_cool_1": "Bias frío V 1",
+          "vmc_bias_cool_2": "Bias frío V 2",
+          "vmc_bias_cool_3": "Bias frío V 3"
+        }
+      },
+      "cat_trend": {
+        "title": "Tendencia y lead",
+        "data": {
+          "trend_lead_h": "Lead de respaldo (h)",
+          "trend_max_shift": "Desplaz. máx. tendencia (°C)",
+          "lead_base_h": "Lead base (h)",
+          "lead_per_degree_h": "Lead por °C (h)",
+          "lead_wind_h_per_kmh": "Lead por km/h (h)",
+          "lead_min_h": "Lead mín. (h)",
+          "lead_max_h": "Lead máx. (h)",
+          "trend_deadband_cph": "Banda muerta (°C/h)",
+          "trend_ema_alpha": "Alpha EMA tendencia"
+        }
+      },
+      "cat_brake": {
+        "title": "Freno de tendencia",
+        "data": {
+          "brake_thresholds_1": "Umbral freno 1",
+          "brake_thresholds_2": "Umbral freno 2",
+          "brake_thresholds_3": "Umbral freno 3",
+          "brake_biases_1": "Bias freno 1",
+          "brake_biases_2": "Bias freno 2",
+          "brake_biases_3": "Bias freno 3"
+        }
+      },
+      "cat_forecast": {
+        "title": "Forecast",
+        "data": {
+          "forecast_gain": "Ganancia forecast",
+          "forecast_cap": "Tope forecast (°C)",
+          "forecast_window_h": "Ventana forecast (h)"
+        }
+      },
+      "cat_adaptive_lead": {
+        "title": "Lead adaptativo",
+        "data": {
+          "adapt_alpha": "Alpha EMA",
+          "adapt_gain_lr": "Tasa de aprendizaje",
+          "adapt_overshoot_target": "Overshoot objetivo (°C)",
+          "adapt_rate_floor_cph": "Suelo de tasa (°C/h)",
+          "adapt_lag_k": "Peso del retardo",
+          "adapt_on_rate_min_dt_h": "Duración ON mín. (h)",
+          "adapt_on_rate_min_dt": "ΔT mín. (°C)",
+          "adapt_off_window_h": "Ventana de asentamiento (h)",
+          "lead_adaptive_min_h": "Lead adapt. mín. (h)",
+          "lead_adaptive_max_h": "Lead adapt. máx. (h)"
+        }
+      },
+      "cat_condensation": {
+        "title": "Condensación",
+        "data": {
+          "dew_spread_min": "Margen punto rocío (°C)"
+        }
+      },
+      "cat_facade": {
+        "title": "Bias de fachadas",
+        "data": {
+          "facade_gain_heat": "Ganancia fachada calor (°C)",
+          "facade_gain_cool": "Ganancia fachada frío (°C)"
         }
       }
     },
     "abort": {
-      "no_options": "Este módulo no tiene opciones configurables."
+      "no_options": "Sin opciones ajustables para este módulo."
     }
   }
 }

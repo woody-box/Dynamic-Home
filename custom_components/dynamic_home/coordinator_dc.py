@@ -34,6 +34,7 @@ from .dc_engine import (
 from .dc_engine import (
     decide as decide_climate,
 )
+from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -185,15 +186,7 @@ class DcCoordinator(DataUpdateCoordinator):
     def _cfg(self) -> DcConfig:
         """Build the DC config, overlaying any UI-tunable options."""
         cfg = DcConfig()
-        o = self.entry.options
-        cfg.base_heat_day = float(o.get(const.OPT_DC_BASE_HEAT, cfg.base_heat_day))
-        cfg.base_cool_day = float(o.get(const.OPT_DC_BASE_COOL, cfg.base_cool_day))
-        cfg.delta_night = float(o.get(const.OPT_DC_DELTA_NIGHT, cfg.delta_night))
-        cfg.dew_spread_min = float(o.get(const.OPT_DC_DEW_SPREAD, cfg.dew_spread_min))
-        cfg.max_mods_heat = float(o.get(const.OPT_DC_MAX_MODS_HEAT,
-                                        cfg.max_mods_heat))
-        cfg.max_mods_cool = float(o.get(const.OPT_DC_MAX_MODS_COOL,
-                                        cfg.max_mods_cool))
+        apply_options(cfg, self.entry.options, const.MODULE_CLIMATE)
         return cfg
 
     def _sun(self) -> tuple[float | None, float | None]:

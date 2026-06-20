@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const
+from . import const, options_spec
 
 
 def _entity(domain: str | list[str] | None = None,
@@ -126,47 +126,54 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
 
 
 class DynamicHomeOptionsFlow(OptionsFlow):
-    """Tunable thresholds, editable after setup."""
+    """Tunable parameters, grouped by category and editable after setup.
+
+    The init step is a menu of the categories the module defines; picking one
+    opens a form built from :mod:`options_spec`. Saving merges that category's
+    values into the existing options (other categories are left untouched).
+    """
 
     def __init__(self, entry: ConfigEntry) -> None:
         self.entry = entry
+        self._module = entry.data.get(const.CONF_MODULE)
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        if user_input is not None:
-            return self.async_create_entry(title="", data=user_input)
-
-        module = self.entry.data.get(const.CONF_MODULE)
-        if module == const.MODULE_VMC:
-            schema = self._vmc_schema()
-        elif module == const.MODULE_SHUTTER:
-            schema = self._defaults_schema(const.DS_DEFAULTS)
-        elif module == const.MODULE_CLIMATE:
-            schema = self._defaults_schema(const.DC_DEFAULTS)
-        else:
+        cats = options_spec.categories(self._module)
+        if not cats:
             return self.async_abort(reason="no_options")
-        return self.async_show_form(step_id="init", data_schema=schema)
+        return self.async_show_menu(
+            step_id="init", menu_options=[f"cat_{c}" for c in cats])
 
-    def _vmc_schema(self) -> vol.Schema:
-        o = self.entry.options
-        return vol.Schema(
-            {
-                vol.Optional(const.OPT_CO2_V2,
-                             default=o.get(const.OPT_CO2_V2, 900)): vol.Coerce(float),
-                vol.Optional(const.OPT_CO2_V3,
-                             default=o.get(const.OPT_CO2_V3, 1300)): vol.Coerce(float),
-                vol.Optional(const.OPT_PM_V2,
-                             default=o.get(const.OPT_PM_V2, 15)): vol.Coerce(float),
-                vol.Optional(const.OPT_PM_V3,
-                             default=o.get(const.OPT_PM_V3, 40)): vol.Coerce(float),
-            }
-        )
+    def __getattr__(self, name: str):
+        """Dispatch async_step_cat_<category> to a generic category handler."""
+        if name.startswith("async_step_cat_"):
+            cat = name[len("async_step_cat_"):]
+            if cat in options_spec.categories(self.__dict__.get("_module")):
+                async def handler(user_input=None, _cat=cat):
+                    return await self._async_category(_cat, user_input)
+                return handler
+        raise AttributeError(name)
 
-    def _defaults_schema(self, defaults: dict) -> vol.Schema:
-        """Build a numeric options form from a {key: default} map."""
+    async def _async_category(self, cat: str,
+                              user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            merged = {**self.entry.options, **user_input}
+            return self.async_create_entry(title="", data=merged)
+        return self.async_show_form(
+            step_id=f"cat_{cat}", data_schema=self._schema(cat))
+
+    def _schema(self, cat: str) -> vol.Schema:
+        cfg = options_spec.fresh_config(self._module)
         o = self.entry.options
-        return vol.Schema(
-            {
-                vol.Optional(key, default=o.get(key, default)): vol.Coerce(float)
-                for key, default in defaults.items()
-            }
-        )
+        out: dict = {}
+        for opt in options_spec.fields(self._module, cat):
+            key = options_spec.option_key(opt)
+            default = o.get(key, options_spec.current_value(cfg, opt))
+            if isinstance(default, bool):
+                selector_t: Any = bool
+            elif isinstance(default, int):
+                selector_t = vol.Coerce(int)
+            else:
+                selector_t = vol.Coerce(float)
+            out[vol.Optional(key, default=default)] = selector_t
+        return vol.Schema(out)

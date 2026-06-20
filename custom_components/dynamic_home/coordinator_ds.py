@@ -18,6 +18,7 @@ from homeassistant.util import dt as dt_util
 from . import const
 from .bus import SdhbHub
 from .ds_engine import DsConfig, DsDecision, DsInputs, DsState, decide_cover
+from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -69,22 +70,12 @@ class DsCoordinator(DataUpdateCoordinator):
 
     def _cfg(self) -> DsConfig:
         cfg = DsConfig()
+        apply_options(cfg, self.entry.options, const.MODULE_SHUTTER)
+        # Facade orientation comes from the config entry (its own selectors).
         az = self.entry.data.get(const.CONF_FACADE_AZIMUTH)
         if az is not None:
             cfg.facade_azimuth_deg = float(az)
         cfg.facade_span_deg = self.facade_span
-        # UI-tunable options (fall back to the dataclass defaults).
-        o = self.entry.options
-        cfg.wind_limit_kmh = float(o.get(const.OPT_DS_WIND_LIMIT,
-                                         cfg.wind_limit_kmh))
-        cfg.weather_max_open_pct = int(o.get(const.OPT_DS_WEATHER_MAX_OPEN,
-                                             cfg.weather_max_open_pct))
-        cfg.sdhb_solar_shield_max_open_pct = int(
-            o.get(const.OPT_DS_SHIELD_MAX_OPEN,
-                  cfg.sdhb_solar_shield_max_open_pct))
-        cfg.winter_night_pct = int(o.get(const.OPT_DS_WINTER_NIGHT,
-                                         cfg.winter_night_pct))
-        cfg.slew_step_pct = int(o.get(const.OPT_DS_SLEW_STEP, cfg.slew_step_pct))
         return cfg
 
     @property
