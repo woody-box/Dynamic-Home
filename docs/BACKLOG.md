@@ -255,8 +255,11 @@
   - **Primario seleccionable por zona y por modo** (típico: radiante primario en `heat`, AC primario/apoyo en `cool` —rápido y deshumidifica, útil para F13).
   - **Ámbito del emisor: zona / grupo / casa** (F24):
     - **Split** → emisor de **zona**.
-    - **AC por conductos sin zonificar** → emisor **compartido** de grupo/casa que sirve a varias zonas.
-  - **Reconciliación del emisor compartido:** una unidad sin compuertas no puede dar temperaturas distintas por habitación → el cerebro reduce la demanda de las zonas del ámbito a **una sola orden** con política configurable (**zona peor parada** / prioridad / media). Por defecto: la peor parada en el sentido activo.
+    - **Conductos SIN zonificar** → emisor **compartido** de grupo/casa que sirve a varias zonas (sin control por habitación).
+    - **Conductos ZONIFICADOS con rejillas motorizadas** → **fuente compartida + actuador por zona**: la **rejilla** hace de "válvula de aire" (análogo a la válvula de zona del radiante + panel que abre la general). DC abre/cierra la rejilla por zona; la unidad central corre con su consigna.
+  - **Reconciliación del emisor compartido:**
+    - *Sin zonificar:* una sola orden con política configurable (**zona peor parada** / prioridad / media). Por defecto: la peor parada en el sentido activo.
+    - *Con rejillas:* control real por zona vía rejilla (como el radiante); la consigna de la unidad se fija eficiente / a la peor zona mientras las rejillas modulan el reparto.
   - **Casos:** solo AC → AC emisor único; solo radiante → como hoy; ambos → primario/apoyo.
   - Reutiliza todo el pipeline DC (consigna/biases/lead/anti-ciclado); el AC aporta lo suyo (dry nativo, fan, swing).
 
@@ -333,7 +336,7 @@
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
 | **F24** | ☑ revisada | Tres niveles zona→grupo→casa; config dedicada; modo/perfil por ámbito; zonas propias (no Areas HA). |
-| **F25** | ☑ revisada | AC = emisor de DC (no módulo aparte); multi-emisor por zona primario/apoyo; ámbito zona/grupo/casa; reconciliación del compartido (peor parada). |
+| **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
 | F26 | ☐ | Fundacional pendiente (tipo instalación + emisión). |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |
