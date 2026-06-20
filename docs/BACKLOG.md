@@ -173,9 +173,14 @@
   - **Seguridad manda** (viento/lluvia/override por encima del aislamiento).
 
 ### F17 · Avisos meteo (tormenta/granizo)
-- **Estado:** ☐ · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** M
-- **Idea:** integrar alertas (met.no/AEMET) → cierre preventivo.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** M
+- **Idea:** alerta meteo → cierre/protección preventiva (anticipa el granizo, no reacciona cuando ya cae).
+- **Perfilado:**
+  - **Fuente genérica, agnóstica de proveedor:** el usuario enchufa un `binary_sensor` de "alerta meteo" (de Open-Meteo/OWM/met.no/AEMET/template…). Motivo: AEMET es poco fiable ("se desconecta cada poco"); el usuario ya se monta sus fuentes REST con `availability`. **No atarse a un proveedor.**
+  - **Tipos:** un disparo genérico "alerta → proteger" + **opcional** entradas separadas (p.ej. granizo/tormenta vs viento) con **posiciones de protección distintas**.
+  - **Posición de protección configurable** (no siempre cerrar del todo; a veces media protege mejor las lamas).
+  - **Hold configurable** tras levantarse la alerta (mantener protegido X min).
+  - Complementa la protección por **viento/lluvia actuales** ya existentes (esto es la capa anticipatoria).
 
 ### F18 · Protección anti-helada
 - **Estado:** ☐ · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** S
@@ -276,7 +281,8 @@
 | **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
 | **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
 | **F16** | ☑ revisada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
-| F17–F23 | ☐ | Pendientes de revisar |
+| **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
+| F18–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
