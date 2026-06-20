@@ -48,6 +48,7 @@
   - **Escalonado temporal** (para eléctricas): no encender una zona hasta que la anterior lleve, p.ej., **10 s** en marcha (suaviza arranques/inrush). Delay configurable.
   - **Pendiente de detallar en implementación:** prioridad entre zonas en cola (por desviación de temperatura vs prioridad manual) y un posible **bypass de confort** si hay mucho frío.
   - El bus ya conoce todas las zonas → el árbitro de cargas vive en el hub.
+  - **Aplica también a DS (persianas):** el pico de arranque de varios motores a la vez (≈2000 W con 12 persianas) puede saltar el ICP → escalonar también el bajado/subido masivo, no solo el clima eléctrico.
 
 ## Energía y coste
 
@@ -61,10 +62,15 @@
 - **Idea:** curva clásica de calefacción que ajusta la consigna de la fuente según la temperatura exterior.
 - **Perfilado:** _Congelada — para la instalación objetivo (aerotermia central, sin control de impulsión) se solapa con `bias_exterior`; reconsiderar para usuarios con caldera/aerotermia individual._
 
-### F06 · Sensor de coste/consumo estimado
-- **Estado:** ☐ · **Módulos:** DV (y DC) · **Valor:** Media · **Esfuerzo:** S
-- **Idea:** estimar consumo/coste por horas de funcionamiento (la telemetría de horas ya existe en DV).
-- **Perfilado:** _(pendiente)_
+### F06 · Sensor de coste/consumo/energía
+- **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Media-Alta · **Esfuerzo:** M
+- **Idea:** energía/coste por módulo, con medidor real si lo hay o estimación por horas si no.
+- **Perfilado:**
+  - **Potencia: medidor real preferente.** Si el módulo tiene un sensor de potencia (Shelly) → se usa ese. Si no, **estimación** por potencia configurable por estado/velocidad.
+  - **Energía (kWh)** como sensor `device_class: energy`, `state_class: total_increasing` → **entra en el panel de Energía de HA**.
+  - **Coste (€) opcional:** vía **sensor de precio** (tarifa plana que el usuario mete, o integración externa para variable) o un precio fijo configurable.
+  - **Módulos:** VMC y Persianas (suelen tener Shelly). **DC opcional** y ligado a **F26**: en aerotermia comunitaria no aporta; en eléctrico/AC sí, si hay medidor. (El usuario ya calcula horas de frío/calor por el helper del climate; portarlo es interesante para él, opcional para otros.)
+  - **Potencia instantánea / pico:** exponer la potencia total instantánea. **Cruza con F03**: aunque las persianas consumen poco, su **pico de arranque** importa (12 persianas bajando a la vez ≈ 2000 W → puede saltar el ICP), así que el anti-pico debe considerar también DS.
 
 ## Robustez y mantenimiento
 
@@ -186,5 +192,6 @@
 | **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
-| F06–F23 | ☐ | Pendientes de revisar |
+| **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
+| F07–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
