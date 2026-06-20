@@ -5,7 +5,7 @@
 > *Perfilado*. Cuando estén perfiladas, se redactará un documento de requisitos
 > y se implementarán en una fase posterior.
 
-**Leyenda de estado:** ☐ pendiente · 🔄 en discusión · ☑ revisada (perfilada)
+**Leyenda de estado:** ☐ pendiente · 🔄 en discusión · ☑ revisada (perfilada) · ❄️ congelada
 **Valor:** Alta / Media / Baja · **Esfuerzo:** S (pequeño) / M (medio) / L (grande)
 
 ---
@@ -52,9 +52,9 @@
 ## Energía y coste
 
 ### F04 · Precio de electricidad → Adaptive Lead ⭐
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Alta · **Esfuerzo:** M
+- **Estado:** ❄️ congelada · **Módulos:** DC · **Valor:** Alta · **Esfuerzo:** M
 - **Idea:** input de precio (PVPC/Nordpool) para desplazar el pre-calentamiento/enfriamiento del Adaptive Lead a horas baratas.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:** _Congelada por decisión del usuario — retomar cuando madure la idea._
 
 ### F05 · Compensación por curva exterior (outdoor reset)
 - **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
@@ -184,5 +184,6 @@
 | **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
 | **F02** | ☑ revisada | Una entidad por consumidor bajo un dispositivo "Bus" nuevo; ganador + motivo; solo estado actual. |
 | **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
-| F04–F23 | ☐ | Pendientes de revisar |
+| **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
+| F05–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
