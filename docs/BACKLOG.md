@@ -123,10 +123,14 @@
   - **Anticipación suave:** la pendiente fuerte adelanta el salto de velocidad (V2/V3) antes de cruzar el umbral de nivel.
   - Ambos contaminantes; ampliable a VOC/NOx vía F30.
 
-### F12 · Horas de silencio (cap nocturno)
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
-- **Idea:** capar a V1/V2 en franja de sueño por ruido (distinto del schedule de encendido).
-- **Perfilado:** _(pendiente)_
+### F12 · Horas de silencio (cap nocturno / off)
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** franja en la que la VMC no supera cierta velocidad por ruido (WAF), distinto del schedule de encendido.
+- **Perfilado:**
+  - **Nivel máximo seleccionable en la franja: `OFF / V1 / V2`** (V3 = sin cap). El `OFF` cubre el "apagar la máquina a ciertas horas".
+  - **Franja propia** (hora inicio/fin + nivel máx) **y** reutilizable por el **modo Sleep (F01)** (Sleep aplica el cap configurado). Ambos.
+  - **Excepción de seguridad:** un umbral **crítico** de CO₂/PM **cede** el cap y sube igual (salud > silencio).
+  - **Por día** opcional (enlaza con F29).
 
 ### F13 · Intercambio por humedad absoluta ⭐
 - **Estado:** ☐ · **Módulos:** DV · **Valor:** Alta · **Esfuerzo:** M
@@ -249,7 +253,8 @@
 | **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
 | **F10** | ☑ revisada | Servicios (reset_learning/boost/observe/reset_filter/recalibrate) + eventos (degraded/conflict/filter_due/mode_changed); eventos primero. |
 | **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
-| F12–F23 | ☐ | Pendientes de revisar |
+| **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
+| F13–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
