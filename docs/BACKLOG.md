@@ -153,9 +153,14 @@
 ## DS (persianas)
 
 ### F15 · Sombreado geométrico real ⭐
-- **Estado:** ☐ · **Módulos:** DS · **Valor:** Alta · **Esfuerzo:** L
-- **Idea:** calcular la penetración solar por geometría (azimut, span, alto, voladizo — ya son campos) y cerrar solo lo necesario, no todo/nada.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Alta · **Esfuerzo:** L
+- **Idea:** calcular la penetración solar por geometría y cerrar solo lo necesario, no todo/nada.
+- **Perfilado:**
+  - **Objetivo de control: "proteger X metros de suelo"** (no dejar que el sol directo entre más de X m). Configurable.
+  - **Más geometría (config opcional):** además de `window_height_cm` + `overhang_cm`, añadir **altura de alféizar** (suelo→ventana) y **profundidad útil de la sala**. Mejoran el cálculo de penetración.
+  - **Cálculo:** penetración = f(elevación y azimut del sol, geometría, voladizo); de ahí el % de cierre que tapa justo esa penetración hasta el objetivo de metros.
+  - **Por pasos** (p.ej. 25/50/75), no continuo (el slew ya suaviza, y evita mover la persiana cada poco).
+  - **Fallback:** si faltan datos de geometría → comportamiento actual (% fijo de solar shield).
 
 ### F16 · Aislamiento nocturno estacional
 - **Estado:** ☐ · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** S
@@ -264,7 +269,8 @@
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
 | **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |
 | **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
-| F15–F23 | ☐ | Pendientes de revisar |
+| **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
+| F16–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
