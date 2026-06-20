@@ -218,9 +218,13 @@
   - **Presencia prevista:** arquitectura preparada para que, más adelante, la **presencia** (away/home) ajuste sobre el "plan" del perfil. Dejar el hook.
 
 ### F22 · Índice de moho
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** S
+- **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** S
 - **Idea:** riesgo de moho sostenido (no solo punto de rocío puntual) como alerta de salud.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:**
+  - **Aviso (sensor + alerta)** y **dispara secado (F13) solo si es efectivo** (gateado por `dp_diff`: no ventilar si el exterior no está más seco).
+  - **Modelo simple y configurable:** "horas por encima de HR umbral con decaimiento" (no el VTT completo).
+  - **Activable por zona** (baños/dormitorios sí, salón quizá no).
+  - **Umbral de HR y ventana/decaimiento configurables.**
 
 ### F23 · Slider confort ↔ economía
 - **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
@@ -309,7 +313,8 @@
 | **F20** | ☑ revisada | Ventana abierta: sensor real primero + inferencia por caída temp (coherente con demanda); recuperación por estabilización/timeout. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
 | **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
-| F22, F23 | ☐ | Pendientes de revisar |
+| **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
+| F23 | ☐ | Pendiente de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
