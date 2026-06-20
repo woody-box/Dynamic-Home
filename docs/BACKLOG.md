@@ -183,9 +183,9 @@
   - Complementa la protección por **viento/lluvia actuales** ya existentes (esto es la capa anticipatoria).
 
 ### F18 · Protección anti-helada
-- **Estado:** ☐ · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** S
+- **Estado:** ❄️ congelada · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** S
 - **Idea:** no mover lamas con riesgo de hielo.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:** _Congelada — marginal para el clima español y persianas enrollables. Reconsiderar para climas fríos / lamas exteriores (venecianas)._
 
 ### F19 · Apertura gradual al amanecer
 - **Estado:** ☐ · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** M
@@ -282,7 +282,8 @@
 | **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
 | **F16** | ☑ revisada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
 | **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
-| F18–F23 | ☐ | Pendientes de revisar |
+| **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |
+| F19–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
