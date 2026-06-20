@@ -81,6 +81,21 @@ class DcConfig:
     forecast_cap: float = 0.5
     forecast_window_h: float = 6.0
 
+    # Adaptive lead (learned from real ON/OFF cycles) — opt-in. Port of the v4.2
+    # "Adaptive Lead v2.6.1": the heating/cooling rate, overshoot and thermal lag
+    # are learned per zone and drive the anticipation horizon instead of the
+    # static physical model.
+    adapt_alpha: float = 0.20            # EMA smoothing for the learned quantities
+    adapt_gain_lr: float = 0.10          # gradient step toward the lead target
+    adapt_overshoot_target: float = 0.10  # tolerated overshoot (°C) before correcting
+    adapt_rate_floor_cph: float = 0.1    # floor on the heating/cooling rate (°C/h)
+    adapt_lag_k: float = 1.0             # weight of the learned thermal lag
+    adapt_on_rate_min_dt_h: float = 0.25  # min ON duration to trust a rate sample (h)
+    adapt_on_rate_min_dt: float = 0.05   # min |ΔT| to trust a rate sample (°C)
+    adapt_off_window_h: float = 3.0      # settling window watched for the peak (h)
+    lead_adaptive_min_h: float = 0.0
+    lead_adaptive_max_h: float = 4.0
+
     # Dew-point protection (radiant cooling): risk when indoor temp is within
     # this margin of the dew point.
     dew_spread_min: float = 2.0
@@ -110,6 +125,8 @@ class DcInputs:
     forecast_temp: float | None = None
     # Outdoor wind (km/h) for the lead model; None ignores the wind term.
     wind: float | None = None
+    # Learned adaptive lead (hours); when set, overrides the physical lead model.
+    adaptive_lead_h: float | None = None
 
     # Bus intent targeted at DC (consumed -> self bias).
     sdhb_intent: str = "none"
@@ -237,6 +254,47 @@ def compute_lead(cfg: DcConfig, t_int: float | None, t_ext: float | None,
     if wind is not None:
         lead += cfg.lead_wind_h_per_kmh * max(0.0, wind)
     return max(cfg.lead_min_h, min(cfg.lead_max_h, lead))
+
+
+def ema(prev: float, new: float, alpha: float) -> float:
+    """Exponential moving average update (rounded to 3 decimals)."""
+    return round(alpha * new + (1 - alpha) * prev, 3)
+
+
+def on_rate_cph(t0: float | None, t_off: float | None, dt_h: float | None,
+                cfg: DcConfig) -> float | None:
+    """Heating/cooling rate (°C/h) over an ON cycle, or None if untrustworthy.
+
+    The sample is only trusted when the cycle ran long enough and moved the
+    temperature enough (validity gates ``adapt_on_rate_min_dt_h`` / ``_min_dt``).
+    """
+    if t0 is None or t_off is None or dt_h is None or dt_h <= 0:
+        return None
+    d_t = t_off - t0
+    if dt_h < cfg.adapt_on_rate_min_dt_h or abs(d_t) < cfg.adapt_on_rate_min_dt:
+        return None
+    return round(d_t / dt_h, 3)
+
+
+def adaptive_lead_target(cfg: DcConfig, overshoot_ema: float, lag_ema: float,
+                         rate_ema: float) -> float:
+    """Lead (hours) that would keep overshoot under target, from learned EMAs.
+
+    Two candidates: the lead needed to bleed off the excess overshoot at the
+    learned rate, and the learned thermal lag. The larger wins, then clamped.
+    """
+    rate_eff = max(cfg.adapt_rate_floor_cph, abs(rate_ema), 0.1)
+    extra_os = max(0.0, abs(overshoot_ema) - abs(cfg.adapt_overshoot_target))
+    lead_from_os = extra_os / rate_eff
+    lead_from_lag = lag_ema * cfg.adapt_lag_k
+    raw = max(lead_from_os, lead_from_lag)
+    return round(max(cfg.lead_adaptive_min_h,
+                     min(raw, cfg.lead_adaptive_max_h)), 3)
+
+
+def step_toward(prev: float, target: float, lr: float) -> float:
+    """One gradient step of the adaptive lead gain toward its target."""
+    return round(prev + lr * (target - prev), 3)
 
 
 def trend_bias(cfg: DcConfig, cph: float,
@@ -373,7 +431,13 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
 
     night = is_night(ins.sun_elevation)
     base = base_active(cfg, ins.hvac_mode, night, ins.vacation)
-    lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
+    if ins.adaptive_lead_h is not None:
+        lead = max(cfg.lead_adaptive_min_h,
+                   min(ins.adaptive_lead_h, cfg.lead_adaptive_max_h))
+        lead_source = "adaptive"
+    else:
+        lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
+        lead_source = "physical"
     b_ext = bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
     b_vmc = bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
     b_trend = trend_bias(cfg, ins.trend_cph, lead)
@@ -389,6 +453,7 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
         "target_raw": target_raw,
         "mods_total": round(mods, 2),
         "lead_h": round(lead, 2),
+        "lead_source": lead_source,
         "night": night,
         "bias_exterior": round(b_ext, 2),
         "bias_vmc": round(b_vmc, 2),

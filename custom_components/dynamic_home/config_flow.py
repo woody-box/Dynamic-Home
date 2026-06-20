@@ -132,15 +132,23 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         self.entry = entry
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        # Only the VMC module exposes tunable options (IAQ thresholds).
-        if self.entry.data.get(const.CONF_MODULE) != const.MODULE_VMC:
-            return self.async_abort(reason="no_options")
-
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        module = self.entry.data.get(const.CONF_MODULE)
+        if module == const.MODULE_VMC:
+            schema = self._vmc_schema()
+        elif module == const.MODULE_SHUTTER:
+            schema = self._defaults_schema(const.DS_DEFAULTS)
+        elif module == const.MODULE_CLIMATE:
+            schema = self._defaults_schema(const.DC_DEFAULTS)
+        else:
+            return self.async_abort(reason="no_options")
+        return self.async_show_form(step_id="init", data_schema=schema)
+
+    def _vmc_schema(self) -> vol.Schema:
         o = self.entry.options
-        schema = vol.Schema(
+        return vol.Schema(
             {
                 vol.Optional(const.OPT_CO2_V2,
                              default=o.get(const.OPT_CO2_V2, 900)): vol.Coerce(float),
@@ -152,4 +160,13 @@ class DynamicHomeOptionsFlow(OptionsFlow):
                              default=o.get(const.OPT_PM_V3, 40)): vol.Coerce(float),
             }
         )
-        return self.async_show_form(step_id="init", data_schema=schema)
+
+    def _defaults_schema(self, defaults: dict) -> vol.Schema:
+        """Build a numeric options form from a {key: default} map."""
+        o = self.entry.options
+        return vol.Schema(
+            {
+                vol.Optional(key, default=o.get(key, default)): vol.Coerce(float)
+                for key, default in defaults.items()
+            }
+        )

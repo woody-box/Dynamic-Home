@@ -65,12 +65,23 @@
   "options": {
     "step": {
       "init": {
-        "title": "Umbrales IAQ",
+        "title": "Parámetros ajustables",
         "data": {
           "co2_v2": "Umbral CO₂ → V2 (ppm)",
           "co2_v3": "Umbral CO₂ → V3 (ppm)",
           "pm_v2": "Umbral PM2.5 → V2 (µg/m³)",
-          "pm_v3": "Umbral PM2.5 → V3 (µg/m³)"
+          "pm_v3": "Umbral PM2.5 → V3 (µg/m³)",
+          "ds_wind_limit_kmh": "Límite de viento (km/h)",
+          "ds_weather_max_open_pct": "Apertura máx. con protección meteo (%)",
+          "ds_shield_max_open_pct": "Apertura máx. con protección solar (%)",
+          "ds_winter_night_pct": "Apertura nocturna en invierno (%)",
+          "ds_slew_step_pct": "Slew rate por ciclo (%)",
+          "dc_base_heat_day": "Consigna base calefacción (°C)",
+          "dc_base_cool_day": "Consigna base refrigeración (°C)",
+          "dc_delta_night": "Atenuación nocturna (°C)",
+          "dc_dew_spread_min": "Margen de condensación (°C)",
+          "dc_max_mods_heat": "Bias máx. calefacción (°C)",
+          "dc_max_mods_cool": "Bias máx. refrigeración (°C)"
         }
       }
     },

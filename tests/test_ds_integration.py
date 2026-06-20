@@ -98,6 +98,25 @@ async def test_bus_solar_shield_clamps_cover(hass: HomeAssistant) -> None:
     assert managed.attributes["reason"] == "sdhb_solar_shield"
 
 
+async def test_cover_reports_real_position_not_target(hass: HomeAssistant) -> None:
+    """The managed cover must report the REAL physical position, not the target."""
+    async_mock_service(hass, "cover", "set_cover_position")  # real cover won't move
+    _seed(hass, position=70)   # physical cover sits at 70%
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    # Engine target (slewed from the real 70 toward open) differs from the
+    # physical position; the entity must report the hardware, not the target.
+    target = co.data.pos
+    assert target > 70
+    managed = hass.states.get("cover.salon")
+    assert managed.attributes["current_position"] == 70        # REAL, not target
+    assert managed.attributes["target_position"] == target     # target exposed
+
+
 async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
     """Privacy clamps the cover; lock pins it (override) and wins over privacy."""
     _seed(hass)  # sun below horizon, cover.salon_real without position

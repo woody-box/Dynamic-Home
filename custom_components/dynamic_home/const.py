@@ -53,21 +53,65 @@ CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
 CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
 CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout
 
-# --- Options keys (tunables, mirror engine.DvConfig) ---
+# --- Options keys (tunables, mirror the engine *Config dataclasses) ---
+# VMC (Dv).
 OPT_CO2_V2 = "co2_v2"
 OPT_CO2_V3 = "co2_v3"
 OPT_PM_V2 = "pm_v2"
 OPT_PM_V3 = "pm_v3"
 
+# Shutter (DS).
+OPT_DS_WIND_LIMIT = "ds_wind_limit_kmh"
+OPT_DS_WEATHER_MAX_OPEN = "ds_weather_max_open_pct"
+OPT_DS_SHIELD_MAX_OPEN = "ds_shield_max_open_pct"
+OPT_DS_WINTER_NIGHT = "ds_winter_night_pct"
+OPT_DS_SLEW_STEP = "ds_slew_step_pct"
+
+# Climate (DC).
+OPT_DC_BASE_HEAT = "dc_base_heat_day"
+OPT_DC_BASE_COOL = "dc_base_cool_day"
+OPT_DC_DELTA_NIGHT = "dc_delta_night"
+OPT_DC_DEW_SPREAD = "dc_dew_spread_min"
+OPT_DC_MAX_MODS_HEAT = "dc_max_mods_heat"
+OPT_DC_MAX_MODS_COOL = "dc_max_mods_cool"
+
+# Defaults for the tunables above (must match the engine dataclass defaults).
+DS_DEFAULTS = {
+    OPT_DS_WIND_LIMIT: 40.0,
+    OPT_DS_WEATHER_MAX_OPEN: 30,
+    OPT_DS_SHIELD_MAX_OPEN: 30,
+    OPT_DS_WINTER_NIGHT: 0,
+    OPT_DS_SLEW_STEP: 10,
+}
+DC_DEFAULTS = {
+    OPT_DC_BASE_HEAT: 22.5,
+    OPT_DC_BASE_COOL: 26.5,
+    OPT_DC_DELTA_NIGHT: 0.5,
+    OPT_DC_DEW_SPREAD: 2.0,
+    OPT_DC_MAX_MODS_HEAT: 0.8,
+    OPT_DC_MAX_MODS_COOL: 0.8,
+}
+
 # How often the coordinator re-evaluates the control pipeline (seconds).
 UPDATE_INTERVAL_S = 60
 
-# Fan preset modes.
+# Fan preset modes. "off" is a manual stop that the engine will NOT override
+# (unlike turning the power switch off while still in auto).
 PRESET_AUTO = "auto"
 PRESET_V1 = "v1"
 PRESET_V2 = "v2"
 PRESET_V3 = "v3"
-PRESET_MODES = [PRESET_AUTO, PRESET_V1, PRESET_V2, PRESET_V3]
+PRESET_OFF = "off"
+PRESET_MODES = [PRESET_AUTO, PRESET_V1, PRESET_V2, PRESET_V3, PRESET_OFF]
 
 # 3 logical speeds -> percentage steps for the fan entity.
 SPEED_COUNT = 3
+
+# Break-before-make settle time between speed relays (s): never energise V2 and
+# V3 at once. Drop both, wait, then close only the wanted one.
+RELAY_SETTLE_S = 0.3
+
+# Manual override: minutes after which a manual preset auto-reverts to auto
+# (0 disables the timer). Bounds for the configuring number entity.
+OVERRIDE_MIN_DEFAULT = 0
+OVERRIDE_MIN_MAX = 480

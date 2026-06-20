@@ -65,12 +65,23 @@
   "options": {
     "step": {
       "init": {
-        "title": "IAQ thresholds",
+        "title": "Tunable parameters",
         "data": {
           "co2_v2": "CO₂ → V2 threshold (ppm)",
           "co2_v3": "CO₂ → V3 threshold (ppm)",
           "pm_v2": "PM2.5 → V2 threshold (µg/m³)",
-          "pm_v3": "PM2.5 → V3 threshold (µg/m³)"
+          "pm_v3": "PM2.5 → V3 threshold (µg/m³)",
+          "ds_wind_limit_kmh": "Wind limit (km/h)",
+          "ds_weather_max_open_pct": "Max open under weather protection (%)",
+          "ds_shield_max_open_pct": "Max open under solar shield (%)",
+          "ds_winter_night_pct": "Winter night opening (%)",
+          "ds_slew_step_pct": "Slew rate per cycle (%)",
+          "dc_base_heat_day": "Base heating setpoint (°C)",
+          "dc_base_cool_day": "Base cooling setpoint (°C)",
+          "dc_delta_night": "Night easing (°C)",
+          "dc_dew_spread_min": "Condensation margin (°C)",
+          "dc_max_mods_heat": "Max heating bias (°C)",
+          "dc_max_mods_cool": "Max cooling bias (°C)"
         }
       }
     },
