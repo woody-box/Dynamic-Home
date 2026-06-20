@@ -3,10 +3,10 @@
   "name": "Dynamic Home",
   "codeowners": ["@woody-box"],
   "config_flow": true,
-  "documentation": "https://github.com/woody-box/dynamic-home",
+  "documentation": "https://github.com/woody-box/Dynamic-Home",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/woody-box/dynamic-home/issues",
+  "issue_tracker": "https://github.com/woody-box/Dynamic-Home/issues",
   "requirements": [],
   "version": "0.5.0"
 }

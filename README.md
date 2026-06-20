@@ -7,6 +7,10 @@
 [![tests](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml/badge.svg)](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml)
 [![hacs](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
 
+> **Dynamic Home no pretende sustituir sistemas profesionales certificados:** es una
+> integración **experimental / open source** para automatización residencial avanzada
+> en Home Assistant.
+
 **Dynamic Home** es un BMS doméstico (gestión integral del hogar) para Home
 Assistant, dividido en tres módulos coordinados por un bus interno:
 
@@ -31,6 +35,16 @@ ahora es una integración nativa que se añade desde la interfaz.
 > (lo que instala HACS). La suite YAML original v4.2 (referencia/legado) vive en la
 > rama [`archive/v4.2-source`](https://github.com/woody-box/Dynamic-Home/tree/archive/v4.2-source),
 > fuera de `main` para mantener el repo ligero.
+
+---
+
+## ⚠️ Estado del proyecto
+
+- **Experimental / beta.** En desarrollo activo; puede haber cambios y fallos.
+- **Prueba primero con relés o entidades de prueba**, no directamente sobre tu hardware.
+- **No conectes a hardware crítico sin validar** (usa el modo *Observe only* para
+  ver las decisiones sin actuar).
+- Pensado para **usuarios avanzados de Home Assistant**.
 
 ---
 
