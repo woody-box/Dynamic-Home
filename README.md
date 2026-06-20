@@ -1,5 +1,9 @@
 # Dynamic Home
 
+<p align="center">
+  <img src="docs/img/dynamic_home.png" alt="Dynamic Home" width="280">
+</p>
+
 [![tests](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml/badge.svg)](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml)
 [![hacs](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
 
@@ -11,6 +15,12 @@ Assistant, dividido en tres módulos coordinados por un bus interno:
 | **DC** · Dynamic Climate | `climate` | Calefacción y suelo refrescante (consigna por zona) |
 | **DV** · Dynamic Ventilation | `fan` | VMC de doble flujo (velocidad por calidad de aire) |
 | **DS** · Dynamic Shutter | `cover` | Persianas (posición por sol, clima y meteo) |
+
+<p align="center">
+  <img src="docs/img/dynamic_climate.png" alt="Dynamic Climate" width="150">
+  <img src="docs/img/dynamic_ventilation.png" alt="Dynamic Ventilation" width="150">
+  <img src="docs/img/dynamic_shutter.png" alt="Dynamic Shutter" width="150">
+</p>
 
 Los tres comparten el **bus SDHB** (en memoria). **DC es el cerebro**: al
 calentar pide a las persianas *ganancia solar* y al enfriar pide *protección
