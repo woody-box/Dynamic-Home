@@ -17,9 +17,9 @@ Assistant, dividido en tres módulos coordinados por un bus interno:
 | **DS** · Dynamic Shutter | `cover` | Persianas (posición por sol, clima y meteo) |
 
 <p align="center">
-  <img src="docs/img/dynamic_climate.png" alt="Dynamic Climate" width="150">
-  <img src="docs/img/dynamic_ventilation.png" alt="Dynamic Ventilation" width="150">
-  <img src="docs/img/dynamic_shutter.png" alt="Dynamic Shutter" width="150">
+  <img src="docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
+  <img src="docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
+  <img src="docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
 </p>
 
 Los tres comparten el **bus SDHB** (en memoria). **DC es el cerebro**: al
