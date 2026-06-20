@@ -226,10 +226,14 @@
   - **Activable por zona** (baños/dormitorios sí, salón quizá no).
   - **Umbral de HR y ventana/decaimiento configurables.**
 
-### F23 · Slider confort ↔ economía
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
-- **Idea:** un único mando que escala la agresividad de los biases.
-- **Perfilado:** _(pendiente)_
+### F23 · Confort ↔ economía (presets)
+- **Estado:** ☑ revisada · **Módulos:** DC (y DV) · **Valor:** Media-Alta (UX) · **Esfuerzo:** M
+- **Idea:** un único mando que escala la agresividad del sistema entre confort y ahorro.
+- **Perfilado:**
+  - **Con presets** (no slider continuo): p.ej. **Eco / Equilibrado / Confort** (más predecible).
+  - **Mueve a la vez de forma coherente:** bandas/histéresis, atenuación nocturna, agresividad del lead y márgenes/límites.
+  - **Global con override por zona** (como el modo F01).
+  - **Ligado al modo F01:** el modo `Eco` puede fijar el preset de economía; también seleccionable de forma independiente.
 
 ## Fundacionales (emergentes de la revisión)
 
@@ -314,7 +318,7 @@
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
 | **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
-| F23 | ☐ | Pendiente de revisar |
+| **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
