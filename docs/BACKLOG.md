@@ -209,6 +209,23 @@
   - Si se aporta, el motor usa esta señal como `valve_open` en lugar de inferirla; si no, sigue infiriéndola (comportamiento actual).
   - **Coexistencia con backup hardware:** Dynamic Home controla por el relé normalmente, pero debe **convivir** con que el termostato analógico pueda actuar el relé por la entrada SW si cae la domótica (no pelearse; detectar el estado real).
 
+## Emergentes de dashboards (por perfilar)
+
+### F28 · Eficiencia del recuperador (VMC)
+- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** sensor de **rendimiento del recuperador** (~92,8% en su OPTIMA) calculado de las 4 temperaturas de conductos (insuflación/extracción/absorción/expulsión). Requiere esas 4 sondas como entrada opcional.
+- **Perfilado:** _(pendiente)_
+
+### F29 · Programación por día (DV)
+- **Estado:** ☐ · **Módulos:** DV (y DC, ver F21) · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** schedule **por día de la semana** (horario general + override por día, como su "Programador Semanal" 8:00/20:00 con lunes 7:40). Hoy es una sola ventana para todos los días; el `DvConfig.schedule` ya soporta por-día internamente, falta UI/entidades.
+- **Perfilado:** _(pendiente)_
+
+### F30 · IAQ extendido (más contaminantes)
+- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** M
+- **Idea:** aceptar más contaminantes como disparadores además de CO2/PM2.5: **VOC, NOx** interior; y exterior **CO/PM10/NO2/SO2/O3** + índice. Enlaza con F11 (anticipatoria).
+- **Perfilado:** _(pendiente)_
+
 ---
 
 ## Registro de revisión
@@ -226,3 +243,4 @@
 | F10–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
+| F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
