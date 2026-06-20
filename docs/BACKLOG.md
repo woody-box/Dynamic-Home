@@ -133,9 +133,13 @@
   - **Por día** opcional (enlaza con F29).
 
 ### F13 · Intercambio por humedad absoluta ⭐
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Alta · **Esfuerzo:** M
-- **Idea:** ventilar para secar **solo si el aire exterior es más seco** (comparar puntos de rocío absolutos), no por HR relativa.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Alta · **Esfuerzo:** M
+- **Idea:** ventilar para secar **solo si el aire exterior es más seco** (comparar puntos de rocío), no por HR relativa.
+- **Perfilado:**
+  - **Criterio: punto de rocío** (`dp_out < dp_in − margen`). Es la medida más correcta (proxy de presión de vapor; evita la dependencia de densidad de los g/m³) y **ya se calcula** (`dp_diff = dp_in − dp_out` existe en el coordinator).
+  - **Es una mejora del `dry_mode` actual** (mismo objetivo: secar el ambiente con la VMC para salir del punto de rocío en refrigeración); pasa a **gatear por `dp_diff`**.
+  - **Margen ("corta ventaja") configurable**: no ventilar por diferencias mínimas.
+  - **Histéresis on/off regulable** para no encender/apagar en el límite.
 
 ### F14 · Botón Boost de un toque
 - **Estado:** ☐ · **Módulos:** DV · **Valor:** Baja · **Esfuerzo:** S
@@ -254,7 +258,8 @@
 | **F10** | ☑ revisada | Servicios (reset_learning/boost/observe/reset_filter/recalibrate) + eventos (degraded/conflict/filter_due/mode_changed); eventos primero. |
 | **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
-| F13–F23 | ☐ | Pendientes de revisar |
+| **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |
+| F14–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
