@@ -57,9 +57,9 @@
 - **Perfilado:** _Congelada por decisión del usuario — retomar cuando madure la idea._
 
 ### F05 · Compensación por curva exterior (outdoor reset)
-- **Estado:** ☐ · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
+- **Estado:** ❄️ congelada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
 - **Idea:** curva clásica de calefacción que ajusta la consigna de la fuente según la temperatura exterior.
-- **Perfilado:** _(pendiente)_
+- **Perfilado:** _Congelada — para la instalación objetivo (aerotermia central, sin control de impulsión) se solapa con `bias_exterior`; reconsiderar para usuarios con caldera/aerotermia individual._
 
 ### F06 · Sensor de coste/consumo estimado
 - **Estado:** ☐ · **Módulos:** DV (y DC) · **Valor:** Media · **Esfuerzo:** S
@@ -185,5 +185,6 @@
 | **F02** | ☑ revisada | Una entidad por consumidor bajo un dispositivo "Bus" nuevo; ganador + motivo; solo estado actual. |
 | **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
-| F05–F23 | ☐ | Pendientes de revisar |
+| **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
+| F06–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
