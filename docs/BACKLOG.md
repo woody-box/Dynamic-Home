@@ -38,9 +38,16 @@
   - Encaje: el `SdhbHub` ya tiene `source/intent/target/priority/ttl`; basta añadir un `explain(targets)` que devuelva ganador + motivo.
 
 ### F03 · Anti-pico / reparto de cargas
-- **Estado:** ☐ · **Módulos:** DC (vía bus) · **Valor:** Media · **Esfuerzo:** M
-- **Idea:** evitar que todas las zonas DC arranquen a la vez; escalonar demanda (útil con bomba de calor / potencia contratada).
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DC (vía bus) · **Valor:** Media (alta solo en eléctricas) · **Esfuerzo:** M
+- **Idea:** evitar que todas las zonas DC arranquen a la vez; escalonar demanda.
+- **Perfilado:**
+  - **Depende del tipo de instalación** (prerrequisito **F26**). Solo es realmente necesaria/activa en **calefacción eléctrica**; en aerotermia (central compartida o individual) y gas el pico no es problema → **off por defecto**.
+  - **Modo de límite según hardware:**
+    - Si hay **medidor(es) de potencia** → límite por **amperios/kW** (cada zona con su potencia asignada).
+    - Si no → límite por **N zonas activas** simultáneas (sobre las zonas actuables).
+  - **Escalonado temporal** (para eléctricas): no encender una zona hasta que la anterior lleve, p.ej., **10 s** en marcha (suaviza arranques/inrush). Delay configurable.
+  - **Pendiente de detallar en implementación:** prioridad entre zonas en cola (por desviación de temperatura vs prioridad manual) y un posible **bypass de confort** si hay mucho frío.
+  - El bus ya conoce todas las zonas → el árbitro de cargas vive en el hub.
 
 ## Energía y coste
 
@@ -164,6 +171,11 @@
 - **Idea:** nuevo tipo de módulo para aire acondicionado, integrado en el bus y reactivo al modo global (F01). Validar que la arquitectura de coordinators/engines lo soporta sin fricción.
 - **Perfilado:** _(pendiente)_
 
+### F26 · Tipo de instalación / fuente de calor (config)
+- **Estado:** ☐ · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M
+- **Idea:** declarar por zona/sistema el tipo de instalación: aerotermia central compartida, aerotermia individual, radiante eléctrico, caldera de gas, etc. Es **prerrequisito de F03** (anti-pico solo en eléctricas) y condiciona otras (p.ej. F09 anti-ciclado, que aplica a compresores/aerotermia). Permite activar/ocultar comportamientos específicos según la instalación.
+- **Perfilado:** _(pendiente — emergente de F03; revisar pronto)_
+
 ---
 
 ## Registro de revisión
@@ -171,5 +183,6 @@
 |----|--------|-------------------|
 | **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
 | **F02** | ☑ revisada | Una entidad por consumidor bajo un dispositivo "Bus" nuevo; ganador + motivo; solo estado actual. |
-| F03–F23 | ☐ | Pendientes de revisar |
-| F24, F25 | ☐ | Fundacionales emergentes; revisar pronto |
+| **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
+| F04–F23 | ☐ | Pendientes de revisar |
+| F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
