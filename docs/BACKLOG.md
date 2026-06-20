@@ -141,10 +141,14 @@
   - **Margen ("corta ventaja") configurable**: no ventilar por diferencias mínimas.
   - **Histéresis on/off regulable** para no encender/apagar en el límite.
 
-### F14 · Botón Boost de un toque
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Baja · **Esfuerzo:** S
-- **Idea:** botón que fuerza V3 N minutos con auto-reversión (reutiliza el timer de override).
-- **Perfilado:** _(pendiente)_
+### F14 · Boost (V3 temporizado)
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Baja · **Esfuerzo:** S
+- **Idea:** forzar V3 N minutos con auto-reversión (reutiliza el timer de override de F#8).
+- **Perfilado:**
+  - **Duración configurable** (`number` "minutos de boost") — nada hardcodeado.
+  - **Solo V3.**
+  - Se expone como **servicio** `dynamic_home.boost` (parte de F10). Un `button` queda como azúcar opcional.
+  - **Re-disparar reinicia** el temporizador.
 
 ## DS (persianas)
 
@@ -259,7 +263,8 @@
 | **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
 | **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |
-| F14–F23 | ☐ | Pendientes de revisar |
+| **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
+| F15–F23 | ☐ | Pendientes de revisar |
 | F24, F25, F26 | ☐ | Fundacionales emergentes; revisar pronto |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action / helpers / relé Shelly); mejora Adaptive Lead y horas F06; convive con backup hardware. |
 | F28, F29, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador, schedule por día, IAQ extendido). |
