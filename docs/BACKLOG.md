@@ -287,9 +287,12 @@
 ## Emergentes de dashboards (por perfilar)
 
 ### F28 · Eficiencia del recuperador (VMC)
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
-- **Idea:** sensor de **rendimiento del recuperador** (~92,8% en su OPTIMA) calculado de las 4 temperaturas de conductos (insuflación/extracción/absorción/expulsión). Requiere esas 4 sondas como entrada opcional.
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
+- **Idea:** sensor de rendimiento del recuperador + inferencia de bypass.
+- **Perfilado:**
+  - **η = (T_insuflación − T_absorción_aire_nuevo) / (T_extracción_viciado − T_absorción_aire_nuevo)** — rendimiento de impulsión, **3 sondas** (la de **expulsión NO interviene**). Válida en ambos sentidos (recupera calor o frescor).
+  - **Detección de bypass/fallo:** η cae a ~0 con ΔT significativo → recuperación no ocurre. Exponer estado **"recuperación activa / bypass"**; **avisar solo si el desplome es inesperado/sostenido** (no se distingue siempre bypass intencionado de suciedad/fallo solo con temperaturas → evitar falsas alarmas).
+  - Entradas (3 sondas) opcionales; si faltan, no se expone.
 
 ### F29 · Programación por día (DV)
 - **Estado:** ☑ revisada (fusionada en F21) · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
@@ -297,9 +300,13 @@
 - **Perfilado:** **Fusionada en F21** (programador semanal común DC+DV, 4 tramos/día, por día). Ver F21.
 
 ### F30 · IAQ extendido (más contaminantes)
-- **Estado:** ☐ · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** M
-- **Idea:** aceptar más contaminantes como disparadores además de CO2/PM2.5: **VOC, NOx** interior; y exterior **CO/PM10/NO2/SO2/O3** + índice. Enlaza con F11 (anticipatoria).
-- **Perfilado:** _(pendiente)_
+- **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** M
+- **Idea:** aceptar más contaminantes además de CO2/PM2.5.
+- **Perfilado:**
+  - **Actúan (suben velocidad): solo CO₂ y PM2.5** (como hoy).
+  - **VOC (COV): informativo/observación** (no actúa).
+  - **NOx:** descartado de momento (caso del usuario no tiene).
+  - **Contaminantes exteriores** (CO/PM10/NO2/SO2/O3/índice): **solo observación**, y alimentan el **"exterior hostil"** para no ventilar en días muy malos.
 
 ### F31 · Aviso/aprovechamiento de espacio adyacente (terraza/galería)
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M
@@ -345,4 +352,5 @@
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |
 | **F29** | ☑ fusionada | Programación por día → fusionada en F21. |
-| F28, F30 | ☐ | Emergentes de dashboards (eficiencia recuperador; IAQ extendido). |
+| **F28** | ☑ revisada | Eficiencia recuperador (3 sondas, sin expulsión) + inferencia bypass (aviso solo si desplome inesperado). |
+| **F30** | ☑ revisada | IAQ extendido: actúan solo CO₂/PM2.5; VOC informativo; NOx descartado; exteriores observación + hostil. |
