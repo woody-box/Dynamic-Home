@@ -484,6 +484,15 @@
         "data_description": {
           "preset": "Carga un conjunto de valores listo para una instalación típica. Después puedes ajustar cualquier campo."
         }
+      },
+      "cat_filter": {
+        "title": "Vida del filtro",
+        "data": {
+          "filter_life_hours": "Vida del filtro (h)"
+        },
+        "data_description": {
+          "filter_life_hours": "Horas totales que dura un filtro antes de cambiarlo; el sensor de % de vida del filtro descuenta desde este valor."
+        }
       }
     },
     "abort": {

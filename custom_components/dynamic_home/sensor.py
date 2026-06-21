@@ -15,7 +15,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -75,6 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(ModeSensor(coordinator, entry))
     entities.append(StateSensor(coordinator, entry))
     entities.append(OverrideRemainingSensor(coordinator, entry))
+    entities.append(FilterLifeSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
     async_add_entities(entities)
 
@@ -224,6 +225,22 @@ class OverrideRemainingSensor(_Base):
             return 0
         remaining = until - dt_util.utcnow().timestamp()
         return max(0, round(remaining / 60))
+
+
+class FilterLifeSensor(_Base):
+    """Remaining filter life as a percentage (100 % = fresh, 0 % = due)."""
+
+    _attr_name = "Filter life"
+    _attr_icon = "mdi:air-filter"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "filter_life")
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.filter_life_pct, 1)
 
 
 # --------------------------------------------------------------------------- #

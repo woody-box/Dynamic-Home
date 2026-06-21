@@ -484,6 +484,15 @@
         "data_description": {
           "preset": "Loads a ready-made set of values for a typical installation. You can fine-tune any field afterwards."
         }
+      },
+      "cat_filter": {
+        "title": "Filter life",
+        "data": {
+          "filter_life_hours": "Filter life (h)"
+        },
+        "data_description": {
+          "filter_life_hours": "Total hours a filter lasts before replacement; the filter-life % sensor counts down from this value."
+        }
       }
     },
     "abort": {

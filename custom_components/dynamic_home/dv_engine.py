@@ -80,6 +80,20 @@ class DvConfig:
     adaptive_enabled: bool = False
     adaptive_min_samples: int = 100   # min readings before percentiles are used
 
+    # Filter life: total hours a filter is rated for (replacement interval).
+    filter_life_hours: float = 3650.0
+
+
+def filter_life_pct(hours: float, life: float) -> float:
+    """Remaining filter life as a 0..100 percentage.
+
+    ``100·(1 − hours/life)`` clamped to [0, 100]. A non-positive ``life``
+    (filter tracking effectively disabled) reports 100.
+    """
+    if life <= 0:
+        return 100.0
+    return max(0.0, min(100.0, 100.0 * (1.0 - hours / life)))
+
 
 @dataclass
 class DvState:

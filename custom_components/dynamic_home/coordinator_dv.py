@@ -21,7 +21,14 @@ from homeassistant.util import dt as dt_util
 from . import const, events
 from .bus import SdhbHub
 from .dc_engine import dew_point
-from .dv_engine import DvConfig, DvDecision, DvInputs, DvState, decide
+from .dv_engine import (
+    DvConfig,
+    DvDecision,
+    DvInputs,
+    DvState,
+    decide,
+    filter_life_pct,
+)
 from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,6 +63,8 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.machine_hours = 0.0
         self.filter_hours = 0.0
         self._accum_ts: float | None = None
+        # "Filter due" event arming (hysteresis so it fires once per crossing).
+        self._filter_due_armed = True
         # Startup bootstrap kick (opt-in, hardware quirk).
         self.bootstrap_enabled = False
         # Dry-mode (anti-condensation ventilation) toggle.
@@ -99,6 +108,22 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
     def reset_filter_hours(self) -> None:
         self.filter_hours = 0.0
+        self._filter_due_armed = True
+
+    @property
+    def filter_life_pct(self) -> float:
+        """Remaining filter life (0..100 %) for the filter-life sensor."""
+        return filter_life_pct(self.filter_hours, self._cfg().filter_life_hours)
+
+    def _check_filter_due(self, cfg: DvConfig) -> None:
+        """Fire ``dynamic_home_filter_due`` once when life drops below the threshold."""
+        pct = filter_life_pct(self.filter_hours, cfg.filter_life_hours)
+        if pct <= const.FILTER_DUE_PCT and self._filter_due_armed:
+            events.fire_filter_due(self.hass, self.entry, const.MODULE_VMC,
+                                   pct, self.filter_hours, cfg.filter_life_hours)
+            self._filter_due_armed = False
+        elif pct >= const.FILTER_CLEAR_PCT:
+            self._filter_due_armed = True
 
     # --- config helpers ---
     def _hw(self, key: str) -> str | None:
@@ -209,6 +234,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         now_ts = now.timestamp()
         self._refresh_bus_explain(now_ts)
         self._accumulate(now_ts)
+        self._check_filter_due(cfg)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
         self.in_grace = grace_active
 

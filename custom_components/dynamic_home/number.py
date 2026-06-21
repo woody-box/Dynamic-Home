@@ -36,6 +36,8 @@ THRESHOLDS: tuple[ThresholdDesc, ...] = (
     ThresholdDesc(const.OPT_CO2_V3, "CO₂ V3 threshold", 1300, 1000, 1600, 25, "ppm"),
     ThresholdDesc(const.OPT_PM_V2, "PM2.5 V2 threshold", 15, 5, 25, 1, "µg/m³"),
     ThresholdDesc(const.OPT_PM_V3, "PM2.5 V3 threshold", 40, 20, 60, 5, "µg/m³"),
+    ThresholdDesc(const.OPT_FILTER_LIFE_HOURS, "Filter life",
+                  const.FILTER_LIFE_DEFAULT, 500, 8760, 50, "h"),
 )
 
 

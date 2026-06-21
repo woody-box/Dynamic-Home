@@ -64,6 +64,13 @@ OPT_CO2_V2 = "co2_v2"
 OPT_CO2_V3 = "co2_v3"
 OPT_PM_V2 = "pm_v2"
 OPT_PM_V3 = "pm_v3"
+OPT_FILTER_LIFE_HOURS = "filter_life_hours"
+
+# Filter life: replacement interval default + due/clear thresholds (% remaining,
+# with hysteresis so the "filter due" event fires once per crossing).
+FILTER_LIFE_DEFAULT = 3650.0
+FILTER_DUE_PCT = 10.0
+FILTER_CLEAR_PCT = 15.0
 
 # --- Services (dynamic_home.*) ---
 SERVICE_RESET_LEARNING = "reset_learning"

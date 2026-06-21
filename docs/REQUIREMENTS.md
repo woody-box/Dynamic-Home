@@ -1031,3 +1031,18 @@ transición (inmediato), independientemente del umbral de la incidencia.
 - ☐ Recuperación del sensor → incidencia borrada + evento de salida.
 - ☐ Descarga de la entrada degradada → incidencia borrada.
 - ☐ DV/DS quedan fuera de alcance en esta fase.
+
+### 12.4 · F08 — Vida del filtro VMC
+
+Parámetro configurable "Vida del filtro (h)" (default 3650) y sensor "% de vida
+del filtro" = `100·(1 − filter_hours/vida)`. El evento `dynamic_home_filter_due`
+se emite **una vez** al cruzar el umbral, con histéresis (`FILTER_DUE_PCT` /
+`FILTER_CLEAR_PCT`). El reset (botón o servicio `reset_filter`) re-arma el evento.
+
+**Aceptación:**
+
+- ☐ `filter_life_pct(hours, life)` acota a [0,100] y devuelve 100 si `life<=0`.
+- ☐ Sensor `sensor.<vmc>_filter_life` refleja el % restante.
+- ☐ `dynamic_home_filter_due` se emite una sola vez por cruce (no en cada ciclo).
+- ☐ Reset → re-arma el evento y el % vuelve a 100.
+- ☐ "Vida del filtro (h)" aparece como número/opción configurable de la VMC.
