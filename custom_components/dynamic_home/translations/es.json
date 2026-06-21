@@ -489,5 +489,29 @@
     "abort": {
       "no_options": "Sin opciones ajustables para este módulo."
     }
+  },
+  "services": {
+    "reset_learning": {
+      "name": "Reiniciar aprendizaje adaptativo",
+      "description": "Borra el modelo de lead adaptativo de una zona de clima (DC) para que aprenda desde cero."
+    },
+    "set_observe": {
+      "name": "Modo observación (dry-run)",
+      "description": "Activa o desactiva el modo observación: el pipeline se evalúa pero no se actúa sobre el hardware.",
+      "fields": {
+        "enabled": {
+          "name": "Activado",
+          "description": "Verdadero para entrar en observación (dry-run), falso para volver a actuar sobre el hardware."
+        }
+      }
+    },
+    "reset_filter": {
+      "name": "Reiniciar horas de filtro",
+      "description": "Pone a cero el contador de horas de filtro de la VMC (DV)."
+    },
+    "recalibrate": {
+      "name": "Recalibrar ahora",
+      "description": "Fuerza una reevaluación inmediata del pipeline de los módulos seleccionados."
+    }
   }
 }

@@ -155,6 +155,30 @@ class DcCoordinator(DataUpdateCoordinator):
 
         self._valve_open = valve
 
+    def reset_learning(self) -> None:
+        """Wipe all learned adaptive-lead state and the cycle state machine.
+
+        Backs the ``reset_learning`` service: lets a user discard a poisoned
+        model (e.g. after swapping a heat pump) without deleting the config
+        entry. Also clears the in-flight ON/OFF cycle so a mid-cycle reset does
+        not leave a stale settling window that would corrupt the next sample.
+        """
+        self.learn_rate_ema = 0.0
+        self.learn_overshoot_ema = 0.0
+        self.learned_lag_h = 0.0
+        self.lead_gain_adaptive = 0.0
+        self.adapt_ok_count = 0
+        self.adapt_abort_count = 0
+        self._valve_open = False
+        self._on_t0 = None
+        self._on_t0_ts = None
+        self._settling = False
+        self._off_sp = None
+        self._off_peak = None
+        self._off_peak_ts = None
+        self._off_ts = None
+        self._off_hvac = None
+
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
         for src in self._active_sources:

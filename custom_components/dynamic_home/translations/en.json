@@ -489,5 +489,29 @@
     "abort": {
       "no_options": "No tunable options for this module."
     }
+  },
+  "services": {
+    "reset_learning": {
+      "name": "Reset adaptive learning",
+      "description": "Wipes the learned adaptive-lead model of a climate (DC) zone so it relearns from scratch."
+    },
+    "set_observe": {
+      "name": "Set observe (dry-run)",
+      "description": "Enables or disables observe mode: the pipeline is still evaluated but no hardware is driven.",
+      "fields": {
+        "enabled": {
+          "name": "Enabled",
+          "description": "True to enter observe (dry-run), False to resume acting on hardware."
+        }
+      }
+    },
+    "reset_filter": {
+      "name": "Reset filter hours",
+      "description": "Zeroes the filter-hours counter of a VMC (DV) module."
+    },
+    "recalibrate": {
+      "name": "Recalibrate now",
+      "description": "Forces an immediate re-evaluation of the targeted modules' pipeline."
+    }
   }
 }

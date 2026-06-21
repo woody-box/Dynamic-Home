@@ -966,3 +966,33 @@ Congeladas (fuera de fases): **F05** (outdoor reset), **F18** (anti-helada).
 - ☐ Ventana de mantenimiento: deshabilitar YAML **+** quitar observe (atómico).
 - ☐ Helpers YAML deshabilitados (no borrados) como rollback.
 - ☐ Período de estabilización superado → retirada del YAML.
+
+---
+
+## 12 · Fase 0 — Quick wins (criterios de aceptación)
+
+Requisitos breves por feature de la Fase 0 del roadmap (ver `docs/ROADMAP.md`).
+Cada feature se entrega en su propio commit con tests en verde.
+
+### 12.1 · F10 — Servicios + eventos nativos
+
+**Servicios** (`dynamic_home.*`), dirigibles por `target` (entity/device/area):
+
+- `reset_learning` — borra el modelo adaptativo del DC (EMAs, lead aprendido,
+  contadores y máquina de estado del ciclo). Solo actúa sobre módulos DC.
+- `set_observe` (campo `enabled: bool`) — entra/sale de modo observación (dry-run)
+  en DC/DV/DS.
+- `reset_filter` — pone a cero las horas de filtro de la VMC (DV).
+- `recalibrate` — fuerza un refresco inmediato del coordinator destino.
+
+**Eventos** (`dynamic_home_*`), emitidos **solo en transición** (nunca cada ciclo):
+`dynamic_home_degraded`, `dynamic_home_conflict`, `dynamic_home_filter_due`.
+Payload común: `entry_id`, `name`, `module`.
+
+**Aceptación:**
+
+- ☐ Los 4 servicios existen tras cargar la primera entrada y desaparecen al
+  descargar la última.
+- ☐ Registro **único**: con varias entradas no se registran por duplicado.
+- ☐ Cada servicio actúa solo sobre el coordinator del `target` (y del tipo correcto).
+- ☐ Los helpers de `events.py` emiten el evento con el payload esperado.

@@ -61,6 +61,23 @@ OPT_CO2_V3 = "co2_v3"
 OPT_PM_V2 = "pm_v2"
 OPT_PM_V3 = "pm_v3"
 
+# --- Services (dynamic_home.*) ---
+SERVICE_RESET_LEARNING = "reset_learning"
+SERVICE_SET_OBSERVE = "set_observe"
+SERVICE_RESET_FILTER = "reset_filter"
+SERVICE_RECALIBRATE = "recalibrate"
+ATTR_ENABLED = "enabled"
+
+# --- Native events (fired on transitions only, never every cycle) ---
+EVENT_DEGRADED = f"{DOMAIN}_degraded"
+EVENT_CONFLICT = f"{DOMAIN}_conflict"
+EVENT_FILTER_DUE = f"{DOMAIN}_filter_due"
+EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
+
+# Guard key in hass.data[DOMAIN]: services are registered once for the whole
+# integration (not per entry) and removed when the last entry unloads.
+DATA_SERVICES_REGISTERED = "_services_registered"
+
 # How often the coordinator re-evaluates the control pipeline (seconds).
 UPDATE_INTERVAL_S = 60
 
