@@ -90,7 +90,8 @@
           "cat_forecast": "Forecast",
           "cat_adaptive_lead": "Adaptive lead",
           "cat_condensation": "Condensation",
-          "cat_facade": "Facade bias"
+          "cat_facade": "Facade bias",
+          "preset": "Apply a preset"
         }
       },
       "cat_iaq": {
@@ -473,6 +474,15 @@
         "data_description": {
           "facade_gain_heat": "Max setpoint relief from sunlit open facades while heating (free solar gain).",
           "facade_gain_cool": "Max setpoint relief from sunlit facades while cooling."
+        }
+      },
+      "preset": {
+        "title": "Apply a preset",
+        "data": {
+          "preset": "Preset"
+        },
+        "data_description": {
+          "preset": "Loads a ready-made set of values for a typical installation. You can fine-tune any field afterwards."
         }
       }
     },
