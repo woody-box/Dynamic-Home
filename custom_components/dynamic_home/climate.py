@@ -119,10 +119,16 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         data = self.coordinator.data
         mode = self.coordinator.hvac_mode
         target = data.target if data else None
-        desired = (mode, target)
-        if desired == self._applied:
+        prev_mode, prev_target = self._applied or (None, None)
+        # Anti-jitter: when only the target moved and the change is below
+        # apply_min_delta, don't bother the thermostat with a new setpoint.
+        min_delta = getattr(self.coordinator, "apply_min_delta", 0.0)
+        if (mode == prev_mode and target is not None and prev_target is not None
+                and abs(target - prev_target) < min_delta):
             return
-        self._applied = desired
+        if (mode, target) == self._applied:
+            return
+        self._applied = (mode, target)
         await self.hass.services.async_call(
             "climate", "set_hvac_mode",
             {"entity_id": real, ATTR_HVAC_MODE: mode}, blocking=True)

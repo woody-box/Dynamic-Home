@@ -330,6 +330,16 @@ def test_adaptive_lead_target_from_overshoot_and_lag():
     assert adaptive_lead_target(_cfg(lead_adaptive_max_h=2.0), 0.1, 5.0, 1.0) == 2.0
 
 
+def test_vacation_uses_vacation_limits_not_normal_ones():
+    # vac_base_heat_day (17) sits below the normal heat min (18). On vacation the
+    # target must clamp to the vacation min (15), i.e. stay at 17 — not be pushed
+    # up to 18 by the comfort range.
+    cfg = DcConfig()
+    d = decide(cfg, DcInputs(hvac_mode="heat", vacation=True, t_int=18.0,
+                             t_ext=10.0))
+    assert d.target == 17.0
+
+
 def test_adaptive_lead_target_rate_floor_is_configurable():
     # The rate floor must come from config only (no hidden 0.1 literal, RNF-1).
     # Excess overshoot 0.05°C with a learned rate of 0.05°C/h and a floor of

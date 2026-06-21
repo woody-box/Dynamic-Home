@@ -163,6 +163,15 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("step", "Quantization step (°C)", "Paso de cuantización (°C)"),
             _v("max_mods_heat", "Max heat bias (°C)", "Bias máx. calor (°C)"),
             _v("max_mods_cool", "Max cool bias (°C)", "Bias máx. frío (°C)"),
+            _v("apply_min_delta", "Apply min delta (°C)", "Delta mín. aplicar (°C)"),
+            _v("vac_target_min_heat", "Vacation heat min (°C)",
+               "Vacaciones calor mín. (°C)"),
+            _v("vac_target_max_heat", "Vacation heat max (°C)",
+               "Vacaciones calor máx. (°C)"),
+            _v("vac_target_min_cool", "Vacation cool min (°C)",
+               "Vacaciones frío mín. (°C)"),
+            _v("vac_target_max_cool", "Vacation cool max (°C)",
+               "Vacaciones frío máx. (°C)"),
         ],
         "exterior": [
             _v("ext_cold_threshold", "Cold threshold (°C)", "Umbral frío (°C)"),
@@ -238,12 +247,57 @@ def option_key(opt: Opt) -> str:
     return opt.attr if opt.idx is None else f"{opt.attr}_{opt.idx + 1}"
 
 
-def categories(module: str) -> list[str]:
-    return list(SPEC.get(module, {}).keys())
+# Option keys that are expert/internal tuning: shown only when Home Assistant's
+# "Advanced mode" is on. Everyday parameters stay visible to everyone. Kept in
+# one place (instead of per-field flags) so it is easy to review/adjust.
+_ADVANCED: dict[str, set[str]] = {
+    const.MODULE_CLIMATE: {
+        "max_mods_heat", "max_mods_cool",
+        "bias_ext_heat_strong", "bias_ext_heat_mild",
+        "bias_ext_cool_strong", "bias_ext_cool_mild", "insulation_factor",
+        "sdhb_bias_solar_gain_heat", "sdhb_bias_solar_shield_cool",
+        "vmc_bias_heat_1", "vmc_bias_heat_2", "vmc_bias_heat_3",
+        "vmc_bias_cool_1", "vmc_bias_cool_2", "vmc_bias_cool_3",
+        "trend_lead_h", "trend_max_shift", "lead_base_h", "lead_per_degree_h",
+        "lead_wind_h_per_kmh", "lead_min_h", "lead_max_h",
+        "trend_deadband_cph", "trend_ema_alpha",
+        "brake_thresholds_1", "brake_thresholds_2", "brake_thresholds_3",
+        "brake_biases_1", "brake_biases_2", "brake_biases_3",
+        "forecast_gain", "forecast_cap",
+        "adapt_alpha", "adapt_gain_lr", "adapt_overshoot_target",
+        "adapt_rate_floor_cph", "adapt_lag_k", "adapt_on_rate_min_dt_h",
+        "adapt_on_rate_min_dt", "adapt_off_window_h",
+        "lead_adaptive_min_h", "lead_adaptive_max_h",
+        "facade_gain_heat", "facade_gain_cool",
+    },
+    const.MODULE_VMC: {
+        "co2_ema_alpha", "pm_ema_alpha",
+        "stale_threshold_s", "startup_grace_s", "trip_window_s",
+        "trip_limit", "lockout_s",
+        "adaptive_min_samples",
+    },
+    const.MODULE_SHUTTER: {
+        "wind_cap_span_kmh", "wind_cap_hyst_kmh",
+    },
+}
 
 
-def fields(module: str, category: str) -> list[Opt]:
-    return SPEC.get(module, {}).get(category, [])
+def is_advanced(module: str, opt: Opt) -> bool:
+    """Whether a field is expert-only (hidden unless Advanced mode is on)."""
+    return option_key(opt) in _ADVANCED.get(module, set())
+
+
+def fields(module: str, category: str, include_advanced: bool = True) -> list[Opt]:
+    out = SPEC.get(module, {}).get(category, [])
+    if include_advanced:
+        return out
+    return [o for o in out if not is_advanced(module, o)]
+
+
+def categories(module: str, include_advanced: bool = True) -> list[str]:
+    """Categories with at least one visible field for the given advanced setting."""
+    return [c for c in SPEC.get(module, {})
+            if fields(module, c, include_advanced)]
 
 
 def current_value(cfg, opt: Opt):

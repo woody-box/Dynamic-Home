@@ -46,6 +46,22 @@ def test_apply_ignores_unknown_keys_and_keeps_defaults():
     assert cfg.base_heat_day == base.base_heat_day   # untouched default
 
 
+def test_advanced_fields_hidden_in_basic_mode():
+    m = const.MODULE_CLIMATE
+    # Basic mode hides expert fields; advanced shows them.
+    basic = {spec.option_key(o) for c in spec.categories(m, False)
+             for o in spec.fields(m, c, False)}
+    full = {spec.option_key(o) for c in spec.categories(m, True)
+            for o in spec.fields(m, c, True)}
+    assert "base_heat_day" in basic            # everyday -> always visible
+    assert "adapt_alpha" not in basic          # expert -> hidden in basic
+    assert "adapt_alpha" in full
+    # Categories that are entirely advanced disappear from the basic menu.
+    assert "adaptive_lead" not in spec.categories(m, False)
+    assert "adaptive_lead" in spec.categories(m, True)
+    assert "setpoints" in spec.categories(m, False)
+
+
 def test_int_fields_coerced_to_int():
     cfg = spec.fresh_config(const.MODULE_SHUTTER)
     spec.apply_options(cfg, {"slew_step_pct": "15"}, const.MODULE_SHUTTER)
