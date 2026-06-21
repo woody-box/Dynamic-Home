@@ -4,6 +4,48 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.6.0] — 2026-06-21
+
+Cierre de la sub-fase 1a (ventilación, DV) y de la infraestructura transversal
+de servicios/eventos/diagnóstico.
+
+### Added
+- **DV · Ventilación anticipatoria (F11)**: detector de pendiente (derivada de
+  CO₂/PM2.5) que pre-eleva la velocidad antes de cruzar umbrales, con histéresis
+  on/off y ventana de mantenimiento.
+- **DV · Secado por punto de rocío (F13)**: gate de anticondensación que solo
+  ventila para secar si el aire exterior es realmente más seco (margen `dp_diff`
+  + histéresis), evitando meter humedad.
+- **DV · Horas de silencio (F12)**: cap nocturno de velocidad (OFF/V1/V2) en una
+  franja diaria, con **excepción de seguridad** si CO₂/PM2.5 superan un umbral
+  crítico (salud > silencio).
+- **DV · Boost temporizado (F14)**: servicio `dynamic_home.boost` que fuerza V3
+  N minutos y **auto-revierte**; re-invocar reinicia la cuenta.
+- **DV · Eficiencia del recuperador (F28)**: sensor diagnóstico de rendimiento
+  (3 sondas opcionales) válido en calor y frío, con estado
+  `recovering`/`bypass`/`idle`.
+- **DV · IAQ extendido (F30)**: **VOC como observación** (sensor diagnóstico que
+  no actúa); solo CO₂/PM2.5 mueven la velocidad.
+- **DV · Vida del filtro (F08)**: sensor de vida restante + evento "filtro due"
+  con histéresis (una vez por cruce) y servicio de reset.
+- **Servicios y eventos nativos (F10)**: `reset_learning`, `set_observe`,
+  `reset_filter`, `recalibrate`, `boost`.
+- **Explicador de conflictos del bus (F02)**: sensores + eventos que exponen el
+  ganador, la fuente, la prioridad y los candidatos del bus SDHB.
+- **Aviso de degradado DC sostenido (F07)**: incidencia de Repairs cuando una
+  zona DC queda degradada de forma sostenida.
+
+### Changed
+- **DV · robustez de CO₂**: suelo de cordura que rechaza lecturas físicamente
+  imposibles (sensor desconectado/erróneo) antes de decidir.
+
+### Internal
+- Endurecido un test flaky del sensor de vida del filtro (resolución por
+  `entity_registry` en vez de slug fijo).
+- Endurecida la spec de F25 (agregación ponderada + guarda de undershoot en
+  conductos compartidos sin zonificar) — solo documentación.
+- Suite de 212 tests, 0 flake; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.5.0] — 2026-06-20
 
 ### Added
