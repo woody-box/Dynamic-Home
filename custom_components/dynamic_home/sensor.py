@@ -76,6 +76,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(StateSensor(coordinator, entry))
     entities.append(OverrideRemainingSensor(coordinator, entry))
     entities.append(FilterLifeSensor(coordinator, entry))
+    if coordinator.has_hrv():
+        entities.append(HrvEfficiencySensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
     async_add_entities(entities)
 
@@ -241,6 +243,27 @@ class FilterLifeSensor(_Base):
     @property
     def native_value(self) -> float:
         return round(self.coordinator.filter_life_pct, 1)
+
+
+class HrvEfficiencySensor(_Base):
+    """Heat-recovery efficiency (%) with a recovering/bypass/idle state attribute."""
+
+    _attr_name = "Recuperator efficiency"
+    _attr_icon = "mdi:heat-wave"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "hrv_efficiency")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.hrv_efficiency_pct
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"state": self.coordinator.hrv_state}
 
 
 # --------------------------------------------------------------------------- #

@@ -18,6 +18,8 @@ from dv_engine import (  # noqa: E402
     base_target,
     compute_freecool,
     decide,
+    hrv_efficiency,
+    hrv_state,
     in_quiet_window,
     in_schedule,
     update_anticip,
@@ -402,6 +404,41 @@ def test_boost_inactive_is_normal():
 def test_boost_respects_not_permitted():
     d = decide(_cfg(), DvState(), DvInputs(permitida=False, boost_active=True))
     assert d.speed == 0
+
+
+# --- F28: heat-recovery efficiency + bypass state ---
+def test_hrv_efficiency_heating():
+    assert abs(hrv_efficiency(18, 0, 22) - 0.818) < 0.01
+
+
+def test_hrv_efficiency_cooling_both_directions():
+    # Summer: intake 35 (hot), extract 25 (cool return), supply 27.
+    assert abs(hrv_efficiency(27, 35, 25) - 0.8) < 0.01
+
+
+def test_hrv_efficiency_missing_or_flat():
+    assert hrv_efficiency(None, 0, 22) is None
+    assert hrv_efficiency(18, 22, 22.2) is None      # ΔT 0.2 < HRV_MIN_DT
+
+
+def test_hrv_efficiency_clamped():
+    assert hrv_efficiency(25, 0, 22) == 1.0          # supply > extract -> clamp 1
+    assert hrv_efficiency(-5, 0, 22) == 0.0          # below intake -> clamp 0
+
+
+def test_hrv_state_bypass_and_recovering():
+    cfg = _cfg(hrv_bypass_eff_max=0.2, hrv_bypass_dt_min=3)
+    assert hrv_state(0.5, 0, 22, cfg) == "bypass"     # η ~0.02, ΔT 22
+    assert hrv_state(18, 0, 22, cfg) == "recovering"  # η 0.82
+
+
+def test_hrv_state_idle_small_dt():
+    cfg = _cfg(hrv_bypass_eff_max=0.2, hrv_bypass_dt_min=3)
+    assert hrv_state(20, 20, 21.5, cfg) == "idle"     # ΔT 1.5 < bypass_dt_min
+
+
+def test_hrv_state_none_when_missing():
+    assert hrv_state(None, 0, 22, _cfg()) is None
 
 
 def test_auto_clean_air_v1():

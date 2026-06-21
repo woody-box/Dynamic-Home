@@ -28,6 +28,8 @@ from .dv_engine import (
     DvState,
     decide,
     filter_life_pct,
+    hrv_efficiency,
+    hrv_state,
 )
 from .options_spec import apply_options
 
@@ -122,6 +124,26 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
     def start_boost(self, minutes: float) -> None:
         """Force V3 for ``minutes`` (F14); auto-reverts when the window elapses."""
         self.boost_until = dt_util.now().timestamp() + minutes * 60
+
+    # --- Heat-recovery efficiency (F28) ---
+    def has_hrv(self) -> bool:
+        """Whether the 3 recuperator probes are configured (else no sensor)."""
+        return all(self._hw(k) for k in (const.CONF_HRV_SUPPLY,
+                                         const.CONF_HRV_INTAKE,
+                                         const.CONF_HRV_EXTRACT))
+
+    def _hrv_temps(self) -> tuple:
+        return (self._num(const.CONF_HRV_SUPPLY), self._num(const.CONF_HRV_INTAKE),
+                self._num(const.CONF_HRV_EXTRACT))
+
+    @property
+    def hrv_efficiency_pct(self) -> float | None:
+        eff = hrv_efficiency(*self._hrv_temps())
+        return None if eff is None else round(eff * 100, 1)
+
+    @property
+    def hrv_state(self) -> str | None:
+        return hrv_state(*self._hrv_temps(), self._cfg())
 
     @property
     def filter_life_pct(self) -> float:

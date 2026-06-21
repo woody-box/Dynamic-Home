@@ -39,6 +39,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "shower": ("Shower boost", "Refuerzo de ducha"),
     "anticipatory": ("Anticipatory boost", "Refuerzo anticipatorio"),
     "quiet": ("Quiet hours", "Horas de silencio"),
+    "recuperator": ("Heat recovery", "Recuperador"),
     "adaptive_iaq": ("Adaptive thresholds", "Umbrales adaptativos"),
     "filter": ("Filter life", "Vida del filtro"),
     "positions": ("Shutter positions", "Posiciones de persiana"),
@@ -139,6 +140,11 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "quiet": [
             _v("quiet_critical_co2", "Critical CO₂ (ppm)", "CO₂ crítico (ppm)"),
             _v("quiet_critical_pm", "Critical PM2.5 (µg/m³)", "PM2.5 crítico (µg/m³)"),
+        ],
+        "recuperator": [
+            _v("hrv_bypass_eff_max", "Bypass efficiency max",
+               "Eficiencia máx. de bypass"),
+            _v("hrv_bypass_dt_min", "Bypass ΔT min (°C)", "ΔT mín. de bypass (°C)"),
         ],
         "filter": [
             _v("filter_life_hours", "Filter life (h)", "Vida del filtro (h)"),

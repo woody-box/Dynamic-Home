@@ -214,6 +214,52 @@ async def test_anticipatory_switch_wires_to_cfg(hass: HomeAssistant) -> None:
     assert co._cfg().anticip_enabled is True
 
 
+async def test_hrv_efficiency_sensor_present_with_probes(hass: HomeAssistant) -> None:
+    """F28: with the 3 HRV probes, the efficiency sensor appears and computes η."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    # Winter recovery: intake 0 °C, extract 22 °C return, supply 18 °C.
+    hass.states.async_set("sensor.hrv_supply", "18")
+    hass.states.async_set("sensor.hrv_intake", "0")
+    hass.states.async_set("sensor.hrv_extract", "22")
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW,
+        const.CONF_HRV_SUPPLY: "sensor.hrv_supply",
+        const.CONF_HRV_INTAKE: "sensor.hrv_intake",
+        const.CONF_HRV_EXTRACT: "sensor.hrv_extract",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_hrv() is True
+    assert abs(co.hrv_efficiency_pct - 81.8) < 0.5
+    assert co.hrv_state == "recovering"
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_hrv_efficiency")
+    assert eid is not None
+    assert hass.states.get(eid).attributes["state"] == "recovering"
+
+
+async def test_hrv_efficiency_sensor_absent_without_probes(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_hrv() is False
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_hrv_efficiency")
+    assert eid is None
+
+
 async def test_quiet_hours_entities_wire_to_cfg(hass: HomeAssistant) -> None:
     """F12: quiet-hours switch/number/time exist and reach the engine cfg."""
     from datetime import time as dtime

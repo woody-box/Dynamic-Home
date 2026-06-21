@@ -32,6 +32,10 @@ CONF_AQI = "outdoor_aqi_entity"
 CONF_HUM_BATH = "hum_bath"
 CONF_HUM_EXT = "hum_ext"
 CONF_HUM_IN = "hum_in"            # optional: indoor RH for dry-mode/dew
+# Heat-recovery (HRV) efficiency probes (F28). The exhaust probe is NOT used.
+CONF_HRV_SUPPLY = "hrv_supply"    # supply into the house (after the exchanger)
+CONF_HRV_INTAKE = "hrv_intake"    # fresh outdoor air taken in
+CONF_HRV_EXTRACT = "hrv_extract"  # stale air extracted from the house
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
 OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT)

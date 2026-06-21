@@ -596,8 +596,8 @@ con **3 sondas** (la de expulsión NO interviene).
 
 **Dependencias:** DV, F07 (aviso vía Repairs/evento).
 **Criterios de aceptación:**
-- ☐ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin las sondas, no aparece.
-- ☐ Un desplome puntual de η no dispara aviso; uno sostenido e inesperado sí.
+- ☑ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin las sondas, no aparece.
+- ☐ Un desplome puntual de η no dispara aviso; uno sostenido e inesperado sí. *(REQ-EFF-4, follow-up)*
 
 ### 6.6 · IAQ extendido (F30)
 
@@ -1158,3 +1158,23 @@ un `number`/`button` de azúcar UI queda como follow-up opcional (REQ-BST-1/3).
 - ☐ Re-invocar reinicia el temporizador (`boost_until` se extiende).
 - ☐ Bypasea el cap de silencio pero no actúa si el módulo no está `permitida`.
 - ☐ Solo afecta a módulos DV del `target`.
+
+### 12.10 · F28 — Eficiencia del recuperador (DV)
+
+Sensor diagnóstico de rendimiento del recuperador con **3 sondas dedicadas
+opcionales** (insuflación, absorción de aire nuevo, extracción; la de expulsión
+NO interviene): η = (T_insuflación − T_absorción) / (T_extracción − T_absorción),
+clamp [0,1], válido en ambos sentidos. Solo se expone si están las 3 sondas.
+Atributo `state`: `recovering` / `bypass` / `idle` (η~0 con ΔT significativo →
+bypass; ΔT pequeño → idle). Umbrales configurables (categoría "recuperator"):
+`hrv_bypass_eff_max` (0.2), `hrv_bypass_dt_min` (3 °C).
+
+**Aceptación:**
+
+- ☐ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin sondas, el sensor no aparece.
+- ☐ η~0 con ΔT significativo → `state=bypass`; ΔT pequeño → `idle`; recuperación normal → `recovering`.
+- ☐ Funciona en calor y en frío (ambos signos de ΔT).
+
+**Diferido (REQ-EFF-4):** el aviso por desplome sostenido/inesperado (Repairs/
+evento) queda como follow-up — el spec advierte del riesgo de falsas alarmas al
+no distinguir bypass intencionado de fallo solo por temperaturas.

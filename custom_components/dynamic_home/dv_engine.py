@@ -99,6 +99,10 @@ class DvConfig:
     adaptive_enabled: bool = False
     adaptive_min_samples: int = 100   # min readings before percentiles are used
 
+    # Heat-recovery efficiency (F28): bypass / no-recovery detection thresholds.
+    hrv_bypass_eff_max: float = 0.2   # η at/below this with real ΔT => bypass
+    hrv_bypass_dt_min: float = 3.0    # min |extract - intake| ΔT (°C) to judge
+
     # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise (the
     # EMA-smoothed derivative), with on/off thresholds + hold like the shower boost.
     anticip_enabled: bool = False
@@ -112,6 +116,40 @@ class DvConfig:
 
     # Filter life: total hours a filter is rated for (replacement interval).
     filter_life_hours: float = 3650.0
+
+
+HRV_MIN_DT = 1.0  # min |extract - intake| ΔT (°C) to compute a stable efficiency
+
+
+def hrv_efficiency(supply: float | None, intake: float | None,
+                   extract: float | None) -> float | None:
+    """Supply-side heat-recovery effectiveness 0..1 (F28), or None.
+
+    η = (T_supply − T_intake) / (T_extract − T_intake). Valid in both directions
+    (recovers heat in winter, coolth in summer). None if a probe is missing or the
+    extract/intake ΔT is too small for a stable ratio.
+    """
+    if supply is None or intake is None or extract is None:
+        return None
+    denom = extract - intake
+    if abs(denom) < HRV_MIN_DT:
+        return None
+    return max(0.0, min(1.0, (supply - intake) / denom))
+
+
+def hrv_state(supply: float | None, intake: float | None,
+              extract: float | None, cfg: DvConfig) -> str | None:
+    """'recovering' / 'bypass' / 'idle' (F28), or None if not computable.
+
+    'idle' when the ΔT is too small to judge; 'bypass' when there IS a meaningful
+    ΔT but efficiency collapses (the exchanger isn't recovering).
+    """
+    eff = hrv_efficiency(supply, intake, extract)
+    if eff is None:
+        return None
+    if abs(extract - intake) < cfg.hrv_bypass_dt_min:
+        return "idle"
+    return "bypass" if eff <= cfg.hrv_bypass_eff_max else "recovering"
 
 
 def filter_life_pct(hours: float, life: float) -> float:
