@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const
+from . import const, events
 from .bus import SdhbHub
 from .ds_engine import DsConfig, DsDecision, DsInputs, DsState, decide_cover
 from .options_spec import apply_options
@@ -48,6 +48,23 @@ class DsCoordinator(DataUpdateCoordinator):
         self.privacy_pct = 40
         self.lock_enabled = False
         self.lock_pct = 50
+        # Bus-conflict observability.
+        self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
+        self._prev_winner: str | None = None
+
+    def bus_listen_targets(self) -> set[str]:
+        """Targets this shutter consumes: broadcast ``ds`` plus its facade."""
+        return self._listen_targets()
+
+    def _refresh_bus_explain(self, now_ts: float | None) -> None:
+        """Recompute the consumed bus intent and fire a conflict event on change."""
+        self.bus_explain = self.hub.explain(self.bus_listen_targets(), now_ts)
+        winner = self.bus_explain["winner"]
+        if winner != self._prev_winner:
+            if not (self._prev_winner is None and winner == "none"):
+                events.fire_conflict(self.hass, self.entry,
+                                     const.MODULE_SHUTTER, self.bus_explain)
+            self._prev_winner = winner
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
@@ -123,7 +140,8 @@ class DsCoordinator(DataUpdateCoordinator):
         cfg = self._cfg()
         cfg.privacy_pos_pct = int(self.privacy_pct)
         now_ts = dt_util.utcnow().timestamp()
-        winner = self.hub.winner(self._listen_targets(), now_ts)
+        self._refresh_bus_explain(now_ts)
+        winner = self.bus_explain["winner"]
         sun_az, sun_el, sun_above = self._sun()
 
         ins = DsInputs(

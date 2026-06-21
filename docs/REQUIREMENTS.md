@@ -996,3 +996,20 @@ Payload común: `entry_id`, `name`, `module`.
 - ☐ Registro **único**: con varias entradas no se registran por duplicado.
 - ☐ Cada servicio actúa solo sobre el coordinator del `target` (y del tipo correcto).
 - ☐ Los helpers de `events.py` emiten el evento con el payload esperado.
+
+### 12.2 · F02 — Explicador de conflictos del bus
+
+Cada consumidor (DC/DV/DS) expone un sensor con el **intent ganador** del bus y
+el **motivo** (fuente, prioridad, nº de candidatos). Todos los sensores se
+agrupan bajo un único dispositivo compartido "Dynamic Home Bus".
+
+**Aceptación:**
+
+- ☐ `SdhbHub.explain(targets)` devuelve `{winner, source, priority, candidates,
+  reason}` y su `winner` coincide siempre con `winner(targets)`.
+- ☐ Sin candidatos → `winner="none"`, `reason="no_candidates"`.
+- ☐ Con DC en frío + DS, el sensor de bus de DS muestra `request_solar_shield`
+  con `priority=70` y `candidates>=1`.
+- ☐ Los sensores de bus de todas las entradas caen en el dispositivo
+  `(dynamic_home, "bus")`.
+- ☐ Se emite `dynamic_home_conflict` al cambiar el ganador (no cada ciclo).

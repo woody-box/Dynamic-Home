@@ -18,7 +18,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const
+from . import const, events
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import DvConfig, DvDecision, DvInputs, DvState, decide
@@ -68,6 +68,23 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.adaptive_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)
         self._pm_hist: deque[float] = deque(maxlen=10080)
+        # Bus-conflict observability.
+        self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
+        self._prev_winner: str | None = None
+
+    def bus_listen_targets(self):
+        """Targets this VMC consumes from the bus."""
+        return "dv"
+
+    def _refresh_bus_explain(self, now_ts: float | None) -> None:
+        """Recompute the consumed bus intent and fire a conflict event on change."""
+        self.bus_explain = self.hub.explain(self.bus_listen_targets(), now_ts)
+        winner = self.bus_explain["winner"]
+        if winner != self._prev_winner:
+            if not (self._prev_winner is None and winner == "none"):
+                events.fire_conflict(self.hass, self.entry,
+                                     const.MODULE_VMC, self.bus_explain)
+            self._prev_winner = winner
 
     def _accumulate(self, now_ts: float) -> None:
         """Add elapsed time to the running-hours counters."""
@@ -190,6 +207,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
         now = dt_util.now()  # local time for the weekly schedule
         now_ts = now.timestamp()
+        self._refresh_bus_explain(now_ts)
         self._accumulate(now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
         self.in_grace = grace_active
@@ -213,7 +231,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             current_speed=self.current_speed,
             permitida=None,  # computed by the engine (schedule + failsafe gate)
             auto_mode=self.auto_mode,
-            sdhb_intent=self.hub.winner("dv", now_ts),
+            sdhb_intent=self.bus_explain["winner"],
             trigger_is_iaq=trigger_is_iaq,
             now_ts=now_ts,
             weekday=now.weekday(),

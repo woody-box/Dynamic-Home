@@ -63,6 +63,45 @@ def test_no_ttl_never_expires():
     assert h.winner("ds", now_ts=10 ** 9) == "request_quiet"
 
 
+def test_explain_no_candidates():
+    h = SdhbHub()
+    ex = h.explain("ds")
+    assert ex == {"winner": "none", "source": None, "priority": None,
+                  "candidates": 0, "reason": "no_candidates"}
+
+
+def test_explain_single_candidate():
+    h = SdhbHub()
+    h.publish("dc1", "request_solar_shield", target="ds", priority=70)
+    ex = h.explain("ds")
+    assert ex["winner"] == "request_solar_shield"
+    assert ex["source"] == "dc1"
+    assert ex["priority"] == 70
+    assert ex["candidates"] == 1
+    assert ex["reason"] == "single"
+
+
+def test_explain_priority_tiebreak_and_count():
+    h = SdhbHub()
+    h.publish("dc1", "request_solar_gain", target="ds", priority=70)
+    h.publish("dc2", "request_weather_protect", target="ds", priority=90)
+    ex = h.explain("ds")
+    assert ex["winner"] == "request_weather_protect"
+    assert ex["source"] == "dc2"
+    assert ex["priority"] == 90
+    assert ex["candidates"] == 2
+    assert ex["reason"] == "priority"
+
+
+def test_explain_matches_winner():
+    """explain()'s winner must always agree with winner()."""
+    h = SdhbHub()
+    h.publish("dc1", "request_solar_gain", target="ds_f180", priority=70)
+    h.publish("x", "request_quiet", target="", priority=60)
+    for targets in ("ds", {"ds", "ds_f180"}, {"ds", "ds_f000"}, "dv"):
+        assert h.explain(targets)["winner"] == h.winner(targets)
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

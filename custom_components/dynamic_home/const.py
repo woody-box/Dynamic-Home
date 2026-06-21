@@ -12,8 +12,12 @@ MODULE_CLIMATE = "climate_zone"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time"]
-PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number"]
+PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
+
+# Shared device that groups the bus-conflict sensors of every module (so the
+# whole bus is observable from one place in the HA UI, not scattered per entry).
+BUS_DEVICE_ID = "bus"
 
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"

@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const
+from . import const, events
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -65,6 +65,9 @@ class DcCoordinator(DataUpdateCoordinator):
         self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
+        # Bus-conflict observability (the intent THIS zone consumes as self-bias).
+        self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
+        self._prev_winner: str | None = None
         self.dew_point_c: float | None = None   # observability
         self.dew_risk_active = False
         # Trend (indoor temp derivative) state.
@@ -178,6 +181,20 @@ class DcCoordinator(DataUpdateCoordinator):
         self._off_peak_ts = None
         self._off_ts = None
         self._off_hvac = None
+
+    def bus_listen_targets(self):
+        """Targets this zone consumes from the bus (self-bias intents)."""
+        return "dc"
+
+    def _refresh_bus_explain(self, now_ts: float | None) -> None:
+        """Recompute the consumed bus intent and fire a conflict event on change."""
+        self.bus_explain = self.hub.explain(self.bus_listen_targets(), now_ts)
+        winner = self.bus_explain["winner"]
+        if winner != self._prev_winner:
+            if not (self._prev_winner is None and winner == "none"):
+                events.fire_conflict(self.hass, self.entry,
+                                     const.MODULE_CLIMATE, self.bus_explain)
+            self._prev_winner = winner
 
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
@@ -315,6 +332,7 @@ class DcCoordinator(DataUpdateCoordinator):
         t_int = self._num(const.CONF_DC_T_INT)
         rh = self._num(const.CONF_DC_HUMIDITY)
         now_ts = dt_util.utcnow().timestamp()
+        self._refresh_bus_explain(now_ts)
 
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
@@ -339,7 +357,7 @@ class DcCoordinator(DataUpdateCoordinator):
             t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,
-            sdhb_intent=self.hub.winner("dc", now_ts),
+            sdhb_intent=self.bus_explain["winner"],
             override_active=self.override_active,
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
