@@ -298,7 +298,12 @@
           "target_max_cool": "Frío máx. (°C)",
           "step": "Paso de cuantización (°C)",
           "max_mods_heat": "Bias máx. calor (°C)",
-          "max_mods_cool": "Bias máx. frío (°C)"
+          "max_mods_cool": "Bias máx. frío (°C)",
+          "apply_min_delta": "Delta mín. aplicar (°C)",
+          "vac_target_min_heat": "Vacaciones calor mín. (°C)",
+          "vac_target_max_heat": "Vacaciones calor máx. (°C)",
+          "vac_target_min_cool": "Vacaciones frío mín. (°C)",
+          "vac_target_max_cool": "Vacaciones frío máx. (°C)"
         },
         "data_description": {
           "target_min_heat": "Consigna mínima en calefacción (modo normal). El target final nunca baja de aquí.",
@@ -307,7 +312,12 @@
           "target_max_cool": "Consigna máxima en refrigeración (modo normal).",
           "step": "Paso de cuantización del target final (redondeo), ej. 0,1 °C.",
           "max_mods_heat": "Tope duro al empuje total de todos los biases/frenos en calor, antes del target limitado. Si se queda corto, súbelo en pasos pequeños; si va agresivo, bájalo o revisa antes los biases.",
-          "max_mods_cool": "Tope duro al empuje total de todos los biases/frenos en frío (igual que el de calor)."
+          "max_mods_cool": "Tope duro al empuje total de todos los biases/frenos en frío (igual que el de calor).",
+          "apply_min_delta": "Cambio mínimo respecto a la última consigna antes de enviar una nueva al termostato (anti-jitter). 0 aplica siempre; con paso pequeño (0,1) prueba 0,2.",
+          "vac_target_min_heat": "Consigna mínima de calefacción en vacaciones.",
+          "vac_target_max_heat": "Consigna máxima de calefacción en vacaciones.",
+          "vac_target_min_cool": "Consigna mínima de refrigeración en vacaciones.",
+          "vac_target_max_cool": "Consigna máxima de refrigeración en vacaciones."
         }
       },
       "cat_exterior": {

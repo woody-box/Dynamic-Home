@@ -298,7 +298,12 @@
           "target_max_cool": "Cool max (°C)",
           "step": "Quantization step (°C)",
           "max_mods_heat": "Max heat bias (°C)",
-          "max_mods_cool": "Max cool bias (°C)"
+          "max_mods_cool": "Max cool bias (°C)",
+          "apply_min_delta": "Apply min delta (°C)",
+          "vac_target_min_heat": "Vacation heat min (°C)",
+          "vac_target_max_heat": "Vacation heat max (°C)",
+          "vac_target_min_cool": "Vacation cool min (°C)",
+          "vac_target_max_cool": "Vacation cool max (°C)"
         },
         "data_description": {
           "target_min_heat": "Lowest allowed setpoint when heating (normal mode). The final target is never clamped below this.",
@@ -307,7 +312,12 @@
           "target_max_cool": "Highest allowed setpoint when cooling (normal mode).",
           "step": "Quantization step for the final target (rounding), e.g. 0.1 °C.",
           "max_mods_heat": "Hard cap on the combined push of all biases/brakes in heat, before the limited target. If it falls short, raise it in small steps; if it gets aggressive, lower it or review the biases first.",
-          "max_mods_cool": "Hard cap on the combined push of all biases/brakes in cool (same idea as the heat cap)."
+          "max_mods_cool": "Hard cap on the combined push of all biases/brakes in cool (same idea as the heat cap).",
+          "apply_min_delta": "Minimum change vs the last setpoint before pushing a new one to the thermostat (anti-jitter). 0 applies always; with a small step (0.1) try 0.2.",
+          "vac_target_min_heat": "Lowest heating setpoint while on vacation.",
+          "vac_target_max_heat": "Highest heating setpoint while on vacation.",
+          "vac_target_min_cool": "Lowest cooling setpoint while on vacation.",
+          "vac_target_max_cool": "Highest cooling setpoint while on vacation."
         }
       },
       "cat_exterior": {

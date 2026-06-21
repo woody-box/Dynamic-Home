@@ -62,6 +62,7 @@ class DcCoordinator(DataUpdateCoordinator):
         self.override_temp: float | None = None
         self.vacation_enabled = False
         self.observe_enabled = False    # dry-run: compute but do not act on hw
+        self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
         self.dew_point_c: float | None = None   # observability
@@ -285,6 +286,7 @@ class DcCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self) -> DcDecision:
         cfg = self._cfg()
+        self.apply_min_delta = cfg.apply_min_delta
         sun_az, sun_el = self._sun()
         t_int = self._num(const.CONF_DC_T_INT)
         rh = self._num(const.CONF_DC_HUMIDITY)

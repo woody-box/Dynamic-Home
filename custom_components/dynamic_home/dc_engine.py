@@ -41,9 +41,19 @@ class DcConfig:
     target_min_cool: float = 22.0
     target_max_cool: float = 29.0
 
+    # Vacation limits: applied instead of the normal ones while on vacation, so a
+    # low/high vacation base is not clamped back by the comfort range.
+    vac_target_min_heat: float = 15.0
+    vac_target_max_heat: float = 19.0
+    vac_target_min_cool: float = 28.0
+    vac_target_max_cool: float = 31.0
+
     step: float = 0.5
     max_mods_heat: float = 0.8
     max_mods_cool: float = 0.8
+    # Minimum change vs the last applied setpoint before pushing a new one to the
+    # thermostat (anti-jitter). 0 = always apply (the engine already quantizes).
+    apply_min_delta: float = 0.0
 
     # Exterior bias thresholds / magnitudes
     ext_cold_threshold: float = 0.0    # u_frio
@@ -372,8 +382,12 @@ def assemble_target(cfg: DcConfig, hvac: str, base: float, mods_total: float,
     lim = cfg.max_mods_heat if hvac == "heat" else cfg.max_mods_cool
     mods_clamped = max(-lim, min(lim, mods_total))
     raw = base + mods_clamped + sdhb_bias
-    lo = cfg.target_min_heat if hvac == "heat" else cfg.target_min_cool
-    hi = cfg.target_max_heat if hvac == "heat" else cfg.target_max_cool
+    if vacation:
+        lo = cfg.vac_target_min_heat if hvac == "heat" else cfg.vac_target_min_cool
+        hi = cfg.vac_target_max_heat if hvac == "heat" else cfg.vac_target_max_cool
+    else:
+        lo = cfg.target_min_heat if hvac == "heat" else cfg.target_min_cool
+        hi = cfg.target_max_heat if hvac == "heat" else cfg.target_max_cool
     clamped = max(lo, min(hi, raw))
     return quantize_step(clamped, cfg.step)
 
