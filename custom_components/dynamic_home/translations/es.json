@@ -229,6 +229,15 @@
           "step": "Paso de cuantización (°C)",
           "max_mods_heat": "Bias máx. calor (°C)",
           "max_mods_cool": "Bias máx. frío (°C)"
+        },
+        "data_description": {
+          "target_min_heat": "Consigna mínima en calefacción (modo normal). El target final nunca baja de aquí.",
+          "target_max_heat": "Consigna máxima en calefacción (modo normal). El target final nunca sube de aquí.",
+          "target_min_cool": "Consigna mínima en refrigeración (modo normal).",
+          "target_max_cool": "Consigna máxima en refrigeración (modo normal).",
+          "step": "Paso de cuantización del target final (redondeo), ej. 0,1 °C.",
+          "max_mods_heat": "Tope duro al empuje total de todos los biases/frenos en calor, antes del target limitado. Si se queda corto, súbelo en pasos pequeños; si va agresivo, bájalo o revisa antes los biases.",
+          "max_mods_cool": "Tope duro al empuje total de todos los biases/frenos en frío (igual que el de calor)."
         }
       },
       "cat_exterior": {
