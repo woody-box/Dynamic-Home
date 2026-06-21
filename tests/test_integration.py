@@ -214,6 +214,31 @@ async def test_anticipatory_switch_wires_to_cfg(hass: HomeAssistant) -> None:
     assert co._cfg().anticip_enabled is True
 
 
+async def test_quiet_hours_entities_wire_to_cfg(hass: HomeAssistant) -> None:
+    """F12: quiet-hours switch/number/time exist and reach the engine cfg."""
+    from datetime import time as dtime
+
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    reg = er.async_get(hass)
+    for platform, key in (("switch", "quiet_hours"), ("number", "quiet_max_level"),
+                          ("time", "quiet_start"), ("time", "quiet_end")):
+        assert reg.async_get_entity_id(
+            platform, const.DOMAIN, f"{entry.entry_id}_{key}") is not None, key
+
+    co.quiet_enabled = True
+    co.quiet_max_level = 2
+    co.quiet_start = dtime(22, 30)
+    cfg = co._cfg()
+    assert cfg.quiet_enabled is True and cfg.quiet_max_level == 2
+    assert cfg.quiet_start_min == 22 * 60 + 30
+
+
 async def test_dry_mode_blocked_when_outdoor_humid(hass: HomeAssistant) -> None:
     """F13: with the outdoor air as humid as indoors, drying must NOT ventilate."""
     async_mock_service(hass, "switch", "turn_on")

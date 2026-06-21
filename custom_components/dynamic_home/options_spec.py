@@ -38,6 +38,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "failsafe": ("Failsafe & startup", "Failsafe y arranque"),
     "shower": ("Shower boost", "Refuerzo de ducha"),
     "anticipatory": ("Anticipatory boost", "Refuerzo anticipatorio"),
+    "quiet": ("Quiet hours", "Horas de silencio"),
     "adaptive_iaq": ("Adaptive thresholds", "Umbrales adaptativos"),
     "filter": ("Filter life", "Vida del filtro"),
     "positions": ("Shutter positions", "Posiciones de persiana"),
@@ -134,6 +135,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         ],
         "adaptive_iaq": [
             _v("adaptive_min_samples", "Min samples", "Muestras mínimas"),
+        ],
+        "quiet": [
+            _v("quiet_critical_co2", "Critical CO₂ (ppm)", "CO₂ crítico (ppm)"),
+            _v("quiet_critical_pm", "Critical PM2.5 (µg/m³)", "PM2.5 crítico (µg/m³)"),
         ],
         "filter": [
             _v("filter_life_hours", "Filter life (h)", "Vida del filtro (h)"),

@@ -71,6 +71,10 @@ _VMC_NUMBERS: tuple[CoordNumberDesc, ...] = (
         0, const.OVERRIDE_MIN_MAX, 5, "mdi:timer-cog-outline",
         lambda c: c.override_minutes,
         lambda c, v: setattr(c, "override_minutes", int(v)), unit="min"),
+    CoordNumberDesc(
+        "quiet_max_level", "Quiet max level", 1, 0, 2, 1, "mdi:volume-mute",
+        lambda c: c.quiet_max_level,
+        lambda c, v: setattr(c, "quiet_max_level", int(v)), unit=""),
 )
 
 

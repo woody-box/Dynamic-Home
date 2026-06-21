@@ -538,8 +538,8 @@ distinta del schedule de encendido.
 
 **Dependencias:** F01 (Sleep), F21 (por día), DV.
 **Criterios de aceptación:**
-- ☐ Dentro de la franja con cap `V1`, la VMC no supera V1 salvo umbral crítico.
-- ☐ Activar `Sleep` aplica el mismo cap sin configurar la franja aparte.
+- ☑ Dentro de la franja con cap `V1`, la VMC no supera V1 salvo umbral crítico.
+- ☐ Activar `Sleep` aplica el mismo cap sin configurar la franja aparte. *(pend. F01)*
 
 ### 6.3 · Secado por punto de rocío (F13)
 
@@ -1121,3 +1121,23 @@ contamina la EMA. Solo CO₂ — el PM2.5 ~0 µg/m³ es real (aire limpio) y no 
 - ☐ La EMA de CO₂ no se arrastra por la lectura absurda.
 - ☐ CO₂ normal (≥ piso) y PM2.5 = 0 no disparan el failsafe.
 - ☐ `co2_sanity_floor = 0` desactiva el piso (acepta 0).
+
+### 12.8 · F12 — Horas de silencio (DV)
+
+Franja diaria (con wrap nocturno) en la que la VMC **no supera** un nivel máximo
+(`OFF/V1/V2`; V3 = sin cap), por ruido/WAF. **Excepción de seguridad:** un CO₂ o
+PM2.5 por encima de su umbral **crítico** levanta el cap (salud > silencio).
+Aplica solo a la ruta **auto/IAQ** (incluye freecool y anticipatorio F11);
+manual override, ducha y secado la **bypasean**. Entidades: switch "Quiet hours",
+number "Quiet max level" (0-2), times "Quiet start/end"; opciones (categoría
+"quiet"): `quiet_critical_co2` (1500), `quiet_critical_pm` (50). Reutilizable por
+el modo Sleep (F01) cuando exista.
+
+**Aceptación:**
+
+- ☐ Dentro de la franja, con CO₂ alto que pediría V3, la velocidad se limita a
+  `quiet_max_level` (reason `quiet_cap`); fuera de la franja no.
+- ☐ CO₂/PM ≥ crítico levanta el cap (sube igual).
+- ☐ `quiet_max_level=0` apaga; `=3` no capa.
+- ☐ Manual override / ducha / secado no se ven afectados por el cap.
+- ☐ Switch off por defecto → comportamiento idéntico al anterior.

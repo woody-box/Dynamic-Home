@@ -73,6 +73,11 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.schedule_enabled = False
         self.schedule_on = dtime(7, 0)
         self.schedule_off = dtime(23, 0)
+        # Quiet hours (F12): night cap window + max level.
+        self.quiet_enabled = False
+        self.quiet_max_level = 1
+        self.quiet_start = dtime(23, 0)
+        self.quiet_end = dtime(7, 0)
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise.
@@ -142,6 +147,12 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
                                   self._hw(const.CONF_HUM_EXT))
         cfg.adaptive_enabled = self.adaptive_enabled
         cfg.anticip_enabled = self.anticip_enabled
+        # Quiet hours (F12): live entities -> engine config (critical thresholds
+        # stay in options, overlaid by apply_options above).
+        cfg.quiet_enabled = self.quiet_enabled
+        cfg.quiet_max_level = int(self.quiet_max_level)
+        cfg.quiet_start_min = self.quiet_start.hour * 60 + self.quiet_start.minute
+        cfg.quiet_end_min = self.quiet_end.hour * 60 + self.quiet_end.minute
         if self.schedule_enabled and self.schedule_on and self.schedule_off:
             on_m = self.schedule_on.hour * 60 + self.schedule_on.minute
             off_m = self.schedule_off.hour * 60 + self.schedule_off.minute

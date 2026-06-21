@@ -93,7 +93,8 @@
           "cat_facade": "Bias de fachadas",
           "preset": "Aplicar un preset",
           "cat_anticipatory": "Refuerzo anticipatorio",
-          "cat_filter": "Vida del filtro"
+          "cat_filter": "Vida del filtro",
+          "cat_quiet": "Horas de silencio"
         }
       },
       "cat_iaq": {
@@ -521,6 +522,17 @@
           "anticip_hold_s": "Tiempo mínimo de mantenimiento para que un pico breve no oscile (segundos).",
           "anticip_level": "Velocidad objetivo mientras se detecta una subida brusca (V1/V2/V3).",
           "anticip_ema_alpha": "Suavizado de la propia pendiente (mayor = más reactivo)."
+        }
+      },
+      "cat_quiet": {
+        "title": "Horas de silencio",
+        "data": {
+          "quiet_critical_co2": "CO₂ crítico (ppm)",
+          "quiet_critical_pm": "PM2.5 crítico (µg/m³)"
+        },
+        "data_description": {
+          "quiet_critical_co2": "En horas de silencio la velocidad se limita, pero un CO₂ igual o superior a esto levanta el límite (salud > silencio).",
+          "quiet_critical_pm": "Un PM2.5 igual o superior a esto levanta el límite de las horas de silencio."
         }
       }
     },

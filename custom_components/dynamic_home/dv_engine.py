@@ -62,6 +62,15 @@ class DvConfig:
     dry_margin: float = 1.0          # min dp_diff (°C) to ENGAGE drying ventilation
     dry_hys: float = 0.5             # disengage once dp_diff <= dry_margin - dry_hys
 
+    # Quiet hours (F12): cap the auto/IAQ speed during a daily night window
+    # unless the air is critical (health > silence). quiet_max_level 3 = no cap.
+    quiet_enabled: bool = False
+    quiet_start_min: int = 23 * 60   # 23:00 (minutes from midnight, local)
+    quiet_end_min: int = 7 * 60      # 07:00
+    quiet_max_level: int = 1         # 0=OFF, 1=V1, 2=V2 (3 = uncapped)
+    quiet_critical_co2: float = 1500.0
+    quiet_critical_pm: float = 50.0
+
     # Weekly schedule (SPEC §7): weekday(0=Mon..6=Sun) -> (on_min, off_min)
     # minutes from midnight. Empty/missing -> always allowed.
     schedule_enabled: bool = False
@@ -256,6 +265,18 @@ def in_schedule(weekday: int, minute_of_day: int, cfg: DvConfig) -> bool:
         return on_m <= minute_of_day < off_m
     # overnight
     return minute_of_day >= on_m or minute_of_day < off_m
+
+
+def in_quiet_window(minute_of_day: int, cfg: DvConfig) -> bool:
+    """Whether we're inside the F12 quiet-hours window (handles overnight wrap)."""
+    if not cfg.quiet_enabled:
+        return False
+    on_m, off_m = cfg.quiet_start_min, cfg.quiet_end_min
+    if on_m == off_m:
+        return False
+    if on_m < off_m:
+        return on_m <= minute_of_day < off_m
+    return minute_of_day >= on_m or minute_of_day < off_m   # overnight
 
 
 def update_failsafe(state: DvState, cfg: DvConfig, now_ts: float,
@@ -522,6 +543,13 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     )
     if not allow_raise and t > ins.current_speed:
         t, reason = ins.current_speed, "hold_antiflap"
+
+    # 6) Quiet hours cap (F12): final authority on the auto/IAQ path — limit the
+    # speed during the night window unless the air is critical (health > silence).
+    if in_quiet_window(ins.minute_of_day, cfg) and t > cfg.quiet_max_level:
+        critical = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
+        if not critical:
+            t, reason = cfg.quiet_max_level, "quiet_cap"
 
     return DvDecision(t, reason, base_target=base,
                       details={"co2": round(co2, 1), "pm": round(pm, 2),

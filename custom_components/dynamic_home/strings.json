@@ -93,7 +93,8 @@
           "cat_facade": "Facade bias",
           "preset": "Apply a preset",
           "cat_anticipatory": "Anticipatory boost",
-          "cat_filter": "Filter life"
+          "cat_filter": "Filter life",
+          "cat_quiet": "Quiet hours"
         }
       },
       "cat_iaq": {
@@ -521,6 +522,17 @@
           "anticip_hold_s": "Minimum hold so a brief spike doesn't cause oscillation (seconds).",
           "anticip_level": "Target speed while a steep rise is detected (V1/V2/V3).",
           "anticip_ema_alpha": "Smoothing of the slope itself (higher = more reactive)."
+        }
+      },
+      "cat_quiet": {
+        "title": "Quiet hours",
+        "data": {
+          "quiet_critical_co2": "Critical CO₂ (ppm)",
+          "quiet_critical_pm": "Critical PM2.5 (µg/m³)"
+        },
+        "data_description": {
+          "quiet_critical_co2": "During quiet hours the speed is capped, but a CO₂ at or above this lifts the cap (health > silence).",
+          "quiet_critical_pm": "PM2.5 at or above this lifts the quiet-hours cap."
         }
       }
     },

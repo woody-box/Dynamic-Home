@@ -18,6 +18,7 @@ from dv_engine import (  # noqa: E402
     base_target,
     compute_freecool,
     decide,
+    in_quiet_window,
     in_schedule,
     update_anticip,
     update_anticip_rates,
@@ -315,6 +316,64 @@ def test_pm_low_is_not_floored():
                DvInputs(co2_raw=500, pm_raw=0, current_speed=1, now_ts=1000,
                         startup_grace_active=False, trigger_is_iaq=True))
     assert d.reason == "iaq" and d.speed == 1
+
+
+# --- F12: quiet hours (night cap OFF/V1/V2 with critical-air exception) ---
+def _quiet_cfg(**kw):
+    base = dict(co2_ema_enabled=False, pm_ema_enabled=False,
+                quiet_enabled=True, quiet_start_min=23 * 60, quiet_end_min=7 * 60,
+                quiet_max_level=1, quiet_critical_co2=1500, quiet_critical_pm=50)
+    base.update(kw)
+    return _cfg(**base)
+
+
+def _qins(co2, minute, **kw):
+    base = dict(co2_raw=co2, pm_raw=5, current_speed=1, now_ts=0, weekday=0,
+                minute_of_day=minute, trigger_is_iaq=True)
+    base.update(kw)
+    return DvInputs(**base)
+
+
+def test_in_quiet_window_overnight():
+    cfg = _quiet_cfg()
+    assert in_quiet_window(23 * 60 + 30, cfg) is True   # 23:30
+    assert in_quiet_window(3 * 60, cfg) is True          # 03:00
+    assert in_quiet_window(12 * 60, cfg) is False        # 12:00
+
+
+def test_in_quiet_window_disabled():
+    assert in_quiet_window(3 * 60, _quiet_cfg(quiet_enabled=False)) is False
+
+
+def test_quiet_caps_auto_speed():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(), _qins(1400, 3 * 60))
+    assert d.reason == "quiet_cap" and d.speed == 1
+
+
+def test_quiet_caps_to_off():
+    d = decide(_quiet_cfg(quiet_max_level=0), DvState(), _qins(1400, 3 * 60))
+    assert d.reason == "quiet_cap" and d.speed == 0
+
+
+def test_quiet_critical_co2_lifts_cap():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(), _qins(1600, 3 * 60))
+    assert d.reason != "quiet_cap" and d.speed == 3
+
+
+def test_quiet_no_cap_outside_window():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(), _qins(1400, 12 * 60))
+    assert d.reason != "quiet_cap" and d.speed == 3
+
+
+def test_quiet_max_level_v3_no_cap():
+    d = decide(_quiet_cfg(quiet_max_level=3), DvState(), _qins(1400, 3 * 60))
+    assert d.speed == 3 and d.reason != "quiet_cap"
+
+
+def test_quiet_does_not_cap_manual_override():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(),
+               _qins(500, 3 * 60, manual_override=True, override_v3=True))
+    assert d.reason == "manual_override" and d.speed == 3
 
 
 def test_auto_clean_air_v1():
