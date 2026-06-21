@@ -101,6 +101,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("dry_v2_delta", "Dry V2 ΔT (°C)", "ΔT seco V2 (°C)"),
             _v("dry_v3_delta", "Dry V3 ΔT (°C)", "ΔT seco V3 (°C)"),
             _v("dew_spread_min", "Dew-point margin (°C)", "Margen punto rocío (°C)"),
+            _v("dry_margin", "Drying margin (°C)", "Margen de secado (°C)"),
+            _v("dry_hys", "Drying hysteresis (°C)", "Histéresis de secado (°C)"),
         ],
         "failsafe": [
             _v("stale_threshold_s", "Stale sensor (s)", "Sensor obsoleto (s)"),

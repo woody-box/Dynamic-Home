@@ -159,12 +159,16 @@
         "data": {
           "dry_v2_delta": "Dry V2 ΔT (°C)",
           "dry_v3_delta": "Dry V3 ΔT (°C)",
-          "dew_spread_min": "Dew-point margin (°C)"
+          "dew_spread_min": "Dew-point margin (°C)",
+          "dry_margin": "Drying margin (°C)",
+          "dry_hys": "Drying hysteresis (°C)"
         },
         "data_description": {
           "dry_v2_delta": "Dew-point advantage (dp_indoor − dp_outdoor, °C) to dry at V2.",
           "dry_v3_delta": "Dew-point advantage to dry at V3.",
-          "dew_spread_min": "Indoor temp within this of the dew point flags condensation risk."
+          "dew_spread_min": "Indoor temp within this of the dew point flags condensation risk.",
+          "dry_margin": "Minimum dew-point advantage (dp_indoor − dp_outdoor, °C) before drying ventilation engages.",
+          "dry_hys": "Hysteresis band: drying disengages once the advantage falls below margin − hysteresis."
         }
       },
       "cat_failsafe": {

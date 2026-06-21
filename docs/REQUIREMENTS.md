@@ -1046,3 +1046,22 @@ se emite **una vez** al cruzar el umbral, con histéresis (`FILTER_DUE_PCT` /
 - ☐ `dynamic_home_filter_due` se emite una sola vez por cruce (no en cada ciclo).
 - ☐ Reset → re-arma el evento y el % vuelve a 100.
 - ☐ "Vida del filtro (h)" aparece como número/opción configurable de la VMC.
+
+### 12.5 · F13 — Secado por punto de rocío (DV)
+
+El `dry_mode` de la VMC pasa a **gatear por punto de rocío**: solo ventila para
+secar si el exterior está realmente más seco (`dp_diff = dp_in − dp_out` supera
+un **margen** configurable), con **histéresis** para no oscilar. La selección de
+velocidad (V1/V2/V3 por `dp_v2/v3_delta`) no cambia. Parámetros nuevos
+(categoría "dry", no avanzados): `dry_margin` (default 1.0 °C), `dry_hys`
+(default 0.5 °C).
+
+**Aceptación:**
+
+- ☐ Con el exterior igual de húmedo (`dp_diff ≤ margen`), el secado **no**
+  ventila aunque `dry_mode` esté activo y el interior cerca del rocío (cae a IAQ).
+- ☐ Con ventaja clara (`dp_diff > margen`), ventila (reason `dry_mode`).
+- ☐ Histéresis: una vez activo se mantiene hasta `dp_diff ≤ margen − histéresis`;
+  inactivo no se arma dentro de la banda → no oscila.
+- ☐ `dp_diff None` / `dry_mode` off / sin `dew_risk` → no seca (estado reseteado).
+- ☐ `dry_margin` y `dry_hys` configurables en opciones de la VMC.

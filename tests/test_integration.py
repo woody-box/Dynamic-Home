@@ -195,6 +195,35 @@ async def test_dry_mode_anticondensation(hass: HomeAssistant) -> None:
     assert co.data.speed >= 2
 
 
+async def test_dry_mode_blocked_when_outdoor_humid(hass: HomeAssistant) -> None:
+    """F13: with the outdoor air as humid as indoors, drying must NOT ventilate."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    # Same temp + RH inside and out -> dp_diff ~ 0 (no dew-point advantage),
+    # while indoor is still near its dew point (dew_risk holds).
+    hass.states.async_set("sensor.t_in", "22")
+    hass.states.async_set("sensor.t_ext", "22")
+    hass.states.async_set("sensor.rh_in", "95")
+    hass.states.async_set("sensor.rh_ext", "95")
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW,
+        const.CONF_T_IN: "sensor.t_in", const.CONF_T_EXT: "sensor.t_ext",
+        const.CONF_HUM_IN: "sensor.rh_in", const.CONF_HUM_EXT: "sensor.rh_ext",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    co.dry_mode_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # Gate closed -> falls through to the IAQ/auto path (clean air seeded).
+    assert co.data.reason != "dry_mode"
+
+
 async def test_weekly_schedule_builds_cfg(hass: HomeAssistant) -> None:
     from datetime import time as dtime
     async_mock_service(hass, "switch", "turn_on")

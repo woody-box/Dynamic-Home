@@ -159,12 +159,16 @@
         "data": {
           "dry_v2_delta": "ΔT seco V2 (°C)",
           "dry_v3_delta": "ΔT seco V3 (°C)",
-          "dew_spread_min": "Margen punto rocío (°C)"
+          "dew_spread_min": "Margen punto rocío (°C)",
+          "dry_margin": "Margen de secado (°C)",
+          "dry_hys": "Histéresis de secado (°C)"
         },
         "data_description": {
           "dry_v2_delta": "Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2.",
           "dry_v3_delta": "Ventaja de rocío para secar a V3.",
-          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación."
+          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación.",
+          "dry_margin": "Ventaja mínima de rocío (dp_interior − dp_exterior, °C) para que se active la ventilación de secado.",
+          "dry_hys": "Banda de histéresis: el secado se desactiva cuando la ventaja baja de margen − histéresis."
         }
       },
       "cat_failsafe": {

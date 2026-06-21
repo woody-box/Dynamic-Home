@@ -104,6 +104,55 @@ def test_dry_mode_targets_by_dp_diff():
     assert d.speed == 3 and d.reason == "dry_mode"
 
 
+# --- F13: dew-point drying gate (dp_diff margin + hysteresis) ---
+def _dry_ins(dp_diff, **kw):
+    base = dict(dry_mode=True, dew_risk=True, dp_diff=dp_diff,
+                co2_raw=500, pm_raw=5, current_speed=1, trigger_is_iaq=True)
+    base.update(kw)
+    return DvInputs(**base)
+
+
+def _dry_cfg():
+    return _cfg(co2_ema_enabled=False, pm_ema_enabled=False,
+                dry_margin=1.0, dry_hys=0.5)
+
+
+def test_dry_gate_blocks_below_margin():
+    # Outdoor not meaningfully drier -> do NOT ventilate to dry; fall through.
+    d = decide(_dry_cfg(), DvState(), _dry_ins(0.5))
+    assert d.reason == "iaq" and d.speed == 1
+
+
+def test_dry_gate_opens_above_margin():
+    d = decide(_dry_cfg(), DvState(), _dry_ins(1.5))
+    assert d.reason == "dry_mode" and d.speed == 3
+
+
+def test_dry_gate_hysteresis_holds_and_does_not_arm_in_band():
+    # 0.5 (off) < 0.7 <= 1.0 (on): stays on if active, does not arm if not.
+    d_on = decide(_dry_cfg(), DvState(dry_active=True), _dry_ins(0.7))
+    assert d_on.reason == "dry_mode"
+    d_off = decide(_dry_cfg(), DvState(), _dry_ins(0.7))
+    assert d_off.reason == "iaq"
+
+
+def test_dry_gate_turns_off_below_off_threshold():
+    st = DvState(dry_active=True)
+    d = decide(_dry_cfg(), st, _dry_ins(0.4))
+    assert d.reason != "dry_mode" and st.dry_active is False
+
+
+def test_dry_gate_resets_when_dry_mode_off():
+    st = DvState(dry_active=True)
+    decide(_dry_cfg(), st, _dry_ins(2.0, dry_mode=False))
+    assert st.dry_active is False
+
+
+def test_dry_gate_none_dp_diff_falls_through():
+    d = decide(_dry_cfg(), DvState(), _dry_ins(None))
+    assert d.reason == "iaq"
+
+
 def test_auto_clean_air_v1():
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
     d = decide(cfg, DvState(),

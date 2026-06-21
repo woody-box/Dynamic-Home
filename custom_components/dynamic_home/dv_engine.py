@@ -56,6 +56,11 @@ class DvConfig:
     dry_v2_delta: float = 0.2
     dry_v3_delta: float = 1.0
     dew_spread_min: float = 1.5      # indoor temp within this of dew point -> risk
+    # F13: only ventilate to dry when the outdoor air is meaningfully drier, i.e.
+    # dp_diff (dp_in - dp_out) clears a margin, with hysteresis so it doesn't
+    # chatter at the boundary.
+    dry_margin: float = 1.0          # min dp_diff (°C) to ENGAGE drying ventilation
+    dry_hys: float = 0.5             # disengage once dp_diff <= dry_margin - dry_hys
 
     # Weekly schedule (SPEC §7): weekday(0=Mon..6=Sun) -> (on_min, off_min)
     # minutes from midnight. Empty/missing -> always allowed.
@@ -111,6 +116,9 @@ class DvState:
     # Shower
     shower_active: bool = False
     shower_hold_until: float = 0.0
+
+    # Dry mode (F13): hysteresis latch for the dew-point drying gate.
+    dry_active: bool = False
 
 
 @dataclass
@@ -320,15 +328,27 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     if ins.manual_override:
         return DvDecision(3 if ins.override_v3 else 2, "manual_override")
 
-    stage3_active = ins.dry_mode and ins.dew_risk and ins.dp_diff is not None
-    if stage3_active:
-        if ins.dp_diff >= cfg.dry_v3_delta:
-            spd = 3
-        elif ins.dp_diff >= cfg.dry_v2_delta:
-            spd = 2
+    # Dry mode (F13): gate ventilation on a dew-point advantage (dp_diff) with
+    # hysteresis. Only ventilate to dry when the outdoor air is actually drier;
+    # otherwise fall through to the normal IAQ/auto path (drying would add moisture).
+    dry_demanded = ins.dry_mode and ins.dew_risk and ins.dp_diff is not None
+    if dry_demanded:
+        if state.dry_active:
+            state.dry_active = ins.dp_diff > (cfg.dry_margin - cfg.dry_hys)
         else:
-            spd = 1
-        return DvDecision(spd, "dry_mode", details={"dp_diff": ins.dp_diff})
+            state.dry_active = ins.dp_diff > cfg.dry_margin
+        if state.dry_active:
+            if ins.dp_diff >= cfg.dry_v3_delta:
+                spd = 3
+            elif ins.dp_diff >= cfg.dry_v2_delta:
+                spd = 2
+            else:
+                spd = 1
+            return DvDecision(spd, "dry_mode",
+                              details={"dp_diff": ins.dp_diff,
+                                       "dry_margin": cfg.dry_margin})
+    else:
+        state.dry_active = False
 
     # Shower: explicit override, or derived from ΔRH.
     shower_on = update_shower(state, cfg, ins.now_ts, ins.rh_delta)
