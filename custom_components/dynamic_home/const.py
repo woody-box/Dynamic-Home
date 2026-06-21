@@ -82,6 +82,14 @@ EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
 # integration (not per entry) and removed when the last entry unloads.
 DATA_SERVICES_REGISTERED = "_services_registered"
 
+# --- Repairs (HA issue registry) ---
+# A DC zone is "degraded" when a mode is demanded but its required indoor source
+# is missing. Once it stays degraded longer than ISSUE_STALE_S we raise a repair
+# issue (a transient blip on restart should not nag the user).
+ISSUE_REQUIRED_SOURCE = "required_source_missing"
+ISSUE_STALE_S = 300.0
+LEARN_MORE_URL = "https://github.com/woody-box/dynamic-home"
+
 # How often the coordinator re-evaluates the control pipeline (seconds).
 UPDATE_INTERVAL_S = 60
 

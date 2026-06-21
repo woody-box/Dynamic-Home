@@ -513,5 +513,11 @@
       "name": "Recalibrar ahora",
       "description": "Fuerza una reevaluación inmediata del pipeline de los módulos seleccionados."
     }
+  },
+  "issues": {
+    "required_source_missing": {
+      "title": "{name}: sensor requerido no disponible",
+      "description": "La zona de clima \"{name}\" está pidiendo calor o frío pero su fuente de {missing} no está disponible. El aprendizaje adaptativo queda en pausa y la zona usa su consigna base hasta que el sensor se recupere. Revisa el sensor o su entidad en Home Assistant."
+    }
   }
 }

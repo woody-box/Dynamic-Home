@@ -66,6 +66,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # clamped to a ghost solar-shield after the zone is removed/reloaded.
         if isinstance(coordinator, DcCoordinator):
             coordinator.clear_published()
+            # Don't leave a degraded repair issue hanging for a removed zone.
+            coordinator.clear_issue()
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
         # Tear the services down with the last entry so they don't linger as

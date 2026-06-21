@@ -1013,3 +1013,21 @@ agrupan bajo un único dispositivo compartido "Dynamic Home Bus".
 - ☐ Los sensores de bus de todas las entradas caen en el dispositivo
   `(dynamic_home, "bus")`.
 - ☐ Se emite `dynamic_home_conflict` al cambiar el ganador (no cada ciclo).
+
+### 12.3 · F07 — Repairs sobre `degraded` (solo DC)
+
+Cuando una zona DC pide calor/frío pero le falta su sensor de temperatura
+interior de forma **sostenida** (> `ISSUE_STALE_S` = 300 s), se crea una
+incidencia en **Reparaciones** de Home Assistant; se borra al recuperarse o al
+descargar la entrada. El evento `dynamic_home_degraded` se emite en la
+transición (inmediato), independientemente del umbral de la incidencia.
+
+**Aceptación:**
+
+- ☐ DC en heat/cool sin `t_int` → `degraded=True` y evento emitido.
+- ☐ La incidencia **no** aparece hasta superar el umbral de obsolescencia.
+- ☐ Superado el umbral → incidencia `required_source_missing` (no *fixable*,
+  con `learn_more_url`).
+- ☐ Recuperación del sensor → incidencia borrada + evento de salida.
+- ☐ Descarga de la entrada degradada → incidencia borrada.
+- ☐ DV/DS quedan fuera de alcance en esta fase.
