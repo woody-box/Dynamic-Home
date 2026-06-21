@@ -141,18 +141,40 @@ módulo aparte.
   (conductos sin zonificar), **grupo/casa con actuador por zona** (conductos +
   **rejillas motorizadas** = "válvula de aire").
 - **REQ-EMI-5 (M):** **reconciliación del emisor compartido sin zonificar**: una
-  sola orden con política configurable (**zona peor parada** / prioridad / media);
-  por defecto la peor parada en el sentido activo.
+  sola orden calculada con **agregación ponderada** de la demanda de las zonas del
+  ámbito (peso por zona, REQ-EMI-9). Políticas seleccionables: **ponderada
+  (default)** / peor parada / prioridad / media. La "peor parada" **deja de ser el
+  default** por el riesgo de péndulo/undershoot en estancias pequeñas (un solo
+  caudal no cortable por zona sobre-acondiciona las de baja demanda).
 - **REQ-EMI-6 (S):** el AC aporta sus capacidades propias (dry nativo → usable por
   F13, fan, swing).
 - **REQ-EMI-7 (M):** casos límite — solo AC ⇒ AC emisor único; solo radiante ⇒
   comportamiento actual.
+- **REQ-EMI-8 (M):** **guarda de undershoot/overshoot** (conductos sin rejillas):
+  como el caudal no es cortable por zona, la unidad **corta o modula a la baja**
+  cuando la zona **más satisfecha** del ámbito alcanza su límite de confort en el
+  sentido activo (`consigna ∓ shared_undershoot_margin`), aunque la peor parada no
+  haya llegado. Acota el sobre-acondicionamiento de las estancias pequeñas (el
+  compromiso físicamente inevitable de un conducto sin rejillas). **No aplica** con
+  rejillas motorizadas (REQ-EMI-4: cada zona regula su propio caudal).
+- **REQ-EMI-9 (S):** **parámetros del catálogo cerrado** para lo anterior:
+  `zone_demand_weight` (por zona, adimensional, default 1.0; el usuario puede
+  derivarlo de volumen/masa térmica si los conoce) y `shared_undershoot_margin`
+  (°C, margen de la guarda de corte). Solo relevantes en ámbito grupo/casa **sin**
+  rejillas.
 
 **Dependencias:** F24, F26. **Habilita:** módulo AC, F13 (dry nativo).
 **Criterios de aceptación:**
 - ☐ Con radiante+AC, el apoyo arranca solo cuando el primario no llega y se retira al recuperar.
 - ☐ Conductos sin zonificar: una sola orden coherente para todas las zonas del ámbito.
 - ☐ Conductos con rejillas: control por zona vía rejilla, unidad con consigna única.
+- ☐ Conductos sin zonificar con Salón muy caliente y Dormitorio casi en consigna:
+  la unidad **no** sobre-enfría el Dormitorio (la guarda corta al llegar a
+  `consigna − margen`), aunque el Salón quede un poco corto.
+- ☐ Subir el `zone_demand_weight` del Salón sesga la consigna agregada hacia él
+  **sin** anular la guarda de undershoot del Dormitorio.
+- ☐ Con rejillas motorizadas, ni la ponderación ni la guarda aplican (control por
+  zona vía rejilla).
 
 ### 4.4 · Presencia (F32)
 
