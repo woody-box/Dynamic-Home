@@ -887,6 +887,82 @@ Congeladas (fuera de fases): **F05** (outdoor reset), **F18** (anti-helada).
 ## 10. Pendiente de redactar
 - **Criterios de aceptación** ampliados y casos de prueba por requisito (al entrar
   cada fase a implementación).
-- **Plan de migración** desde la suite YAML del usuario (coexistencia vía modo observación).
 - **Validación externa** de los requisitos ⚠️ (FV/batería/VE) por un usuario con
   esa instalación.
+
+---
+
+## 11. Plan de migración desde la suite YAML v4.2
+
+**Objetivo:** pasar de la suite YAML (helpers + automatizaciones) a la integración
+**sin cortes de servicio y sin que dos cerebros peleen por el mismo relé**.
+
+### 11.1 · Principio rector: el conflicto solo está en los actuadores
+
+- **Sensores = sin conflicto.** Leer un sensor (temperatura, CO₂, PM, HR, sol,
+  viento…) es **read-only**: la integración y el YAML pueden leer **lo mismo a la
+  vez** sin interferir. Mapear sensores nunca rompe nada.
+- **Actuadores = único conflicto.** Solo los **relés de velocidad de la VMC**, los
+  **motores de persiana** y el **relé de calefacción/válvula** pueden recibir
+  órdenes contradictorias. La regla de oro: **un actuador, un dueño en cada
+  momento**.
+- **Corolario:** se puede tener toda la integración **funcionando y validándose en
+  paralelo** al YAML mientras esté en **modo observación** (RNF-2), porque en
+  observe **calcula y publica pero no actúa**.
+
+### 11.2 · Las cuatro etapas (por módulo/actuador)
+
+1. **A · Instalar en observe.** Añadir la(s) instancia(s) del módulo, mapear
+   **sensores** (no hace falta tocar el YAML). Activar **"Observe only"**. La
+   integración calcula, publica al bus y expone sus decisiones, **sin mover nada**.
+2. **B · Observar y comparar.** Contrastar las decisiones de la integración contra
+   el comportamiento real del YAML usando los **sensores de observabilidad 1:1**
+   (biases DC, modo DV, target DS), el **explicador del bus (F02/REQ-BUS)** y el
+   `binary_sensor degraded` + **Repairs (F07)** para detectar mapeos incompletos.
+   No pasar de etapa hasta que coincida (o mejore) de forma consistente.
+3. **C · Cesión de control (cutover atómico).** En **una sola ventana de
+   mantenimiento por actuador**: **deshabilitar** la automatización YAML que manda
+   ese relé **y** quitar el "Observe only" del módulo **a la vez**. Nunca dejar los
+   dos activos sobre el mismo relé. Mantener los **helpers YAML deshabilitados (no
+   borrados)** como rollback inmediato.
+4. **D · Retirada.** Tras un período estable, borrar los helpers/automatizaciones
+   YAML de ese actuador. El **hardware de backup** (termostato analógico por la
+   entrada SW del Shelly) se conserva como red de seguridad final.
+
+### 11.3 · Orden recomendado (de menor a mayor riesgo)
+
+1. **DS · Persianas** — riesgo bajo (confort visual; el YAML ya protege por
+   viento/lluvia). Migrar **fachada por fachada** (`ds_f<azimut>`): cede una
+   fachada, observa el resto.
+2. **DV · Ventilación** — riesgo medio. Validar especialmente el **break-before-make**
+   de los relés de velocidad y el `dry_mode`/secado antes de ceder.
+3. **DC · Clima** — riesgo alto (confort + **anticondensación** = seguridad). Va el
+   **último**, pero conviene tenerlo **en observe desde el principio**: es el
+   cerebro que publica al bus (ganancia/protección solar), así que observándolo se
+   valida también lo que pedirá a DS/DV.
+
+> Las **peticiones de DC al bus** hacia DS solo tienen efecto cuando **ambos** han
+> cedido control; mientras DC esté en observe, publica pero DS (si ya cedió) puede
+> escucharle — validar este cruce en la etapa B de DC.
+
+### 11.4 · Reglas de seguridad durante la transición
+
+- **Cutover atómico por actuador** (11.2-C): jamás YAML + integración mandando el
+  mismo relé.
+- **Coexistencia con el backup hardware (F27/REQ-DEM):** el termostato analógico
+  puede actuar el relé por la entrada SW si cae la domótica; la integración debe
+  **detectar el estado real** del relé y **no pelearse** con él. Recomendado
+  aportar la señal real (opción c de REQ-DEM) antes del cutover de DC.
+- **Anti-pico (F03) durante la convivencia:** si se ceden varios actuadores
+  eléctricos a la vez, vigilar el pico de arranque; ceder **escalonado**.
+- **Rollback en segundos:** re-habilitar la automatización YAML y volver a poner el
+  módulo en observe.
+
+### 11.5 · Checklist de cesión por módulo (resumen)
+
+- ☐ Sensores requeridos mapeados (sin `degraded`/Repairs activos).
+- ☐ Decisiones validadas en observe vs YAML (etapa B superada).
+- ☐ Automatización(es) YAML del actuador **localizadas** y listas para deshabilitar.
+- ☐ Ventana de mantenimiento: deshabilitar YAML **+** quitar observe (atómico).
+- ☐ Helpers YAML deshabilitados (no borrados) como rollback.
+- ☐ Período de estabilización superado → retirada del YAML.
