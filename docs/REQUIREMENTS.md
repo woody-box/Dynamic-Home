@@ -419,8 +419,8 @@ inferida) que mejora el Adaptive Lead y da horas frío/calor exactas.
 
 **Dependencias:** Adaptive Lead (ya existe), F06 (horas exactas).
 **Criterios de aceptación:**
-- ☐ Con la señal real, las horas de calor/frío coinciden con la actuación del relé.
-- ☐ Si el termostato de backup abre la válvula, el sistema lo refleja, no lo combate.
+- ☐ Con la señal real, las horas de calor/frío coinciden con la actuación del relé. *(horas exactas: pend. F06; la señal ya sigue al relé)*
+- ☑ Si el termostato de backup abre la válvula, el sistema lo refleja, no lo combate.
 
 ### 5.9 · Anti-ciclado corto (F09)
 
@@ -1201,3 +1201,29 @@ hostil común se **difieren a F33** (su dependencia).
 
 **Diferido a F33:** observación de contaminantes exteriores (CO/PM10/NO2/SO2/O3) y
 su agregación a un índice hostil; NOx (REQ-IAQ-3) si aparece en el caso de uso.
+
+### 12.12 · F27 — Señal de demanda/válvula real (DC)
+
+Entrada opcional por entrada DC con la **demanda real** de la zona, que alimenta el
+**Adaptive Lead** (detección de ciclo) en lugar de inferirla de `t_int` vs
+`target`. Prioridad **c > b > a**, con *fallback* a la inferencia actual
+(compatibilidad):
+
+- **(c)** `CONF_DC_VALVE`: estado real de relé/potencia (Shelly). Numérico →
+  `> valve_power_min` (W); binario → on/off. La más fiable; **captura el termostato
+  analógico de backup** que `hvac_action` no ve.
+- **(b)** `CONF_DC_DEMAND_HEAT`/`CONF_DC_DEMAND_COOL`: helpers explícitos por modo.
+- **(a)** `hvac_action` del `CONF_DC_CLIMATE` (`heating`/`cooling`→on; `idle`/`off`→off).
+
+Diagnóstico: `binary_sensor` "Demanda real" (device_class `running`, atributo
+`source`), creado **solo si hay fuente real** (`has_real_demand()`). Tunable
+`valve_power_min` (opciones, categoría "demand", avanzado).
+
+**Aceptación:**
+
+- ☐ Con `CONF_DC_VALVE` (c), la demanda sigue al relé independientemente del modo/orden de DC.
+- ☐ Helpers (b) y `hvac_action` (a) en su prioridad; sin fuentes → inferencia (sin regresión).
+- ☐ El `binary_sensor` aparece solo con fuente real configurada.
+
+**Diferido a F06:** el contador de **horas exactas** de calor/frío (la señal real
+ya está lista para alimentarlo cuando se construya F06).

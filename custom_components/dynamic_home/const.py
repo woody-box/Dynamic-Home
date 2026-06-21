@@ -62,6 +62,10 @@ CONF_DC_HUMIDITY = "dc_humidity"  # optional: indoor RH for dew-point protection
 CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
 CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
 CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout
+# Real heating/cooling demand (F27): optional, replaces the inferred valve signal.
+CONF_DC_VALVE = "dc_valve"           # (c) real relay/power state (most reliable)
+CONF_DC_DEMAND_HEAT = "dc_demand_heat"  # (b) explicit heat-demand helper
+CONF_DC_DEMAND_COOL = "dc_demand_cool"  # (b) explicit cool-demand helper
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;

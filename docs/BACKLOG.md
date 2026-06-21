@@ -290,6 +290,7 @@
   - **Por qué (c) es la mejor:** captura también la actuación del **termostato analógico de backup** (vía entrada SW del Shelly), que el `hvac_action` del climate **no ve**. Es la "verdad de campo" de si la válvula está abierta.
   - Si se aporta, el motor usa esta señal como `valve_open` en lugar de inferirla; si no, sigue infiriéndola (comportamiento actual).
   - **Coexistencia con backup hardware:** Dynamic Home controla por el relé normalmente, pero debe **convivir** con que el termostato analógico pueda actuar el relé por la entrada SW si cae la domótica (no pelearse; detectar el estado real).
+  - **Implementado:** señal real c/b/a con *fallback* a inferencia + `binary_sensor` "Demanda real" (gated). Horas exactas pendientes de F06.
 
 ## Emergentes de dashboards (por perfilar)
 

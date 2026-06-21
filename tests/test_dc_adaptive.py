@@ -4,12 +4,17 @@ The learning loop lives on ``DcCoordinator`` but is pure Python: we drive it on
 a bare instance (``__new__``, no Home Assistant needed) one tick at a time.
 """
 
+from types import SimpleNamespace
+
 from custom_components.dynamic_home.coordinator_dc import DcCoordinator
 from custom_components.dynamic_home.dc_engine import DcConfig
 
 
 def _coord() -> DcCoordinator:
     c = DcCoordinator.__new__(DcCoordinator)
+    # No real demand source configured -> _real_valve_open() returns None and the
+    # learning loop falls back to inference (F27), without needing Home Assistant.
+    c.entry = SimpleNamespace(data={})
     c.adaptive_enabled = True
     c.degraded = False
     c.learn_rate_ema = 0.0
@@ -32,12 +37,13 @@ def _coord() -> DcCoordinator:
 
 def test_valve_demand_heat_cool():
     c = _coord()
-    assert c._valve_demand("heat", 18.0, 21.0) is True
-    assert c._valve_demand("heat", 22.0, 21.0) is False
-    assert c._valve_demand("cool", 26.0, 24.0) is True
-    assert c._valve_demand("cool", 22.0, 24.0) is False
-    assert c._valve_demand("off", 18.0, 21.0) is False
-    assert c._valve_demand("heat", None, 21.0) is False
+    cfg = DcConfig()
+    assert c._valve_demand(cfg, "heat", 18.0, 21.0) is True
+    assert c._valve_demand(cfg, "heat", 22.0, 21.0) is False
+    assert c._valve_demand(cfg, "cool", 26.0, 24.0) is True
+    assert c._valve_demand(cfg, "cool", 22.0, 24.0) is False
+    assert c._valve_demand(cfg, "off", 18.0, 21.0) is False
+    assert c._valve_demand(cfg, "heat", None, 21.0) is False
 
 
 def test_learns_a_full_heat_cycle():

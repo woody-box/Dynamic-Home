@@ -20,8 +20,11 @@ from .coordinator import DcCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator: DcCoordinator = hass.data[const.DOMAIN][entry.entry_id]
-    async_add_entities([DewRiskBinarySensor(coordinator, entry),
-                        DegradedBinarySensor(coordinator, entry)])
+    entities = [DewRiskBinarySensor(coordinator, entry),
+                DegradedBinarySensor(coordinator, entry)]
+    if coordinator.has_real_demand():
+        entities.append(RealDemandBinarySensor(coordinator, entry))
+    async_add_entities(entities)
 
 
 class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
@@ -41,6 +44,30 @@ class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return self.coordinator.dew_risk_active
+
+
+class RealDemandBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
+    """Real heating/cooling demand (F27): reflects the actual valve/relay state."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Demanda real"
+    _attr_icon = "mdi:heating-coil"
+    _attr_device_class = BinarySensorDeviceClass.RUNNING
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_real_demand"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool | None:
+        return self.coordinator.real_demand_open
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"source": self.coordinator.real_demand_source}
 
 
 class DegradedBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):

@@ -58,7 +58,10 @@
           "dc_humidity": "Humedad interior (opcional, protección antirrocío)",
           "dc_weather": "Meteo/weather (opcional, bias por previsión)",
           "dc_wind": "Sensor de viento (opcional, modelo de lead)",
-          "ds_target": "Target de persianas en el bus (p.ej. ds)"
+          "ds_target": "Target de persianas en el bus (p.ej. ds)",
+          "dc_valve": "Válvula/relé real o potencia (opcional)",
+          "dc_demand_heat": "Helper de demanda de calor (opcional)",
+          "dc_demand_cool": "Helper de demanda de frío (opcional)"
         }
       }
     },
@@ -99,7 +102,8 @@
           "cat_anticipatory": "Refuerzo anticipatorio",
           "cat_filter": "Vida del filtro",
           "cat_quiet": "Horas de silencio",
-          "cat_recuperator": "Recuperador"
+          "cat_recuperator": "Recuperador",
+          "cat_demand": "Señal de demanda real"
         }
       },
       "cat_iaq": {
@@ -549,6 +553,15 @@
         "data_description": {
           "hrv_bypass_eff_max": "Eficiencia (0..1) por debajo de la cual, con un ΔT real, se considera que el recuperador está en bypass / sin recuperar.",
           "hrv_bypass_dt_min": "ΔT mínimo extracción−absorción (°C) necesario para juzgar recuperación vs bypass."
+        }
+      },
+      "cat_demand": {
+        "title": "Señal de demanda real",
+        "data": {
+          "valve_power_min": "Umbral de potencia de válvula (W)"
+        },
+        "data_description": {
+          "valve_power_min": "Cuando la fuente de la válvula es numérica (potencia, W), una lectura por encima cuenta la válvula/relé como activa."
         }
       }
     },

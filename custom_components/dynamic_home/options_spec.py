@@ -58,6 +58,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "adaptive_lead": ("Adaptive lead", "Lead adaptativo"),
     "condensation": ("Condensation", "Condensación"),
     "facade": ("Facade bias", "Bias de fachadas"),
+    "demand": ("Real demand signal", "Señal de demanda real"),
 }
 
 
@@ -264,6 +265,9 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("facade_gain_heat", "Facade gain heat (°C)", "Ganancia fachada calor (°C)"),
             _v("facade_gain_cool", "Facade gain cool (°C)", "Ganancia fachada frío (°C)"),
         ],
+        "demand": [
+            _v("valve_power_min", "Valve power threshold (W)", "Umbral potencia válvula (W)"),
+        ],
     },
 }
 
@@ -301,6 +305,7 @@ _ADVANCED: dict[str, set[str]] = {
         "adapt_on_rate_min_dt", "adapt_off_window_h",
         "lead_adaptive_min_h", "lead_adaptive_max_h",
         "facade_gain_heat", "facade_gain_cool",
+        "valve_power_min",
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",

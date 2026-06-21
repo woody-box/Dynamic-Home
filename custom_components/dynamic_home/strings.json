@@ -58,7 +58,10 @@
           "dc_humidity": "Indoor humidity (optional, dew-point protection)",
           "dc_weather": "Weather (optional, forecast bias)",
           "dc_wind": "Wind sensor (optional, lead model)",
-          "ds_target": "Shutter target on the bus (e.g. ds)"
+          "ds_target": "Shutter target on the bus (e.g. ds)",
+          "dc_valve": "Real valve/relay or power (optional)",
+          "dc_demand_heat": "Heat-demand helper (optional)",
+          "dc_demand_cool": "Cool-demand helper (optional)"
         }
       }
     },
@@ -99,7 +102,8 @@
           "cat_anticipatory": "Anticipatory boost",
           "cat_filter": "Filter life",
           "cat_quiet": "Quiet hours",
-          "cat_recuperator": "Heat recovery"
+          "cat_recuperator": "Heat recovery",
+          "cat_demand": "Real demand signal"
         }
       },
       "cat_iaq": {
@@ -549,6 +553,15 @@
         "data_description": {
           "hrv_bypass_eff_max": "Efficiency (0..1) at or below which, with a real ΔT, the exchanger is considered in bypass / not recovering.",
           "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass."
+        }
+      },
+      "cat_demand": {
+        "title": "Real demand signal",
+        "data": {
+          "valve_power_min": "Valve power threshold (W)"
+        },
+        "data_description": {
+          "valve_power_min": "When the valve source is numeric (power, W), a reading above this counts the valve/relay as active."
         }
       }
     },

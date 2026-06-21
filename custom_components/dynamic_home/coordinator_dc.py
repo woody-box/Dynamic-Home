@@ -99,12 +99,81 @@ class DcCoordinator(DataUpdateCoordinator):
         self._off_hvac: str | None = None
 
     # --- adaptive lead learning (port of "Adaptive Lead v2.6.1") ---
-    def _valve_demand(self, hvac: str, t_int: float | None,
+    def _real_valve_open(self, cfg: DcConfig, hvac: str) -> bool | None:
+        """Real heating/cooling demand (F27), priority c > b > a; None = no source.
+
+        (c) real relay/power state — most reliable, also sees the analog backup
+        thermostat; (b) explicit heat/cool helpers; (a) the climate's hvac_action.
+        """
+        # (c) relay / power: numeric -> power threshold; otherwise on/off.
+        if self._hw(const.CONF_DC_VALVE):
+            v = self._num(const.CONF_DC_VALVE)
+            if v is not None:
+                return v > cfg.valve_power_min
+            return self._is_on(const.CONF_DC_VALVE)
+        # (b) explicit demand helper for the active mode.
+        if (self._hw(const.CONF_DC_DEMAND_HEAT)
+                or self._hw(const.CONF_DC_DEMAND_COOL)):
+            key = (const.CONF_DC_DEMAND_HEAT if hvac == "heat"
+                   else const.CONF_DC_DEMAND_COOL)
+            return bool(self._hw(key)) and self._is_on(key)
+        # (a) hvac_action from the climate entity.
+        climate = self._hw(const.CONF_DC_CLIMATE)
+        if climate:
+            st = self.hass.states.get(climate)
+            action = st.attributes.get("hvac_action") if st else None
+            if action in ("heating", "cooling"):
+                return True
+            if action in ("idle", "off"):
+                return False
+        return None
+
+    def _valve_demand(self, cfg: DcConfig, hvac: str, t_int: float | None,
                       target: float | None) -> bool:
-        """Whether the zone is actively calling for heat/cool (our 'valve open')."""
-        if hvac not in ("heat", "cool") or t_int is None or target is None:
+        """Whether the zone is actively calling for heat/cool (our 'valve open').
+
+        Prefers a real demand signal (F27) when configured; otherwise falls back
+        to inferring it from indoor temperature vs target (legacy behaviour).
+        """
+        if hvac not in ("heat", "cool"):
+            return False
+        real = self._real_valve_open(cfg, hvac)
+        if real is not None:
+            return real
+        if t_int is None or target is None:
             return False
         return t_int < target if hvac == "heat" else t_int > target
+
+    # --- F27 diagnostics ---
+    def has_real_demand(self) -> bool:
+        """Whether a real demand source (c/b, or hvac_action) is available."""
+        if any(self._hw(k) for k in (const.CONF_DC_VALVE,
+                                     const.CONF_DC_DEMAND_HEAT,
+                                     const.CONF_DC_DEMAND_COOL)):
+            return True
+        climate = self._hw(const.CONF_DC_CLIMATE)
+        if climate:
+            st = self.hass.states.get(climate)
+            return bool(st and st.attributes.get("hvac_action") is not None)
+        return False
+
+    @property
+    def real_demand_source(self) -> str | None:
+        if self._hw(const.CONF_DC_VALVE):
+            return "valve"
+        if self._hw(const.CONF_DC_DEMAND_HEAT) or self._hw(const.CONF_DC_DEMAND_COOL):
+            return "helper"
+        climate = self._hw(const.CONF_DC_CLIMATE)
+        if climate:
+            st = self.hass.states.get(climate)
+            if st and st.attributes.get("hvac_action") is not None:
+                return "hvac_action"
+        return "inferred"
+
+    @property
+    def real_demand_open(self) -> bool | None:
+        """Real demand for the current mode (None if no real source configured)."""
+        return self._real_valve_open(self._cfg(), self.hvac_mode)
 
     def _finalize_cycle(self, cfg: DcConfig) -> None:
         """Settling window elapsed: learn overshoot, lag and step the lead gain."""
@@ -126,7 +195,7 @@ class DcCoordinator(DataUpdateCoordinator):
                     t_int: float | None, target: float | None,
                     window_open: bool, override: bool) -> None:
         """Drive the ON/OFF cycle state machine for one coordinator tick."""
-        valve = self._valve_demand(hvac, t_int, target)
+        valve = self._valve_demand(cfg, hvac, t_int, target)
         rising = valve and not self._valve_open
         falling = (not valve) and self._valve_open
 
@@ -418,7 +487,7 @@ class DcCoordinator(DataUpdateCoordinator):
             self._learn_step(cfg, now_ts, self.hvac_mode, t_int, decision.target,
                              self._is_on(const.CONF_DC_WINDOW), self.override_active)
         else:
-            self._valve_open = self._valve_demand(self.hvac_mode, t_int,
+            self._valve_open = self._valve_demand(cfg, self.hvac_mode, t_int,
                                                   decision.target)
             self._settling = False
 

@@ -110,6 +110,69 @@ async def test_climate_manual_setpoint_is_override(hass: HomeAssistant) -> None:
     assert state.attributes["reason"] == "override"
 
 
+# --- F27: real heating/cooling demand signal ---
+async def test_real_demand_valve_reflects_relay(hass: HomeAssistant) -> None:
+    """Source (c): the valve/relay state is reflected regardless of DC's command."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    hass.states.async_set("switch.valve", "on")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_VALVE: "switch.valve"}, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Backup thermostat opened the relay even though the zone is OFF -> reflected.
+    assert co.has_real_demand() is True
+    assert co.real_demand_source == "valve"
+    assert co.real_demand_open is True
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_real_demand")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state == "on" and st.attributes["source"] == "valve"
+
+
+async def test_real_demand_valve_power_threshold(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.valve_power", "120")     # W, > valve_power_min
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_VALVE: "sensor.valve_power"},
+                       "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.real_demand_open is True
+    hass.states.async_set("sensor.valve_power", "0")
+    assert co.real_demand_open is False
+
+
+async def test_real_demand_helper_priority(hass: HomeAssistant) -> None:
+    """Source (b): the per-mode demand helper drives valve_open."""
+    _seed(hass)
+    hass.states.async_set("input_boolean.heat_demand", "on")
+    entry = await _add(
+        hass, {**CLIMATE, const.CONF_DC_DEMAND_HEAT: "input_boolean.heat_demand"},
+        "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.real_demand_source == "helper"
+    assert co.real_demand_open is True
+
+
+async def test_real_demand_absent_falls_back_to_inference(
+        hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_real_demand() is False
+    assert co.real_demand_source == "inferred"
+    assert co.real_demand_open is None
+    eid = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_real_demand")
+    assert eid is None
+
+
 async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
     """An open window forces OFF; vacation switch feeds the engine."""
     _seed(hass)

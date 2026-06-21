@@ -110,6 +110,11 @@ class DcConfig:
     # this margin of the dew point.
     dew_spread_min: float = 2.0
 
+    # Real demand signal (F27): when the valve source (c) is numeric (power, W),
+    # a reading above this means the valve/relay is active. Consumed by the
+    # coordinator's Adaptive Lead, not by the pure decision pipeline.
+    valve_power_min: float = 5.0
+
     # Facade solar-gain bias: max °C correction at full openness on sunlit facades.
     facade_gain_heat: float = 0.3
     facade_gain_cool: float = 0.3
