@@ -145,6 +145,14 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
     def hrv_state(self) -> str | None:
         return hrv_state(*self._hrv_temps(), self._cfg())
 
+    # --- Extended IAQ (F30): VOC is observation-only and never enters decide() ---
+    def has_voc(self) -> bool:
+        return bool(self._hw(const.CONF_VOC))
+
+    @property
+    def voc_level(self) -> float | None:
+        return self._num(const.CONF_VOC)
+
     @property
     def filter_life_pct(self) -> float:
         """Remaining filter life (0..100 %) for the filter-life sensor."""

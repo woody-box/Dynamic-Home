@@ -27,7 +27,8 @@
           "hum_ext": "Outdoor humidity (optional, shower boost)",
           "hrv_supply": "HRV supply temp (optional)",
           "hrv_intake": "HRV fresh-air intake temp (optional)",
-          "hrv_extract": "HRV extract (stale air) temp (optional)"
+          "hrv_extract": "HRV extract (stale air) temp (optional)",
+          "voc": "VOC sensor (optional)"
         }
       },
       "shutter": {

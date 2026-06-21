@@ -27,7 +27,8 @@
           "hum_ext": "Humedad exterior (opcional, boost ducha)",
           "hrv_supply": "Temp. insuflación recuperador (opcional)",
           "hrv_intake": "Temp. absorción aire nuevo (opcional)",
-          "hrv_extract": "Temp. extracción aire viciado (opcional)"
+          "hrv_extract": "Temp. extracción aire viciado (opcional)",
+          "voc": "Sensor VOC (opcional)"
         }
       },
       "shutter": {

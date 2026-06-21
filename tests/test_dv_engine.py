@@ -441,6 +441,17 @@ def test_hrv_state_none_when_missing():
     assert hrv_state(None, 0, 22, _cfg()) is None
 
 
+# --- F30: extended IAQ — hostile outdoor overrides indoor demand (REQ-IAQ-4) ---
+def test_hostile_outdoor_overrides_indoor_demand():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False,
+               hostile_enabled=True, hostile_t3=150)
+    # Indoor CO₂ would demand V3, but a hostile outdoor AQI shuts ventilation off.
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=1400, pm_raw=5, aqi=160, current_speed=1,
+                        trigger_is_iaq=True))
+    assert d.speed == 0 and d.reason == "hostile_off"
+
+
 def test_auto_clean_air_v1():
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
     d = decide(cfg, DvState(),

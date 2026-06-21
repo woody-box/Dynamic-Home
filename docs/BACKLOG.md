@@ -314,6 +314,7 @@
   - **VOC (COV): informativo/observación** (no actúa).
   - **NOx:** descartado de momento (caso del usuario no tiene).
   - **Contaminantes exteriores** (CO/PM10/NO2/SO2/O3/índice): **solo observación**, y alimentan el **"exterior hostil"** para no ventilar en días muy malos.
+  - **Implementado:** VOC observación (sensor diagnóstico, no actúa) + tests de contrato; el exterior hostil ya operaba sobre `CONF_AQI`. Exterior multi-contaminante y NOx **pendientes de F33**.
 
 ### F31 · Aviso/aprovechamiento de espacio adyacente (terraza/galería)
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M

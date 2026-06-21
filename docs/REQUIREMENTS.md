@@ -610,12 +610,14 @@ tienen sentido sanitario en el caso objetivo.
   usuario); estructura abierta a añadirlo si aparece.
 - **REQ-IAQ-4 (S):** **contaminantes exteriores** (CO/PM10/NO2/SO2/O3/índice):
   **solo observación**, y alimentan el **"exterior hostil"** para no ventilar en
-  días muy malos.
+  días muy malos. *(Hoy: el "exterior hostil" ya opera sobre un índice AQI único
+  (`CONF_AQI`). La observación multi-contaminante y su normalización a un índice
+  común se completan con **F33**.)*
 
 **Dependencias:** DV, F11 (deriva sobre los que actúan), F33 (exterior).
 **Criterios de aceptación:**
-- ☐ Subir VOC no cambia la velocidad; subir CO₂/PM2.5 sí.
-- ☐ Con exterior hostil activo, no se ventila pese a IAQ interior mejorable.
+- ☑ Subir VOC no cambia la velocidad; subir CO₂/PM2.5 sí.
+- ☑ Con exterior hostil activo, no se ventila pese a IAQ interior mejorable.
 
 ### 6.7 · Campana extractora coordinada (F35)
 
@@ -1178,3 +1180,24 @@ bypass; ΔT pequeño → idle). Umbrales configurables (categoría "recuperator"
 **Diferido (REQ-EFF-4):** el aviso por desplome sostenido/inesperado (Repairs/
 evento) queda como follow-up — el spec advierte del riesgo de falsas alarmas al
 no distinguir bypass intencionado de fallo solo por temperaturas.
+
+### 12.11 · F30 — IAQ extendido (DV)
+
+Acepta **VOC como observación** (REQ-IAQ-2): entrada opcional `CONF_VOC` + sensor
+diagnóstico "VOC" que **espeja la lectura** y **no entra en `decide()`** — esa es
+la garantía de REQ-IAQ-1 (solo CO₂/PM2.5 actúan). Solo se expone si la sonda está
+configurada (`has_voc()`). **NOx** (REQ-IAQ-3) queda **descartado** por ahora; el
+patrón de sensor de observación deja la puerta abierta a añadirlo trivialmente. El
+**"exterior hostil"** (REQ-IAQ-4 / AC2) ya operaba sobre el índice `CONF_AQI`
+(cap `hostile_*` en el motor): se añade test de contrato. La observación
+multi-contaminante exterior (CO/PM10/NO2/SO2/O3) y su normalización a un índice
+hostil común se **difieren a F33** (su dependencia).
+
+**Aceptación:**
+
+- ☐ Con `CONF_VOC`, aparece el sensor "VOC" y espeja la lectura; sin ella, no aparece.
+- ☐ Subir VOC con CO₂/PM2.5 limpios **no** cambia la velocidad; subir CO₂ sí (→ V3).
+- ☐ Con AQI exterior ≥ umbral, la decisión es `hostile_off` pese a CO₂ interior alto.
+
+**Diferido a F33:** observación de contaminantes exteriores (CO/PM10/NO2/SO2/O3) y
+su agregación a un índice hostil; NOx (REQ-IAQ-3) si aparece en el caso de uso.

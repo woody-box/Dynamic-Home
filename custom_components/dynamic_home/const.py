@@ -36,9 +36,11 @@ CONF_HUM_IN = "hum_in"            # optional: indoor RH for dry-mode/dew
 CONF_HRV_SUPPLY = "hrv_supply"    # supply into the house (after the exchanger)
 CONF_HRV_INTAKE = "hrv_intake"    # fresh outdoor air taken in
 CONF_HRV_EXTRACT = "hrv_extract"  # stale air extracted from the house
+CONF_VOC = "voc"                  # F30: VOC (observation only, does NOT actuate)
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
-OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT)
+OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT,
+               CONF_VOC)
 
 # --- Config entry keys: Shutter (DS) ---
 CONF_COVER = "cover"

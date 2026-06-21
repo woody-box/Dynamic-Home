@@ -78,6 +78,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(FilterLifeSensor(coordinator, entry))
     if coordinator.has_hrv():
         entities.append(HrvEfficiencySensor(coordinator, entry))
+    if coordinator.has_voc():
+        entities.append(VocSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
     async_add_entities(entities)
 
@@ -264,6 +266,22 @@ class HrvEfficiencySensor(_Base):
     @property
     def extra_state_attributes(self) -> dict:
         return {"state": self.coordinator.hrv_state}
+
+
+class VocSensor(_Base):
+    """Observed VOC level (F30). Informational only — it never drives the speed."""
+
+    _attr_name = "VOC"
+    _attr_icon = "mdi:molecule"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "voc")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.voc_level
 
 
 # --------------------------------------------------------------------------- #

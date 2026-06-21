@@ -260,6 +260,53 @@ async def test_hrv_efficiency_sensor_absent_without_probes(hass: HomeAssistant) 
     assert eid is None
 
 
+async def test_voc_sensor_present_and_observation_only(hass: HomeAssistant) -> None:
+    """F30: VOC is exposed but never actuates — only CO₂/PM2.5 raise the speed."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass, co2="500", pm="5")
+    hass.states.async_set("sensor.voc", "900")     # high VOC
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={},
+                            data={**HW, const.CONF_VOC: "sensor.voc"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # VOC sensor exists and mirrors the reading.
+    assert co.has_voc() is True
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_voc")
+    assert eid is not None
+    assert float(hass.states.get(eid).state) == 900.0
+
+    # High VOC with clean CO₂/PM does NOT raise the speed (observation only).
+    assert co.data.speed == 1
+
+    # CO₂ rising DOES raise it (the actuators are CO₂/PM2.5).
+    co.state_data.co2_ema = 0            # reset EMA so the next reading bootstraps
+    hass.states.async_set("sensor.co2", "1400")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.speed == 3
+
+
+async def test_voc_sensor_absent_without_probe(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_voc() is False
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_voc")
+    assert eid is None
+
+
 async def test_quiet_hours_entities_wire_to_cfg(hass: HomeAssistant) -> None:
     """F12: quiet-hours switch/number/time exist and reach the engine cfg."""
     from datetime import time as dtime
