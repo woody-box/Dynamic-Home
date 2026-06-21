@@ -102,6 +102,14 @@
           "pm_v3": "PM2.5 → V3 (µg/m³)",
           "co2_hys": "Histéresis CO₂ (ppm)",
           "pm_hys": "Histéresis PM2.5 (µg/m³)"
+        },
+        "data_description": {
+          "co2_v2": "Nivel de CO₂ (ppm) que sube la VMC a V2. Los umbrales deciden cuándo subir velocidad.",
+          "co2_v3": "Nivel de CO₂ (ppm) que sube la VMC a V3.",
+          "pm_v2": "Nivel de PM2.5 (µg/m³) que sube la VMC a V2.",
+          "pm_v3": "Nivel de PM2.5 (µg/m³) que sube la VMC a V3.",
+          "co2_hys": "Margen de bajada de CO₂ antes de bajar velocidad. Evita el «diente de sierra»; si oscila, súbela un poco.",
+          "pm_hys": "Margen de bajada de PM2.5 antes de bajar velocidad (anti diente de sierra)."
         }
       },
       "cat_smoothing": {
@@ -154,6 +162,12 @@
           "shower_rh_delta_off": "Δ HR desactivación (%)",
           "shower_hold_s": "Mantener (s)",
           "shower_level": "Velocidad de ducha"
+        },
+        "data_description": {
+          "shower_rh_delta_on": "Subida de HR del baño (Δ%) que dispara el refuerzo de ducha. Si detecta «falsas duchas», súbelo.",
+          "shower_rh_delta_off": "Δ de HR por debajo del cual termina el refuerzo. Si corta demasiado pronto, bájalo.",
+          "shower_hold_s": "Tiempo mínimo de mantenimiento del refuerzo (segundos). Si corta pronto, súbelo.",
+          "shower_level": "Velocidad objetivo mientras se detecta ducha (V2/V3)."
         }
       },
       "cat_adaptive_iaq": {

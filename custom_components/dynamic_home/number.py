@@ -123,7 +123,9 @@ class CoordNumber(NumberEntity, RestoreEntity):
     """A number backed by a coordinator attribute (shutter privacy/lock)."""
 
     _attr_has_entity_name = True
-    _attr_mode = NumberMode.SLIDER
+    # Box (−/value/+) rather than a slider: on mobile a slider is easy to nudge
+    # by accident.
+    _attr_mode = NumberMode.BOX
 
     def __init__(self, coordinator: DsCoordinator, entry: ConfigEntry,
                  desc: CoordNumberDesc) -> None:

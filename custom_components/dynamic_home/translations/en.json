@@ -102,6 +102,14 @@
           "pm_v3": "PM2.5 → V3 (µg/m³)",
           "co2_hys": "CO₂ hysteresis (ppm)",
           "pm_hys": "PM2.5 hysteresis (µg/m³)"
+        },
+        "data_description": {
+          "co2_v2": "CO₂ level (ppm) that raises the VMC to V2. Thresholds decide when to step up.",
+          "co2_v3": "CO₂ level (ppm) that raises the VMC to V3.",
+          "pm_v2": "PM2.5 level (µg/m³) that raises the VMC to V2.",
+          "pm_v3": "PM2.5 level (µg/m³) that raises the VMC to V3.",
+          "co2_hys": "CO₂ drop margin before stepping down. Prevents sawtooth; if it oscillates, raise it a bit.",
+          "pm_hys": "PM2.5 drop margin before stepping down (anti sawtooth)."
         }
       },
       "cat_smoothing": {
@@ -154,6 +162,12 @@
           "shower_rh_delta_off": "RH Δ off (%)",
           "shower_hold_s": "Hold (s)",
           "shower_level": "Shower speed"
+        },
+        "data_description": {
+          "shower_rh_delta_on": "Bathroom RH rise (Δ%) that triggers a shower boost. If it detects false showers, raise this.",
+          "shower_rh_delta_off": "RH delta below which the shower boost ends. If it cuts too soon, lower this.",
+          "shower_hold_s": "Minimum hold time for the shower boost (seconds). If it cuts too soon, raise it.",
+          "shower_level": "Target speed while a shower is detected (V2/V3)."
         }
       },
       "cat_adaptive_iaq": {
