@@ -1084,3 +1084,18 @@ nuevos (categoría "anticipatory"): `anticip_co2_rate_on/off`,
 - ☐ No baja una base ya mayor; `hostile`/`sdhb_quiet` siguen capando por encima.
 - ☐ `dt<=0` o primera muestra → pendiente 0 (no dispara).
 - ☐ Switch off por defecto → comportamiento idéntico al anterior.
+
+### 12.7 · Robustez — Piso de cordura de CO₂ (DV)
+
+Una lectura de CO₂ por debajo de `co2_sanity_floor` (default 250 ppm,
+configurable/avanzado, categoría "failsafe") es físicamente imposible en interior
+habitado (línea base atmosférica ~410 ppm) y se trata como **fallo de sensor**:
+se invalida en la validación inicial → cae al failsafe `vital_ko` (V1) y **no**
+contamina la EMA. Solo CO₂ — el PM2.5 ~0 µg/m³ es real (aire limpio) y no se filtra.
+
+**Aceptación:**
+
+- ☐ CO₂ absurdamente bajo (p. ej. 0 tras glitch de calibración) → `failsafe_vital_ko`, V1.
+- ☐ La EMA de CO₂ no se arrastra por la lectura absurda.
+- ☐ CO₂ normal (≥ piso) y PM2.5 = 0 no disparan el failsafe.
+- ☐ `co2_sanity_floor = 0` desactiva el piso (acepta 0).

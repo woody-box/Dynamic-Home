@@ -176,6 +176,7 @@
       "cat_failsafe": {
         "title": "Failsafe & startup",
         "data": {
+          "co2_sanity_floor": "CO₂ sanity floor (ppm)",
           "stale_threshold_s": "Stale sensor (s)",
           "startup_grace_s": "Startup grace (s)",
           "trip_window_s": "Trip window (s)",
@@ -183,6 +184,7 @@
           "lockout_s": "Lockout (s)"
         },
         "data_description": {
+          "co2_sanity_floor": "CO₂ readings below this (ppm) are treated as a sensor fault and routed to the failsafe, since an occupied room can't be below the ~410 ppm atmospheric baseline. PM2.5 is not floored.",
           "stale_threshold_s": "A vital sensor older than this (s) counts as failed.",
           "startup_grace_s": "Grace period after start before the failsafe can trip (s).",
           "trip_window_s": "Window (s) over which repeated trips are counted.",

@@ -106,6 +106,7 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("dry_hys", "Drying hysteresis (°C)", "Histéresis de secado (°C)"),
         ],
         "failsafe": [
+            _v("co2_sanity_floor", "CO₂ sanity floor (ppm)", "Piso de cordura CO₂ (ppm)"),
             _v("stale_threshold_s", "Stale sensor (s)", "Sensor obsoleto (s)"),
             _v("startup_grace_s", "Startup grace (s)", "Gracia de arranque (s)"),
             _v("trip_window_s", "Trip window (s)", "Ventana de fallos (s)"),
@@ -292,6 +293,7 @@ _ADVANCED: dict[str, set[str]] = {
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",
+        "co2_sanity_floor",
         "stale_threshold_s", "startup_grace_s", "trip_window_s",
         "trip_limit", "lockout_s",
         "adaptive_min_samples",

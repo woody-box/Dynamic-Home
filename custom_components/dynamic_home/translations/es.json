@@ -176,6 +176,7 @@
       "cat_failsafe": {
         "title": "Failsafe y arranque",
         "data": {
+          "co2_sanity_floor": "Piso de cordura CO₂ (ppm)",
           "stale_threshold_s": "Sensor obsoleto (s)",
           "startup_grace_s": "Gracia de arranque (s)",
           "trip_window_s": "Ventana de fallos (s)",
@@ -183,6 +184,7 @@
           "lockout_s": "Bloqueo (s)"
         },
         "data_description": {
+          "co2_sanity_floor": "Lecturas de CO₂ por debajo de esto (ppm) se tratan como fallo de sensor y van al failsafe: una sala ocupada no puede estar por debajo de la línea base atmosférica (~410 ppm). El PM2.5 no se filtra.",
           "stale_threshold_s": "Un sensor vital más viejo que esto (s) cuenta como fallo.",
           "startup_grace_s": "Gracia tras arrancar antes de que pueda saltar el failsafe (s).",
           "trip_window_s": "Ventana (s) en la que se cuentan los fallos repetidos.",

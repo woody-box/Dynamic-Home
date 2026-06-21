@@ -68,6 +68,11 @@ class DvConfig:
     schedule: dict = field(default_factory=dict)
 
     # Failsafe / guardrails (SPEC §6)
+    # Sanity floor: a CO2 reading below this is physically impossible in an
+    # occupied space (atmospheric baseline ~410 ppm) and is treated as a sensor
+    # fault (a "clean 0" after a bad calibration) -> routed to the vital-KO
+    # failsafe instead of poisoning the EMA. PM is NOT floored: ~0 µg/m³ is real.
+    co2_sanity_floor: float = 250.0
     stale_threshold_s: float = 120.0
     startup_grace_s: float = 120.0
     trip_window_s: float = 7200.0
@@ -369,7 +374,7 @@ def update_anticip(state: DvState, cfg: DvConfig, now_ts: float) -> bool:
 # --------------------------------------------------------------------------- #
 def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     """Run one full DV control cycle. Mutates ``state`` (EMA/freecool/failsafe)."""
-    co2_raw = _validate(ins.co2_raw, CO2_MIN, CO2_MAX)
+    co2_raw = _validate(ins.co2_raw, max(CO2_MIN, cfg.co2_sanity_floor), CO2_MAX)
     pm_raw = _validate(ins.pm_raw, PM25_MIN, PM25_MAX)
 
     # --- EMA maintenance ---

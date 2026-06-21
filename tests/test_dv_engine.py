@@ -275,6 +275,48 @@ def test_anticip_disabled_no_lift():
     assert d.reason != "anticipatory"
 
 
+# --- CO2 sanity floor (robustness): reject physically-absurd low readings ---
+def test_co2_sanity_floor_rejects_absurd_low():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=250)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=0, pm_raw=5, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason == "failsafe_vital_ko" and d.speed == 1
+
+
+def test_co2_sanity_floor_allows_normal():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=250)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason == "iaq" and d.speed == 1
+
+
+def test_co2_sanity_floor_does_not_pollute_ema():
+    cfg = _cfg(co2_sanity_floor=250)            # EMA enabled (default)
+    st = DvState(co2_ema=800.0)
+    decide(cfg, st, DvInputs(co2_raw=0, pm_raw=5, now_ts=1000,
+                             startup_grace_active=False))
+    assert st.co2_ema == 800.0                  # absurd-low reading ignored
+
+
+def test_co2_sanity_floor_configurable_off():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=0)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=0, pm_raw=5, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason != "failsafe_vital_ko"      # floor disabled -> 0 accepted
+
+
+def test_pm_low_is_not_floored():
+    """PM2.5 ~0 is physically real (clean air) and must not trigger a fault."""
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=250)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=0, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason == "iaq" and d.speed == 1
+
+
 def test_auto_clean_air_v1():
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
     d = decide(cfg, DvState(),
