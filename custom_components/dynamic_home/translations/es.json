@@ -210,6 +210,13 @@
           "delta_night": "Atenuación nocturna (°C)",
           "vac_base_heat_day": "Vacaciones calor (°C)",
           "vac_base_cool_day": "Vacaciones frío (°C)"
+        },
+        "data_description": {
+          "base_heat_day": "Punto de partida en calefacción de día. Alimenta la Base activa y, en cascada, el target. Ajústala a tu confort real (ej. 22,0–22,8 °C) y deja que los biases hagan el resto.",
+          "base_cool_day": "Punto de partida en refrigeración de día. Empieza conservador (26–27 °C) para evitar enfriamientos agresivos y oscilaciones.",
+          "delta_night": "Cuánto relaja la base de noche (sol < −3°): baja la consigna en calor y la sube en frío. Si de noche te pasas de calor, súbela poco a poco (0,1 en 0,1).",
+          "vac_base_heat_day": "Base de calefacción con el modo Vacaciones activo (consigna reducida de ahorro).",
+          "vac_base_cool_day": "Base de refrigeración con el modo Vacaciones activo (consigna elevada de ahorro)."
         }
       },
       "cat_limits": {

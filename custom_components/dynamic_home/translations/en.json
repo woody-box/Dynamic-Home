@@ -210,6 +210,13 @@
           "delta_night": "Night easing (°C)",
           "vac_base_heat_day": "Vacation heat (°C)",
           "vac_base_cool_day": "Vacation cool (°C)"
+        },
+        "data_description": {
+          "base_heat_day": "Daytime starting point when heating. Feeds the Active Base and, in cascade, the target. Set it to your real comfort (e.g. 22.0–22.8 °C) and let the biases do the rest.",
+          "base_cool_day": "Daytime starting point when cooling. Start conservative (26–27 °C) to avoid aggressive cooling and oscillation.",
+          "delta_night": "How much the base eases at night (sun below −3°): lowers the setpoint when heating, raises it when cooling. If you get too warm at night, raise it gradually (0.1 steps).",
+          "vac_base_heat_day": "Heating base while Vacation mode is on (energy-saving reduced setpoint).",
+          "vac_base_cool_day": "Cooling base while Vacation mode is on (energy-saving raised setpoint)."
         }
       },
       "cat_limits": {
