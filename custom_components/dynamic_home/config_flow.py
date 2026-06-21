@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const, options_spec
+from . import const, options_spec, presets
 
 
 def _entity(domain: str | list[str] | None = None,
@@ -141,8 +141,29 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         cats = options_spec.categories(self._module, self.show_advanced_options)
         if not cats:
             return self.async_abort(reason="no_options")
-        return self.async_show_menu(
-            step_id="init", menu_options=[f"cat_{c}" for c in cats])
+        menu = [f"cat_{c}" for c in cats]
+        if presets.preset_ids(self._module):
+            menu.append("preset")
+        return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_preset(self, user_input: dict[str, Any] | None = None):
+        """Apply a ready-made preset (merges its values into the options)."""
+        ids = presets.preset_ids(self._module)
+        if user_input is not None:
+            values = presets.preset_values(self._module, user_input["preset"])
+            return self.async_create_entry(
+                title="", data={**self.entry.options, **values})
+        lang = getattr(self.hass.config, "language", "en") if self.hass else "en"
+        options = [
+            selector.SelectOptionDict(
+                value=pid, label=presets.preset_label(self._module, pid, lang))
+            for pid in ids
+        ]
+        schema = vol.Schema({
+            vol.Required("preset", default=ids[0]): selector.SelectSelector(
+                selector.SelectSelectorConfig(options=options)),
+        })
+        return self.async_show_form(step_id="preset", data_schema=schema)
 
     def __getattr__(self, name: str):
         """Dispatch async_step_cat_<category> to a generic category handler."""

@@ -90,7 +90,8 @@
           "cat_forecast": "Forecast",
           "cat_adaptive_lead": "Lead adaptativo",
           "cat_condensation": "Condensación",
-          "cat_facade": "Bias de fachadas"
+          "cat_facade": "Bias de fachadas",
+          "preset": "Aplicar un preset"
         }
       },
       "cat_iaq": {
@@ -473,6 +474,15 @@
         "data_description": {
           "facade_gain_heat": "Alivio máx. de consigna por fachadas soleadas abiertas en calefacción (ganancia solar gratis).",
           "facade_gain_cool": "Alivio máx. de consigna por fachadas soleadas en refrigeración."
+        }
+      },
+      "preset": {
+        "title": "Aplicar un preset",
+        "data": {
+          "preset": "Preset"
+        },
+        "data_description": {
+          "preset": "Carga un conjunto de valores listo para una instalación típica. Después puedes ajustar cualquier campo."
         }
       }
     },

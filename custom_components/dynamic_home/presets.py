@@ -1,0 +1,77 @@
+"""Importable option presets — real-world starting points a user can apply.
+
+Presets are pure numbers (option keys -> value), never entities, so they are safe
+to ship in the repo. Applying one merges its values into the entry options; the
+engine defaults stay untouched and any unspecified field keeps its default.
+
+Keys must be valid ``options_spec.option_key`` values for the module (tuple
+elements use the ``<attr>_<idx+1>`` form). A guard test enforces this.
+"""
+
+from __future__ import annotations
+
+from . import const
+
+# module -> preset id -> (label_en, label_es, values)
+PRESETS: dict[str, dict[str, tuple[str, str, dict[str, float]]]] = {
+    const.MODULE_CLIMATE: {
+        "salon_radiant_communal": (
+            "Living room · radiant floor (communal source)",
+            "Salón · suelo radiante (fuente comunitaria)",
+            {
+                # base setpoints
+                "base_heat_day": 22.0, "base_cool_day": 26.5, "delta_night": 0.5,
+                "vac_base_heat_day": 17.0, "vac_base_cool_day": 30.0,
+                # limits / apply
+                "target_min_heat": 20.5, "target_max_heat": 23.5,
+                "target_min_cool": 25.0, "target_max_cool": 28.0,
+                "step": 0.1, "apply_min_delta": 0.2,
+                "max_mods_heat": 1.5, "max_mods_cool": 1.5,
+                "vac_target_min_heat": 15.0, "vac_target_max_heat": 19.0,
+                "vac_target_min_cool": 28.0, "vac_target_max_cool": 31.0,
+                # outdoor bias (high-inertia radiant -> gentle, well insulated)
+                "ext_cold_threshold": 5.0, "ext_hot_threshold": 30.0,
+                "bias_ext_heat_strong": 0.30, "bias_ext_heat_mild": 0.15,
+                "bias_ext_cool_strong": 0.30, "bias_ext_cool_mild": 0.15,
+                "insulation_factor": 0.6,
+                # VMC compensation
+                "vmc_bias_heat_1": 0.05, "vmc_bias_heat_2": 0.10,
+                "vmc_bias_heat_3": 0.15,
+                "vmc_bias_cool_1": 0.05, "vmc_bias_cool_2": 0.10,
+                "vmc_bias_cool_3": 0.15,
+                # trend & lead
+                "trend_lead_h": 1.5, "trend_max_shift": 0.20,
+                "trend_deadband_cph": 0.12, "trend_ema_alpha": 0.25,
+                "lead_min_h": 1.0, "lead_max_h": 3.0,
+                # trend brake
+                "brake_thresholds_1": 0.2, "brake_thresholds_2": 0.3,
+                "brake_thresholds_3": 0.5,
+                "brake_biases_1": 0.1, "brake_biases_2": 0.2,
+                "brake_biases_3": 0.4,
+                # forecast
+                "forecast_gain": 0.08, "forecast_cap": 0.80,
+                "forecast_window_h": 5.0,
+                # adaptive lead (high inertia)
+                "adapt_alpha": 0.20, "adapt_gain_lr": 0.10,
+                "adapt_overshoot_target": 0.10, "adapt_rate_floor_cph": 0.05,
+                "adapt_lag_k": 1.0, "adapt_on_rate_min_dt_h": 0.25,
+                "adapt_on_rate_min_dt": 0.05, "adapt_off_window_h": 3.0,
+                # facade solar gain
+                "facade_gain_heat": 0.15, "facade_gain_cool": 0.15,
+            },
+        ),
+    },
+}
+
+
+def preset_ids(module: str) -> list[str]:
+    return list(PRESETS.get(module, {}).keys())
+
+
+def preset_label(module: str, preset_id: str, lang: str) -> str:
+    en, es, _ = PRESETS[module][preset_id]
+    return es if lang.startswith("es") else en
+
+
+def preset_values(module: str, preset_id: str) -> dict[str, float]:
+    return dict(PRESETS.get(module, {}).get(preset_id, ("", "", {}))[2])
