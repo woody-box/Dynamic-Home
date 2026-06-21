@@ -24,7 +24,11 @@
           "t_ext": "Outdoor temperature (optional)",
           "outdoor_aqi_entity": "Outdoor AQI (optional)",
           "hum_bath": "Bathroom humidity (optional, shower boost)",
-          "hum_ext": "Outdoor humidity (optional, shower boost)"
+          "hum_ext": "Outdoor humidity (optional, shower boost)",
+          "hrv_supply": "HRV supply temp (optional)",
+          "hrv_intake": "HRV fresh-air intake temp (optional)",
+          "hrv_extract": "HRV extract (stale air) temp (optional)",
+          "voc": "VOC sensor (optional)"
         }
       },
       "shutter": {
@@ -91,7 +95,11 @@
           "cat_adaptive_lead": "Adaptive lead",
           "cat_condensation": "Condensation",
           "cat_facade": "Facade bias",
-          "preset": "Apply a preset"
+          "preset": "Apply a preset",
+          "cat_anticipatory": "Anticipatory boost",
+          "cat_filter": "Filter life",
+          "cat_quiet": "Quiet hours",
+          "cat_recuperator": "Heat recovery"
         }
       },
       "cat_iaq": {
@@ -159,17 +167,22 @@
         "data": {
           "dry_v2_delta": "Dry V2 ΔT (°C)",
           "dry_v3_delta": "Dry V3 ΔT (°C)",
-          "dew_spread_min": "Dew-point margin (°C)"
+          "dew_spread_min": "Dew-point margin (°C)",
+          "dry_margin": "Drying margin (°C)",
+          "dry_hys": "Drying hysteresis (°C)"
         },
         "data_description": {
           "dry_v2_delta": "Dew-point advantage (dp_indoor − dp_outdoor, °C) to dry at V2.",
           "dry_v3_delta": "Dew-point advantage to dry at V3.",
-          "dew_spread_min": "Indoor temp within this of the dew point flags condensation risk."
+          "dew_spread_min": "Indoor temp within this of the dew point flags condensation risk.",
+          "dry_margin": "Minimum dew-point advantage (dp_indoor − dp_outdoor, °C) before drying ventilation engages.",
+          "dry_hys": "Hysteresis band: drying disengages once the advantage falls below margin − hysteresis."
         }
       },
       "cat_failsafe": {
         "title": "Failsafe & startup",
         "data": {
+          "co2_sanity_floor": "CO₂ sanity floor (ppm)",
           "stale_threshold_s": "Stale sensor (s)",
           "startup_grace_s": "Startup grace (s)",
           "trip_window_s": "Trip window (s)",
@@ -177,6 +190,7 @@
           "lockout_s": "Lockout (s)"
         },
         "data_description": {
+          "co2_sanity_floor": "CO₂ readings below this (ppm) are treated as a sensor fault and routed to the failsafe, since an occupied room can't be below the ~410 ppm atmospheric baseline. PM2.5 is not floored.",
           "stale_threshold_s": "A vital sensor older than this (s) counts as failed.",
           "startup_grace_s": "Grace period after start before the failsafe can trip (s).",
           "trip_window_s": "Window (s) over which repeated trips are counted.",
@@ -484,10 +498,102 @@
         "data_description": {
           "preset": "Loads a ready-made set of values for a typical installation. You can fine-tune any field afterwards."
         }
+      },
+      "cat_filter": {
+        "title": "Filter life",
+        "data": {
+          "filter_life_hours": "Filter life (h)"
+        },
+        "data_description": {
+          "filter_life_hours": "Total hours a filter lasts before replacement; the filter-life % sensor counts down from this value."
+        }
+      },
+      "cat_anticipatory": {
+        "title": "Anticipatory boost",
+        "data": {
+          "anticip_co2_rate_on": "CO₂ rate on (ppm/h)",
+          "anticip_co2_rate_off": "CO₂ rate off (ppm/h)",
+          "anticip_pm_rate_on": "PM2.5 rate on (µg/m³/h)",
+          "anticip_pm_rate_off": "PM2.5 rate off (µg/m³/h)",
+          "anticip_hold_s": "Hold (s)",
+          "anticip_level": "Anticipatory speed",
+          "anticip_ema_alpha": "Rate EMA alpha"
+        },
+        "data_description": {
+          "anticip_co2_rate_on": "CO₂ rise rate (ppm/h) that pre-boosts ventilation before the absolute level is reached.",
+          "anticip_co2_rate_off": "Rate below which the anticipatory boost releases (hysteresis).",
+          "anticip_pm_rate_on": "PM2.5 rise rate (µg/m³/h) that pre-boosts ventilation.",
+          "anticip_pm_rate_off": "PM2.5 rate below which the anticipatory boost releases.",
+          "anticip_hold_s": "Minimum hold so a brief spike doesn't cause oscillation (seconds).",
+          "anticip_level": "Target speed while a steep rise is detected (V1/V2/V3).",
+          "anticip_ema_alpha": "Smoothing of the slope itself (higher = more reactive)."
+        }
+      },
+      "cat_quiet": {
+        "title": "Quiet hours",
+        "data": {
+          "quiet_critical_co2": "Critical CO₂ (ppm)",
+          "quiet_critical_pm": "Critical PM2.5 (µg/m³)"
+        },
+        "data_description": {
+          "quiet_critical_co2": "During quiet hours the speed is capped, but a CO₂ at or above this lifts the cap (health > silence).",
+          "quiet_critical_pm": "PM2.5 at or above this lifts the quiet-hours cap."
+        }
+      },
+      "cat_recuperator": {
+        "title": "Heat recovery",
+        "data": {
+          "hrv_bypass_eff_max": "Bypass efficiency max",
+          "hrv_bypass_dt_min": "Bypass ΔT min (°C)"
+        },
+        "data_description": {
+          "hrv_bypass_eff_max": "Efficiency (0..1) at or below which, with a real ΔT, the exchanger is considered in bypass / not recovering.",
+          "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass."
+        }
       }
     },
     "abort": {
       "no_options": "No tunable options for this module."
+    }
+  },
+  "services": {
+    "reset_learning": {
+      "name": "Reset adaptive learning",
+      "description": "Wipes the learned adaptive-lead model of a climate (DC) zone so it relearns from scratch."
+    },
+    "set_observe": {
+      "name": "Set observe (dry-run)",
+      "description": "Enables or disables observe mode: the pipeline is still evaluated but no hardware is driven.",
+      "fields": {
+        "enabled": {
+          "name": "Enabled",
+          "description": "True to enter observe (dry-run), False to resume acting on hardware."
+        }
+      }
+    },
+    "reset_filter": {
+      "name": "Reset filter hours",
+      "description": "Zeroes the filter-hours counter of a VMC (DV) module."
+    },
+    "recalibrate": {
+      "name": "Recalibrate now",
+      "description": "Forces an immediate re-evaluation of the targeted modules' pipeline."
+    },
+    "boost": {
+      "name": "Boost (timed V3)",
+      "description": "Forces a VMC to V3 for a number of minutes, then auto-reverts. Bypasses the quiet-hours cap.",
+      "fields": {
+        "minutes": {
+          "name": "Minutes",
+          "description": "How long to hold V3 before reverting (default 15)."
+        }
+      }
+    }
+  },
+  "issues": {
+    "required_source_missing": {
+      "title": "{name}: required sensor unavailable",
+      "description": "The climate zone \"{name}\" is calling for heating or cooling but its {missing} source is unavailable. Adaptive learning is paused and the zone falls back to its base setpoint until the sensor recovers. Check the sensor wiring or its entity in Home Assistant."
     }
   }
 }

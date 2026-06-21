@@ -56,6 +56,20 @@ class DvConfig:
     dry_v2_delta: float = 0.2
     dry_v3_delta: float = 1.0
     dew_spread_min: float = 1.5      # indoor temp within this of dew point -> risk
+    # F13: only ventilate to dry when the outdoor air is meaningfully drier, i.e.
+    # dp_diff (dp_in - dp_out) clears a margin, with hysteresis so it doesn't
+    # chatter at the boundary.
+    dry_margin: float = 1.0          # min dp_diff (°C) to ENGAGE drying ventilation
+    dry_hys: float = 0.5             # disengage once dp_diff <= dry_margin - dry_hys
+
+    # Quiet hours (F12): cap the auto/IAQ speed during a daily night window
+    # unless the air is critical (health > silence). quiet_max_level 3 = no cap.
+    quiet_enabled: bool = False
+    quiet_start_min: int = 23 * 60   # 23:00 (minutes from midnight, local)
+    quiet_end_min: int = 7 * 60      # 07:00
+    quiet_max_level: int = 1         # 0=OFF, 1=V1, 2=V2 (3 = uncapped)
+    quiet_critical_co2: float = 1500.0
+    quiet_critical_pm: float = 50.0
 
     # Weekly schedule (SPEC §7): weekday(0=Mon..6=Sun) -> (on_min, off_min)
     # minutes from midnight. Empty/missing -> always allowed.
@@ -63,6 +77,11 @@ class DvConfig:
     schedule: dict = field(default_factory=dict)
 
     # Failsafe / guardrails (SPEC §6)
+    # Sanity floor: a CO2 reading below this is physically impossible in an
+    # occupied space (atmospheric baseline ~410 ppm) and is treated as a sensor
+    # fault (a "clean 0" after a bad calibration) -> routed to the vital-KO
+    # failsafe instead of poisoning the EMA. PM is NOT floored: ~0 µg/m³ is real.
+    co2_sanity_floor: float = 250.0
     stale_threshold_s: float = 120.0
     startup_grace_s: float = 120.0
     trip_window_s: float = 7200.0
@@ -79,6 +98,69 @@ class DvConfig:
     # Adaptive thresholds (SPEC §7) — engine uses them when provided & ready.
     adaptive_enabled: bool = False
     adaptive_min_samples: int = 100   # min readings before percentiles are used
+
+    # Heat-recovery efficiency (F28): bypass / no-recovery detection thresholds.
+    hrv_bypass_eff_max: float = 0.2   # η at/below this with real ΔT => bypass
+    hrv_bypass_dt_min: float = 3.0    # min |extract - intake| ΔT (°C) to judge
+
+    # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise (the
+    # EMA-smoothed derivative), with on/off thresholds + hold like the shower boost.
+    anticip_enabled: bool = False
+    anticip_co2_rate_on: float = 400.0   # ppm/h: engage when CO2 climbs this fast
+    anticip_co2_rate_off: float = 150.0  # ppm/h: release below this (hysteresis)
+    anticip_pm_rate_on: float = 20.0     # µg/m³/h: engage when PM climbs this fast
+    anticip_pm_rate_off: float = 8.0     # µg/m³/h: release below this
+    anticip_hold_s: float = 600.0        # anti-transient hold (as the shower boost)
+    anticip_level: int = 2               # target speed while anticipating (V2, soft)
+    anticip_ema_alpha: float = 0.3       # smoothing of the rate itself (advanced)
+
+    # Filter life: total hours a filter is rated for (replacement interval).
+    filter_life_hours: float = 3650.0
+
+
+HRV_MIN_DT = 1.0  # min |extract - intake| ΔT (°C) to compute a stable efficiency
+
+
+def hrv_efficiency(supply: float | None, intake: float | None,
+                   extract: float | None) -> float | None:
+    """Supply-side heat-recovery effectiveness 0..1 (F28), or None.
+
+    η = (T_supply − T_intake) / (T_extract − T_intake). Valid in both directions
+    (recovers heat in winter, coolth in summer). None if a probe is missing or the
+    extract/intake ΔT is too small for a stable ratio.
+    """
+    if supply is None or intake is None or extract is None:
+        return None
+    denom = extract - intake
+    if abs(denom) < HRV_MIN_DT:
+        return None
+    return max(0.0, min(1.0, (supply - intake) / denom))
+
+
+def hrv_state(supply: float | None, intake: float | None,
+              extract: float | None, cfg: DvConfig) -> str | None:
+    """'recovering' / 'bypass' / 'idle' (F28), or None if not computable.
+
+    'idle' when the ΔT is too small to judge; 'bypass' when there IS a meaningful
+    ΔT but efficiency collapses (the exchanger isn't recovering).
+    """
+    eff = hrv_efficiency(supply, intake, extract)
+    if eff is None:
+        return None
+    if abs(extract - intake) < cfg.hrv_bypass_dt_min:
+        return "idle"
+    return "bypass" if eff <= cfg.hrv_bypass_eff_max else "recovering"
+
+
+def filter_life_pct(hours: float, life: float) -> float:
+    """Remaining filter life as a 0..100 percentage.
+
+    ``100·(1 − hours/life)`` clamped to [0, 100]. A non-positive ``life``
+    (filter tracking effectively disabled) reports 100.
+    """
+    if life <= 0:
+        return 100.0
+    return max(0.0, min(100.0, 100.0 * (1.0 - hours / life)))
 
 
 @dataclass
@@ -97,6 +179,18 @@ class DvState:
     # Shower
     shower_active: bool = False
     shower_hold_until: float = 0.0
+
+    # Dry mode (F13): hysteresis latch for the dew-point drying gate.
+    dry_active: bool = False
+
+    # Anticipatory ventilation (F11): slope tracking + detector latch.
+    anticip_prev_co2: float = 0.0     # last effective CO2 used for the slope
+    anticip_prev_pm: float = 0.0      # last effective PM
+    anticip_prev_ts: float = 0.0      # timestamp of that snapshot (0 = no sample yet)
+    anticip_co2_rate: float = 0.0     # EMA-smoothed CO2 slope (ppm/h)
+    anticip_pm_rate: float = 0.0      # EMA-smoothed PM slope (µg/m³/h)
+    anticip_active: bool = False
+    anticip_hold_until: float = 0.0
 
 
 @dataclass
@@ -119,6 +213,7 @@ class DvInputs:
 
     manual_override: bool = False
     override_v3: bool = False
+    boost_active: bool = False        # F14: timed V3 boost (service-driven)
 
     # Explicit shower override (timer/UI). If None, shower is derived from RH.
     shower_override: bool = False
@@ -211,6 +306,18 @@ def in_schedule(weekday: int, minute_of_day: int, cfg: DvConfig) -> bool:
     return minute_of_day >= on_m or minute_of_day < off_m
 
 
+def in_quiet_window(minute_of_day: int, cfg: DvConfig) -> bool:
+    """Whether we're inside the F12 quiet-hours window (handles overnight wrap)."""
+    if not cfg.quiet_enabled:
+        return False
+    on_m, off_m = cfg.quiet_start_min, cfg.quiet_end_min
+    if on_m == off_m:
+        return False
+    if on_m < off_m:
+        return on_m <= minute_of_day < off_m
+    return minute_of_day >= on_m or minute_of_day < off_m   # overnight
+
+
 def update_failsafe(state: DvState, cfg: DvConfig, now_ts: float,
                     vital_ko: bool) -> bool:
     """Trip-counter + lockout (SPEC §6). Returns True if lockout is active.
@@ -270,12 +377,64 @@ def base_target(co2: float, pm: float, co2_v2: float, co2_v3: float,
     return 1
 
 
+def update_anticip_rates(state: DvState, cfg: DvConfig, now_ts: float,
+                         co2_eff: float, pm_eff: float) -> None:
+    """Track the EMA-smoothed CO2/PM slopes (per hour) for F11.
+
+    Mirrors the DC trend derivative but keeps its state in ``DvState``. The first
+    sample only seeds the snapshots (rate stays 0); a non-monotonic / zero clock
+    step is ignored so a stale or repeated timestamp can't spike the rate.
+    """
+    if state.anticip_prev_ts <= 0:
+        state.anticip_prev_co2 = co2_eff
+        state.anticip_prev_pm = pm_eff
+        state.anticip_prev_ts = now_ts
+        return
+    dt_h = (now_ts - state.anticip_prev_ts) / 3600.0
+    if dt_h <= 0:
+        return
+    a = cfg.anticip_ema_alpha
+    raw_co2 = (co2_eff - state.anticip_prev_co2) / dt_h
+    raw_pm = (pm_eff - state.anticip_prev_pm) / dt_h
+    state.anticip_co2_rate = a * raw_co2 + (1 - a) * state.anticip_co2_rate
+    state.anticip_pm_rate = a * raw_pm + (1 - a) * state.anticip_pm_rate
+    state.anticip_prev_co2 = co2_eff
+    state.anticip_prev_pm = pm_eff
+    state.anticip_prev_ts = now_ts
+
+
+def update_anticip(state: DvState, cfg: DvConfig, now_ts: float) -> bool:
+    """Anticipatory detector (F11): two-channel on/off hysteresis + hold.
+
+    Engages when EITHER the CO2 or PM slope clears its on-threshold; releases only
+    when BOTH are below their off-thresholds AND the hold window has elapsed —
+    exactly the shower-boost pattern, but over the slopes instead of ΔRH.
+    """
+    if not cfg.anticip_enabled:
+        if state.anticip_active and now_ts < state.anticip_hold_until:
+            return True
+        state.anticip_active = False
+        return False
+
+    co2_r, pm_r = state.anticip_co2_rate, state.anticip_pm_rate
+    if not state.anticip_active:
+        if co2_r >= cfg.anticip_co2_rate_on or pm_r >= cfg.anticip_pm_rate_on:
+            state.anticip_active = True
+            state.anticip_hold_until = now_ts + cfg.anticip_hold_s
+    else:
+        both_below = (co2_r < cfg.anticip_co2_rate_off
+                      and pm_r < cfg.anticip_pm_rate_off)
+        if both_below and now_ts >= state.anticip_hold_until:
+            state.anticip_active = False
+    return state.anticip_active
+
+
 # --------------------------------------------------------------------------- #
 # Main decision
 # --------------------------------------------------------------------------- #
 def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     """Run one full DV control cycle. Mutates ``state`` (EMA/freecool/failsafe)."""
-    co2_raw = _validate(ins.co2_raw, CO2_MIN, CO2_MAX)
+    co2_raw = _validate(ins.co2_raw, max(CO2_MIN, cfg.co2_sanity_floor), CO2_MAX)
     pm_raw = _validate(ins.pm_raw, PM25_MIN, PM25_MAX)
 
     # --- EMA maintenance ---
@@ -283,6 +442,14 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         state.co2_ema = update_ema(state.co2_ema, co2_raw, cfg.co2_ema_alpha)
     if cfg.pm_ema_enabled and pm_raw is not None:
         state.pm_ema = update_ema(state.pm_ema, pm_raw, cfg.pm_ema_alpha)
+
+    # --- Anticipatory slope (F11): track every cycle, before any early return ---
+    co2_eff_a = (state.co2_ema if (cfg.co2_ema_enabled and state.co2_ema > 0)
+                 else (co2_raw or 0.0))
+    pm_eff_a = (state.pm_ema if (cfg.pm_ema_enabled and state.pm_ema > 0)
+                else (pm_raw or 0.0))
+    update_anticip_rates(state, cfg, ins.now_ts, co2_eff_a, pm_eff_a)
+    anticip_on = update_anticip(state, cfg, ins.now_ts)
 
     # --- Failsafe: vital sensor KO (stale or invalid), gated by startup grace ---
     vital_ko = (not ins.startup_grace_active) and (
@@ -306,15 +473,32 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     if ins.manual_override:
         return DvDecision(3 if ins.override_v3 else 2, "manual_override")
 
-    stage3_active = ins.dry_mode and ins.dew_risk and ins.dp_diff is not None
-    if stage3_active:
-        if ins.dp_diff >= cfg.dry_v3_delta:
-            spd = 3
-        elif ins.dp_diff >= cfg.dry_v2_delta:
-            spd = 2
+    # Timed V3 boost (F14): explicit, auto-reverting; bypasses the auto path and
+    # the quiet-hours cap (it is a deliberate user request).
+    if ins.boost_active:
+        return DvDecision(3, "boost")
+
+    # Dry mode (F13): gate ventilation on a dew-point advantage (dp_diff) with
+    # hysteresis. Only ventilate to dry when the outdoor air is actually drier;
+    # otherwise fall through to the normal IAQ/auto path (drying would add moisture).
+    dry_demanded = ins.dry_mode and ins.dew_risk and ins.dp_diff is not None
+    if dry_demanded:
+        if state.dry_active:
+            state.dry_active = ins.dp_diff > (cfg.dry_margin - cfg.dry_hys)
         else:
-            spd = 1
-        return DvDecision(spd, "dry_mode", details={"dp_diff": ins.dp_diff})
+            state.dry_active = ins.dp_diff > cfg.dry_margin
+        if state.dry_active:
+            if ins.dp_diff >= cfg.dry_v3_delta:
+                spd = 3
+            elif ins.dp_diff >= cfg.dry_v2_delta:
+                spd = 2
+            else:
+                spd = 1
+            return DvDecision(spd, "dry_mode",
+                              details={"dp_diff": ins.dp_diff,
+                                       "dry_margin": cfg.dry_margin})
+    else:
+        state.dry_active = False
 
     # Shower: explicit override, or derived from ΔRH.
     shower_on = update_shower(state, cfg, ins.now_ts, ins.rh_delta)
@@ -356,6 +540,12 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     t = base
     reason = "iaq"
 
+    # 0) Anticipatory pre-boost (F11): a steep CO2/PM rise lifts speed ahead of
+    # the absolute-level crossing. Never lowers an already-higher base; later
+    # caps (sdhb_quiet / hostile) still apply.
+    if anticip_on and t < cfg.anticip_level:
+        t, reason = cfg.anticip_level, "anticipatory"
+
     # 1) Free-cooling
     state.freecool_active = compute_freecool(cfg, ins, state.freecool_active)
     if state.freecool_active and t < 2:
@@ -393,9 +583,17 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         or ins.dew_risk
         or ins.dew_prerisk
         or ins.dry_mode
+        or anticip_on
     )
     if not allow_raise and t > ins.current_speed:
         t, reason = ins.current_speed, "hold_antiflap"
+
+    # 6) Quiet hours cap (F12): final authority on the auto/IAQ path — limit the
+    # speed during the night window unless the air is critical (health > silence).
+    if in_quiet_window(ins.minute_of_day, cfg) and t > cfg.quiet_max_level:
+        critical = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
+        if not critical:
+            t, reason = cfg.quiet_max_level, "quiet_cap"
 
     return DvDecision(t, reason, base_target=base,
                       details={"co2": round(co2, 1), "pm": round(pm, 2),

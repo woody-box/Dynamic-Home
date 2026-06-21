@@ -24,7 +24,11 @@
           "t_ext": "Temperatura exterior (opcional)",
           "outdoor_aqi_entity": "AQI exterior (opcional)",
           "hum_bath": "Humedad baño (opcional, boost ducha)",
-          "hum_ext": "Humedad exterior (opcional, boost ducha)"
+          "hum_ext": "Humedad exterior (opcional, boost ducha)",
+          "hrv_supply": "Temp. insuflación recuperador (opcional)",
+          "hrv_intake": "Temp. absorción aire nuevo (opcional)",
+          "hrv_extract": "Temp. extracción aire viciado (opcional)",
+          "voc": "Sensor VOC (opcional)"
         }
       },
       "shutter": {
@@ -91,7 +95,11 @@
           "cat_adaptive_lead": "Lead adaptativo",
           "cat_condensation": "Condensación",
           "cat_facade": "Bias de fachadas",
-          "preset": "Aplicar un preset"
+          "preset": "Aplicar un preset",
+          "cat_anticipatory": "Refuerzo anticipatorio",
+          "cat_filter": "Vida del filtro",
+          "cat_quiet": "Horas de silencio",
+          "cat_recuperator": "Recuperador"
         }
       },
       "cat_iaq": {
@@ -159,17 +167,22 @@
         "data": {
           "dry_v2_delta": "ΔT seco V2 (°C)",
           "dry_v3_delta": "ΔT seco V3 (°C)",
-          "dew_spread_min": "Margen punto rocío (°C)"
+          "dew_spread_min": "Margen punto rocío (°C)",
+          "dry_margin": "Margen de secado (°C)",
+          "dry_hys": "Histéresis de secado (°C)"
         },
         "data_description": {
           "dry_v2_delta": "Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2.",
           "dry_v3_delta": "Ventaja de rocío para secar a V3.",
-          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación."
+          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación.",
+          "dry_margin": "Ventaja mínima de rocío (dp_interior − dp_exterior, °C) para que se active la ventilación de secado.",
+          "dry_hys": "Banda de histéresis: el secado se desactiva cuando la ventaja baja de margen − histéresis."
         }
       },
       "cat_failsafe": {
         "title": "Failsafe y arranque",
         "data": {
+          "co2_sanity_floor": "Piso de cordura CO₂ (ppm)",
           "stale_threshold_s": "Sensor obsoleto (s)",
           "startup_grace_s": "Gracia de arranque (s)",
           "trip_window_s": "Ventana de fallos (s)",
@@ -177,6 +190,7 @@
           "lockout_s": "Bloqueo (s)"
         },
         "data_description": {
+          "co2_sanity_floor": "Lecturas de CO₂ por debajo de esto (ppm) se tratan como fallo de sensor y van al failsafe: una sala ocupada no puede estar por debajo de la línea base atmosférica (~410 ppm). El PM2.5 no se filtra.",
           "stale_threshold_s": "Un sensor vital más viejo que esto (s) cuenta como fallo.",
           "startup_grace_s": "Gracia tras arrancar antes de que pueda saltar el failsafe (s).",
           "trip_window_s": "Ventana (s) en la que se cuentan los fallos repetidos.",
@@ -484,10 +498,102 @@
         "data_description": {
           "preset": "Carga un conjunto de valores listo para una instalación típica. Después puedes ajustar cualquier campo."
         }
+      },
+      "cat_filter": {
+        "title": "Vida del filtro",
+        "data": {
+          "filter_life_hours": "Vida del filtro (h)"
+        },
+        "data_description": {
+          "filter_life_hours": "Horas totales que dura un filtro antes de cambiarlo; el sensor de % de vida del filtro descuenta desde este valor."
+        }
+      },
+      "cat_anticipatory": {
+        "title": "Refuerzo anticipatorio",
+        "data": {
+          "anticip_co2_rate_on": "Pendiente CO₂ act. (ppm/h)",
+          "anticip_co2_rate_off": "Pendiente CO₂ desact. (ppm/h)",
+          "anticip_pm_rate_on": "Pendiente PM2.5 act. (µg/m³/h)",
+          "anticip_pm_rate_off": "Pendiente PM2.5 desact. (µg/m³/h)",
+          "anticip_hold_s": "Mantener (s)",
+          "anticip_level": "Velocidad anticipatoria",
+          "anticip_ema_alpha": "Alpha EMA pendiente"
+        },
+        "data_description": {
+          "anticip_co2_rate_on": "Velocidad de subida de CO₂ (ppm/h) que adelanta el refuerzo antes de cruzar el umbral absoluto.",
+          "anticip_co2_rate_off": "Pendiente por debajo de la cual se desactiva el refuerzo (histéresis).",
+          "anticip_pm_rate_on": "Velocidad de subida de PM2.5 (µg/m³/h) que adelanta el refuerzo.",
+          "anticip_pm_rate_off": "Pendiente de PM2.5 por debajo de la cual se desactiva el refuerzo.",
+          "anticip_hold_s": "Tiempo mínimo de mantenimiento para que un pico breve no oscile (segundos).",
+          "anticip_level": "Velocidad objetivo mientras se detecta una subida brusca (V1/V2/V3).",
+          "anticip_ema_alpha": "Suavizado de la propia pendiente (mayor = más reactivo)."
+        }
+      },
+      "cat_quiet": {
+        "title": "Horas de silencio",
+        "data": {
+          "quiet_critical_co2": "CO₂ crítico (ppm)",
+          "quiet_critical_pm": "PM2.5 crítico (µg/m³)"
+        },
+        "data_description": {
+          "quiet_critical_co2": "En horas de silencio la velocidad se limita, pero un CO₂ igual o superior a esto levanta el límite (salud > silencio).",
+          "quiet_critical_pm": "Un PM2.5 igual o superior a esto levanta el límite de las horas de silencio."
+        }
+      },
+      "cat_recuperator": {
+        "title": "Recuperador",
+        "data": {
+          "hrv_bypass_eff_max": "Eficiencia máx. de bypass",
+          "hrv_bypass_dt_min": "ΔT mín. de bypass (°C)"
+        },
+        "data_description": {
+          "hrv_bypass_eff_max": "Eficiencia (0..1) por debajo de la cual, con un ΔT real, se considera que el recuperador está en bypass / sin recuperar.",
+          "hrv_bypass_dt_min": "ΔT mínimo extracción−absorción (°C) necesario para juzgar recuperación vs bypass."
+        }
       }
     },
     "abort": {
       "no_options": "Sin opciones ajustables para este módulo."
+    }
+  },
+  "services": {
+    "reset_learning": {
+      "name": "Reiniciar aprendizaje adaptativo",
+      "description": "Borra el modelo de lead adaptativo de una zona de clima (DC) para que aprenda desde cero."
+    },
+    "set_observe": {
+      "name": "Modo observación (dry-run)",
+      "description": "Activa o desactiva el modo observación: el pipeline se evalúa pero no se actúa sobre el hardware.",
+      "fields": {
+        "enabled": {
+          "name": "Activado",
+          "description": "Verdadero para entrar en observación (dry-run), falso para volver a actuar sobre el hardware."
+        }
+      }
+    },
+    "reset_filter": {
+      "name": "Reiniciar horas de filtro",
+      "description": "Pone a cero el contador de horas de filtro de la VMC (DV)."
+    },
+    "recalibrate": {
+      "name": "Recalibrar ahora",
+      "description": "Fuerza una reevaluación inmediata del pipeline de los módulos seleccionados."
+    },
+    "boost": {
+      "name": "Refuerzo (V3 temporizado)",
+      "description": "Fuerza la VMC a V3 durante unos minutos y luego vuelve sola al control normal. Ignora el límite de horas de silencio.",
+      "fields": {
+        "minutes": {
+          "name": "Minutos",
+          "description": "Cuánto mantener V3 antes de revertir (por defecto 15)."
+        }
+      }
+    }
+  },
+  "issues": {
+    "required_source_missing": {
+      "title": "{name}: sensor requerido no disponible",
+      "description": "La zona de clima \"{name}\" está pidiendo calor o frío pero su fuente de {missing} no está disponible. El aprendizaje adaptativo queda en pausa y la zona usa su consigna base hasta que el sensor se recupere. Revisa el sensor o su entidad en Home Assistant."
     }
   }
 }

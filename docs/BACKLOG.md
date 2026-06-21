@@ -263,7 +263,9 @@
     - **Conductos SIN zonificar** → emisor **compartido** de grupo/casa que sirve a varias zonas (sin control por habitación).
     - **Conductos ZONIFICADOS con rejillas motorizadas** → **fuente compartida + actuador por zona**: la **rejilla** hace de "válvula de aire" (análogo a la válvula de zona del radiante + panel que abre la general). DC abre/cierra la rejilla por zona; la unidad central corre con su consigna.
   - **Reconciliación del emisor compartido:**
-    - *Sin zonificar:* una sola orden con política configurable (**zona peor parada** / prioridad / media). Por defecto: la peor parada en el sentido activo.
+    - *Sin zonificar:* una sola orden con **agregación ponderada** de la demanda (peso por zona). Políticas: **ponderada (default)** / peor parada / prioridad / media. La "peor parada" **no** es el default por el péndulo/undershoot que provoca en estancias pequeñas (un caudal no cortable por zona las sobre-acondiciona).
+    - **Guarda de undershoot/overshoot:** la unidad corta/modula a la baja cuando la zona **más satisfecha** llega a su límite (`consigna ∓ shared_undershoot_margin`), aunque la peor parada no haya llegado. Acota el sobre-acondicionamiento de las habitaciones pequeñas. No aplica con rejillas.
+    - **Parámetros del catálogo:** `zone_demand_weight` (por zona, default 1.0; derivable de volumen/masa) y `shared_undershoot_margin` (°C).
     - *Con rejillas:* control real por zona vía rejilla (como el radiante); la consigna de la unidad se fija eficiente / a la peor zona mientras las rejillas modulan el reparto.
   - **Casos:** solo AC → AC emisor único; solo radiante → como hoy; ambos → primario/apoyo.
   - Reutiliza todo el pipeline DC (consigna/biases/lead/anti-ciclado); el AC aporta lo suyo (dry nativo, fan, swing).
@@ -312,6 +314,7 @@
   - **VOC (COV): informativo/observación** (no actúa).
   - **NOx:** descartado de momento (caso del usuario no tiene).
   - **Contaminantes exteriores** (CO/PM10/NO2/SO2/O3/índice): **solo observación**, y alimentan el **"exterior hostil"** para no ventilar en días muy malos.
+  - **Implementado:** VOC observación (sensor diagnóstico, no actúa) + tests de contrato; el exterior hostil ya operaba sobre `CONF_AQI`. Exterior multi-contaminante y NOx **pendientes de F33**.
 
 ### F31 · Aviso/aprovechamiento de espacio adyacente (terraza/galería)
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** M

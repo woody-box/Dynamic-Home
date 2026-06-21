@@ -18,7 +18,12 @@ from dv_engine import (  # noqa: E402
     base_target,
     compute_freecool,
     decide,
+    hrv_efficiency,
+    hrv_state,
+    in_quiet_window,
     in_schedule,
+    update_anticip,
+    update_anticip_rates,
     update_ema,
     update_failsafe,
     update_shower,
@@ -102,6 +107,349 @@ def test_dry_mode_targets_by_dp_diff():
     d = decide(cfg, DvState(),
                DvInputs(dry_mode=True, dew_risk=True, dp_diff=1.5))
     assert d.speed == 3 and d.reason == "dry_mode"
+
+
+# --- F13: dew-point drying gate (dp_diff margin + hysteresis) ---
+def _dry_ins(dp_diff, **kw):
+    base = dict(dry_mode=True, dew_risk=True, dp_diff=dp_diff,
+                co2_raw=500, pm_raw=5, current_speed=1, trigger_is_iaq=True)
+    base.update(kw)
+    return DvInputs(**base)
+
+
+def _dry_cfg():
+    return _cfg(co2_ema_enabled=False, pm_ema_enabled=False,
+                dry_margin=1.0, dry_hys=0.5)
+
+
+def test_dry_gate_blocks_below_margin():
+    # Outdoor not meaningfully drier -> do NOT ventilate to dry; fall through.
+    d = decide(_dry_cfg(), DvState(), _dry_ins(0.5))
+    assert d.reason == "iaq" and d.speed == 1
+
+
+def test_dry_gate_opens_above_margin():
+    d = decide(_dry_cfg(), DvState(), _dry_ins(1.5))
+    assert d.reason == "dry_mode" and d.speed == 3
+
+
+def test_dry_gate_hysteresis_holds_and_does_not_arm_in_band():
+    # 0.5 (off) < 0.7 <= 1.0 (on): stays on if active, does not arm if not.
+    d_on = decide(_dry_cfg(), DvState(dry_active=True), _dry_ins(0.7))
+    assert d_on.reason == "dry_mode"
+    d_off = decide(_dry_cfg(), DvState(), _dry_ins(0.7))
+    assert d_off.reason == "iaq"
+
+
+def test_dry_gate_turns_off_below_off_threshold():
+    st = DvState(dry_active=True)
+    d = decide(_dry_cfg(), st, _dry_ins(0.4))
+    assert d.reason != "dry_mode" and st.dry_active is False
+
+
+def test_dry_gate_resets_when_dry_mode_off():
+    st = DvState(dry_active=True)
+    decide(_dry_cfg(), st, _dry_ins(2.0, dry_mode=False))
+    assert st.dry_active is False
+
+
+def test_dry_gate_none_dp_diff_falls_through():
+    d = decide(_dry_cfg(), DvState(), _dry_ins(None))
+    assert d.reason == "iaq"
+
+
+# --- F11: anticipatory ventilation (CO2/PM slope detector) ---
+def _anticip_cfg(**kw):
+    base = dict(co2_ema_enabled=False, pm_ema_enabled=False,
+                anticip_enabled=True, anticip_co2_rate_on=400,
+                anticip_co2_rate_off=150, anticip_pm_rate_on=20,
+                anticip_pm_rate_off=8, anticip_hold_s=600,
+                anticip_level=2, anticip_ema_alpha=1.0)
+    base.update(kw)
+    return _cfg(**base)
+
+
+def _ains(co2, pm, now_ts, **kw):
+    base = dict(co2_raw=co2, pm_raw=pm, current_speed=1, now_ts=now_ts,
+                trigger_is_iaq=False)
+    base.update(kw)
+    return DvInputs(**base)
+
+
+def test_anticip_rates_bootstrap_then_slope():
+    cfg, st = _anticip_cfg(), DvState()
+    update_anticip_rates(st, cfg, 100.0, 600, 5)            # bootstrap -> rate 0
+    assert st.anticip_co2_rate == 0.0 and st.anticip_pm_rate == 0.0
+    update_anticip_rates(st, cfg, 100.0 + 3600, 1000, 5)    # +400 ppm over 1 h
+    assert st.anticip_co2_rate == 400.0
+    assert st.anticip_pm_rate == 0.0
+
+
+def test_anticip_rates_dt_guard():
+    cfg, st = _anticip_cfg(), DvState()
+    update_anticip_rates(st, cfg, 100.0, 600, 5)            # bootstrap
+    update_anticip_rates(st, cfg, 100.0, 800, 5)            # dt == 0 -> ignored
+    assert st.anticip_co2_rate == 0.0
+    update_anticip_rates(st, cfg, 50.0, 800, 5)             # dt < 0 -> ignored
+    assert st.anticip_co2_rate == 0.0
+
+
+def test_anticip_detector_on_off_hold():
+    cfg, st = _anticip_cfg(), DvState()
+    st.anticip_co2_rate = 500                               # >= on (400)
+    assert update_anticip(st, cfg, 100) is True
+    assert st.anticip_hold_until == 100 + 600
+    st.anticip_co2_rate = 50                                # below off, pm 0
+    assert update_anticip(st, cfg, 200) is True             # within hold -> stays
+    assert update_anticip(st, cfg, 800) is False            # past hold & below off
+
+
+def test_anticip_detector_pm_channel():
+    cfg, st = _anticip_cfg(), DvState()
+    st.anticip_pm_rate = 25                                 # >= on (20)
+    assert update_anticip(st, cfg, 100) is True
+
+
+def test_anticip_detector_disabled_keeps_hold():
+    cfg = _anticip_cfg(anticip_enabled=False)
+    st = DvState(anticip_active=True, anticip_hold_until=500)
+    assert update_anticip(st, cfg, 200) is True             # within hold
+    assert update_anticip(st, cfg, 600) is False            # past hold -> off
+
+
+def test_anticip_steep_co2_lifts_to_level():
+    cfg, st = _anticip_cfg(), DvState()
+    d1 = decide(cfg, st, _ains(600, 5, 100.0))             # bootstrap, clean -> V1
+    assert d1.speed == 1 and d1.reason in ("iaq", "hold_antiflap")
+    # +280 ppm over 30 min = 560 ppm/h >= on, while 880 < co2_v2 (900) -> base V1.
+    d2 = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
+    assert d2.reason == "anticipatory" and d2.speed == 2
+
+
+def test_anticip_flat_trend_no_lift():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d = decide(cfg, st, _ains(605, 5, 100.0 + 1800))       # ~10 ppm/h
+    assert d.reason != "anticipatory" and d.speed == 1
+
+
+def test_anticip_hold_then_release():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d2 = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
+    assert d2.reason == "anticipatory"
+    # within hold, slope now flat -> latch keeps it on
+    d3 = decide(cfg, st, _ains(882, 5, 100.0 + 1860))
+    assert d3.reason == "anticipatory"
+    # past hold, slope low -> releases
+    d4 = decide(cfg, st, _ains(820, 5, 100.0 + 2600))
+    assert d4.reason != "anticipatory"
+
+
+def test_anticip_pm_driven_lift():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(500, 5, 100.0))
+    # +8 µg/m³ over 20 min = 24 µg/m³/h >= on, while 13 < pm_v2 (15) -> base V1.
+    d = decide(cfg, st, _ains(500, 13, 100.0 + 1200))
+    assert d.reason == "anticipatory" and d.speed == 2
+
+
+def test_anticip_does_not_override_higher_base():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d = decide(cfg, st, _ains(1400, 5, 100.0 + 1800))      # base V3
+    assert d.speed == 3 and d.reason != "anticipatory"
+
+
+def test_anticip_hostile_cap_still_applies():
+    cfg = _anticip_cfg(hostile_enabled=True, hostile_t1=50, hostile_t2=100,
+                       hostile_t3=150)
+    st = DvState()
+    decide(cfg, st, _ains(600, 5, 100.0, aqi=120))
+    d = decide(cfg, st, _ains(880, 5, 100.0 + 1800, aqi=120))
+    assert d.reason == "hostile_cap_v1" and d.speed == 1
+
+
+def test_anticip_disabled_no_lift():
+    cfg = _anticip_cfg(anticip_enabled=False)
+    st = DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
+    assert d.reason != "anticipatory"
+
+
+# --- CO2 sanity floor (robustness): reject physically-absurd low readings ---
+def test_co2_sanity_floor_rejects_absurd_low():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=250)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=0, pm_raw=5, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason == "failsafe_vital_ko" and d.speed == 1
+
+
+def test_co2_sanity_floor_allows_normal():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=250)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason == "iaq" and d.speed == 1
+
+
+def test_co2_sanity_floor_does_not_pollute_ema():
+    cfg = _cfg(co2_sanity_floor=250)            # EMA enabled (default)
+    st = DvState(co2_ema=800.0)
+    decide(cfg, st, DvInputs(co2_raw=0, pm_raw=5, now_ts=1000,
+                             startup_grace_active=False))
+    assert st.co2_ema == 800.0                  # absurd-low reading ignored
+
+
+def test_co2_sanity_floor_configurable_off():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=0)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=0, pm_raw=5, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason != "failsafe_vital_ko"      # floor disabled -> 0 accepted
+
+
+def test_pm_low_is_not_floored():
+    """PM2.5 ~0 is physically real (clean air) and must not trigger a fault."""
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, co2_sanity_floor=250)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=0, current_speed=1, now_ts=1000,
+                        startup_grace_active=False, trigger_is_iaq=True))
+    assert d.reason == "iaq" and d.speed == 1
+
+
+# --- F12: quiet hours (night cap OFF/V1/V2 with critical-air exception) ---
+def _quiet_cfg(**kw):
+    base = dict(co2_ema_enabled=False, pm_ema_enabled=False,
+                quiet_enabled=True, quiet_start_min=23 * 60, quiet_end_min=7 * 60,
+                quiet_max_level=1, quiet_critical_co2=1500, quiet_critical_pm=50)
+    base.update(kw)
+    return _cfg(**base)
+
+
+def _qins(co2, minute, **kw):
+    base = dict(co2_raw=co2, pm_raw=5, current_speed=1, now_ts=0, weekday=0,
+                minute_of_day=minute, trigger_is_iaq=True)
+    base.update(kw)
+    return DvInputs(**base)
+
+
+def test_in_quiet_window_overnight():
+    cfg = _quiet_cfg()
+    assert in_quiet_window(23 * 60 + 30, cfg) is True   # 23:30
+    assert in_quiet_window(3 * 60, cfg) is True          # 03:00
+    assert in_quiet_window(12 * 60, cfg) is False        # 12:00
+
+
+def test_in_quiet_window_disabled():
+    assert in_quiet_window(3 * 60, _quiet_cfg(quiet_enabled=False)) is False
+
+
+def test_quiet_caps_auto_speed():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(), _qins(1400, 3 * 60))
+    assert d.reason == "quiet_cap" and d.speed == 1
+
+
+def test_quiet_caps_to_off():
+    d = decide(_quiet_cfg(quiet_max_level=0), DvState(), _qins(1400, 3 * 60))
+    assert d.reason == "quiet_cap" and d.speed == 0
+
+
+def test_quiet_critical_co2_lifts_cap():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(), _qins(1600, 3 * 60))
+    assert d.reason != "quiet_cap" and d.speed == 3
+
+
+def test_quiet_no_cap_outside_window():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(), _qins(1400, 12 * 60))
+    assert d.reason != "quiet_cap" and d.speed == 3
+
+
+def test_quiet_max_level_v3_no_cap():
+    d = decide(_quiet_cfg(quiet_max_level=3), DvState(), _qins(1400, 3 * 60))
+    assert d.speed == 3 and d.reason != "quiet_cap"
+
+
+def test_quiet_does_not_cap_manual_override():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(),
+               _qins(500, 3 * 60, manual_override=True, override_v3=True))
+    assert d.reason == "manual_override" and d.speed == 3
+
+
+# --- F14: timed V3 boost (service-driven, auto-reverting) ---
+def test_boost_forces_v3():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, boost_active=True, now_ts=0))
+    assert d.speed == 3 and d.reason == "boost"
+
+
+def test_boost_overrides_quiet_cap():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, boost_active=True, now_ts=0,
+                        weekday=0, minute_of_day=3 * 60))
+    assert d.speed == 3 and d.reason == "boost"
+
+
+def test_boost_inactive_is_normal():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, boost_active=False, now_ts=0,
+                        trigger_is_iaq=True))
+    assert d.reason == "iaq"
+
+
+def test_boost_respects_not_permitted():
+    d = decide(_cfg(), DvState(), DvInputs(permitida=False, boost_active=True))
+    assert d.speed == 0
+
+
+# --- F28: heat-recovery efficiency + bypass state ---
+def test_hrv_efficiency_heating():
+    assert abs(hrv_efficiency(18, 0, 22) - 0.818) < 0.01
+
+
+def test_hrv_efficiency_cooling_both_directions():
+    # Summer: intake 35 (hot), extract 25 (cool return), supply 27.
+    assert abs(hrv_efficiency(27, 35, 25) - 0.8) < 0.01
+
+
+def test_hrv_efficiency_missing_or_flat():
+    assert hrv_efficiency(None, 0, 22) is None
+    assert hrv_efficiency(18, 22, 22.2) is None      # ΔT 0.2 < HRV_MIN_DT
+
+
+def test_hrv_efficiency_clamped():
+    assert hrv_efficiency(25, 0, 22) == 1.0          # supply > extract -> clamp 1
+    assert hrv_efficiency(-5, 0, 22) == 0.0          # below intake -> clamp 0
+
+
+def test_hrv_state_bypass_and_recovering():
+    cfg = _cfg(hrv_bypass_eff_max=0.2, hrv_bypass_dt_min=3)
+    assert hrv_state(0.5, 0, 22, cfg) == "bypass"     # η ~0.02, ΔT 22
+    assert hrv_state(18, 0, 22, cfg) == "recovering"  # η 0.82
+
+
+def test_hrv_state_idle_small_dt():
+    cfg = _cfg(hrv_bypass_eff_max=0.2, hrv_bypass_dt_min=3)
+    assert hrv_state(20, 20, 21.5, cfg) == "idle"     # ΔT 1.5 < bypass_dt_min
+
+
+def test_hrv_state_none_when_missing():
+    assert hrv_state(None, 0, 22, _cfg()) is None
+
+
+# --- F30: extended IAQ — hostile outdoor overrides indoor demand (REQ-IAQ-4) ---
+def test_hostile_outdoor_overrides_indoor_demand():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False,
+               hostile_enabled=True, hostile_t3=150)
+    # Indoor CO₂ would demand V3, but a hostile outdoor AQI shuts ventilation off.
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=1400, pm_raw=5, aqi=160, current_speed=1,
+                        trigger_is_iaq=True))
+    assert d.speed == 0 and d.reason == "hostile_off"
 
 
 def test_auto_clean_air_v1():

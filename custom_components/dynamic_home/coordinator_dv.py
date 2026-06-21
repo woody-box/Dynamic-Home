@@ -18,10 +18,19 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const
+from . import const, events
 from .bus import SdhbHub
 from .dc_engine import dew_point
-from .dv_engine import DvConfig, DvDecision, DvInputs, DvState, decide
+from .dv_engine import (
+    DvConfig,
+    DvDecision,
+    DvInputs,
+    DvState,
+    decide,
+    filter_life_pct,
+    hrv_efficiency,
+    hrv_state,
+)
 from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,6 +65,8 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.machine_hours = 0.0
         self.filter_hours = 0.0
         self._accum_ts: float | None = None
+        # "Filter due" event arming (hysteresis so it fires once per crossing).
+        self._filter_due_armed = True
         # Startup bootstrap kick (opt-in, hardware quirk).
         self.bootstrap_enabled = False
         # Dry-mode (anti-condensation ventilation) toggle.
@@ -64,10 +75,36 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.schedule_enabled = False
         self.schedule_on = dtime(7, 0)
         self.schedule_off = dtime(23, 0)
+        # Quiet hours (F12): night cap window + max level.
+        self.quiet_enabled = False
+        self.quiet_max_level = 1
+        self.quiet_start = dtime(23, 0)
+        self.quiet_end = dtime(7, 0)
+        # Timed V3 boost (F14): epoch until which boost is active (None = off).
+        self.boost_until: float | None = None
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
+        # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise.
+        self.anticip_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)
         self._pm_hist: deque[float] = deque(maxlen=10080)
+        # Bus-conflict observability.
+        self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
+        self._prev_winner: str | None = None
+
+    def bus_listen_targets(self):
+        """Targets this VMC consumes from the bus."""
+        return "dv"
+
+    def _refresh_bus_explain(self, now_ts: float | None) -> None:
+        """Recompute the consumed bus intent and fire a conflict event on change."""
+        self.bus_explain = self.hub.explain(self.bus_listen_targets(), now_ts)
+        winner = self.bus_explain["winner"]
+        if winner != self._prev_winner:
+            if not (self._prev_winner is None and winner == "none"):
+                events.fire_conflict(self.hass, self.entry,
+                                     const.MODULE_VMC, self.bus_explain)
+            self._prev_winner = winner
 
     def _accumulate(self, now_ts: float) -> None:
         """Add elapsed time to the running-hours counters."""
@@ -82,6 +119,54 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
     def reset_filter_hours(self) -> None:
         self.filter_hours = 0.0
+        self._filter_due_armed = True
+
+    def start_boost(self, minutes: float) -> None:
+        """Force V3 for ``minutes`` (F14); auto-reverts when the window elapses."""
+        self.boost_until = dt_util.now().timestamp() + minutes * 60
+
+    # --- Heat-recovery efficiency (F28) ---
+    def has_hrv(self) -> bool:
+        """Whether the 3 recuperator probes are configured (else no sensor)."""
+        return all(self._hw(k) for k in (const.CONF_HRV_SUPPLY,
+                                         const.CONF_HRV_INTAKE,
+                                         const.CONF_HRV_EXTRACT))
+
+    def _hrv_temps(self) -> tuple:
+        return (self._num(const.CONF_HRV_SUPPLY), self._num(const.CONF_HRV_INTAKE),
+                self._num(const.CONF_HRV_EXTRACT))
+
+    @property
+    def hrv_efficiency_pct(self) -> float | None:
+        eff = hrv_efficiency(*self._hrv_temps())
+        return None if eff is None else round(eff * 100, 1)
+
+    @property
+    def hrv_state(self) -> str | None:
+        return hrv_state(*self._hrv_temps(), self._cfg())
+
+    # --- Extended IAQ (F30): VOC is observation-only and never enters decide() ---
+    def has_voc(self) -> bool:
+        return bool(self._hw(const.CONF_VOC))
+
+    @property
+    def voc_level(self) -> float | None:
+        return self._num(const.CONF_VOC)
+
+    @property
+    def filter_life_pct(self) -> float:
+        """Remaining filter life (0..100 %) for the filter-life sensor."""
+        return filter_life_pct(self.filter_hours, self._cfg().filter_life_hours)
+
+    def _check_filter_due(self, cfg: DvConfig) -> None:
+        """Fire ``dynamic_home_filter_due`` once when life drops below the threshold."""
+        pct = filter_life_pct(self.filter_hours, cfg.filter_life_hours)
+        if pct <= const.FILTER_DUE_PCT and self._filter_due_armed:
+            events.fire_filter_due(self.hass, self.entry, const.MODULE_VMC,
+                                   pct, self.filter_hours, cfg.filter_life_hours)
+            self._filter_due_armed = False
+        elif pct >= const.FILTER_CLEAR_PCT:
+            self._filter_due_armed = True
 
     # --- config helpers ---
     def _hw(self, key: str) -> str | None:
@@ -97,6 +182,13 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
                                   self._hw(const.CONF_HUM_EXT))
         cfg.adaptive_enabled = self.adaptive_enabled
+        cfg.anticip_enabled = self.anticip_enabled
+        # Quiet hours (F12): live entities -> engine config (critical thresholds
+        # stay in options, overlaid by apply_options above).
+        cfg.quiet_enabled = self.quiet_enabled
+        cfg.quiet_max_level = int(self.quiet_max_level)
+        cfg.quiet_start_min = self.quiet_start.hour * 60 + self.quiet_start.minute
+        cfg.quiet_end_min = self.quiet_end.hour * 60 + self.quiet_end.minute
         if self.schedule_enabled and self.schedule_on and self.schedule_off:
             on_m = self.schedule_on.hour * 60 + self.schedule_on.minute
             off_m = self.schedule_off.hour * 60 + self.schedule_off.minute
@@ -190,9 +282,16 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
         now = dt_util.now()  # local time for the weekly schedule
         now_ts = now.timestamp()
+        self._refresh_bus_explain(now_ts)
         self._accumulate(now_ts)
+        self._check_filter_due(cfg)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
         self.in_grace = grace_active
+
+        # Timed V3 boost (F14): active until its window elapses, then auto-clears.
+        boost_active = self.boost_until is not None and now_ts < self.boost_until
+        if self.boost_until is not None and now_ts >= self.boost_until:
+            self.boost_until = None
 
         co2_raw = self._num(const.CONF_CO2)
         pm_raw = self._num(const.CONF_PM25)
@@ -211,9 +310,10 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             t_ext=self._num(const.CONF_T_EXT),
             aqi=self._num(const.CONF_AQI),
             current_speed=self.current_speed,
+            boost_active=boost_active,
             permitida=None,  # computed by the engine (schedule + failsafe gate)
             auto_mode=self.auto_mode,
-            sdhb_intent=self.hub.winner("dv", now_ts),
+            sdhb_intent=self.bus_explain["winner"],
             trigger_is_iaq=trigger_is_iaq,
             now_ts=now_ts,
             weekday=now.weekday(),

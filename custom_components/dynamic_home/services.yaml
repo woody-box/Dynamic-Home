@@ -1,0 +1,63 @@
+reset_learning:
+  name: Reset adaptive learning
+  description: >-
+    Wipes the learned adaptive-lead model of a climate (DC) zone (EMAs, learned
+    lead, cycle counters and the in-flight cycle). Use after changing the heating
+    or cooling hardware so the zone relearns from scratch.
+  target:
+    entity:
+      integration: dynamic_home
+      domain: climate
+
+set_observe:
+  name: Set observe (dry-run)
+  description: >-
+    Enables or disables observe mode on the targeted modules. In observe mode the
+    pipeline is still evaluated (sensors and diagnostics update) but no relays,
+    covers or thermostats are driven.
+  target:
+    entity:
+      integration: dynamic_home
+  fields:
+    enabled:
+      name: Enabled
+      description: True to enter observe (dry-run), False to resume acting on hardware.
+      required: true
+      selector:
+        boolean:
+
+reset_filter:
+  name: Reset filter hours
+  description: Zeroes the filter-hours counter of a VMC (DV) module.
+  target:
+    entity:
+      integration: dynamic_home
+      domain: fan
+
+recalibrate:
+  name: Recalibrate now
+  description: Forces an immediate re-evaluation of the targeted modules' pipeline.
+  target:
+    entity:
+      integration: dynamic_home
+
+boost:
+  name: Boost (timed V3)
+  description: >-
+    Forces a VMC (DV) to V3 for a number of minutes, then auto-reverts to normal
+    control. Bypasses the quiet-hours cap.
+  target:
+    entity:
+      integration: dynamic_home
+      domain: fan
+  fields:
+    minutes:
+      name: Minutes
+      description: How long to hold V3 before reverting (default 15).
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 240
+          unit_of_measurement: min
+          mode: box

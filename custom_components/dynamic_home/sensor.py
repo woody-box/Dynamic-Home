@@ -15,7 +15,7 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory, UnitOfTime
+from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -57,11 +57,16 @@ _HOURS: tuple[_HoursDesc, ...] = (
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
-    if entry.data.get(const.CONF_MODULE) == const.MODULE_CLIMATE:
+    module = entry.data.get(const.CONF_MODULE)
+    if module == const.MODULE_CLIMATE:
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
                                     for d in _DC_SENSORS]
         ents += [DcLearnSensor(coordinator, entry, d) for d in _DC_LEARN]
+        ents.append(BusSensor(coordinator, entry))
         async_add_entities(ents)
+        return
+    if module == const.MODULE_SHUTTER:
+        async_add_entities([BusSensor(coordinator, entry)])
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
                                     for d in _HOURS]
@@ -70,7 +75,45 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(ModeSensor(coordinator, entry))
     entities.append(StateSensor(coordinator, entry))
     entities.append(OverrideRemainingSensor(coordinator, entry))
+    entities.append(FilterLifeSensor(coordinator, entry))
+    if coordinator.has_hrv():
+        entities.append(HrvEfficiencySensor(coordinator, entry))
+    if coordinator.has_voc():
+        entities.append(VocSensor(coordinator, entry))
+    entities.append(BusSensor(coordinator, entry))
     async_add_entities(entities)
+
+
+class BusSensor(CoordinatorEntity, SensorEntity):
+    """Winning SDHB bus intent for this consumer.
+
+    Every module's bus sensor is grouped under one shared "Dynamic Home Bus"
+    device (via a fixed identifier, not the per-entry one) so the whole bus is
+    observable from a single place in the UI. The state is the winning intent;
+    the attributes explain *why* (source, priority, candidate count).
+    """
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:transit-connection-variant"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_bus"
+        self._attr_name = entry.title
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, const.BUS_DEVICE_ID)},
+            name="Dynamic Home Bus")
+
+    @property
+    def native_value(self) -> str | None:
+        return self.coordinator.bus_explain.get("winner")
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        ex = self.coordinator.bus_explain
+        return {"source": ex.get("source"), "priority": ex.get("priority"),
+                "candidates": ex.get("candidates"), "reason": ex.get("reason")}
 
 
 class _Base(CoordinatorEntity[DvCoordinator], SensorEntity):
@@ -186,6 +229,59 @@ class OverrideRemainingSensor(_Base):
             return 0
         remaining = until - dt_util.utcnow().timestamp()
         return max(0, round(remaining / 60))
+
+
+class FilterLifeSensor(_Base):
+    """Remaining filter life as a percentage (100 % = fresh, 0 % = due)."""
+
+    _attr_name = "Filter life"
+    _attr_icon = "mdi:air-filter"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "filter_life")
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.filter_life_pct, 1)
+
+
+class HrvEfficiencySensor(_Base):
+    """Heat-recovery efficiency (%) with a recovering/bypass/idle state attribute."""
+
+    _attr_name = "Recuperator efficiency"
+    _attr_icon = "mdi:heat-wave"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "hrv_efficiency")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.hrv_efficiency_pct
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"state": self.coordinator.hrv_state}
+
+
+class VocSensor(_Base):
+    """Observed VOC level (F30). Informational only — it never drives the speed."""
+
+    _attr_name = "VOC"
+    _attr_icon = "mdi:molecule"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "voc")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.voc_level
 
 
 # --------------------------------------------------------------------------- #

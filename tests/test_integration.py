@@ -195,6 +195,172 @@ async def test_dry_mode_anticondensation(hass: HomeAssistant) -> None:
     assert co.data.speed >= 2
 
 
+async def test_anticipatory_switch_wires_to_cfg(hass: HomeAssistant) -> None:
+    """F11: the anticipatory switch exists and its gate reaches the engine cfg."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    reg = er.async_get(hass)
+    assert reg.async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_anticipatory") is not None
+    # Default off; flipping the coordinator gate reaches the engine config.
+    assert co.anticip_enabled is False
+    assert co._cfg().anticip_enabled is False
+    co.anticip_enabled = True
+    assert co._cfg().anticip_enabled is True
+
+
+async def test_hrv_efficiency_sensor_present_with_probes(hass: HomeAssistant) -> None:
+    """F28: with the 3 HRV probes, the efficiency sensor appears and computes η."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    # Winter recovery: intake 0 °C, extract 22 °C return, supply 18 °C.
+    hass.states.async_set("sensor.hrv_supply", "18")
+    hass.states.async_set("sensor.hrv_intake", "0")
+    hass.states.async_set("sensor.hrv_extract", "22")
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW,
+        const.CONF_HRV_SUPPLY: "sensor.hrv_supply",
+        const.CONF_HRV_INTAKE: "sensor.hrv_intake",
+        const.CONF_HRV_EXTRACT: "sensor.hrv_extract",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_hrv() is True
+    assert abs(co.hrv_efficiency_pct - 81.8) < 0.5
+    assert co.hrv_state == "recovering"
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_hrv_efficiency")
+    assert eid is not None
+    assert hass.states.get(eid).attributes["state"] == "recovering"
+
+
+async def test_hrv_efficiency_sensor_absent_without_probes(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_hrv() is False
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_hrv_efficiency")
+    assert eid is None
+
+
+async def test_voc_sensor_present_and_observation_only(hass: HomeAssistant) -> None:
+    """F30: VOC is exposed but never actuates — only CO₂/PM2.5 raise the speed."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass, co2="500", pm="5")
+    hass.states.async_set("sensor.voc", "900")     # high VOC
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={},
+                            data={**HW, const.CONF_VOC: "sensor.voc"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # VOC sensor exists and mirrors the reading.
+    assert co.has_voc() is True
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_voc")
+    assert eid is not None
+    assert float(hass.states.get(eid).state) == 900.0
+
+    # High VOC with clean CO₂/PM does NOT raise the speed (observation only).
+    assert co.data.speed == 1
+
+    # CO₂ rising DOES raise it (the actuators are CO₂/PM2.5).
+    co.state_data.co2_ema = 0            # reset EMA so the next reading bootstraps
+    hass.states.async_set("sensor.co2", "1400")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.speed == 3
+
+
+async def test_voc_sensor_absent_without_probe(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_voc() is False
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_voc")
+    assert eid is None
+
+
+async def test_quiet_hours_entities_wire_to_cfg(hass: HomeAssistant) -> None:
+    """F12: quiet-hours switch/number/time exist and reach the engine cfg."""
+    from datetime import time as dtime
+
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    reg = er.async_get(hass)
+    for platform, key in (("switch", "quiet_hours"), ("number", "quiet_max_level"),
+                          ("time", "quiet_start"), ("time", "quiet_end")):
+        assert reg.async_get_entity_id(
+            platform, const.DOMAIN, f"{entry.entry_id}_{key}") is not None, key
+
+    co.quiet_enabled = True
+    co.quiet_max_level = 2
+    co.quiet_start = dtime(22, 30)
+    cfg = co._cfg()
+    assert cfg.quiet_enabled is True and cfg.quiet_max_level == 2
+    assert cfg.quiet_start_min == 22 * 60 + 30
+
+
+async def test_dry_mode_blocked_when_outdoor_humid(hass: HomeAssistant) -> None:
+    """F13: with the outdoor air as humid as indoors, drying must NOT ventilate."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    # Same temp + RH inside and out -> dp_diff ~ 0 (no dew-point advantage),
+    # while indoor is still near its dew point (dew_risk holds).
+    hass.states.async_set("sensor.t_in", "22")
+    hass.states.async_set("sensor.t_ext", "22")
+    hass.states.async_set("sensor.rh_in", "95")
+    hass.states.async_set("sensor.rh_ext", "95")
+
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW,
+        const.CONF_T_IN: "sensor.t_in", const.CONF_T_EXT: "sensor.t_ext",
+        const.CONF_HUM_IN: "sensor.rh_in", const.CONF_HUM_EXT: "sensor.rh_ext",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    co.dry_mode_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # Gate closed -> falls through to the IAQ/auto path (clean air seeded).
+    assert co.data.reason != "dry_mode"
+
+
 async def test_weekly_schedule_builds_cfg(hass: HomeAssistant) -> None:
     from datetime import time as dtime
     async_mock_service(hass, "switch", "turn_on")

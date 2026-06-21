@@ -141,18 +141,40 @@ módulo aparte.
   (conductos sin zonificar), **grupo/casa con actuador por zona** (conductos +
   **rejillas motorizadas** = "válvula de aire").
 - **REQ-EMI-5 (M):** **reconciliación del emisor compartido sin zonificar**: una
-  sola orden con política configurable (**zona peor parada** / prioridad / media);
-  por defecto la peor parada en el sentido activo.
+  sola orden calculada con **agregación ponderada** de la demanda de las zonas del
+  ámbito (peso por zona, REQ-EMI-9). Políticas seleccionables: **ponderada
+  (default)** / peor parada / prioridad / media. La "peor parada" **deja de ser el
+  default** por el riesgo de péndulo/undershoot en estancias pequeñas (un solo
+  caudal no cortable por zona sobre-acondiciona las de baja demanda).
 - **REQ-EMI-6 (S):** el AC aporta sus capacidades propias (dry nativo → usable por
   F13, fan, swing).
 - **REQ-EMI-7 (M):** casos límite — solo AC ⇒ AC emisor único; solo radiante ⇒
   comportamiento actual.
+- **REQ-EMI-8 (M):** **guarda de undershoot/overshoot** (conductos sin rejillas):
+  como el caudal no es cortable por zona, la unidad **corta o modula a la baja**
+  cuando la zona **más satisfecha** del ámbito alcanza su límite de confort en el
+  sentido activo (`consigna ∓ shared_undershoot_margin`), aunque la peor parada no
+  haya llegado. Acota el sobre-acondicionamiento de las estancias pequeñas (el
+  compromiso físicamente inevitable de un conducto sin rejillas). **No aplica** con
+  rejillas motorizadas (REQ-EMI-4: cada zona regula su propio caudal).
+- **REQ-EMI-9 (S):** **parámetros del catálogo cerrado** para lo anterior:
+  `zone_demand_weight` (por zona, adimensional, default 1.0; el usuario puede
+  derivarlo de volumen/masa térmica si los conoce) y `shared_undershoot_margin`
+  (°C, margen de la guarda de corte). Solo relevantes en ámbito grupo/casa **sin**
+  rejillas.
 
 **Dependencias:** F24, F26. **Habilita:** módulo AC, F13 (dry nativo).
 **Criterios de aceptación:**
 - ☐ Con radiante+AC, el apoyo arranca solo cuando el primario no llega y se retira al recuperar.
 - ☐ Conductos sin zonificar: una sola orden coherente para todas las zonas del ámbito.
 - ☐ Conductos con rejillas: control por zona vía rejilla, unidad con consigna única.
+- ☐ Conductos sin zonificar con Salón muy caliente y Dormitorio casi en consigna:
+  la unidad **no** sobre-enfría el Dormitorio (la guarda corta al llegar a
+  `consigna − margen`), aunque el Salón quede un poco corto.
+- ☐ Subir el `zone_demand_weight` del Salón sesga la consigna agregada hacia él
+  **sin** anular la guarda de undershoot del Dormitorio.
+- ☐ Con rejillas motorizadas, ni la ponderación ni la guarda aplican (control por
+  zona vía rejilla).
 
 ### 4.4 · Presencia (F32)
 
@@ -333,7 +355,7 @@ automatizaciones y dashboards. **Eventos primero** (mantienen el Telegram).
 **Dependencias:** F01, F02, F07, F08 (emiten los eventos).
 **Criterios de aceptación:**
 - ☐ Un cambio de modo dispara `dynamic_home_mode_changed` con el modo nuevo.
-- ☐ `boost` fuerza V3 los minutos indicados y auto-revierte (cubre F14).
+- ☑ `boost` fuerza V3 los minutos indicados y auto-revierte (cubre F14).
 
 ### 5.6 · Energía y coste (F06)
 
@@ -498,8 +520,8 @@ lead de DC; modelado como el refuerzo de ducha/humedad pero con calidad de aire.
 
 **Dependencias:** DV (EMAs existentes), F30 (contaminantes), F32 (presencia opc.).
 **Criterios de aceptación:**
-- ☐ Una subida brusca de CO₂ eleva la velocidad antes de alcanzar el umbral fijo.
-- ☐ Un pico transitorio dentro del `hold` no provoca oscilación de velocidad.
+- ☑ Una subida brusca de CO₂ eleva la velocidad antes de alcanzar el umbral fijo.
+- ☑ Un pico transitorio dentro del `hold` no provoca oscilación de velocidad.
 
 ### 6.2 · Horas de silencio (F12)
 
@@ -516,8 +538,8 @@ distinta del schedule de encendido.
 
 **Dependencias:** F01 (Sleep), F21 (por día), DV.
 **Criterios de aceptación:**
-- ☐ Dentro de la franja con cap `V1`, la VMC no supera V1 salvo umbral crítico.
-- ☐ Activar `Sleep` aplica el mismo cap sin configurar la franja aparte.
+- ☑ Dentro de la franja con cap `V1`, la VMC no supera V1 salvo umbral crítico.
+- ☐ Activar `Sleep` aplica el mismo cap sin configurar la franja aparte. *(pend. F01)*
 
 ### 6.3 · Secado por punto de rocío (F13)
 
@@ -553,8 +575,8 @@ override existente.
 
 **Dependencias:** F10 (servicio), timer de override (existe).
 **Criterios de aceptación:**
-- ☐ Invocar `boost(15 min)` fija V3 y vuelve al estado previo a los 15 min.
-- ☐ Re-invocar durante el boost reinicia la cuenta atrás.
+- ☑ Invocar `boost(15 min)` fija V3 y vuelve al estado previo a los 15 min.
+- ☑ Re-invocar durante el boost reinicia la cuenta atrás.
 
 ### 6.5 · Eficiencia del recuperador (F28)
 
@@ -574,8 +596,8 @@ con **3 sondas** (la de expulsión NO interviene).
 
 **Dependencias:** DV, F07 (aviso vía Repairs/evento).
 **Criterios de aceptación:**
-- ☐ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin las sondas, no aparece.
-- ☐ Un desplome puntual de η no dispara aviso; uno sostenido e inesperado sí.
+- ☑ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin las sondas, no aparece.
+- ☐ Un desplome puntual de η no dispara aviso; uno sostenido e inesperado sí. *(REQ-EFF-4, follow-up)*
 
 ### 6.6 · IAQ extendido (F30)
 
@@ -588,12 +610,14 @@ tienen sentido sanitario en el caso objetivo.
   usuario); estructura abierta a añadirlo si aparece.
 - **REQ-IAQ-4 (S):** **contaminantes exteriores** (CO/PM10/NO2/SO2/O3/índice):
   **solo observación**, y alimentan el **"exterior hostil"** para no ventilar en
-  días muy malos.
+  días muy malos. *(Hoy: el "exterior hostil" ya opera sobre un índice AQI único
+  (`CONF_AQI`). La observación multi-contaminante y su normalización a un índice
+  común se completan con **F33**.)*
 
 **Dependencias:** DV, F11 (deriva sobre los que actúan), F33 (exterior).
 **Criterios de aceptación:**
-- ☐ Subir VOC no cambia la velocidad; subir CO₂/PM2.5 sí.
-- ☐ Con exterior hostil activo, no se ventila pese a IAQ interior mejorable.
+- ☑ Subir VOC no cambia la velocidad; subir CO₂/PM2.5 sí.
+- ☑ Con exterior hostil activo, no se ventila pese a IAQ interior mejorable.
 
 ### 6.7 · Campana extractora coordinada (F35)
 
@@ -966,3 +990,214 @@ Congeladas (fuera de fases): **F05** (outdoor reset), **F18** (anti-helada).
 - ☐ Ventana de mantenimiento: deshabilitar YAML **+** quitar observe (atómico).
 - ☐ Helpers YAML deshabilitados (no borrados) como rollback.
 - ☐ Período de estabilización superado → retirada del YAML.
+
+---
+
+## 12 · Fase 0 — Quick wins (criterios de aceptación)
+
+Requisitos breves por feature de la Fase 0 del roadmap (ver `docs/ROADMAP.md`).
+Cada feature se entrega en su propio commit con tests en verde.
+
+### 12.1 · F10 — Servicios + eventos nativos
+
+**Servicios** (`dynamic_home.*`), dirigibles por `target` (entity/device/area):
+
+- `reset_learning` — borra el modelo adaptativo del DC (EMAs, lead aprendido,
+  contadores y máquina de estado del ciclo). Solo actúa sobre módulos DC.
+- `set_observe` (campo `enabled: bool`) — entra/sale de modo observación (dry-run)
+  en DC/DV/DS.
+- `reset_filter` — pone a cero las horas de filtro de la VMC (DV).
+- `recalibrate` — fuerza un refresco inmediato del coordinator destino.
+
+**Eventos** (`dynamic_home_*`), emitidos **solo en transición** (nunca cada ciclo):
+`dynamic_home_degraded`, `dynamic_home_conflict`, `dynamic_home_filter_due`.
+Payload común: `entry_id`, `name`, `module`.
+
+**Aceptación:**
+
+- ☐ Los 4 servicios existen tras cargar la primera entrada y desaparecen al
+  descargar la última.
+- ☐ Registro **único**: con varias entradas no se registran por duplicado.
+- ☐ Cada servicio actúa solo sobre el coordinator del `target` (y del tipo correcto).
+- ☐ Los helpers de `events.py` emiten el evento con el payload esperado.
+
+### 12.2 · F02 — Explicador de conflictos del bus
+
+Cada consumidor (DC/DV/DS) expone un sensor con el **intent ganador** del bus y
+el **motivo** (fuente, prioridad, nº de candidatos). Todos los sensores se
+agrupan bajo un único dispositivo compartido "Dynamic Home Bus".
+
+**Aceptación:**
+
+- ☐ `SdhbHub.explain(targets)` devuelve `{winner, source, priority, candidates,
+  reason}` y su `winner` coincide siempre con `winner(targets)`.
+- ☐ Sin candidatos → `winner="none"`, `reason="no_candidates"`.
+- ☐ Con DC en frío + DS, el sensor de bus de DS muestra `request_solar_shield`
+  con `priority=70` y `candidates>=1`.
+- ☐ Los sensores de bus de todas las entradas caen en el dispositivo
+  `(dynamic_home, "bus")`.
+- ☐ Se emite `dynamic_home_conflict` al cambiar el ganador (no cada ciclo).
+
+### 12.3 · F07 — Repairs sobre `degraded` (solo DC)
+
+Cuando una zona DC pide calor/frío pero le falta su sensor de temperatura
+interior de forma **sostenida** (> `ISSUE_STALE_S` = 300 s), se crea una
+incidencia en **Reparaciones** de Home Assistant; se borra al recuperarse o al
+descargar la entrada. El evento `dynamic_home_degraded` se emite en la
+transición (inmediato), independientemente del umbral de la incidencia.
+
+**Aceptación:**
+
+- ☐ DC en heat/cool sin `t_int` → `degraded=True` y evento emitido.
+- ☐ La incidencia **no** aparece hasta superar el umbral de obsolescencia.
+- ☐ Superado el umbral → incidencia `required_source_missing` (no *fixable*,
+  con `learn_more_url`).
+- ☐ Recuperación del sensor → incidencia borrada + evento de salida.
+- ☐ Descarga de la entrada degradada → incidencia borrada.
+- ☐ DV/DS quedan fuera de alcance en esta fase.
+
+### 12.4 · F08 — Vida del filtro VMC
+
+Parámetro configurable "Vida del filtro (h)" (default 3650) y sensor "% de vida
+del filtro" = `100·(1 − filter_hours/vida)`. El evento `dynamic_home_filter_due`
+se emite **una vez** al cruzar el umbral, con histéresis (`FILTER_DUE_PCT` /
+`FILTER_CLEAR_PCT`). El reset (botón o servicio `reset_filter`) re-arma el evento.
+
+**Aceptación:**
+
+- ☐ `filter_life_pct(hours, life)` acota a [0,100] y devuelve 100 si `life<=0`.
+- ☐ Sensor `sensor.<vmc>_filter_life` refleja el % restante.
+- ☐ `dynamic_home_filter_due` se emite una sola vez por cruce (no en cada ciclo).
+- ☐ Reset → re-arma el evento y el % vuelve a 100.
+- ☐ "Vida del filtro (h)" aparece como número/opción configurable de la VMC.
+
+### 12.5 · F13 — Secado por punto de rocío (DV)
+
+El `dry_mode` de la VMC pasa a **gatear por punto de rocío**: solo ventila para
+secar si el exterior está realmente más seco (`dp_diff = dp_in − dp_out` supera
+un **margen** configurable), con **histéresis** para no oscilar. La selección de
+velocidad (V1/V2/V3 por `dp_v2/v3_delta`) no cambia. Parámetros nuevos
+(categoría "dry", no avanzados): `dry_margin` (default 1.0 °C), `dry_hys`
+(default 0.5 °C).
+
+**Aceptación:**
+
+- ☐ Con el exterior igual de húmedo (`dp_diff ≤ margen`), el secado **no**
+  ventila aunque `dry_mode` esté activo y el interior cerca del rocío (cae a IAQ).
+- ☐ Con ventaja clara (`dp_diff > margen`), ventila (reason `dry_mode`).
+- ☐ Histéresis: una vez activo se mantiene hasta `dp_diff ≤ margen − histéresis`;
+  inactivo no se arma dentro de la banda → no oscila.
+- ☐ `dp_diff None` / `dry_mode` off / sin `dew_risk` → no seca (estado reseteado).
+- ☐ `dry_margin` y `dry_hys` configurables en opciones de la VMC.
+
+### 12.6 · F11 — Ventilación anticipatoria (DV)
+
+La VMC pre-ventila cuando CO₂ o PM **suben rápido**: un detector con histéresis
+on/off + hold sobre la **pendiente** (derivada EMA) de cada contaminante adelanta
+el salto de velocidad antes de cruzar el umbral de nivel absoluto. Modelado como
+el refuerzo de ducha. Activable por **switch** ("Anticipatory boost"). Parámetros
+nuevos (categoría "anticipatory"): `anticip_co2_rate_on/off`,
+`anticip_pm_rate_on/off`, `anticip_hold_s`, `anticip_level`; avanzado:
+`anticip_ema_alpha`.
+
+**Aceptación:**
+
+- ☐ Subida brusca de CO₂/PM (pendiente ≥ umbral on) eleva a `anticip_level` con
+  reason `anticipatory`, aun en un tick de reloj (sin trigger IAQ).
+- ☐ Tendencia plana no eleva; un pico dentro del `hold` no oscila (histéresis).
+- ☐ No baja una base ya mayor; `hostile`/`sdhb_quiet` siguen capando por encima.
+- ☐ `dt<=0` o primera muestra → pendiente 0 (no dispara).
+- ☐ Switch off por defecto → comportamiento idéntico al anterior.
+
+### 12.7 · Robustez — Piso de cordura de CO₂ (DV)
+
+Una lectura de CO₂ por debajo de `co2_sanity_floor` (default 250 ppm,
+configurable/avanzado, categoría "failsafe") es físicamente imposible en interior
+habitado (línea base atmosférica ~410 ppm) y se trata como **fallo de sensor**:
+se invalida en la validación inicial → cae al failsafe `vital_ko` (V1) y **no**
+contamina la EMA. Solo CO₂ — el PM2.5 ~0 µg/m³ es real (aire limpio) y no se filtra.
+
+**Aceptación:**
+
+- ☐ CO₂ absurdamente bajo (p. ej. 0 tras glitch de calibración) → `failsafe_vital_ko`, V1.
+- ☐ La EMA de CO₂ no se arrastra por la lectura absurda.
+- ☐ CO₂ normal (≥ piso) y PM2.5 = 0 no disparan el failsafe.
+- ☐ `co2_sanity_floor = 0` desactiva el piso (acepta 0).
+
+### 12.8 · F12 — Horas de silencio (DV)
+
+Franja diaria (con wrap nocturno) en la que la VMC **no supera** un nivel máximo
+(`OFF/V1/V2`; V3 = sin cap), por ruido/WAF. **Excepción de seguridad:** un CO₂ o
+PM2.5 por encima de su umbral **crítico** levanta el cap (salud > silencio).
+Aplica solo a la ruta **auto/IAQ** (incluye freecool y anticipatorio F11);
+manual override, ducha y secado la **bypasean**. Entidades: switch "Quiet hours",
+number "Quiet max level" (0-2), times "Quiet start/end"; opciones (categoría
+"quiet"): `quiet_critical_co2` (1500), `quiet_critical_pm` (50). Reutilizable por
+el modo Sleep (F01) cuando exista.
+
+**Aceptación:**
+
+- ☐ Dentro de la franja, con CO₂ alto que pediría V3, la velocidad se limita a
+  `quiet_max_level` (reason `quiet_cap`); fuera de la franja no.
+- ☐ CO₂/PM ≥ crítico levanta el cap (sube igual).
+- ☐ `quiet_max_level=0` apaga; `=3` no capa.
+- ☐ Manual override / ducha / secado no se ven afectados por el cap.
+- ☐ Switch off por defecto → comportamiento idéntico al anterior.
+
+### 12.9 · F14 — Boost (V3 temporizado, DV)
+
+Servicio `dynamic_home.boost` (campo `minutes`, default 15) que fuerza la VMC a
+**V3** durante N minutos y **auto-revierte** al expirar (granularidad del ciclo,
+~60 s). Re-invocar **reinicia** la cuenta atrás. Es explícito: **bypasea** el cap
+de horas de silencio (F12) y la ruta auto, pero respeta el gate `permitida`
+(lockout/no permitido). Completa el hook de servicio que F10 dejó documentado.
+La duración por defecto vive en `BOOST_MIN_DEFAULT` (no hardcodeada en el motor);
+un `number`/`button` de azúcar UI queda como follow-up opcional (REQ-BST-1/3).
+
+**Aceptación:**
+
+- ☐ `boost(minutes=N)` → V3 inmediato (reason `boost`); al expirar vuelve al control normal.
+- ☐ Re-invocar reinicia el temporizador (`boost_until` se extiende).
+- ☐ Bypasea el cap de silencio pero no actúa si el módulo no está `permitida`.
+- ☐ Solo afecta a módulos DV del `target`.
+
+### 12.10 · F28 — Eficiencia del recuperador (DV)
+
+Sensor diagnóstico de rendimiento del recuperador con **3 sondas dedicadas
+opcionales** (insuflación, absorción de aire nuevo, extracción; la de expulsión
+NO interviene): η = (T_insuflación − T_absorción) / (T_extracción − T_absorción),
+clamp [0,1], válido en ambos sentidos. Solo se expone si están las 3 sondas.
+Atributo `state`: `recovering` / `bypass` / `idle` (η~0 con ΔT significativo →
+bypass; ΔT pequeño → idle). Umbrales configurables (categoría "recuperator"):
+`hrv_bypass_eff_max` (0.2), `hrv_bypass_dt_min` (3 °C).
+
+**Aceptación:**
+
+- ☐ Con las 3 sondas y ΔT real, η refleja el rendimiento; sin sondas, el sensor no aparece.
+- ☐ η~0 con ΔT significativo → `state=bypass`; ΔT pequeño → `idle`; recuperación normal → `recovering`.
+- ☐ Funciona en calor y en frío (ambos signos de ΔT).
+
+**Diferido (REQ-EFF-4):** el aviso por desplome sostenido/inesperado (Repairs/
+evento) queda como follow-up — el spec advierte del riesgo de falsas alarmas al
+no distinguir bypass intencionado de fallo solo por temperaturas.
+
+### 12.11 · F30 — IAQ extendido (DV)
+
+Acepta **VOC como observación** (REQ-IAQ-2): entrada opcional `CONF_VOC` + sensor
+diagnóstico "VOC" que **espeja la lectura** y **no entra en `decide()`** — esa es
+la garantía de REQ-IAQ-1 (solo CO₂/PM2.5 actúan). Solo se expone si la sonda está
+configurada (`has_voc()`). **NOx** (REQ-IAQ-3) queda **descartado** por ahora; el
+patrón de sensor de observación deja la puerta abierta a añadirlo trivialmente. El
+**"exterior hostil"** (REQ-IAQ-4 / AC2) ya operaba sobre el índice `CONF_AQI`
+(cap `hostile_*` en el motor): se añade test de contrato. La observación
+multi-contaminante exterior (CO/PM10/NO2/SO2/O3) y su normalización a un índice
+hostil común se **difieren a F33** (su dependencia).
+
+**Aceptación:**
+
+- ☐ Con `CONF_VOC`, aparece el sensor "VOC" y espeja la lectura; sin ella, no aparece.
+- ☐ Subir VOC con CO₂/PM2.5 limpios **no** cambia la velocidad; subir CO₂ sí (→ V3).
+- ☐ Con AQI exterior ≥ umbral, la decisión es `hostile_off` pese a CO₂ interior alto.
+
+**Diferido a F33:** observación de contaminantes exteriores (CO/PM10/NO2/SO2/O3) y
+su agregación a un índice hostil; NOx (REQ-IAQ-3) si aparece en el caso de uso.

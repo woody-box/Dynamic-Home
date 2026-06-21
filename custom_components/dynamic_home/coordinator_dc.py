@@ -11,12 +11,13 @@ import logging
 import math
 from datetime import timedelta
 
+import homeassistant.helpers.issue_registry as ir
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const
+from . import const, events
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -65,6 +66,9 @@ class DcCoordinator(DataUpdateCoordinator):
         self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
         self._active_sources: set[str] = set()  # bus slots this DC currently owns
+        # Bus-conflict observability (the intent THIS zone consumes as self-bias).
+        self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
+        self._prev_winner: str | None = None
         self.dew_point_c: float | None = None   # observability
         self.dew_risk_active = False
         # Trend (indoor temp derivative) state.
@@ -74,6 +78,9 @@ class DcCoordinator(DataUpdateCoordinator):
         # Adaptive lead (learned). Opt-in via the "Adaptive Lead" switch.
         self.adaptive_enabled = False
         self.degraded = False
+        self._prev_degraded = False
+        self._degraded_since: float | None = None
+        self._issue_id = f"degraded_{entry.entry_id}"
         self.learn_rate_ema = 0.0        # learned heating/cooling rate (°C/h)
         self.learn_overshoot_ema = 0.0   # learned overshoot beyond setpoint (°C)
         self.learned_lag_h = 0.0         # learned thermal lag OFF->peak (h)
@@ -154,6 +161,77 @@ class DcCoordinator(DataUpdateCoordinator):
             self._off_hvac = hvac
 
         self._valve_open = valve
+
+    def reset_learning(self) -> None:
+        """Wipe all learned adaptive-lead state and the cycle state machine.
+
+        Backs the ``reset_learning`` service: lets a user discard a poisoned
+        model (e.g. after swapping a heat pump) without deleting the config
+        entry. Also clears the in-flight ON/OFF cycle so a mid-cycle reset does
+        not leave a stale settling window that would corrupt the next sample.
+        """
+        self.learn_rate_ema = 0.0
+        self.learn_overshoot_ema = 0.0
+        self.learned_lag_h = 0.0
+        self.lead_gain_adaptive = 0.0
+        self.adapt_ok_count = 0
+        self.adapt_abort_count = 0
+        self._valve_open = False
+        self._on_t0 = None
+        self._on_t0_ts = None
+        self._settling = False
+        self._off_sp = None
+        self._off_peak = None
+        self._off_peak_ts = None
+        self._off_ts = None
+        self._off_hvac = None
+
+    def bus_listen_targets(self):
+        """Targets this zone consumes from the bus (self-bias intents)."""
+        return "dc"
+
+    def _refresh_bus_explain(self, now_ts: float | None) -> None:
+        """Recompute the consumed bus intent and fire a conflict event on change."""
+        self.bus_explain = self.hub.explain(self.bus_listen_targets(), now_ts)
+        winner = self.bus_explain["winner"]
+        if winner != self._prev_winner:
+            if not (self._prev_winner is None and winner == "none"):
+                events.fire_conflict(self.hass, self.entry,
+                                     const.MODULE_CLIMATE, self.bus_explain)
+            self._prev_winner = winner
+
+    def _update_degraded(self, missing: list[str], now_ts: float) -> bool:
+        """Track the degraded state: fire on transition, raise a repair if sustained.
+
+        ``missing`` is the list of human-readable required sources currently
+        absent (empty == healthy). The event fires immediately on any flip; the
+        Repairs issue only appears once the zone has been degraded longer than
+        :data:`const.ISSUE_STALE_S`, so a brief startup blip never nags.
+        """
+        degraded = bool(missing)
+        if degraded != self._prev_degraded:
+            events.fire_degraded(self.hass, self.entry, const.MODULE_CLIMATE,
+                                 degraded, missing)
+            self._prev_degraded = degraded
+        if degraded:
+            if self._degraded_since is None:
+                self._degraded_since = now_ts
+            elif now_ts - self._degraded_since >= const.ISSUE_STALE_S:
+                ir.async_create_issue(
+                    self.hass, const.DOMAIN, self._issue_id,
+                    is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                    translation_key=const.ISSUE_REQUIRED_SOURCE,
+                    translation_placeholders={"name": self.entry.title,
+                                              "missing": ", ".join(missing)},
+                    learn_more_url=const.LEARN_MORE_URL)
+        else:
+            self._degraded_since = None
+            self.clear_issue()
+        return degraded
+
+    def clear_issue(self) -> None:
+        """Remove this zone's degraded repair issue (no-op if absent)."""
+        ir.async_delete_issue(self.hass, const.DOMAIN, self._issue_id)
 
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
@@ -291,13 +369,18 @@ class DcCoordinator(DataUpdateCoordinator):
         t_int = self._num(const.CONF_DC_T_INT)
         rh = self._num(const.CONF_DC_HUMIDITY)
         now_ts = dt_util.utcnow().timestamp()
+        self._refresh_bus_explain(now_ts)
 
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
 
         # Degraded when a core source is missing while a mode is demanded; this
-        # pauses learning so stale readings don't poison the EMAs.
-        self.degraded = self.hvac_mode in ("heat", "cool") and t_int is None
+        # pauses learning so stale readings don't poison the EMAs and (if
+        # sustained) raises a Repairs issue.
+        missing = (["indoor temperature"]
+                   if self.hvac_mode in ("heat", "cool") and t_int is None
+                   else [])
+        self.degraded = self._update_degraded(missing, now_ts)
 
         facades, spans = self._registered_facades()
         lit = sunlit_facades(sun_az, sun_el, facades, spans)
@@ -315,7 +398,7 @@ class DcCoordinator(DataUpdateCoordinator):
             t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,
-            sdhb_intent=self.hub.winner("dc", now_ts),
+            sdhb_intent=self.bus_explain["winner"],
             override_active=self.override_active,
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),

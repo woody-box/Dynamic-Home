@@ -12,8 +12,12 @@ MODULE_CLIMATE = "climate_zone"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time"]
-PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number"]
+PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
+
+# Shared device that groups the bus-conflict sensors of every module (so the
+# whole bus is observable from one place in the HA UI, not scattered per entry).
+BUS_DEVICE_ID = "bus"
 
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"
@@ -28,9 +32,15 @@ CONF_AQI = "outdoor_aqi_entity"
 CONF_HUM_BATH = "hum_bath"
 CONF_HUM_EXT = "hum_ext"
 CONF_HUM_IN = "hum_in"            # optional: indoor RH for dry-mode/dew
+# Heat-recovery (HRV) efficiency probes (F28). The exhaust probe is NOT used.
+CONF_HRV_SUPPLY = "hrv_supply"    # supply into the house (after the exchanger)
+CONF_HRV_INTAKE = "hrv_intake"    # fresh outdoor air taken in
+CONF_HRV_EXTRACT = "hrv_extract"  # stale air extracted from the house
+CONF_VOC = "voc"                  # F30: VOC (observation only, does NOT actuate)
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
-OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT)
+OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT,
+               CONF_VOC)
 
 # --- Config entry keys: Shutter (DS) ---
 CONF_COVER = "cover"
@@ -60,6 +70,41 @@ OPT_CO2_V2 = "co2_v2"
 OPT_CO2_V3 = "co2_v3"
 OPT_PM_V2 = "pm_v2"
 OPT_PM_V3 = "pm_v3"
+OPT_FILTER_LIFE_HOURS = "filter_life_hours"
+
+# Filter life: replacement interval default + due/clear thresholds (% remaining,
+# with hysteresis so the "filter due" event fires once per crossing).
+FILTER_LIFE_DEFAULT = 3650.0
+FILTER_DUE_PCT = 10.0
+FILTER_CLEAR_PCT = 15.0
+
+# --- Services (dynamic_home.*) ---
+SERVICE_RESET_LEARNING = "reset_learning"
+SERVICE_SET_OBSERVE = "set_observe"
+SERVICE_RESET_FILTER = "reset_filter"
+SERVICE_RECALIBRATE = "recalibrate"
+SERVICE_BOOST = "boost"
+ATTR_ENABLED = "enabled"
+ATTR_MINUTES = "minutes"
+BOOST_MIN_DEFAULT = 15.0
+
+# --- Native events (fired on transitions only, never every cycle) ---
+EVENT_DEGRADED = f"{DOMAIN}_degraded"
+EVENT_CONFLICT = f"{DOMAIN}_conflict"
+EVENT_FILTER_DUE = f"{DOMAIN}_filter_due"
+EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
+
+# Guard key in hass.data[DOMAIN]: services are registered once for the whole
+# integration (not per entry) and removed when the last entry unloads.
+DATA_SERVICES_REGISTERED = "_services_registered"
+
+# --- Repairs (HA issue registry) ---
+# A DC zone is "degraded" when a mode is demanded but its required indoor source
+# is missing. Once it stays degraded longer than ISSUE_STALE_S we raise a repair
+# issue (a transient blip on restart should not nag the user).
+ISSUE_REQUIRED_SOURCE = "required_source_missing"
+ISSUE_STALE_S = 300.0
+LEARN_MORE_URL = "https://github.com/woody-box/dynamic-home"
 
 # How often the coordinator re-evaluates the control pipeline (seconds).
 UPDATE_INTERVAL_S = 60

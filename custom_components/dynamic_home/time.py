@@ -37,6 +37,12 @@ _TIMES: tuple[_TimeDesc, ...] = (
     _TimeDesc("schedule_off", "Schedule off", "mdi:clock-end",
               lambda c: c.schedule_off,
               lambda c, v: setattr(c, "schedule_off", v)),
+    _TimeDesc("quiet_start", "Quiet start", "mdi:weather-night",
+              lambda c: c.quiet_start,
+              lambda c, v: setattr(c, "quiet_start", v)),
+    _TimeDesc("quiet_end", "Quiet end", "mdi:weather-sunset-up",
+              lambda c: c.quiet_end,
+              lambda c, v: setattr(c, "quiet_end", v)),
 )
 
 
