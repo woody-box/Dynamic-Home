@@ -202,6 +202,29 @@ resto, sin depender de integraciones inestables.
 - ☐ Si la fuente primaria no responde, el forecast sigue disponible por la secundaria.
 - ☐ DC recibe forecast y DS recibe alertas sin configurar una integración meteo concreta.
 
+### 4.6 · Explicador de conflictos del bus (F02)
+
+**Objetivo:** hacer **observable el arbitraje del bus** — para cada consumidor,
+qué intent gana sobre él y por qué. Apoyo transversal (RNF-4) que acompaña a las
+fundacionales.
+
+- **REQ-BUS-1 (M):** **una entidad por consumidor** del bus (cada VMC, cada
+  persiana, y DC en su self-bias) que muestra qué intents le llegan y cuál gana.
+- **REQ-BUS-2 (M):** **estado = intent ganador**; **atributo = motivo**
+  (prioridad/TTL/origen). Sin la lista completa de descartados.
+- **REQ-BUS-3 (S):** las entidades cuelgan de un **dispositivo central nuevo**
+  "Dynamic Home · Bus" (identificador `(DOMAIN, "bus")`), no de cada módulo.
+- **REQ-BUS-4 (M):** **solo estado actual**; sin registro en logbook/historial de
+  conflictos.
+- **REQ-BUS-5 (S):** emite evento `dynamic_home_conflict` (F10/REQ-SVC) para
+  enrutar a notify/Telegram.
+
+**Dependencias:** bus (`SdhbHub` ya tiene source/intent/target/priority/ttl;
+basta un `explain(targets)`). **Habilita:** depuración de coordinación.
+**Criterios de aceptación:**
+- ☐ Cuando DC pide ganancia solar y DS quiere cerrar por viento, la entidad de esa persiana muestra el ganador y el motivo.
+- ☐ Cada consumidor tiene su entidad bajo el dispositivo "Bus".
+
 ---
 
 ## 5. Fase 1 — Transversales + DC avanzado (detalle)
@@ -591,6 +614,29 @@ de calidad de aire complementario a la VMC.
 - ☐ Un pico de PM con la campana apagada la enciende al nivel objetivo.
 - ☐ Al normalizar el PM (con hold), la campana vuelve a su estado previo.
 
+### 6.8 · Vida del filtro VMC (F08)
+
+**Objetivo:** réplica nativa del control de filtros — % de vida + recordatorio al
+umbral, sobre las `filter_hours` ya contabilizadas.
+
+- **REQ-FIL-1 (M):** **intervalo configurable** (`number` "Vida del filtro (h)"),
+  default **3650 h**; horas **totales simples** (ponderar por velocidad queda como
+  mejora futura).
+- **REQ-FIL-2 (M):** **sensor "% de vida del filtro"** = 100·(1 − filter_hours /
+  intervalo).
+- **REQ-FIL-3 (M):** **reset** mediante el **botón existente** (mecanismo offset,
+  como `dv_filtros_horas_offset`).
+- **REQ-FIL-4 (M):** **umbral único** (al 100% del intervalo); pre-aviso al 90%
+  opcional.
+- **REQ-FIL-5 (M):** **aviso** vía issue de **Repairs** (F07) + opción de
+  notificación persistente / evento `dynamic_home_filter_due` (F10) para Telegram.
+- **REQ-FIL-6 (C):** fecha/contador del último cambio, opcional (no por defecto).
+
+**Dependencias:** DV (`filter_hours`), F07 (aviso), F10 (evento).
+**Criterios de aceptación:**
+- ☐ Al llegar a las horas del intervalo, el % cae a 0 y se emite el issue de Repairs.
+- ☐ Pulsar el botón de reset devuelve el % a 100.
+
 ---
 
 ## 7. Fase 3 — DS (persianas) (detalle)
@@ -829,9 +875,9 @@ perfilado de cada Fxx; este documento las formaliza como requisitos verificables
 
 | Fase | Requisitos | Features origen |
 |------|-----------|-----------------|
-| 0 | REQ-ZON, REQ-INS, REQ-EMI, REQ-PRE, REQ-WEA | F24, F26, F25, F32, F33 |
+| 0 | REQ-ZON, REQ-INS, REQ-EMI, REQ-PRE, REQ-WEA, REQ-BUS | F24, F26, F25, F32, F33, F02 |
 | 1 | REQ-MOD, REQ-CMF, REQ-SCH, REQ-REP, REQ-SVC, REQ-ENE, REQ-PIC, REQ-DEM, REQ-CYC, REQ-WIN, REQ-MOH, REQ-ADY | F01, F23, F21/F29, F07, F10, F06, F03, F27, F09, F20, F22, F31 |
-| 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM | F11, F12, F13, F14, F28, F30, F35 |
+| 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM, REQ-FIL | F11, F12, F13, F14, F28, F30, F35, F08 |
 | 3 | REQ-GEO, REQ-NOC, REQ-MET, REQ-AMA | F15, F16, F17, F19 |
 | 4 | REQ-ENG, REQ-EAG, REQ-TAR, REQ-EPK, REQ-PVS (⚠️), REQ-VE (⚠️) | F34, F03, F04, F06 |
 
@@ -841,6 +887,82 @@ Congeladas (fuera de fases): **F05** (outdoor reset), **F18** (anti-helada).
 ## 10. Pendiente de redactar
 - **Criterios de aceptación** ampliados y casos de prueba por requisito (al entrar
   cada fase a implementación).
-- **Plan de migración** desde la suite YAML del usuario (coexistencia vía modo observación).
 - **Validación externa** de los requisitos ⚠️ (FV/batería/VE) por un usuario con
   esa instalación.
+
+---
+
+## 11. Plan de migración desde la suite YAML v4.2
+
+**Objetivo:** pasar de la suite YAML (helpers + automatizaciones) a la integración
+**sin cortes de servicio y sin que dos cerebros peleen por el mismo relé**.
+
+### 11.1 · Principio rector: el conflicto solo está en los actuadores
+
+- **Sensores = sin conflicto.** Leer un sensor (temperatura, CO₂, PM, HR, sol,
+  viento…) es **read-only**: la integración y el YAML pueden leer **lo mismo a la
+  vez** sin interferir. Mapear sensores nunca rompe nada.
+- **Actuadores = único conflicto.** Solo los **relés de velocidad de la VMC**, los
+  **motores de persiana** y el **relé de calefacción/válvula** pueden recibir
+  órdenes contradictorias. La regla de oro: **un actuador, un dueño en cada
+  momento**.
+- **Corolario:** se puede tener toda la integración **funcionando y validándose en
+  paralelo** al YAML mientras esté en **modo observación** (RNF-2), porque en
+  observe **calcula y publica pero no actúa**.
+
+### 11.2 · Las cuatro etapas (por módulo/actuador)
+
+1. **A · Instalar en observe.** Añadir la(s) instancia(s) del módulo, mapear
+   **sensores** (no hace falta tocar el YAML). Activar **"Observe only"**. La
+   integración calcula, publica al bus y expone sus decisiones, **sin mover nada**.
+2. **B · Observar y comparar.** Contrastar las decisiones de la integración contra
+   el comportamiento real del YAML usando los **sensores de observabilidad 1:1**
+   (biases DC, modo DV, target DS), el **explicador del bus (F02/REQ-BUS)** y el
+   `binary_sensor degraded` + **Repairs (F07)** para detectar mapeos incompletos.
+   No pasar de etapa hasta que coincida (o mejore) de forma consistente.
+3. **C · Cesión de control (cutover atómico).** En **una sola ventana de
+   mantenimiento por actuador**: **deshabilitar** la automatización YAML que manda
+   ese relé **y** quitar el "Observe only" del módulo **a la vez**. Nunca dejar los
+   dos activos sobre el mismo relé. Mantener los **helpers YAML deshabilitados (no
+   borrados)** como rollback inmediato.
+4. **D · Retirada.** Tras un período estable, borrar los helpers/automatizaciones
+   YAML de ese actuador. El **hardware de backup** (termostato analógico por la
+   entrada SW del Shelly) se conserva como red de seguridad final.
+
+### 11.3 · Orden recomendado (de menor a mayor riesgo)
+
+1. **DS · Persianas** — riesgo bajo (confort visual; el YAML ya protege por
+   viento/lluvia). Migrar **fachada por fachada** (`ds_f<azimut>`): cede una
+   fachada, observa el resto.
+2. **DV · Ventilación** — riesgo medio. Validar especialmente el **break-before-make**
+   de los relés de velocidad y el `dry_mode`/secado antes de ceder.
+3. **DC · Clima** — riesgo alto (confort + **anticondensación** = seguridad). Va el
+   **último**, pero conviene tenerlo **en observe desde el principio**: es el
+   cerebro que publica al bus (ganancia/protección solar), así que observándolo se
+   valida también lo que pedirá a DS/DV.
+
+> Las **peticiones de DC al bus** hacia DS solo tienen efecto cuando **ambos** han
+> cedido control; mientras DC esté en observe, publica pero DS (si ya cedió) puede
+> escucharle — validar este cruce en la etapa B de DC.
+
+### 11.4 · Reglas de seguridad durante la transición
+
+- **Cutover atómico por actuador** (11.2-C): jamás YAML + integración mandando el
+  mismo relé.
+- **Coexistencia con el backup hardware (F27/REQ-DEM):** el termostato analógico
+  puede actuar el relé por la entrada SW si cae la domótica; la integración debe
+  **detectar el estado real** del relé y **no pelearse** con él. Recomendado
+  aportar la señal real (opción c de REQ-DEM) antes del cutover de DC.
+- **Anti-pico (F03) durante la convivencia:** si se ceden varios actuadores
+  eléctricos a la vez, vigilar el pico de arranque; ceder **escalonado**.
+- **Rollback en segundos:** re-habilitar la automatización YAML y volver a poner el
+  módulo en observe.
+
+### 11.5 · Checklist de cesión por módulo (resumen)
+
+- ☐ Sensores requeridos mapeados (sin `degraded`/Repairs activos).
+- ☐ Decisiones validadas en observe vs YAML (etapa B superada).
+- ☐ Automatización(es) YAML del actuador **localizadas** y listas para deshabilitar.
+- ☐ Ventana de mantenimiento: deshabilitar YAML **+** quitar observe (atómico).
+- ☐ Helpers YAML deshabilitados (no borrados) como rollback.
+- ☐ Período de estabilización superado → retirada del YAML.
