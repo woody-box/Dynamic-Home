@@ -8,8 +8,6 @@ reset_learning:
     entity:
       integration: dynamic_home
       domain: climate
-    device:
-      integration: dynamic_home
 
 set_observe:
   name: Set observe (dry-run)
@@ -19,8 +17,6 @@ set_observe:
     covers or thermostats are driven.
   target:
     entity:
-      integration: dynamic_home
-    device:
       integration: dynamic_home
   fields:
     enabled:
@@ -37,14 +33,10 @@ reset_filter:
     entity:
       integration: dynamic_home
       domain: fan
-    device:
-      integration: dynamic_home
 
 recalibrate:
   name: Recalibrate now
   description: Forces an immediate re-evaluation of the targeted modules' pipeline.
   target:
     entity:
-      integration: dynamic_home
-    device:
       integration: dynamic_home
