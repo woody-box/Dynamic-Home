@@ -202,6 +202,29 @@ resto, sin depender de integraciones inestables.
 - ☐ Si la fuente primaria no responde, el forecast sigue disponible por la secundaria.
 - ☐ DC recibe forecast y DS recibe alertas sin configurar una integración meteo concreta.
 
+### 4.6 · Explicador de conflictos del bus (F02)
+
+**Objetivo:** hacer **observable el arbitraje del bus** — para cada consumidor,
+qué intent gana sobre él y por qué. Apoyo transversal (RNF-4) que acompaña a las
+fundacionales.
+
+- **REQ-BUS-1 (M):** **una entidad por consumidor** del bus (cada VMC, cada
+  persiana, y DC en su self-bias) que muestra qué intents le llegan y cuál gana.
+- **REQ-BUS-2 (M):** **estado = intent ganador**; **atributo = motivo**
+  (prioridad/TTL/origen). Sin la lista completa de descartados.
+- **REQ-BUS-3 (S):** las entidades cuelgan de un **dispositivo central nuevo**
+  "Dynamic Home · Bus" (identificador `(DOMAIN, "bus")`), no de cada módulo.
+- **REQ-BUS-4 (M):** **solo estado actual**; sin registro en logbook/historial de
+  conflictos.
+- **REQ-BUS-5 (S):** emite evento `dynamic_home_conflict` (F10/REQ-SVC) para
+  enrutar a notify/Telegram.
+
+**Dependencias:** bus (`SdhbHub` ya tiene source/intent/target/priority/ttl;
+basta un `explain(targets)`). **Habilita:** depuración de coordinación.
+**Criterios de aceptación:**
+- ☐ Cuando DC pide ganancia solar y DS quiere cerrar por viento, la entidad de esa persiana muestra el ganador y el motivo.
+- ☐ Cada consumidor tiene su entidad bajo el dispositivo "Bus".
+
 ---
 
 ## 5. Fase 1 — Transversales + DC avanzado (detalle)
@@ -591,6 +614,29 @@ de calidad de aire complementario a la VMC.
 - ☐ Un pico de PM con la campana apagada la enciende al nivel objetivo.
 - ☐ Al normalizar el PM (con hold), la campana vuelve a su estado previo.
 
+### 6.8 · Vida del filtro VMC (F08)
+
+**Objetivo:** réplica nativa del control de filtros — % de vida + recordatorio al
+umbral, sobre las `filter_hours` ya contabilizadas.
+
+- **REQ-FIL-1 (M):** **intervalo configurable** (`number` "Vida del filtro (h)"),
+  default **3650 h**; horas **totales simples** (ponderar por velocidad queda como
+  mejora futura).
+- **REQ-FIL-2 (M):** **sensor "% de vida del filtro"** = 100·(1 − filter_hours /
+  intervalo).
+- **REQ-FIL-3 (M):** **reset** mediante el **botón existente** (mecanismo offset,
+  como `dv_filtros_horas_offset`).
+- **REQ-FIL-4 (M):** **umbral único** (al 100% del intervalo); pre-aviso al 90%
+  opcional.
+- **REQ-FIL-5 (M):** **aviso** vía issue de **Repairs** (F07) + opción de
+  notificación persistente / evento `dynamic_home_filter_due` (F10) para Telegram.
+- **REQ-FIL-6 (C):** fecha/contador del último cambio, opcional (no por defecto).
+
+**Dependencias:** DV (`filter_hours`), F07 (aviso), F10 (evento).
+**Criterios de aceptación:**
+- ☐ Al llegar a las horas del intervalo, el % cae a 0 y se emite el issue de Repairs.
+- ☐ Pulsar el botón de reset devuelve el % a 100.
+
 ---
 
 ## 7. Fase 3 — DS (persianas) (detalle)
@@ -829,9 +875,9 @@ perfilado de cada Fxx; este documento las formaliza como requisitos verificables
 
 | Fase | Requisitos | Features origen |
 |------|-----------|-----------------|
-| 0 | REQ-ZON, REQ-INS, REQ-EMI, REQ-PRE, REQ-WEA | F24, F26, F25, F32, F33 |
+| 0 | REQ-ZON, REQ-INS, REQ-EMI, REQ-PRE, REQ-WEA, REQ-BUS | F24, F26, F25, F32, F33, F02 |
 | 1 | REQ-MOD, REQ-CMF, REQ-SCH, REQ-REP, REQ-SVC, REQ-ENE, REQ-PIC, REQ-DEM, REQ-CYC, REQ-WIN, REQ-MOH, REQ-ADY | F01, F23, F21/F29, F07, F10, F06, F03, F27, F09, F20, F22, F31 |
-| 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM | F11, F12, F13, F14, F28, F30, F35 |
+| 2 | REQ-ANT, REQ-SIL, REQ-DRY, REQ-BST, REQ-EFF, REQ-IAQ, REQ-CAM, REQ-FIL | F11, F12, F13, F14, F28, F30, F35, F08 |
 | 3 | REQ-GEO, REQ-NOC, REQ-MET, REQ-AMA | F15, F16, F17, F19 |
 | 4 | REQ-ENG, REQ-EAG, REQ-TAR, REQ-EPK, REQ-PVS (⚠️), REQ-VE (⚠️) | F34, F03, F04, F06 |
 
