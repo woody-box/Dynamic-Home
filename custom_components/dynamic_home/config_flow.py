@@ -138,7 +138,7 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         self._module = entry.data.get(const.CONF_MODULE)
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        cats = options_spec.categories(self._module)
+        cats = options_spec.categories(self._module, self.show_advanced_options)
         if not cats:
             return self.async_abort(reason="no_options")
         return self.async_show_menu(
@@ -148,7 +148,8 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         """Dispatch async_step_cat_<category> to a generic category handler."""
         if name.startswith("async_step_cat_"):
             cat = name[len("async_step_cat_"):]
-            if cat in options_spec.categories(self.__dict__.get("_module")):
+            adv = getattr(self, "show_advanced_options", False)
+            if cat in options_spec.categories(self.__dict__.get("_module"), adv):
                 async def handler(user_input=None, _cat=cat):
                     return await self._async_category(_cat, user_input)
                 return handler
@@ -166,7 +167,7 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         cfg = options_spec.fresh_config(self._module)
         o = self.entry.options
         out: dict = {}
-        for opt in options_spec.fields(self._module, cat):
+        for opt in options_spec.fields(self._module, cat, self.show_advanced_options):
             key = options_spec.option_key(opt)
             default = o.get(key, options_spec.current_value(cfg, opt))
             if isinstance(default, bool):
