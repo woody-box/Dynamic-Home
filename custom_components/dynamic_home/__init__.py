@@ -118,6 +118,13 @@ def _async_register_services(hass: HomeAssistant) -> None:
         for co in await _coordinators_for_call(hass, call):
             await co.async_request_refresh()
 
+    async def _boost(call: ServiceCall) -> None:
+        minutes = call.data.get(const.ATTR_MINUTES, const.BOOST_MIN_DEFAULT)
+        for co in await _coordinators_for_call(hass, call):
+            if isinstance(co, DvCoordinator):
+                co.start_boost(minutes)
+                await co.async_request_refresh()
+
     hass.services.async_register(
         const.DOMAIN, const.SERVICE_RESET_LEARNING, _reset_learning)
     hass.services.async_register(
@@ -128,12 +135,19 @@ def _async_register_services(hass: HomeAssistant) -> None:
         const.DOMAIN, const.SERVICE_RESET_FILTER, _reset_filter)
     hass.services.async_register(
         const.DOMAIN, const.SERVICE_RECALIBRATE, _recalibrate)
+    hass.services.async_register(
+        const.DOMAIN, const.SERVICE_BOOST, _boost,
+        schema=vol.Schema(
+            {vol.Optional(const.ATTR_MINUTES, default=const.BOOST_MIN_DEFAULT):
+             vol.All(vol.Coerce(float), vol.Range(min=1, max=240))},
+            extra=vol.ALLOW_EXTRA))
     hass.data[const.DOMAIN][const.DATA_SERVICES_REGISTERED] = True
 
 
 def _async_unregister_services(hass: HomeAssistant) -> None:
     for svc in (const.SERVICE_RESET_LEARNING, const.SERVICE_SET_OBSERVE,
-                const.SERVICE_RESET_FILTER, const.SERVICE_RECALIBRATE):
+                const.SERVICE_RESET_FILTER, const.SERVICE_RECALIBRATE,
+                const.SERVICE_BOOST):
         hass.services.async_remove(const.DOMAIN, svc)
     hass.data[const.DOMAIN].pop(const.DATA_SERVICES_REGISTERED, None)
 

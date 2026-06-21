@@ -355,7 +355,7 @@ automatizaciones y dashboards. **Eventos primero** (mantienen el Telegram).
 **Dependencias:** F01, F02, F07, F08 (emiten los eventos).
 **Criterios de aceptación:**
 - ☐ Un cambio de modo dispara `dynamic_home_mode_changed` con el modo nuevo.
-- ☐ `boost` fuerza V3 los minutos indicados y auto-revierte (cubre F14).
+- ☑ `boost` fuerza V3 los minutos indicados y auto-revierte (cubre F14).
 
 ### 5.6 · Energía y coste (F06)
 
@@ -575,8 +575,8 @@ override existente.
 
 **Dependencias:** F10 (servicio), timer de override (existe).
 **Criterios de aceptación:**
-- ☐ Invocar `boost(15 min)` fija V3 y vuelve al estado previo a los 15 min.
-- ☐ Re-invocar durante el boost reinicia la cuenta atrás.
+- ☑ Invocar `boost(15 min)` fija V3 y vuelve al estado previo a los 15 min.
+- ☑ Re-invocar durante el boost reinicia la cuenta atrás.
 
 ### 6.5 · Eficiencia del recuperador (F28)
 
@@ -1141,3 +1141,20 @@ el modo Sleep (F01) cuando exista.
 - ☐ `quiet_max_level=0` apaga; `=3` no capa.
 - ☐ Manual override / ducha / secado no se ven afectados por el cap.
 - ☐ Switch off por defecto → comportamiento idéntico al anterior.
+
+### 12.9 · F14 — Boost (V3 temporizado, DV)
+
+Servicio `dynamic_home.boost` (campo `minutes`, default 15) que fuerza la VMC a
+**V3** durante N minutos y **auto-revierte** al expirar (granularidad del ciclo,
+~60 s). Re-invocar **reinicia** la cuenta atrás. Es explícito: **bypasea** el cap
+de horas de silencio (F12) y la ruta auto, pero respeta el gate `permitida`
+(lockout/no permitido). Completa el hook de servicio que F10 dejó documentado.
+La duración por defecto vive en `BOOST_MIN_DEFAULT` (no hardcodeada en el motor);
+un `number`/`button` de azúcar UI queda como follow-up opcional (REQ-BST-1/3).
+
+**Aceptación:**
+
+- ☐ `boost(minutes=N)` → V3 inmediato (reason `boost`); al expirar vuelve al control normal.
+- ☐ Re-invocar reinicia el temporizador (`boost_until` se extiende).
+- ☐ Bypasea el cap de silencio pero no actúa si el módulo no está `permitida`.
+- ☐ Solo afecta a módulos DV del `target`.

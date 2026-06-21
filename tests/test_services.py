@@ -108,6 +108,34 @@ async def test_reset_filter_targets_vmc(hass: HomeAssistant) -> None:
     assert co.filter_hours == 0.0
 
 
+async def test_boost_forces_v3_then_reverts(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, VMC, "VMC")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await hass.services.async_call(
+        const.DOMAIN, const.SERVICE_BOOST,
+        {"entity_id": "fan.vmc", const.ATTR_MINUTES: 30}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.boost_until is not None
+    assert co.data.speed == 3 and co.data.reason == "boost"
+
+    # Re-triggering with a longer window restarts the countdown (REQ-BST-4).
+    first_until = co.boost_until
+    await hass.services.async_call(
+        const.DOMAIN, const.SERVICE_BOOST,
+        {"entity_id": "fan.vmc", const.ATTR_MINUTES: 60}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.boost_until > first_until
+
+    # Window elapsed -> next refresh auto-reverts (no longer boosting).
+    co.boost_until = 1.0          # far in the past
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.boost_until is None
+    assert co.data.reason != "boost"
+
+
 async def test_recalibrate_refreshes(hass: HomeAssistant) -> None:
     _seed(hass)
     entry = await _add(hass, CLIMATE, "Salon")

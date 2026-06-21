@@ -40,3 +40,24 @@ recalibrate:
   target:
     entity:
       integration: dynamic_home
+
+boost:
+  name: Boost (timed V3)
+  description: >-
+    Forces a VMC (DV) to V3 for a number of minutes, then auto-reverts to normal
+    control. Bypasses the quiet-hours cap.
+  target:
+    entity:
+      integration: dynamic_home
+      domain: fan
+  fields:
+    minutes:
+      name: Minutes
+      description: How long to hold V3 before reverting (default 15).
+      default: 15
+      selector:
+        number:
+          min: 1
+          max: 240
+          unit_of_measurement: min
+          mode: box

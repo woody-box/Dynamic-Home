@@ -376,6 +376,34 @@ def test_quiet_does_not_cap_manual_override():
     assert d.reason == "manual_override" and d.speed == 3
 
 
+# --- F14: timed V3 boost (service-driven, auto-reverting) ---
+def test_boost_forces_v3():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, boost_active=True, now_ts=0))
+    assert d.speed == 3 and d.reason == "boost"
+
+
+def test_boost_overrides_quiet_cap():
+    d = decide(_quiet_cfg(quiet_max_level=1), DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, boost_active=True, now_ts=0,
+                        weekday=0, minute_of_day=3 * 60))
+    assert d.speed == 3 and d.reason == "boost"
+
+
+def test_boost_inactive_is_normal():
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
+    d = decide(cfg, DvState(),
+               DvInputs(co2_raw=500, pm_raw=5, boost_active=False, now_ts=0,
+                        trigger_is_iaq=True))
+    assert d.reason == "iaq"
+
+
+def test_boost_respects_not_permitted():
+    d = decide(_cfg(), DvState(), DvInputs(permitida=False, boost_active=True))
+    assert d.speed == 0
+
+
 def test_auto_clean_air_v1():
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
     d = decide(cfg, DvState(),

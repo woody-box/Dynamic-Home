@@ -175,6 +175,7 @@ class DvInputs:
 
     manual_override: bool = False
     override_v3: bool = False
+    boost_active: bool = False        # F14: timed V3 boost (service-driven)
 
     # Explicit shower override (timer/UI). If None, shower is derived from RH.
     shower_override: bool = False
@@ -433,6 +434,11 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     # --- Mode precedence (SPEC §4) ---
     if ins.manual_override:
         return DvDecision(3 if ins.override_v3 else 2, "manual_override")
+
+    # Timed V3 boost (F14): explicit, auto-reverting; bypasses the auto path and
+    # the quiet-hours cap (it is a deliberate user request).
+    if ins.boost_active:
+        return DvDecision(3, "boost")
 
     # Dry mode (F13): gate ventilation on a dew-point advantage (dp_diff) with
     # hysteresis. Only ventilate to dry when the outdoor air is actually drier;

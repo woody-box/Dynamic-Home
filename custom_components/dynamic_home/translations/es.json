@@ -562,6 +562,16 @@
     "recalibrate": {
       "name": "Recalibrar ahora",
       "description": "Fuerza una reevaluación inmediata del pipeline de los módulos seleccionados."
+    },
+    "boost": {
+      "name": "Refuerzo (V3 temporizado)",
+      "description": "Fuerza la VMC a V3 durante unos minutos y luego vuelve sola al control normal. Ignora el límite de horas de silencio.",
+      "fields": {
+        "minutes": {
+          "name": "Minutos",
+          "description": "Cuánto mantener V3 antes de revertir (por defecto 15)."
+        }
+      }
     }
   },
   "issues": {

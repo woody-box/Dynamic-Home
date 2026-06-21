@@ -77,7 +77,10 @@ SERVICE_RESET_LEARNING = "reset_learning"
 SERVICE_SET_OBSERVE = "set_observe"
 SERVICE_RESET_FILTER = "reset_filter"
 SERVICE_RECALIBRATE = "recalibrate"
+SERVICE_BOOST = "boost"
 ATTR_ENABLED = "enabled"
+ATTR_MINUTES = "minutes"
+BOOST_MIN_DEFAULT = 15.0
 
 # --- Native events (fired on transitions only, never every cycle) ---
 EVENT_DEGRADED = f"{DOMAIN}_degraded"

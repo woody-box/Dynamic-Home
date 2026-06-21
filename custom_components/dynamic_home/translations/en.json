@@ -562,6 +562,16 @@
     "recalibrate": {
       "name": "Recalibrate now",
       "description": "Forces an immediate re-evaluation of the targeted modules' pipeline."
+    },
+    "boost": {
+      "name": "Boost (timed V3)",
+      "description": "Forces a VMC to V3 for a number of minutes, then auto-reverts. Bypasses the quiet-hours cap.",
+      "fields": {
+        "minutes": {
+          "name": "Minutes",
+          "description": "How long to hold V3 before reverting (default 15)."
+        }
+      }
     }
   },
   "issues": {

@@ -78,6 +78,8 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.quiet_max_level = 1
         self.quiet_start = dtime(23, 0)
         self.quiet_end = dtime(7, 0)
+        # Timed V3 boost (F14): epoch until which boost is active (None = off).
+        self.boost_until: float | None = None
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise.
@@ -116,6 +118,10 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
     def reset_filter_hours(self) -> None:
         self.filter_hours = 0.0
         self._filter_due_armed = True
+
+    def start_boost(self, minutes: float) -> None:
+        """Force V3 for ``minutes`` (F14); auto-reverts when the window elapses."""
+        self.boost_until = dt_util.now().timestamp() + minutes * 60
 
     @property
     def filter_life_pct(self) -> float:
@@ -252,6 +258,11 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
         self.in_grace = grace_active
 
+        # Timed V3 boost (F14): active until its window elapses, then auto-clears.
+        boost_active = self.boost_until is not None and now_ts < self.boost_until
+        if self.boost_until is not None and now_ts >= self.boost_until:
+            self.boost_until = None
+
         co2_raw = self._num(const.CONF_CO2)
         pm_raw = self._num(const.CONF_PM25)
         a_co2_v2, a_co2_v3, a_pm_v2, a_pm_v3 = self._update_adaptive(
@@ -269,6 +280,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             t_ext=self._num(const.CONF_T_EXT),
             aqi=self._num(const.CONF_AQI),
             current_speed=self.current_speed,
+            boost_active=boost_active,
             permitida=None,  # computed by the engine (schedule + failsafe gate)
             auto_mode=self.auto_mode,
             sdhb_intent=self.bus_explain["winner"],
