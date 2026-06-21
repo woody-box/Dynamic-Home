@@ -119,6 +119,12 @@
           "pm_ema_enabled": "Suavizar PM2.5 (EMA)",
           "co2_ema_alpha": "Alpha EMA CO₂",
           "pm_ema_alpha": "Alpha EMA PM2.5"
+        },
+        "data_description": {
+          "co2_ema_enabled": "Suaviza el CO₂ con una EMA antes de decidir (menos ruido).",
+          "pm_ema_enabled": "Suaviza el PM2.5 con una EMA antes de decidir.",
+          "co2_ema_alpha": "Factor EMA del CO₂ (mayor = más reactivo, menos suavizado).",
+          "pm_ema_alpha": "Factor EMA del PM2.5 (mayor = más reactivo)."
         }
       },
       "cat_freecool": {
@@ -127,6 +133,11 @@
           "freecool_t_ext_min": "Temp. ext. mínima (°C)",
           "freecool_delta_on": "ΔT activación (°C)",
           "freecool_delta_off": "ΔT desactivación (°C)"
+        },
+        "data_description": {
+          "freecool_t_ext_min": "No hacer free-cooling por debajo de esta temp. exterior (demasiado frío).",
+          "freecool_delta_on": "ΔT interior−exterior que inicia el free-cooling.",
+          "freecool_delta_off": "ΔT que detiene el free-cooling (histéresis)."
         }
       },
       "cat_hostile": {
@@ -135,6 +146,11 @@
           "hostile_t1": "Umbral AQI 1",
           "hostile_t2": "Umbral AQI 2",
           "hostile_t3": "Umbral AQI 3"
+        },
+        "data_description": {
+          "hostile_t1": "AQI exterior que limita la VMC a V2 (exterior empezando a ser malo).",
+          "hostile_t2": "AQI exterior que limita la VMC a V1.",
+          "hostile_t3": "AQI exterior que apaga la VMC (no meter aire muy malo)."
         }
       },
       "cat_dry": {
@@ -143,6 +159,11 @@
           "dry_v2_delta": "ΔT seco V2 (°C)",
           "dry_v3_delta": "ΔT seco V3 (°C)",
           "dew_spread_min": "Margen punto rocío (°C)"
+        },
+        "data_description": {
+          "dry_v2_delta": "Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2.",
+          "dry_v3_delta": "Ventaja de rocío para secar a V3.",
+          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación."
         }
       },
       "cat_failsafe": {
@@ -153,6 +174,13 @@
           "trip_window_s": "Ventana de fallos (s)",
           "trip_limit": "Límite de fallos",
           "lockout_s": "Bloqueo (s)"
+        },
+        "data_description": {
+          "stale_threshold_s": "Un sensor vital más viejo que esto (s) cuenta como fallo.",
+          "startup_grace_s": "Gracia tras arrancar antes de que pueda saltar el failsafe (s).",
+          "trip_window_s": "Ventana (s) en la que se cuentan los fallos repetidos.",
+          "trip_limit": "Fallos dentro de la ventana que arman un bloqueo.",
+          "lockout_s": "Cuánto dura el bloqueo del failsafe (s)."
         }
       },
       "cat_shower": {
@@ -174,6 +202,9 @@
         "title": "Umbrales adaptativos",
         "data": {
           "adaptive_min_samples": "Muestras mínimas"
+        },
+        "data_description": {
+          "adaptive_min_samples": "Lecturas necesarias antes de usar umbrales IAQ adaptativos."
         }
       },
       "cat_positions": {
@@ -185,6 +216,14 @@
           "winter_night_pct": "Noche invierno (%)",
           "weather_max_open_pct": "Meteo máx. (%)",
           "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)"
+        },
+        "data_description": {
+          "rain_close_pct": "Posición de la persiana cuando llueve (protección).",
+          "freecool_max_open_pct": "Apertura máx. permitida durante el free-cooling.",
+          "summer_min_open_pct": "Apertura mínima que se mantiene en verano.",
+          "winter_night_pct": "Posición en noches de invierno (cerrar para aislar).",
+          "weather_max_open_pct": "Apertura máx. bajo una alerta meteo.",
+          "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración)."
         }
       },
       "cat_thermal": {
@@ -192,6 +231,10 @@
         "data": {
           "freecool_delta": "ΔT free-cool (°C)",
           "hot_delta": "ΔT calor (°C)"
+        },
+        "data_description": {
+          "freecool_delta": "ΔT interior−exterior que justifica abrir para free-cooling.",
+          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo)."
         }
       },
       "cat_wind": {
@@ -200,6 +243,11 @@
           "wind_limit_kmh": "Límite de viento (km/h)",
           "wind_cap_span_kmh": "Rango cap viento (km/h)",
           "wind_cap_hyst_kmh": "Histéresis cap viento (km/h)"
+        },
+        "data_description": {
+          "wind_limit_kmh": "Velocidad de viento que fuerza el cierre protector.",
+          "wind_cap_span_kmh": "Rango por encima del límite en el que se limita progresivamente la apertura.",
+          "wind_cap_hyst_kmh": "Histéresis para soltar el cap de viento."
         }
       },
       "cat_slew": {
@@ -207,6 +255,10 @@
         "data": {
           "slew_enabled": "Limitar slew rate",
           "slew_step_pct": "Paso slew (%)"
+        },
+        "data_description": {
+          "slew_enabled": "Mover la persiana por pasos en vez de saltar (más suave, menos arranques de motor).",
+          "slew_step_pct": "Máx. % que cambia la posición por paso."
         }
       },
       "cat_geometry": {
@@ -214,6 +266,10 @@
         "data": {
           "window_height_cm": "Altura ventana (cm)",
           "overhang_cm": "Voladizo (cm)"
+        },
+        "data_description": {
+          "window_height_cm": "Altura de la ventana para la geometría de penetración solar.",
+          "overhang_cm": "Profundidad del voladizo/alero sobre la ventana."
         }
       },
       "cat_setpoints": {
@@ -264,6 +320,15 @@
           "bias_ext_cool_strong": "Frío fuerte (°C)",
           "bias_ext_cool_mild": "Frío suave (°C)",
           "insulation_factor": "Factor aislamiento"
+        },
+        "data_description": {
+          "ext_cold_threshold": "Temp. exterior en o por debajo de la cual entra el bias de frío (compensación por frío).",
+          "ext_hot_threshold": "Temp. exterior en o por encima de la cual entra el bias de calor (compensación por calor).",
+          "bias_ext_heat_strong": "Bias de calefacción cuando hace claramente frío (bajo el umbral).",
+          "bias_ext_heat_mild": "Bias de calefacción en la banda suave justo por encima del umbral de frío.",
+          "bias_ext_cool_strong": "Bias de refrigeración cuando hace claramente calor.",
+          "bias_ext_cool_mild": "Bias de refrigeración en la banda suave cerca del umbral de calor.",
+          "insulation_factor": "Multiplicador 0–1 del bias exterior: bájalo en viviendas bien aisladas."
         }
       },
       "cat_bus": {
@@ -271,6 +336,10 @@
         "data": {
           "sdhb_bias_solar_gain_heat": "Ganancia solar calor (°C)",
           "sdhb_bias_solar_shield_cool": "Protección solar frío (°C)"
+        },
+        "data_description": {
+          "sdhb_bias_solar_gain_heat": "Alivio de consigna cuando DC recibe del bus una intención de ganancia solar en calefacción (el sol calienta gratis).",
+          "sdhb_bias_solar_shield_cool": "Subida de consigna cuando DC recibe protección solar en refrigeración."
         }
       },
       "cat_vmc": {
@@ -282,6 +351,14 @@
           "vmc_bias_cool_1": "Bias frío V 1",
           "vmc_bias_cool_2": "Bias frío V 2",
           "vmc_bias_cool_3": "Bias frío V 3"
+        },
+        "data_description": {
+          "vmc_bias_heat_1": "Compensación en calefacción con la VMC a V1 (la ventilación carga la estancia).",
+          "vmc_bias_heat_2": "Compensación en calefacción con la VMC a V2.",
+          "vmc_bias_heat_3": "Compensación en calefacción con la VMC a V3.",
+          "vmc_bias_cool_1": "Compensación en refrigeración con la VMC a V1.",
+          "vmc_bias_cool_2": "Compensación en refrigeración con la VMC a V2.",
+          "vmc_bias_cool_3": "Compensación en refrigeración con la VMC a V3."
         }
       },
       "cat_trend": {
@@ -296,6 +373,17 @@
           "lead_max_h": "Lead máx. (h)",
           "trend_deadband_cph": "Banda muerta (°C/h)",
           "trend_ema_alpha": "Alpha EMA tendencia"
+        },
+        "data_description": {
+          "trend_lead_h": "Anticipación de respaldo (horas) cuando faltan temperaturas para el modelo.",
+          "trend_max_shift": "Máx. °C que la tendencia puede mover el target por ciclo (anti-pico).",
+          "lead_base_h": "Horizonte base de anticipación (horas).",
+          "lead_per_degree_h": "Anticipación extra por °C de diferencia interior/exterior (inercia).",
+          "lead_wind_h_per_kmh": "Anticipación extra por km/h de viento (más pérdidas).",
+          "lead_min_h": "Tope inferior del lead calculado (horas).",
+          "lead_max_h": "Tope superior del lead calculado (horas).",
+          "trend_deadband_cph": "Tendencia por debajo de esto (°C/h) se trata como cero (ruido).",
+          "trend_ema_alpha": "Suavizado de la EMA de tendencia (mayor = más reactivo)."
         }
       },
       "cat_brake": {
@@ -307,6 +395,14 @@
           "brake_biases_1": "Bias freno 1",
           "brake_biases_2": "Bias freno 2",
           "brake_biases_3": "Bias freno 3"
+        },
+        "data_description": {
+          "brake_thresholds_1": "Velocidad de tendencia (°C/h) para el paso 1 del freno (solo si la tendencia ya ayuda al modo).",
+          "brake_thresholds_2": "Velocidad de tendencia (°C/h) para el paso 2 del freno.",
+          "brake_thresholds_3": "Velocidad de tendencia (°C/h) para el paso 3 del freno.",
+          "brake_biases_1": "°C que resta el freno en el paso 1 para evitar sobrepasar.",
+          "brake_biases_2": "°C que resta el freno en el paso 2.",
+          "brake_biases_3": "°C que resta el freno en el paso 3."
         }
       },
       "cat_forecast": {
@@ -315,6 +411,11 @@
           "forecast_gain": "Ganancia forecast",
           "forecast_cap": "Tope forecast (°C)",
           "forecast_window_h": "Ventana forecast (h)"
+        },
+        "data_description": {
+          "forecast_gain": "Cuánto relaja la consigna el forecast (°C por °C de ayuda prevista). Solo frena, nunca empuja.",
+          "forecast_cap": "Máx. °C que puede aplicar el bias de forecast.",
+          "forecast_window_h": "Ventana de anticipación (horas) que se explora buscando el extremo que ayuda."
         }
       },
       "cat_adaptive_lead": {
@@ -330,12 +431,27 @@
           "adapt_off_window_h": "Ventana de asentamiento (h)",
           "lead_adaptive_min_h": "Lead adapt. mín. (h)",
           "lead_adaptive_max_h": "Lead adapt. máx. (h)"
+        },
+        "data_description": {
+          "adapt_alpha": "Suavizado EMA de la tasa/overshoot/retardo aprendidos.",
+          "adapt_gain_lr": "Paso de aprendizaje hacia el lead objetivo en cada ciclo.",
+          "adapt_overshoot_target": "Overshoot tolerado (°C) antes de corregir el lead.",
+          "adapt_rate_floor_cph": "Suelo de la tasa de calentamiento/enfriamiento aprendida (evita dividir por cero).",
+          "adapt_lag_k": "Peso del retardo térmico aprendido en el lead.",
+          "adapt_on_rate_min_dt_h": "Duración ON mínima (h) para fiarse de una muestra de tasa.",
+          "adapt_on_rate_min_dt": "Cambio de temperatura mínimo (°C) para fiarse de una muestra.",
+          "adapt_off_window_h": "Ventana (h) vigilada tras apagar para aprender overshoot y retardo.",
+          "lead_adaptive_min_h": "Tope inferior del lead aprendido (horas).",
+          "lead_adaptive_max_h": "Tope superior del lead aprendido (horas)."
         }
       },
       "cat_condensation": {
         "title": "Condensación",
         "data": {
           "dew_spread_min": "Margen punto rocío (°C)"
+        },
+        "data_description": {
+          "dew_spread_min": "Riesgo de condensación cuando la temp. interior está a este margen del punto de rocío (seguridad de suelo refrescante)."
         }
       },
       "cat_facade": {
@@ -343,6 +459,10 @@
         "data": {
           "facade_gain_heat": "Ganancia fachada calor (°C)",
           "facade_gain_cool": "Ganancia fachada frío (°C)"
+        },
+        "data_description": {
+          "facade_gain_heat": "Alivio máx. de consigna por fachadas soleadas abiertas en calefacción (ganancia solar gratis).",
+          "facade_gain_cool": "Alivio máx. de consigna por fachadas soleadas en refrigeración."
         }
       }
     },
