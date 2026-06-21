@@ -75,6 +75,8 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.schedule_off = dtime(23, 0)
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
+        # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise.
+        self.anticip_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)
         self._pm_hist: deque[float] = deque(maxlen=10080)
         # Bus-conflict observability.
@@ -139,6 +141,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
                                   self._hw(const.CONF_HUM_EXT))
         cfg.adaptive_enabled = self.adaptive_enabled
+        cfg.anticip_enabled = self.anticip_enabled
         if self.schedule_enabled and self.schedule_on and self.schedule_off:
             on_m = self.schedule_on.hour * 60 + self.schedule_on.minute
             off_m = self.schedule_off.hour * 60 + self.schedule_off.minute

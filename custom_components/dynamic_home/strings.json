@@ -91,7 +91,9 @@
           "cat_adaptive_lead": "Adaptive lead",
           "cat_condensation": "Condensation",
           "cat_facade": "Facade bias",
-          "preset": "Apply a preset"
+          "preset": "Apply a preset",
+          "cat_anticipatory": "Anticipatory boost",
+          "cat_filter": "Filter life"
         }
       },
       "cat_iaq": {
@@ -496,6 +498,27 @@
         },
         "data_description": {
           "filter_life_hours": "Total hours a filter lasts before replacement; the filter-life % sensor counts down from this value."
+        }
+      },
+      "cat_anticipatory": {
+        "title": "Anticipatory boost",
+        "data": {
+          "anticip_co2_rate_on": "CO₂ rate on (ppm/h)",
+          "anticip_co2_rate_off": "CO₂ rate off (ppm/h)",
+          "anticip_pm_rate_on": "PM2.5 rate on (µg/m³/h)",
+          "anticip_pm_rate_off": "PM2.5 rate off (µg/m³/h)",
+          "anticip_hold_s": "Hold (s)",
+          "anticip_level": "Anticipatory speed",
+          "anticip_ema_alpha": "Rate EMA alpha"
+        },
+        "data_description": {
+          "anticip_co2_rate_on": "CO₂ rise rate (ppm/h) that pre-boosts ventilation before the absolute level is reached.",
+          "anticip_co2_rate_off": "Rate below which the anticipatory boost releases (hysteresis).",
+          "anticip_pm_rate_on": "PM2.5 rise rate (µg/m³/h) that pre-boosts ventilation.",
+          "anticip_pm_rate_off": "PM2.5 rate below which the anticipatory boost releases.",
+          "anticip_hold_s": "Minimum hold so a brief spike doesn't cause oscillation (seconds).",
+          "anticip_level": "Target speed while a steep rise is detected (V1/V2/V3).",
+          "anticip_ema_alpha": "Smoothing of the slope itself (higher = more reactive)."
         }
       }
     },

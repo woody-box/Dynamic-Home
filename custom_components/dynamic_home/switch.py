@@ -68,6 +68,10 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c: c.dry_mode_enabled,
         lambda c, v: setattr(c, "dry_mode_enabled", v)),
     _ToggleDesc(
+        "anticipatory", "Anticipatory boost", "mdi:trending-up",
+        lambda c: c.anticip_enabled,
+        lambda c, v: setattr(c, "anticip_enabled", v)),
+    _ToggleDesc(
         "schedule", "Schedule", "mdi:calendar-clock",
         lambda c: c.schedule_enabled,
         lambda c, v: setattr(c, "schedule_enabled", v)),

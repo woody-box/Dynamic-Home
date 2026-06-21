@@ -19,6 +19,8 @@ from dv_engine import (  # noqa: E402
     compute_freecool,
     decide,
     in_schedule,
+    update_anticip,
+    update_anticip_rates,
     update_ema,
     update_failsafe,
     update_shower,
@@ -151,6 +153,126 @@ def test_dry_gate_resets_when_dry_mode_off():
 def test_dry_gate_none_dp_diff_falls_through():
     d = decide(_dry_cfg(), DvState(), _dry_ins(None))
     assert d.reason == "iaq"
+
+
+# --- F11: anticipatory ventilation (CO2/PM slope detector) ---
+def _anticip_cfg(**kw):
+    base = dict(co2_ema_enabled=False, pm_ema_enabled=False,
+                anticip_enabled=True, anticip_co2_rate_on=400,
+                anticip_co2_rate_off=150, anticip_pm_rate_on=20,
+                anticip_pm_rate_off=8, anticip_hold_s=600,
+                anticip_level=2, anticip_ema_alpha=1.0)
+    base.update(kw)
+    return _cfg(**base)
+
+
+def _ains(co2, pm, now_ts, **kw):
+    base = dict(co2_raw=co2, pm_raw=pm, current_speed=1, now_ts=now_ts,
+                trigger_is_iaq=False)
+    base.update(kw)
+    return DvInputs(**base)
+
+
+def test_anticip_rates_bootstrap_then_slope():
+    cfg, st = _anticip_cfg(), DvState()
+    update_anticip_rates(st, cfg, 100.0, 600, 5)            # bootstrap -> rate 0
+    assert st.anticip_co2_rate == 0.0 and st.anticip_pm_rate == 0.0
+    update_anticip_rates(st, cfg, 100.0 + 3600, 1000, 5)    # +400 ppm over 1 h
+    assert st.anticip_co2_rate == 400.0
+    assert st.anticip_pm_rate == 0.0
+
+
+def test_anticip_rates_dt_guard():
+    cfg, st = _anticip_cfg(), DvState()
+    update_anticip_rates(st, cfg, 100.0, 600, 5)            # bootstrap
+    update_anticip_rates(st, cfg, 100.0, 800, 5)            # dt == 0 -> ignored
+    assert st.anticip_co2_rate == 0.0
+    update_anticip_rates(st, cfg, 50.0, 800, 5)             # dt < 0 -> ignored
+    assert st.anticip_co2_rate == 0.0
+
+
+def test_anticip_detector_on_off_hold():
+    cfg, st = _anticip_cfg(), DvState()
+    st.anticip_co2_rate = 500                               # >= on (400)
+    assert update_anticip(st, cfg, 100) is True
+    assert st.anticip_hold_until == 100 + 600
+    st.anticip_co2_rate = 50                                # below off, pm 0
+    assert update_anticip(st, cfg, 200) is True             # within hold -> stays
+    assert update_anticip(st, cfg, 800) is False            # past hold & below off
+
+
+def test_anticip_detector_pm_channel():
+    cfg, st = _anticip_cfg(), DvState()
+    st.anticip_pm_rate = 25                                 # >= on (20)
+    assert update_anticip(st, cfg, 100) is True
+
+
+def test_anticip_detector_disabled_keeps_hold():
+    cfg = _anticip_cfg(anticip_enabled=False)
+    st = DvState(anticip_active=True, anticip_hold_until=500)
+    assert update_anticip(st, cfg, 200) is True             # within hold
+    assert update_anticip(st, cfg, 600) is False            # past hold -> off
+
+
+def test_anticip_steep_co2_lifts_to_level():
+    cfg, st = _anticip_cfg(), DvState()
+    d1 = decide(cfg, st, _ains(600, 5, 100.0))             # bootstrap, clean -> V1
+    assert d1.speed == 1 and d1.reason in ("iaq", "hold_antiflap")
+    # +280 ppm over 30 min = 560 ppm/h >= on, while 880 < co2_v2 (900) -> base V1.
+    d2 = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
+    assert d2.reason == "anticipatory" and d2.speed == 2
+
+
+def test_anticip_flat_trend_no_lift():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d = decide(cfg, st, _ains(605, 5, 100.0 + 1800))       # ~10 ppm/h
+    assert d.reason != "anticipatory" and d.speed == 1
+
+
+def test_anticip_hold_then_release():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d2 = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
+    assert d2.reason == "anticipatory"
+    # within hold, slope now flat -> latch keeps it on
+    d3 = decide(cfg, st, _ains(882, 5, 100.0 + 1860))
+    assert d3.reason == "anticipatory"
+    # past hold, slope low -> releases
+    d4 = decide(cfg, st, _ains(820, 5, 100.0 + 2600))
+    assert d4.reason != "anticipatory"
+
+
+def test_anticip_pm_driven_lift():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(500, 5, 100.0))
+    # +8 µg/m³ over 20 min = 24 µg/m³/h >= on, while 13 < pm_v2 (15) -> base V1.
+    d = decide(cfg, st, _ains(500, 13, 100.0 + 1200))
+    assert d.reason == "anticipatory" and d.speed == 2
+
+
+def test_anticip_does_not_override_higher_base():
+    cfg, st = _anticip_cfg(), DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d = decide(cfg, st, _ains(1400, 5, 100.0 + 1800))      # base V3
+    assert d.speed == 3 and d.reason != "anticipatory"
+
+
+def test_anticip_hostile_cap_still_applies():
+    cfg = _anticip_cfg(hostile_enabled=True, hostile_t1=50, hostile_t2=100,
+                       hostile_t3=150)
+    st = DvState()
+    decide(cfg, st, _ains(600, 5, 100.0, aqi=120))
+    d = decide(cfg, st, _ains(880, 5, 100.0 + 1800, aqi=120))
+    assert d.reason == "hostile_cap_v1" and d.speed == 1
+
+
+def test_anticip_disabled_no_lift():
+    cfg = _anticip_cfg(anticip_enabled=False)
+    st = DvState()
+    decide(cfg, st, _ains(600, 5, 100.0))
+    d = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
+    assert d.reason != "anticipatory"
 
 
 def test_auto_clean_air_v1():

@@ -498,8 +498,8 @@ lead de DC; modelado como el refuerzo de ducha/humedad pero con calidad de aire.
 
 **Dependencias:** DV (EMAs existentes), F30 (contaminantes), F32 (presencia opc.).
 **Criterios de aceptación:**
-- ☐ Una subida brusca de CO₂ eleva la velocidad antes de alcanzar el umbral fijo.
-- ☐ Un pico transitorio dentro del `hold` no provoca oscilación de velocidad.
+- ☑ Una subida brusca de CO₂ eleva la velocidad antes de alcanzar el umbral fijo.
+- ☑ Un pico transitorio dentro del `hold` no provoca oscilación de velocidad.
 
 ### 6.2 · Horas de silencio (F12)
 
@@ -1065,3 +1065,22 @@ velocidad (V1/V2/V3 por `dp_v2/v3_delta`) no cambia. Parámetros nuevos
   inactivo no se arma dentro de la banda → no oscila.
 - ☐ `dp_diff None` / `dry_mode` off / sin `dew_risk` → no seca (estado reseteado).
 - ☐ `dry_margin` y `dry_hys` configurables en opciones de la VMC.
+
+### 12.6 · F11 — Ventilación anticipatoria (DV)
+
+La VMC pre-ventila cuando CO₂ o PM **suben rápido**: un detector con histéresis
+on/off + hold sobre la **pendiente** (derivada EMA) de cada contaminante adelanta
+el salto de velocidad antes de cruzar el umbral de nivel absoluto. Modelado como
+el refuerzo de ducha. Activable por **switch** ("Anticipatory boost"). Parámetros
+nuevos (categoría "anticipatory"): `anticip_co2_rate_on/off`,
+`anticip_pm_rate_on/off`, `anticip_hold_s`, `anticip_level`; avanzado:
+`anticip_ema_alpha`.
+
+**Aceptación:**
+
+- ☐ Subida brusca de CO₂/PM (pendiente ≥ umbral on) eleva a `anticip_level` con
+  reason `anticipatory`, aun en un tick de reloj (sin trigger IAQ).
+- ☐ Tendencia plana no eleva; un pico dentro del `hold` no oscila (histéresis).
+- ☐ No baja una base ya mayor; `hostile`/`sdhb_quiet` siguen capando por encima.
+- ☐ `dt<=0` o primera muestra → pendiente 0 (no dispara).
+- ☐ Switch off por defecto → comportamiento idéntico al anterior.

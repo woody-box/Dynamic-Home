@@ -91,7 +91,9 @@
           "cat_adaptive_lead": "Lead adaptativo",
           "cat_condensation": "Condensación",
           "cat_facade": "Bias de fachadas",
-          "preset": "Aplicar un preset"
+          "preset": "Aplicar un preset",
+          "cat_anticipatory": "Refuerzo anticipatorio",
+          "cat_filter": "Vida del filtro"
         }
       },
       "cat_iaq": {
@@ -496,6 +498,27 @@
         },
         "data_description": {
           "filter_life_hours": "Horas totales que dura un filtro antes de cambiarlo; el sensor de % de vida del filtro descuenta desde este valor."
+        }
+      },
+      "cat_anticipatory": {
+        "title": "Refuerzo anticipatorio",
+        "data": {
+          "anticip_co2_rate_on": "Pendiente CO₂ act. (ppm/h)",
+          "anticip_co2_rate_off": "Pendiente CO₂ desact. (ppm/h)",
+          "anticip_pm_rate_on": "Pendiente PM2.5 act. (µg/m³/h)",
+          "anticip_pm_rate_off": "Pendiente PM2.5 desact. (µg/m³/h)",
+          "anticip_hold_s": "Mantener (s)",
+          "anticip_level": "Velocidad anticipatoria",
+          "anticip_ema_alpha": "Alpha EMA pendiente"
+        },
+        "data_description": {
+          "anticip_co2_rate_on": "Velocidad de subida de CO₂ (ppm/h) que adelanta el refuerzo antes de cruzar el umbral absoluto.",
+          "anticip_co2_rate_off": "Pendiente por debajo de la cual se desactiva el refuerzo (histéresis).",
+          "anticip_pm_rate_on": "Velocidad de subida de PM2.5 (µg/m³/h) que adelanta el refuerzo.",
+          "anticip_pm_rate_off": "Pendiente de PM2.5 por debajo de la cual se desactiva el refuerzo.",
+          "anticip_hold_s": "Tiempo mínimo de mantenimiento para que un pico breve no oscile (segundos).",
+          "anticip_level": "Velocidad objetivo mientras se detecta una subida brusca (V1/V2/V3).",
+          "anticip_ema_alpha": "Suavizado de la propia pendiente (mayor = más reactivo)."
         }
       }
     },

@@ -195,6 +195,25 @@ async def test_dry_mode_anticondensation(hass: HomeAssistant) -> None:
     assert co.data.speed >= 2
 
 
+async def test_anticipatory_switch_wires_to_cfg(hass: HomeAssistant) -> None:
+    """F11: the anticipatory switch exists and its gate reaches the engine cfg."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    reg = er.async_get(hass)
+    assert reg.async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_anticipatory") is not None
+    # Default off; flipping the coordinator gate reaches the engine config.
+    assert co.anticip_enabled is False
+    assert co._cfg().anticip_enabled is False
+    co.anticip_enabled = True
+    assert co._cfg().anticip_enabled is True
+
+
 async def test_dry_mode_blocked_when_outdoor_humid(hass: HomeAssistant) -> None:
     """F13: with the outdoor air as humid as indoors, drying must NOT ventilate."""
     async_mock_service(hass, "switch", "turn_on")

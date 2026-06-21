@@ -85,6 +85,17 @@ class DvConfig:
     adaptive_enabled: bool = False
     adaptive_min_samples: int = 100   # min readings before percentiles are used
 
+    # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise (the
+    # EMA-smoothed derivative), with on/off thresholds + hold like the shower boost.
+    anticip_enabled: bool = False
+    anticip_co2_rate_on: float = 400.0   # ppm/h: engage when CO2 climbs this fast
+    anticip_co2_rate_off: float = 150.0  # ppm/h: release below this (hysteresis)
+    anticip_pm_rate_on: float = 20.0     # µg/m³/h: engage when PM climbs this fast
+    anticip_pm_rate_off: float = 8.0     # µg/m³/h: release below this
+    anticip_hold_s: float = 600.0        # anti-transient hold (as the shower boost)
+    anticip_level: int = 2               # target speed while anticipating (V2, soft)
+    anticip_ema_alpha: float = 0.3       # smoothing of the rate itself (advanced)
+
     # Filter life: total hours a filter is rated for (replacement interval).
     filter_life_hours: float = 3650.0
 
@@ -119,6 +130,15 @@ class DvState:
 
     # Dry mode (F13): hysteresis latch for the dew-point drying gate.
     dry_active: bool = False
+
+    # Anticipatory ventilation (F11): slope tracking + detector latch.
+    anticip_prev_co2: float = 0.0     # last effective CO2 used for the slope
+    anticip_prev_pm: float = 0.0      # last effective PM
+    anticip_prev_ts: float = 0.0      # timestamp of that snapshot (0 = no sample yet)
+    anticip_co2_rate: float = 0.0     # EMA-smoothed CO2 slope (ppm/h)
+    anticip_pm_rate: float = 0.0      # EMA-smoothed PM slope (µg/m³/h)
+    anticip_active: bool = False
+    anticip_hold_until: float = 0.0
 
 
 @dataclass
@@ -292,6 +312,58 @@ def base_target(co2: float, pm: float, co2_v2: float, co2_v3: float,
     return 1
 
 
+def update_anticip_rates(state: DvState, cfg: DvConfig, now_ts: float,
+                         co2_eff: float, pm_eff: float) -> None:
+    """Track the EMA-smoothed CO2/PM slopes (per hour) for F11.
+
+    Mirrors the DC trend derivative but keeps its state in ``DvState``. The first
+    sample only seeds the snapshots (rate stays 0); a non-monotonic / zero clock
+    step is ignored so a stale or repeated timestamp can't spike the rate.
+    """
+    if state.anticip_prev_ts <= 0:
+        state.anticip_prev_co2 = co2_eff
+        state.anticip_prev_pm = pm_eff
+        state.anticip_prev_ts = now_ts
+        return
+    dt_h = (now_ts - state.anticip_prev_ts) / 3600.0
+    if dt_h <= 0:
+        return
+    a = cfg.anticip_ema_alpha
+    raw_co2 = (co2_eff - state.anticip_prev_co2) / dt_h
+    raw_pm = (pm_eff - state.anticip_prev_pm) / dt_h
+    state.anticip_co2_rate = a * raw_co2 + (1 - a) * state.anticip_co2_rate
+    state.anticip_pm_rate = a * raw_pm + (1 - a) * state.anticip_pm_rate
+    state.anticip_prev_co2 = co2_eff
+    state.anticip_prev_pm = pm_eff
+    state.anticip_prev_ts = now_ts
+
+
+def update_anticip(state: DvState, cfg: DvConfig, now_ts: float) -> bool:
+    """Anticipatory detector (F11): two-channel on/off hysteresis + hold.
+
+    Engages when EITHER the CO2 or PM slope clears its on-threshold; releases only
+    when BOTH are below their off-thresholds AND the hold window has elapsed —
+    exactly the shower-boost pattern, but over the slopes instead of ΔRH.
+    """
+    if not cfg.anticip_enabled:
+        if state.anticip_active and now_ts < state.anticip_hold_until:
+            return True
+        state.anticip_active = False
+        return False
+
+    co2_r, pm_r = state.anticip_co2_rate, state.anticip_pm_rate
+    if not state.anticip_active:
+        if co2_r >= cfg.anticip_co2_rate_on or pm_r >= cfg.anticip_pm_rate_on:
+            state.anticip_active = True
+            state.anticip_hold_until = now_ts + cfg.anticip_hold_s
+    else:
+        both_below = (co2_r < cfg.anticip_co2_rate_off
+                      and pm_r < cfg.anticip_pm_rate_off)
+        if both_below and now_ts >= state.anticip_hold_until:
+            state.anticip_active = False
+    return state.anticip_active
+
+
 # --------------------------------------------------------------------------- #
 # Main decision
 # --------------------------------------------------------------------------- #
@@ -305,6 +377,14 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         state.co2_ema = update_ema(state.co2_ema, co2_raw, cfg.co2_ema_alpha)
     if cfg.pm_ema_enabled and pm_raw is not None:
         state.pm_ema = update_ema(state.pm_ema, pm_raw, cfg.pm_ema_alpha)
+
+    # --- Anticipatory slope (F11): track every cycle, before any early return ---
+    co2_eff_a = (state.co2_ema if (cfg.co2_ema_enabled and state.co2_ema > 0)
+                 else (co2_raw or 0.0))
+    pm_eff_a = (state.pm_ema if (cfg.pm_ema_enabled and state.pm_ema > 0)
+                else (pm_raw or 0.0))
+    update_anticip_rates(state, cfg, ins.now_ts, co2_eff_a, pm_eff_a)
+    anticip_on = update_anticip(state, cfg, ins.now_ts)
 
     # --- Failsafe: vital sensor KO (stale or invalid), gated by startup grace ---
     vital_ko = (not ins.startup_grace_active) and (
@@ -390,6 +470,12 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     t = base
     reason = "iaq"
 
+    # 0) Anticipatory pre-boost (F11): a steep CO2/PM rise lifts speed ahead of
+    # the absolute-level crossing. Never lowers an already-higher base; later
+    # caps (sdhb_quiet / hostile) still apply.
+    if anticip_on and t < cfg.anticip_level:
+        t, reason = cfg.anticip_level, "anticipatory"
+
     # 1) Free-cooling
     state.freecool_active = compute_freecool(cfg, ins, state.freecool_active)
     if state.freecool_active and t < 2:
@@ -427,6 +513,7 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         or ins.dew_risk
         or ins.dew_prerisk
         or ins.dry_mode
+        or anticip_on
     )
     if not allow_raise and t > ins.current_speed:
         t, reason = ins.current_speed, "hold_antiflap"
