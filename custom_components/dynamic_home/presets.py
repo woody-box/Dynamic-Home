@@ -14,6 +14,22 @@ from . import const
 
 # module -> preset id -> (label_en, label_es, values)
 PRESETS: dict[str, dict[str, tuple[str, str, dict[str, float]]]] = {
+    const.MODULE_VMC: {
+        "home_vmc": (
+            "Dual-flow VMC (home)",
+            "VMC doble flujo (casa)",
+            {
+                # IAQ (live-tuned: PM lower, tighter PM hysteresis)
+                "co2_v2": 900.0, "co2_v3": 1300.0, "co2_hys": 100.0,
+                "pm_v2": 8.0, "pm_v3": 20.0, "pm_hys": 3.0,
+                # dry mode by dew point
+                "dry_v2_delta": 0.2, "dry_v3_delta": 1.0,
+                # shower boost via ΔRH (on 4.5 / off 3.5, hold 20 min, V3)
+                "shower_rh_delta_on": 4.5, "shower_rh_delta_off": 3.5,
+                "shower_hold_s": 1200.0, "shower_level": 3,
+            },
+        ),
+    },
     const.MODULE_CLIMATE: {
         "salon_radiant_communal": (
             "Living room · radiant floor (communal source)",

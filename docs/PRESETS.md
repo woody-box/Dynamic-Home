@@ -7,12 +7,12 @@ Cada parámetro es ajustable por UI (Ajustes → la integración → Configurar)
 
 ## DC · Dynamic Climate
 
-Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfil *suelo radiante / fuente comunitaria*, cosechado de la suite YAML). Vacío en Preset = igual que el default.
+Preset *suelo radiante / fuente comunitaria*, cosechado de la suite YAML.
 
 
 ### Consignas base
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Base calor (°C) | 22.5 | 22 | Punto de partida en calefacción de día. Alimenta la Base activa y, en cascada, el target. Ajústala a tu confort real (ej. 22,0–22,8 °C) y deja que los biases hagan el resto. |
 | Base frío (°C) | 26.5 | 26.5 | Punto de partida en refrigeración de día. Empieza conservador (26–27 °C) para evitar enfriamientos agresivos y oscilaciones. |
@@ -22,7 +22,7 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Límites de consigna
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Calor mín. (°C) | 18 | 20.5 | Consigna mínima en calefacción (modo normal). El target final nunca baja de aquí. |
 | Calor máx. (°C) | 26 | 23.5 | Consigna máxima en calefacción (modo normal). El target final nunca sube de aquí. |
@@ -39,7 +39,7 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Bias exterior
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Umbral frío (°C) | 0 | 5 | Temp. exterior en o por debajo de la cual entra el bias de frío (compensación por frío). |
 | Umbral calor (°C) | 30 | 30 | Temp. exterior en o por encima de la cual entra el bias de calor (compensación por calor). |
@@ -51,14 +51,14 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Bias del bus
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Ganancia solar calor (°C) *(av.)* | -0.5 |  | Alivio de consigna cuando DC recibe del bus una intención de ganancia solar en calefacción (el sol calienta gratis). |
 | Protección solar frío (°C) *(av.)* | 0.5 |  | Subida de consigna cuando DC recibe protección solar en refrigeración. |
 
 ### Bias VMC
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Bias calor V 1 *(av.)* | 0.1 | 0.05 | Compensación en calefacción con la VMC a V1 (la ventilación carga la estancia). |
 | Bias calor V 2 *(av.)* | 0.2 | 0.1 | Compensación en calefacción con la VMC a V2. |
@@ -69,7 +69,7 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Tendencia y lead
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Lead de respaldo (h) *(av.)* | 1 | 1.5 | Anticipación de respaldo (horas) cuando faltan temperaturas para el modelo. |
 | Desplaz. máx. tendencia (°C) *(av.)* | 0.25 | 0.2 | Máx. °C que la tendencia puede mover el target por ciclo (anti-pico). |
@@ -83,7 +83,7 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Freno de tendencia
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Umbral freno 1 *(av.)* | 0.3 | 0.2 | Velocidad de tendencia (°C/h) para el paso 1 del freno (solo si la tendencia ya ayuda al modo). |
 | Umbral freno 2 *(av.)* | 0.6 | 0.3 | Velocidad de tendencia (°C/h) para el paso 2 del freno. |
@@ -94,7 +94,7 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Forecast
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Ganancia forecast *(av.)* | 0.1 | 0.08 | Cuánto relaja la consigna el forecast (°C por °C de ayuda prevista). Solo frena, nunca empuja. |
 | Tope forecast (°C) *(av.)* | 0.5 | 0.8 | Máx. °C que puede aplicar el bias de forecast. |
@@ -102,7 +102,7 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Lead adaptativo
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Alpha EMA *(av.)* | 0.2 | 0.2 | Suavizado EMA de la tasa/overshoot/retardo aprendidos. |
 | Tasa de aprendizaje *(av.)* | 0.1 | 0.1 | Paso de aprendizaje hacia el lead objetivo en cada ciclo. |
@@ -117,94 +117,94 @@ Dos columnas: **Default** (valor genérico del motor) y **Preset Salón** (perfi
 
 ### Condensación
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Margen punto rocío (°C) | 2 |  | Riesgo de condensación cuando la temp. interior está a este margen del punto de rocío (seguridad de suelo refrescante). |
 
 ### Bias de fachadas
 
-| Parámetro | Default | Preset Salón | Qué es |
+| Parámetro | Default | Preset | Qué es |
 |---|---|---|---|
 | Ganancia fachada calor (°C) *(av.)* | 0.3 | 0.15 | Alivio máx. de consigna por fachadas soleadas abiertas en calefacción (ganancia solar gratis). |
 | Ganancia fachada frío (°C) *(av.)* | 0.3 | 0.15 | Alivio máx. de consigna por fachadas soleadas en refrigeración. |
 
 ## DV · Dynamic Ventilation
 
-Valores de fábrica del motor. (En tu instalación viva tienes algunos afinados: PM2.5 a 8/20 y ducha ΔHR a 4,5/3,5.)
+Preset *VMC doble flujo (casa)* con tus valores en vivo (PM 8/20, ducha ΔHR 4,5/3,5).
 
 
 ### Umbrales de calidad de aire
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| CO₂ → V2 (ppm) | 900 | Nivel de CO₂ (ppm) que sube la VMC a V2. Los umbrales deciden cuándo subir velocidad. |
-| CO₂ → V3 (ppm) | 1300 | Nivel de CO₂ (ppm) que sube la VMC a V3. |
-| PM2.5 → V2 (µg/m³) | 15 | Nivel de PM2.5 (µg/m³) que sube la VMC a V2. |
-| PM2.5 → V3 (µg/m³) | 40 | Nivel de PM2.5 (µg/m³) que sube la VMC a V3. |
-| Histéresis CO₂ (ppm) | 100 | Margen de bajada de CO₂ antes de bajar velocidad. Evita el «diente de sierra»; si oscila, súbela un poco. |
-| Histéresis PM2.5 (µg/m³) | 5 | Margen de bajada de PM2.5 antes de bajar velocidad (anti diente de sierra). |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| CO₂ → V2 (ppm) | 900 | 900 | Nivel de CO₂ (ppm) que sube la VMC a V2. Los umbrales deciden cuándo subir velocidad. |
+| CO₂ → V3 (ppm) | 1300 | 1300 | Nivel de CO₂ (ppm) que sube la VMC a V3. |
+| PM2.5 → V2 (µg/m³) | 15 | 8 | Nivel de PM2.5 (µg/m³) que sube la VMC a V2. |
+| PM2.5 → V3 (µg/m³) | 40 | 20 | Nivel de PM2.5 (µg/m³) que sube la VMC a V3. |
+| Histéresis CO₂ (ppm) | 100 | 100 | Margen de bajada de CO₂ antes de bajar velocidad. Evita el «diente de sierra»; si oscila, súbela un poco. |
+| Histéresis PM2.5 (µg/m³) | 5 | 3 | Margen de bajada de PM2.5 antes de bajar velocidad (anti diente de sierra). |
 
 ### Suavizado de sensores
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| Suavizar CO₂ (EMA) | sí | Suaviza el CO₂ con una EMA antes de decidir (menos ruido). |
-| Suavizar PM2.5 (EMA) | sí | Suaviza el PM2.5 con una EMA antes de decidir. |
-| Alpha EMA CO₂ *(av.)* | 0.2 | Factor EMA del CO₂ (mayor = más reactivo, menos suavizado). |
-| Alpha EMA PM2.5 *(av.)* | 0.2 | Factor EMA del PM2.5 (mayor = más reactivo). |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| Suavizar CO₂ (EMA) | sí |  | Suaviza el CO₂ con una EMA antes de decidir (menos ruido). |
+| Suavizar PM2.5 (EMA) | sí |  | Suaviza el PM2.5 con una EMA antes de decidir. |
+| Alpha EMA CO₂ *(av.)* | 0.2 |  | Factor EMA del CO₂ (mayor = más reactivo, menos suavizado). |
+| Alpha EMA PM2.5 *(av.)* | 0.2 |  | Factor EMA del PM2.5 (mayor = más reactivo). |
 
 ### Free-cooling
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| Temp. ext. mínima (°C) | 5 | No hacer free-cooling por debajo de esta temp. exterior (demasiado frío). |
-| ΔT activación (°C) | 2 | ΔT interior−exterior que inicia el free-cooling. |
-| ΔT desactivación (°C) | 1 | ΔT que detiene el free-cooling (histéresis). |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| Temp. ext. mínima (°C) | 5 |  | No hacer free-cooling por debajo de esta temp. exterior (demasiado frío). |
+| ΔT activación (°C) | 2 |  | ΔT interior−exterior que inicia el free-cooling. |
+| ΔT desactivación (°C) | 1 |  | ΔT que detiene el free-cooling (histéresis). |
 
 ### Exterior hostil
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| Umbral AQI 1 | 50 | AQI exterior que limita la VMC a V2 (exterior empezando a ser malo). |
-| Umbral AQI 2 | 100 | AQI exterior que limita la VMC a V1. |
-| Umbral AQI 3 | 150 | AQI exterior que apaga la VMC (no meter aire muy malo). |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| Umbral AQI 1 | 50 |  | AQI exterior que limita la VMC a V2 (exterior empezando a ser malo). |
+| Umbral AQI 2 | 100 |  | AQI exterior que limita la VMC a V1. |
+| Umbral AQI 3 | 150 |  | AQI exterior que apaga la VMC (no meter aire muy malo). |
 
 ### Anticondensación
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| ΔT seco V2 (°C) | 0.2 | Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2. |
-| ΔT seco V3 (°C) | 1 | Ventaja de rocío para secar a V3. |
-| Margen punto rocío (°C) | 1.5 | Temp. interior a este margen del punto de rocío marca riesgo de condensación. |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| ΔT seco V2 (°C) | 0.2 | 0.2 | Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2. |
+| ΔT seco V3 (°C) | 1 | 1 | Ventaja de rocío para secar a V3. |
+| Margen punto rocío (°C) | 1.5 |  | Temp. interior a este margen del punto de rocío marca riesgo de condensación. |
 
 ### Failsafe y arranque
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| Sensor obsoleto (s) *(av.)* | 120 | Un sensor vital más viejo que esto (s) cuenta como fallo. |
-| Gracia de arranque (s) *(av.)* | 120 | Gracia tras arrancar antes de que pueda saltar el failsafe (s). |
-| Ventana de fallos (s) *(av.)* | 7200 | Ventana (s) en la que se cuentan los fallos repetidos. |
-| Límite de fallos *(av.)* | 3 | Fallos dentro de la ventana que arman un bloqueo. |
-| Bloqueo (s) *(av.)* | 1800 | Cuánto dura el bloqueo del failsafe (s). |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| Sensor obsoleto (s) *(av.)* | 120 |  | Un sensor vital más viejo que esto (s) cuenta como fallo. |
+| Gracia de arranque (s) *(av.)* | 120 |  | Gracia tras arrancar antes de que pueda saltar el failsafe (s). |
+| Ventana de fallos (s) *(av.)* | 7200 |  | Ventana (s) en la que se cuentan los fallos repetidos. |
+| Límite de fallos *(av.)* | 3 |  | Fallos dentro de la ventana que arman un bloqueo. |
+| Bloqueo (s) *(av.)* | 1800 |  | Cuánto dura el bloqueo del failsafe (s). |
 
 ### Refuerzo de ducha
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| Δ HR activación (%) | 8 | Subida de HR del baño (Δ%) que dispara el refuerzo de ducha. Si detecta «falsas duchas», súbelo. |
-| Δ HR desactivación (%) | 4 | Δ de HR por debajo del cual termina el refuerzo. Si corta demasiado pronto, bájalo. |
-| Mantener (s) | 600 | Tiempo mínimo de mantenimiento del refuerzo (segundos). Si corta pronto, súbelo. |
-| Velocidad de ducha | 3 | Velocidad objetivo mientras se detecta ducha (V2/V3). |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| Δ HR activación (%) | 8 | 4.5 | Subida de HR del baño (Δ%) que dispara el refuerzo de ducha. Si detecta «falsas duchas», súbelo. |
+| Δ HR desactivación (%) | 4 | 3.5 | Δ de HR por debajo del cual termina el refuerzo. Si corta demasiado pronto, bájalo. |
+| Mantener (s) | 600 | 1200 | Tiempo mínimo de mantenimiento del refuerzo (segundos). Si corta pronto, súbelo. |
+| Velocidad de ducha | 3 | 3 | Velocidad objetivo mientras se detecta ducha (V2/V3). |
 
 ### Umbrales adaptativos
 
-| Parámetro | Default | Qué es |
-|---|---|---|
-| Muestras mínimas *(av.)* | 100 | Lecturas necesarias antes de usar umbrales IAQ adaptativos. |
+| Parámetro | Default | Preset | Qué es |
+|---|---|---|---|
+| Muestras mínimas *(av.)* | 100 |  | Lecturas necesarias antes de usar umbrales IAQ adaptativos. |
 
 ## DS · Dynamic Shutter
 
-**Defaults de diseño** (no cosechados: no había suite YAML de persianas). Pistas de campo: posiciones parciales 25 % / 65 % usadas en tus botoneras.
+**Defaults de diseño** (no cosechados: no había suite YAML de persianas). Pistas de campo: posiciones parciales 25 % / 65 % de tus botoneras.
 
 
 ### Posiciones de persiana
