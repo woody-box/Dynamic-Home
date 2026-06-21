@@ -2,6 +2,7 @@
 
 import pytest
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_capture_events,
@@ -49,7 +50,12 @@ async def test_filter_life_sensor_value(hass: HomeAssistant) -> None:
 
     # A refresh accrues a sliver of running hours, so allow a small tolerance.
     assert co.filter_life_pct == pytest.approx(50.0, abs=0.1)
-    state = hass.states.get("sensor.vmc_filter_life")
+    # Resolve the entity_id from the registry (robust to slug/timing) rather than
+    # hard-coding "sensor.vmc_filter_life".
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_filter_life")
+    assert eid is not None
+    state = hass.states.get(eid)
     assert state is not None
     assert float(state.state) == pytest.approx(50.0, abs=0.1)
 
