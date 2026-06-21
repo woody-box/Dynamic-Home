@@ -330,6 +330,15 @@ def test_adaptive_lead_target_from_overshoot_and_lag():
     assert adaptive_lead_target(_cfg(lead_adaptive_max_h=2.0), 0.1, 5.0, 1.0) == 2.0
 
 
+def test_adaptive_lead_target_rate_floor_is_configurable():
+    # The rate floor must come from config only (no hidden 0.1 literal, RNF-1).
+    # Excess overshoot 0.05°C with a learned rate of 0.05°C/h and a floor of
+    # 0.05 -> 0.05/0.05 = 1.0h. A masked 0.1 floor would have given 0.5h.
+    c = _cfg(adapt_overshoot_target=0.1, adapt_rate_floor_cph=0.05,
+             adapt_lag_k=1.0, lead_adaptive_max_h=4.0)
+    assert adaptive_lead_target(c, 0.15, 0.0, 0.05) == 1.0
+
+
 def test_step_toward_is_a_partial_gradient_step():
     assert step_toward(1.0, 2.0, 0.1) == 1.1
     assert step_toward(2.0, 2.0, 0.5) == 2.0

@@ -88,7 +88,7 @@ class DcConfig:
     adapt_alpha: float = 0.20            # EMA smoothing for the learned quantities
     adapt_gain_lr: float = 0.10          # gradient step toward the lead target
     adapt_overshoot_target: float = 0.10  # tolerated overshoot (°C) before correcting
-    adapt_rate_floor_cph: float = 0.1    # floor on the heating/cooling rate (°C/h)
+    adapt_rate_floor_cph: float = 0.05   # floor on the heating/cooling rate (°C/h)
     adapt_lag_k: float = 1.0             # weight of the learned thermal lag
     adapt_on_rate_min_dt_h: float = 0.25  # min ON duration to trust a rate sample (h)
     adapt_on_rate_min_dt: float = 0.05   # min |ΔT| to trust a rate sample (°C)
@@ -283,7 +283,7 @@ def adaptive_lead_target(cfg: DcConfig, overshoot_ema: float, lag_ema: float,
     Two candidates: the lead needed to bleed off the excess overshoot at the
     learned rate, and the learned thermal lag. The larger wins, then clamped.
     """
-    rate_eff = max(cfg.adapt_rate_floor_cph, abs(rate_ema), 0.1)
+    rate_eff = max(cfg.adapt_rate_floor_cph, abs(rate_ema))
     extra_os = max(0.0, abs(overshoot_ema) - abs(cfg.adapt_overshoot_target))
     lead_from_os = extra_os / rate_eff
     lead_from_lag = lag_ema * cfg.adapt_lag_k
