@@ -476,3 +476,57 @@ async def test_dc_energy_real_meter_overrides_estimate(hass: HomeAssistant) -> N
     co._energy_ts = 1000.0
     co._accumulate_energy(co._cfg(), 1000.0 + 3600.0)
     assert abs(co.energy_kwh - 0.8) < 1e-9
+
+
+# --- F21: weekly scheduler — absolute base setpoint + options editor ---
+_ALLDAY_BASE = {str(d): [{"start": "00:00", "value": 20.0}] for d in range(7)}
+
+
+async def test_dc_schedule_sets_absolute_base(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = MockConfigEntry(domain=const.DOMAIN, data=CLIMATE,
+                            options={const.CONF_SCHEDULE: _ALLDAY_BASE},
+                            title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+
+    # Disabled by default -> auto base.
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.details["base_source"] == "auto"
+
+    # Enabled -> the active slot fixes the absolute base (biases still on top).
+    co.schedule_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.details["base_source"] == "schedule"
+    assert co.data.details["base"] == 20.0
+
+    # The diagnostic schedule sensor exists.
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_schedule")
+    assert eid is not None
+
+
+async def test_dc_schedule_editor_persists_and_copies(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "schedule"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"day": "0"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {"start_1": "07:00:00", "value_1": 21.0,
+         "start_2": "23:00:00", "value_2": 19.0, "copy_to": ["1", "2"]})
+    await hass.async_block_till_done()
+    prof = entry.options[const.CONF_SCHEDULE]
+    assert prof["0"] == [{"start": "07:00", "value": 21.0},
+                         {"start": "23:00", "value": 19.0}]
+    assert prof["1"] == prof["0"] and prof["2"] == prof["0"]   # copied
+    assert prof["3"] == []                                     # untouched

@@ -448,6 +448,28 @@ def test_adaptive_lead_overrides_physical_model_in_decide():
     assert adapt.details["bias_trend"] != base.details["bias_trend"]
 
 
+# --- F21: weekly scheduler — absolute base setpoint ---
+def test_scheduled_base_overrides_auto_base():
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=21.0, scheduled_base=20.0))
+    assert d.details["base"] == 20.0
+    assert d.details["base_source"] == "schedule"
+
+
+def test_scheduled_base_ignored_on_vacation():
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=21.0,
+                             scheduled_base=20.0, vacation=True))
+    assert d.details["base_source"] == "auto"
+    assert d.details["base"] == cfg.vac_base_heat_day
+
+
+def test_no_schedule_uses_auto_base():
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=21.0))
+    assert d.details["base_source"] == "auto"
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

@@ -271,6 +271,10 @@ class DvInputs:
     trigger_is_iaq: bool = False
     override_recent: bool = False
 
+    # Weekly scheduler (F21): base speed from the active slot (0=off, 1/2/3 floor).
+    # None = no weekly profile (fall back to the legacy on/off in_schedule gate).
+    schedule_speed: int | None = None
+
     # Time / schedule / failsafe context
     now_ts: float = 0.0
     weekday: int = 0
@@ -504,6 +508,10 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     # --- Permitida gate (SPEC §4) ---
     if ins.permitida is not None:
         permitida = ins.permitida
+    elif ins.schedule_speed is not None:
+        # F21 weekly profile: slot 0 = off window; 1/2/3 permit (and act as floor).
+        sched_ok = ins.schedule_speed > 0
+        permitida = ins.auto_mode and (not lockout) and (sched_ok or ins.permiso_extra)
     else:
         sched_ok = in_schedule(ins.weekday, ins.minute_of_day, cfg)
         permitida = ins.auto_mode and (not lockout) and (sched_ok or ins.permiso_extra)
@@ -585,6 +593,12 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     t = base
     reason = "iaq"
 
+    # 0) Weekly schedule base (F21): a programmed slot sets a minimum auto speed.
+    # Later caps (hostile / quiet / mode) still lower it; anti-flap protects it.
+    sched_floor = ins.schedule_speed if (ins.schedule_speed or 0) > 0 else 0
+    if sched_floor and t < sched_floor:
+        t, reason = sched_floor, "schedule_base"
+
     # 0) Anticipatory pre-boost (F11): a steep CO2/PM rise lifts speed ahead of
     # the absolute-level crossing. Never lowers an already-higher base; later
     # caps (sdhb_quiet / hostile) still apply.
@@ -631,7 +645,10 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         or anticip_on
     )
     if not allow_raise and t > ins.current_speed:
-        t, reason = ins.current_speed, "hold_antiflap"
+        # The scheduled base is deliberate, so anti-flap never drops below it.
+        floor = max(ins.current_speed, sched_floor)
+        if t > floor:
+            t, reason = floor, "hold_antiflap"
 
     # 6) Quiet hours cap (F12): final authority on the auto/IAQ path — limit the
     # speed during the night window unless the air is critical (health > silence).

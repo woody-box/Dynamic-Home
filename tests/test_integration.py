@@ -517,3 +517,66 @@ async def test_energy_sensor_uses_real_meter(hass: HomeAssistant) -> None:
     co._accum_ts = 1000.0
     co._accumulate(1000.0 + 3600.0, co._cfg())
     assert abs(co.energy_kwh - 0.5) < 1e-9
+
+
+# --- F21: weekly scheduler — base speed floor / off window / editor ---
+def _allday(value):
+    return {str(d): [{"start": "00:00", "value": value}] for d in range(7)}
+
+
+async def _setup_with_schedule(hass: HomeAssistant, value) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=const.DOMAIN, data=HW,
+                            options={const.CONF_SCHEDULE: _allday(value)},
+                            title="VMC")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_dv_schedule_floor_raises_speed(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed_states(hass, co2="500", pm="5")        # clean air -> IAQ base low
+    entry = await _setup_with_schedule(hass, 2)   # slot floor = V2
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.schedule_enabled = True
+    co.state_data.co2_ema = 0
+    hass.states.async_set("sensor.co2", "500")
+    await hass.async_block_till_done()
+    await co.async_request_refresh()
+    await hass.async_block_till_done()
+    assert co.data.speed == 2                      # floored up to the slot speed
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_schedule")
+    assert eid is not None
+
+
+async def test_dv_schedule_zero_turns_off(hass: HomeAssistant) -> None:
+    _seed_states(hass, co2="500", pm="5")
+    entry = await _setup_with_schedule(hass, 0)    # slot 0 -> off window
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.schedule_enabled = True
+    await co.async_request_refresh()
+    await hass.async_block_till_done()
+    assert co.data.speed == 0 and co.data.reason == "not_permitted"
+
+
+async def test_dv_schedule_editor_persists(hass: HomeAssistant) -> None:
+    _seed_states(hass)
+    # The options flow keys off CONF_MODULE, so the entry must carry it.
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC",
+                            data={**HW, const.CONF_MODULE: const.MODULE_VMC})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "schedule"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"day": "5"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"start_1": "08:00:00", "value_1": "2"})
+    await hass.async_block_till_done()
+    assert entry.options[const.CONF_SCHEDULE]["5"] == [
+        {"start": "08:00", "value": 2}]

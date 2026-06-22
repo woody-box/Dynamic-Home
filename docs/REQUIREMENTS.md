@@ -319,8 +319,11 @@ DV (velocidad/encendido), con presencia prevista como hook.
 
 **Dependencias:** F24 (por ámbito), F01 (jerarquía: el horario gana al manual).
 **Criterios de aceptación:**
-- ☐ Un cambio de tramo modifica la consigna base de DC; los biases siguen aplicando encima.
-- ☐ El horario apaga la VMC a la hora configurada salvo override manual.
+- ☑ Un cambio de tramo modifica la consigna base de DC; los biases siguen aplicando
+  encima (`base_source: schedule`; absoluta, REQ-SCH-3; vacaciones ganan).
+- ☑ El horario apaga la VMC en su tramo (`Off`) y fija un suelo de velocidad
+  (`V1/V2/V3`), respetando silencio/modos. *(Implementado en v0.13.0; perfil por
+  entrada, editor común; presencia REQ-SCH-5 = hook futuro. Ver §12.27.)*
 
 ### 5.4 · Repairs sobre `degraded` (F07)
 
@@ -1626,3 +1629,34 @@ respeta `PROTECTED`/slew/bus como el resto de la cascada.
   (`summer_solar_shield`) — sin regresión.
 
 **Diferido (anotado):** geometría aún más fina (luz difusa/reflejada) fuera de alcance.
+
+### 12.27 · F21 — Programador semanal (DC + DV)
+
+Editor de programación **común en estética**, con **perfil independiente por
+entrada** (cada VMC su velocidad, cada zona DC su consigna): hasta **4 tramos/día**
+por día de la semana, guardados en `entry.options[CONF_SCHEDULE]`
+(`{"0":[{"start":"HH:MM","value":x}], …}`). Modelo puro `schedule.py`
+(`active_value` con continuidad en medianoche). El editor reutiliza el patrón del
+editor de zonas (menú de 7 días → form de 4 tramos + copiar-a-días/vaciar). Activado
+por el switch **"Programador"** (DV reaprovecha el de horario; perfil vacío → on/off
+simple legacy). Sensor diagnóstico "Programación".
+
+- **DC:** el tramo fija la **consigna BASE absoluta** (`dc_engine.decide()`:
+  `scheduled_base` reemplaza `base_active`); los biases se aplican encima; vacaciones
+  ganan; sin atenuación nocturna sobre la programada.
+- **DV:** el tramo fija velocidad/encendido base — `0` = off (`not_permitted`),
+  `1/2/3` = **suelo** sobre la rama auto/IAQ (protegido de anti-flapping), cediendo a
+  los caps de silencio (F12)/hostil/modo (F01).
+
+**Aceptación:**
+
+- ☑ Con un tramo activo, DC parte de la consigna programada (`base_source: schedule`)
+  y los biases siguen encima; vacaciones la ignoran.
+- ☑ Un tramo VMC a `Off` apaga; a `V2` sube el suelo de la velocidad automática y
+  respeta el cap de horas de silencio.
+- ☑ El editor de opciones persiste los tramos por día (y el "copiar a días"); cada
+  entrada conserva su propio perfil.
+
+**Diferido (anotado):** **hook de presencia** (F32 away/home ajustando sobre el plan,
+REQ-SCH-5) — arquitectura preparada, efecto real → futuro; jerarquía completa
+temporizado>horario>manual>modo con DS.

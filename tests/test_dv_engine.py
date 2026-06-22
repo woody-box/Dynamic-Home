@@ -667,6 +667,38 @@ def test_adaptive_ignored_when_disabled():
     assert d.speed == 1
 
 
+# --- F21: weekly scheduler — base speed floor / off window ---
+def test_schedule_speed_zero_is_off():
+    d = decide(_cfg(), DvState(), DvInputs(schedule_speed=0, auto_mode=True))
+    assert d.speed == 0 and d.reason == "not_permitted"
+
+
+def test_schedule_speed_floors_the_auto_path():
+    # Clean air -> IAQ base would be V1; a slot of V2 lifts the floor.
+    ins = DvInputs(schedule_speed=2, co2_raw=400, pm_raw=2, current_speed=1,
+                   trigger_is_iaq=True)
+    d = decide(_cfg(), DvState(), ins)
+    assert d.speed == 2 and d.reason == "schedule_base"
+
+
+def test_schedule_floor_survives_antiflap():
+    # Not an IAQ trigger -> anti-flap would normally hold V1, but the deliberate
+    # schedule floor (V2) is protected.
+    ins = DvInputs(schedule_speed=2, co2_raw=400, pm_raw=2, current_speed=1,
+                   trigger_is_iaq=False)
+    d = decide(_cfg(), DvState(), ins)
+    assert d.speed == 2
+
+
+def test_schedule_floor_yields_to_quiet_cap():
+    cfg = _cfg(quiet_enabled=True, quiet_max_level=1,
+               quiet_start_min=0, quiet_end_min=24 * 60)
+    ins = DvInputs(schedule_speed=3, co2_raw=400, pm_raw=2, current_speed=1,
+                   trigger_is_iaq=True, minute_of_day=120)
+    d = decide(cfg, DvState(), ins)
+    assert d.speed == 1 and d.reason == "quiet_cap"
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):
