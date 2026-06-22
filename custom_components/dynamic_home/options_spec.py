@@ -64,6 +64,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "adjacent": ("Adjacent space", "Espacio adyacente"),
     "dawn": ("Gradual sunrise", "Amanecer gradual"),
     "night": ("Night insulation", "Aislamiento nocturno"),
+    "alert": ("Weather alerts", "Avisos meteo"),
 }
 
 
@@ -187,6 +188,12 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "night": [
             _v("night_iso_close_pct", "Night close (%)", "Cierre noche (%)"),
             _v("night_iso_open_pct", "Night purge open (%)", "Apertura purga noche (%)"),
+        ],
+        "alert": [
+            _v("alert_pct", "Alert protect (%)", "Protección alerta (%)"),
+            _v("alert_hail_pct", "Hail protect (%)", "Protección granizo (%)"),
+            _v("alert_wind_pct", "Wind protect (%)", "Protección viento (%)"),
+            _v("alert_hold_min", "Alert hold (min)", "Hold alerta (min)"),
         ],
         "dawn": [
             _v("dawn_step_pct", "Sunrise step (%)", "Paso amanecer (%)"),

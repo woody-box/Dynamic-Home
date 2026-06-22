@@ -48,6 +48,9 @@ class DsCoordinator(DataUpdateCoordinator):
         self.privacy_pct = 40
         self.lock_enabled = False
         self.lock_pct = 50
+        # Weather alert (F17): anticipatory protection hold state.
+        self._alert_hold_until = 0.0
+        self._last_alert_pos = 0
         # Seasonal night insulation (F16): opt-in.
         self.night_iso_enabled = False
         # Gradual sunrise (F19): opt-in ramp state.
@@ -135,6 +138,28 @@ class DsCoordinator(DataUpdateCoordinator):
         pos = st.attributes.get("current_position")
         return int(pos) if pos is not None else None
 
+    def _weather_alert(self, cfg: DsConfig, now_ts: float) -> int | None:
+        """Anticipatory weather protection (F17): position to protect at, or None.
+
+        Picks the most protective position among the active alert sensors
+        (generic / hail / wind). When all clear, keeps protecting for
+        ``alert_hold_min`` before releasing.
+        """
+        positions: list[int] = []
+        if self._is_on(const.CONF_DS_ALERT):
+            positions.append(cfg.alert_pct)
+        if self._is_on(const.CONF_DS_ALERT_HAIL):
+            positions.append(cfg.alert_hail_pct)
+        if self._is_on(const.CONF_DS_ALERT_WIND):
+            positions.append(cfg.alert_wind_pct)
+        if positions:
+            self._last_alert_pos = min(positions)        # most protective wins
+            self._alert_hold_until = now_ts + cfg.alert_hold_min * 60.0
+            return self._last_alert_pos
+        if now_ts < self._alert_hold_until:
+            return self._last_alert_pos                  # hold after it clears
+        return None
+
     def _night_iso(self, cfg: DsConfig, hvac: str, sun_el: float | None,
                    t_in: float | None, t_out: float | None) -> int | None:
         """Seasonal night insulation (F16): position at night, or None.
@@ -210,6 +235,7 @@ class DsCoordinator(DataUpdateCoordinator):
         t_in = self._num(const.CONF_DS_T_IN)
         t_out = self._num(const.CONF_DS_T_OUT)
         night_pos = self._night_iso(cfg, self._hvac_mode(), sun_el, t_in, t_out)
+        alert_pos = self._weather_alert(cfg, now_ts)
 
         ins = DsInputs(
             hvac_mode=self._hvac_mode(),
@@ -222,6 +248,7 @@ class DsCoordinator(DataUpdateCoordinator):
             current_pos=current_pos,
             dawn_pos=dawn_pos,
             night_pos=night_pos,
+            alert_pos=alert_pos,
             privacy_active=self.privacy_enabled,
             override_mode="lock" if self.lock_enabled else "none",
             override_pos=int(self.lock_pct),

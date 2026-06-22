@@ -43,7 +43,10 @@
           "ds_t_in": "Indoor temperature (optional)",
           "ds_t_out": "Outdoor temperature (optional)",
           "wind": "Wind km/h (optional)",
-          "rain": "Rain (optional)"
+          "rain": "Rain (optional)",
+          "ds_alert": "Weather alert (binary_sensor)",
+          "ds_alert_hail": "Hail/storm alert (binary_sensor)",
+          "ds_alert_wind": "Wind alert (binary_sensor)"
         }
       },
       "climate": {
@@ -112,7 +115,8 @@
           "cat_adjacent": "Adjacent space",
           "mirrors": "Hardware mirrors",
           "cat_dawn": "Gradual sunrise",
-          "cat_night": "Night insulation"
+          "cat_night": "Night insulation",
+          "cat_alert": "Weather alerts"
         }
       },
       "cat_iaq": {
@@ -649,6 +653,21 @@
         "data_description": {
           "night_iso_close_pct": "Closed position at night to insulate (heat) or protect the thermal mass (cool, warm night).",
           "night_iso_open_pct": "Open position at night to purge the thermal mass when the outside is cooler (cool)."
+        }
+      },
+      "cat_alert": {
+        "title": "Weather alerts",
+        "data": {
+          "alert_pct": "Alert protect (%)",
+          "alert_hail_pct": "Hail protect (%)",
+          "alert_wind_pct": "Wind protect (%)",
+          "alert_hold_min": "Alert hold (min)"
+        },
+        "data_description": {
+          "alert_pct": "Protection position for the generic weather alert.",
+          "alert_hail_pct": "Protection position for a hail/storm alert (fully closed protects best).",
+          "alert_wind_pct": "Protection position for a wind alert (a mid position can protect the slats).",
+          "alert_hold_min": "Minutes the protection is held after the alert clears."
         }
       }
     },

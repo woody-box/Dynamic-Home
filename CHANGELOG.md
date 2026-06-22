@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.8.3] — 2026-06-22
+
+### Added
+- **DS · Avisos meteo / protección anticipatoria (F17)**: hasta 3 `binary_sensor`
+  de alerta (genérica / granizo / viento), cada uno con su **posición de
+  protección**; ante una alerta la persiana se protege **antes** del fenómeno y
+  mantiene la protección un **hold** configurable tras despejarse. Si hay varias,
+  gana la más protectora. Rama `meteo_alert` (protegida, por encima de
+  lluvia/viento; el override manda). **Agnóstica de proveedor**: el dato meteo lo
+  aporta el usuario (Meteoalarm / Open-Meteo / template) o el futuro módulo
+  Weather (F33) — sin APIs dentro de la integración. Configurable (categoría
+  *Avisos meteo*).
+
+### Internal
+- Suite de 251 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.8.2] — 2026-06-22
 
 ### Added
