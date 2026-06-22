@@ -530,3 +530,51 @@ async def test_dc_schedule_editor_persists_and_copies(hass: HomeAssistant) -> No
                          {"start": "23:00", "value": 19.0}]
     assert prof["1"] == prof["0"] and prof["2"] == prof["0"]   # copied
     assert prof["3"] == []                                     # untouched
+
+
+# --- F09: short-cycle protection (shared compressor aggregate) ---
+async def test_anticycle_holds_start_and_drives_thermostat_off(
+        hass: HomeAssistant) -> None:
+    from homeassistant.components.climate import ATTR_HVAC_MODE
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.dynamic_home.anticycle import CompressorState
+    _seed(hass)
+    hass.states.async_set("climate.real", "off")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_CLIMATE: "climate.real"},
+                       "Salon")
+    # Mock AFTER setup: forwarding the climate platform loads the climate
+    # component, which would otherwise re-register the real service over the mock.
+    calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.anticycle_enabled = True
+
+    # Simulate the shared compressor having just stopped (within min OFF).
+    ac = hass.data[const.DOMAIN]["_anticycle"]
+    ac.state = CompressorState(on=False, last_off_ts=dt_util.utcnow().timestamp())
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    assert co.anticycle_hold is True
+    assert co.anticycle_reason == "anticycle_min_off_hold"
+    # The climate entity drove the real thermostat OFF to protect the compressor.
+    assert any(c.data.get(ATTR_HVAC_MODE) == HVACMode.OFF for c in calls)
+
+
+async def test_anticycle_disabled_does_not_hold(hass: HomeAssistant) -> None:
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.dynamic_home.anticycle import CompressorState
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    ac = hass.data[const.DOMAIN]["_anticycle"]
+    ac.state = CompressorState(on=False, last_off_ts=dt_util.utcnow().timestamp())
+
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.anticycle_hold is False          # opt-in: off by default
+    assert co.entry.entry_id not in ac._zones   # not part of the aggregate

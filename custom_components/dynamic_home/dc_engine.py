@@ -146,6 +146,12 @@ class DcConfig:
     # used when no real power meter is configured (idle draws nothing).
     est_w_on: float = 1000.0
 
+    # Short-cycle protection (F09): compressor min ON/OFF (s) + max starts/hour.
+    # Opt-in (compressor installs); safety always overrides (cede the min ON).
+    anticycle_min_on_s: float = 600.0
+    anticycle_min_off_s: float = 600.0
+    anticycle_max_starts_per_h: int = 6
+
 
 @dataclass
 class DcInputs:

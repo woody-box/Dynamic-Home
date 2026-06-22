@@ -66,6 +66,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.override_temp: float | None = None
         self.vacation_enabled = False
         self.schedule_enabled = False   # F21: weekly base-setpoint program
+        # F09: short-cycle protection (opt-in) over the shared compressor.
+        self.anticycle_enabled = False
+        self.anticycle_hold = False     # holding this zone off to protect the compressor
+        self.anticycle_reason = "off"
         self.observe_enabled = False    # dry-run: compute but do not act on hw
         self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
@@ -286,6 +290,29 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 events.fire_conflict(self.hass, self.entry,
                                      const.MODULE_CLIMATE, self.bus_explain)
             self._prev_winner = winner
+
+    def _anticycle_step(self, cfg: DcConfig, decision, now_ts: float) -> None:
+        """F09: gate DC's commanded on/off over the shared compressor aggregate.
+
+        ``desired_on`` = DC commands heat/cool this cycle; ``safety_off`` = DC
+        wanted to run but a safety branch (condensation/window/…) forced it off,
+        so the guard yields. When the aggregate holds this zone off, the climate
+        entity drives the thermostat OFF instead of heat/cool.
+        """
+        ac = self.hass.data.get(const.DOMAIN, {}).get("_anticycle")
+        if ac is None:
+            self.anticycle_hold = False
+            return
+        if not self.anticycle_enabled:
+            ac.clear(self.entry.entry_id)     # not participating in the aggregate
+            self.anticycle_hold = False
+            self.anticycle_reason = "off"
+            return
+        desired_on = decision.action in ("heat", "cool")
+        safety_off = self.hvac_mode in ("heat", "cool") and decision.action == "off"
+        gated_on, self.anticycle_reason = ac.evaluate(
+            self.entry.entry_id, desired_on, safety_off, now_ts, cfg)
+        self.anticycle_hold = desired_on and not gated_on
 
     def _accumulate_energy(self, cfg: DcConfig, now_ts: float) -> None:
         """Integrate energy (F06): real meter if configured, else est. while ON."""
@@ -639,6 +666,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             scheduled_base=self._scheduled_base(),
         )
         decision = decide_climate(cfg, ins)
+        self._anticycle_step(cfg, decision, now_ts)
 
         # Learn from real cycles (paused while disabled or degraded). An inferred
         # open window also disturbs the cycle, so it aborts learning like the sensor.

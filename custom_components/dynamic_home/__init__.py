@@ -13,6 +13,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import service as service_helper
 
 from . import const
+from .anticycle import AntiCycleHub
 from .coordinator import (
     DcCoordinator,
     DsCoordinator,
@@ -41,6 +42,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Dynamic Home from a config entry."""
     hub: SdhbHub = hass.data.setdefault(const.DOMAIN, {}).setdefault(
         "_hub", SdhbHub())
+    # F09: one shared compressor anti-cycling hub for all climate zones.
+    hass.data[const.DOMAIN].setdefault("_anticycle", AntiCycleHub())
 
     facades: dict = hass.data[const.DOMAIN].setdefault("_facades", {})
 
@@ -89,6 +92,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if isinstance(coordinator, DcCoordinator):
             coordinator.clear_published()
             coordinator.clear_mold()
+            # Drop this zone from the shared compressor aggregate (F09).
+            ac = hass.data[const.DOMAIN].get("_anticycle")
+            if ac is not None:
+                ac.clear(entry.entry_id)
         # A VMC must not leave a filter-due repair issue for a removed entry (F08).
         if isinstance(coordinator, DvCoordinator):
             coordinator.clear_filter_issue()

@@ -4,6 +4,28 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.15.0] — 2026-06-22
+
+### Added
+- **Anti-ciclado corto (F09)**: protección de compresor **opt-in** (switch
+  "Anti short-cycle" en cada zona de clima) con **min ON**, **min OFF** y **máx
+  arranques/hora** (por defecto 6). Clave: en aerotermia/bomba de calor el
+  **compresor es compartido**, así que el anti-ciclado actúa sobre el **agregado**
+  (un hub único de casa): un arranque es la primera zona que enciende con todas
+  apagadas y una parada la última que se apaga, de modo que el flapping de una zona
+  **no cuenta como arranque** si otra mantiene el compresor despierto. Vigila el
+  ON/OFF que **DC manda** al termostato: cuando el agregado retiene un arranque
+  (min OFF / máx arranques) o sostiene el min ON, la zona conduce el termostato a
+  **OFF**. **La seguridad manda** (REQ-CYC-3): ante condensación/ventana/orden de
+  seguridad, cede y apaga aunque no se cumpla el min ON. Tiempos configurables.
+  Helper puro `anticycle.py`. *(Gating por instalación —F26— y agrupación fina por
+  compresor —F25— quedan para más adelante; por ahora un grupo único de casa.)*
+
+### Internal
+- Nuevo módulo puro `anticycle.py` (estado de compresor + hub agregado) con tests
+  dedicados; hub compartido en `hass.data` como el SDHB.
+- Suite de 343 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.14.0] — 2026-06-22
 
 ### Added

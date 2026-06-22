@@ -452,8 +452,12 @@ aprendizaje ya mide.
 
 **Dependencias:** F26 (gating), aprendizaje de tasa.
 **Criterios de aceptación:**
-- ☐ Con compresor, no se superan 6 arranques/h ni se viola el min OFF.
-- ☐ Una orden anticondensación apaga aunque el min ON no se haya cumplido.
+- ☑ Con compresor, no se superan 6 arranques/h ni se viola el min OFF (sobre el
+  **agregado** del compresor compartido; el flap de una zona no cuenta si otra lo
+  mantiene encendido).
+- ☑ Una orden anticondensación/ventana apaga aunque el min ON no se haya cumplido
+  (seguridad cede). *(Implementado en v0.15.0, opt-in; gating F26 y agrupación por
+  compresor F25 diferidos. Ver §12.29.)*
 
 ### 5.10 · Detección de ventana abierta (F20)
 
@@ -1693,3 +1697,32 @@ editables, REQ-CMF-1), aplicados en runtime en `coordinator_*._cfg()` tras
 
 **Diferido (anotado):** deltas **editables** por el usuario (ahora fijos); defaults
 por instalación (F26); efecto del preset en DS (persianas).
+
+### 12.29 · F09 — Anti-ciclado corto (DC)
+
+Protección de compresor **opt-in** (switch "Anti short-cycle" por zona de clima)
+con **min ON**, **min OFF** y **máx arranques/hora** (default 6). En aerotermia/bomba
+de calor el **compresor es compartido**, así que el guard opera sobre el **agregado**:
+un único `AntiCycleHub` en `hass.data` (como el SDHB) al que cada zona reporta su
+demanda; un arranque = primera zona ON con todas apagadas, una parada = última que se
+apaga. Así el flapping de una zona **no cuenta como arranque** si otra mantiene el
+compresor despierto. Modelo puro `anticycle.py` (`CompressorState` + `step` +
+`AntiCycleHub`). Vigila el ON/OFF que **DC manda** al termostato; cuando el agregado
+retiene un arranque (`anticycle_min_off_hold` / `anticycle_max_starts_hold`) o sostiene
+el min ON (`anticycle_min_on_hold`), la zona conduce el termostato real a **OFF**
+(`climate.py._apply`). **La seguridad manda** (`anticycle_safety_off`): condensación/
+ventana/override fuerzan OFF aunque no se cumpla el min ON. Observabilidad:
+`anticycle_hold`/`anticycle_reason` en los atributos del `climate`.
+
+**Aceptación:**
+
+- ☑ Min OFF y máx arranques/h retienen el arranque del compresor (la zona se conduce
+  a OFF mientras está retenida).
+- ☑ El agregado evita falsos arranques: con la zona B activa, la zona A que apaga y
+  vuelve a pedir no añade un arranque nuevo.
+- ☑ Una parada de seguridad (condensación/ventana) cede el min ON y apaga.
+- ☑ Opt-in: con el switch apagado la zona no participa en el agregado (sin efecto).
+
+**Diferido (anotado):** **gating por instalación** (F26: oculto en gas/eléctrico/
+comunitaria, activo con compresor); **agrupación fina por compresor** (F25, hoy un
+grupo único de casa); usar la **tasa aprendida** para autodimensionar min ON/OFF.
