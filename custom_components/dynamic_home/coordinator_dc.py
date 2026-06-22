@@ -24,13 +24,16 @@ from .dc_engine import (
     DcDecision,
     DcInputs,
     adaptive_lead_target,
+    adjacent_advice,
     dew_point,
     dew_risk,
     ema,
     facade_bias,
+    mold_index_step,
     on_rate_cph,
     step_toward,
     sunlit_facades,
+    window_anomaly,
 )
 from .dc_engine import (
     decide as decide_climate,
@@ -81,6 +84,19 @@ class DcCoordinator(DataUpdateCoordinator):
         self._prev_degraded = False
         self._degraded_since: float | None = None
         self._issue_id = f"degraded_{entry.entry_id}"
+        # Mold-risk index (F22): accumulated hours, hysteresis latch + alert.
+        self.mold_index = 0.0
+        self._mold_ts: float | None = None
+        self._mold_active = False
+        self._mold_issue_id = f"mold_{entry.entry_id}"
+        self._mold_source = f"dc_{entry.entry_id}__mold_dry"
+        # Adjacent warm-space advisory (F31).
+        self.adjacent_advice = "none"
+        # Open-window inference (F20): latch + debounce/recovery timers.
+        self._window_inferred = False
+        self._window_anom_since: float | None = None
+        self._window_ok_since: float | None = None
+        self._window_armed_ts: float | None = None
         self.learn_rate_ema = 0.0        # learned heating/cooling rate (°C/h)
         self.learn_overshoot_ema = 0.0   # learned overshoot beyond setpoint (°C)
         self.learned_lag_h = 0.0         # learned thermal lag OFF->peak (h)
@@ -99,12 +115,81 @@ class DcCoordinator(DataUpdateCoordinator):
         self._off_hvac: str | None = None
 
     # --- adaptive lead learning (port of "Adaptive Lead v2.6.1") ---
-    def _valve_demand(self, hvac: str, t_int: float | None,
+    def _real_valve_open(self, cfg: DcConfig, hvac: str) -> bool | None:
+        """Real heating/cooling demand (F27), priority c > b > a; None = no source.
+
+        (c) real relay/power state — most reliable, also sees the analog backup
+        thermostat; (b) explicit heat/cool helpers; (a) the climate's hvac_action.
+        """
+        # (c) relay / power: numeric -> power threshold; otherwise on/off.
+        if self._hw(const.CONF_DC_VALVE):
+            v = self._num(const.CONF_DC_VALVE)
+            if v is not None:
+                return v > cfg.valve_power_min
+            return self._is_on(const.CONF_DC_VALVE)
+        # (b) explicit demand helper for the active mode.
+        if (self._hw(const.CONF_DC_DEMAND_HEAT)
+                or self._hw(const.CONF_DC_DEMAND_COOL)):
+            key = (const.CONF_DC_DEMAND_HEAT if hvac == "heat"
+                   else const.CONF_DC_DEMAND_COOL)
+            return bool(self._hw(key)) and self._is_on(key)
+        # (a) hvac_action from the climate entity.
+        climate = self._hw(const.CONF_DC_CLIMATE)
+        if climate:
+            st = self.hass.states.get(climate)
+            action = st.attributes.get("hvac_action") if st else None
+            if action in ("heating", "cooling"):
+                return True
+            if action in ("idle", "off"):
+                return False
+        return None
+
+    def _valve_demand(self, cfg: DcConfig, hvac: str, t_int: float | None,
                       target: float | None) -> bool:
-        """Whether the zone is actively calling for heat/cool (our 'valve open')."""
-        if hvac not in ("heat", "cool") or t_int is None or target is None:
+        """Whether the zone is actively calling for heat/cool (our 'valve open').
+
+        Prefers a real demand signal (F27) when configured; otherwise falls back
+        to inferring it from indoor temperature vs target (legacy behaviour).
+        """
+        if hvac not in ("heat", "cool"):
+            return False
+        real = self._real_valve_open(cfg, hvac)
+        if real is not None:
+            return real
+        if t_int is None or target is None:
             return False
         return t_int < target if hvac == "heat" else t_int > target
+
+    # --- F27 diagnostics ---
+    def has_real_demand(self) -> bool:
+        """Whether a real demand source (c/b, or hvac_action) is available."""
+        if any(self._hw(k) for k in (const.CONF_DC_VALVE,
+                                     const.CONF_DC_DEMAND_HEAT,
+                                     const.CONF_DC_DEMAND_COOL)):
+            return True
+        climate = self._hw(const.CONF_DC_CLIMATE)
+        if climate:
+            st = self.hass.states.get(climate)
+            return bool(st and st.attributes.get("hvac_action") is not None)
+        return False
+
+    @property
+    def real_demand_source(self) -> str | None:
+        if self._hw(const.CONF_DC_VALVE):
+            return "valve"
+        if self._hw(const.CONF_DC_DEMAND_HEAT) or self._hw(const.CONF_DC_DEMAND_COOL):
+            return "helper"
+        climate = self._hw(const.CONF_DC_CLIMATE)
+        if climate:
+            st = self.hass.states.get(climate)
+            if st and st.attributes.get("hvac_action") is not None:
+                return "hvac_action"
+        return "inferred"
+
+    @property
+    def real_demand_open(self) -> bool | None:
+        """Real demand for the current mode (None if no real source configured)."""
+        return self._real_valve_open(self._cfg(), self.hvac_mode)
 
     def _finalize_cycle(self, cfg: DcConfig) -> None:
         """Settling window elapsed: learn overshoot, lag and step the lead gain."""
@@ -126,7 +211,7 @@ class DcCoordinator(DataUpdateCoordinator):
                     t_int: float | None, target: float | None,
                     window_open: bool, override: bool) -> None:
         """Drive the ON/OFF cycle state machine for one coordinator tick."""
-        valve = self._valve_demand(hvac, t_int, target)
+        valve = self._valve_demand(cfg, hvac, t_int, target)
         rising = valve and not self._valve_open
         falling = (not valve) and self._valve_open
 
@@ -232,6 +317,129 @@ class DcCoordinator(DataUpdateCoordinator):
     def clear_issue(self) -> None:
         """Remove this zone's degraded repair issue (no-op if absent)."""
         ir.async_delete_issue(self.hass, const.DOMAIN, self._issue_id)
+
+    # --- mold-risk index (F22) ---
+    def has_mold(self) -> bool:
+        """Whether the mold index can be computed (needs an indoor RH source)."""
+        return bool(self._hw(const.CONF_DC_HUMIDITY))
+
+    def _mold_step(self, cfg: DcConfig, rh: float | None, now_ts: float) -> None:
+        """Integrate the index, flip the hysteresis latch and arm/disarm actions."""
+        if self._mold_ts is not None:
+            dt_h = max(0.0, (now_ts - self._mold_ts) / 3600.0)
+            self.mold_index = mold_index_step(self.mold_index, rh, dt_h, cfg)
+        self._mold_ts = now_ts
+
+        was = self._mold_active
+        if self.mold_index >= cfg.mold_on_h:
+            self._mold_active = True
+        elif self.mold_index < cfg.mold_off_h:
+            self._mold_active = False
+
+        if self._mold_active != was:
+            events.fire_mold(self.hass, self.entry, const.MODULE_CLIMATE,
+                             self._mold_active, self.mold_index)
+
+        if self._mold_active:
+            ir.async_create_issue(
+                self.hass, const.DOMAIN, self._mold_issue_id,
+                is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                translation_key=const.ISSUE_MOLD_RISK,
+                translation_placeholders={"name": self.entry.title,
+                                          "index": str(round(self.mold_index, 1))},
+                learn_more_url=const.LEARN_MORE_URL)
+            # Drying via the bus (DV applies its own dp_diff gate).
+            self.hub.publish(source=self._mold_source, intent="request_dry",
+                             target="dv", priority=60, ttl_s=1800, now_ts=now_ts)
+            self._drive_dehumidifier(True)
+        elif was:
+            ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
+            self.hub.clear(self._mold_source)
+            self._drive_dehumidifier(False)
+
+    # --- adjacent warm-space advisory (F31) ---
+    def has_adjacent(self) -> bool:
+        """Whether the adjacent-space advisory applies (needs its temp sensor)."""
+        return bool(self._hw(const.CONF_DC_ADJ_TEMP))
+
+    def _adjacent_step(self, cfg: DcConfig, t_int: float | None) -> None:
+        """Evaluate the advisory and fire an event on each transition."""
+        t_adj = self._num(const.CONF_DC_ADJ_TEMP)
+        door = (self._is_on(const.CONF_DC_ADJ_DOOR)
+                if self._hw(const.CONF_DC_ADJ_DOOR) else None)
+        advice = adjacent_advice(self.hvac_mode, t_int, t_adj, door, cfg)
+        if advice != self.adjacent_advice:
+            self.adjacent_advice = advice
+            dt = (t_adj - t_int) if (t_adj is not None and t_int is not None) else 0.0
+            events.fire_adjacent(self.hass, self.entry, const.MODULE_CLIMATE,
+                                 advice, dt)
+
+    # --- open-window inference (F20) ---
+    def has_window_infer(self) -> bool:
+        """Whether temperature-based window inference applies (no window sensor)."""
+        return not self._hw(const.CONF_DC_WINDOW)
+
+    def _infer_window(self, cfg: DcConfig, hvac: str, t_int: float | None,
+                      trend_cph: float, now_ts: float) -> bool:
+        """Latch an inferred open window: arm on a sustained anomaly, recover on
+        stabilisation or a safety timeout. Active only without a window sensor."""
+        if not self.has_window_infer() or t_int is None:
+            self._window_anom_since = None
+            self._window_ok_since = None
+            self._window_armed_ts = None
+            if self._window_inferred:
+                self._window_inferred = False
+            return False
+
+        valve = self._real_valve_open(cfg, hvac)
+        valve_open = valve if valve is not None else hvac in ("heat", "cool")
+        anom = window_anomaly(hvac, valve_open, trend_cph, cfg)
+
+        if not self._window_inferred:
+            self._window_ok_since = None
+            if anom:
+                if self._window_anom_since is None:
+                    self._window_anom_since = now_ts
+                elif now_ts - self._window_anom_since >= cfg.window_confirm_min * 60:
+                    self._window_inferred = True
+                    self._window_armed_ts = now_ts
+                    events.fire_window(self.hass, self.entry,
+                                       const.MODULE_CLIMATE, True, trend_cph)
+            else:
+                self._window_anom_since = None
+        else:
+            self._window_anom_since = None
+            timed_out = (self._window_armed_ts is not None
+                         and now_ts - self._window_armed_ts
+                         >= cfg.window_max_lockout_min * 60)
+            if not anom:
+                if self._window_ok_since is None:
+                    self._window_ok_since = now_ts
+                stable = now_ts - self._window_ok_since >= cfg.window_release_min * 60
+            else:
+                self._window_ok_since = None
+                stable = False
+            if stable or timed_out:
+                self._window_inferred = False
+                self._window_armed_ts = None
+                self._window_ok_since = None
+                events.fire_window(self.hass, self.entry, const.MODULE_CLIMATE,
+                                   False, trend_cph)
+        return self._window_inferred
+
+    def _drive_dehumidifier(self, on: bool) -> None:
+        """Turn a configured dehumidifier on/off (skipped in observe/dry-run)."""
+        ent = self._hw(const.CONF_DC_DEHUMIDIFIER)
+        if not ent or self.observe_enabled:
+            return
+        service = "turn_on" if on else "turn_off"
+        self.hass.async_create_task(self.hass.services.async_call(
+            "homeassistant", service, {"entity_id": ent}, blocking=False))
+
+    def clear_mold(self) -> None:
+        """Remove the mold repair issue and bus request (called on unload)."""
+        ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
+        self.hub.clear(self._mold_source)
 
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
@@ -374,6 +582,19 @@ class DcCoordinator(DataUpdateCoordinator):
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
 
+        # Mold-risk index (F22): integrate, alert and drive drying when armed.
+        if self.has_mold():
+            self._mold_step(cfg, rh, now_ts)
+
+        # Adjacent warm-space advisory (F31): event-only, no actuation.
+        if self.has_adjacent():
+            self._adjacent_step(cfg, t_int)
+
+        # Open-window inference (F20): only when no window sensor is configured.
+        trend = self._update_trend(cfg, t_int, now_ts)
+        self._window_inferred = self._infer_window(cfg, self.hvac_mode, t_int,
+                                                   trend, now_ts)
+
         # Degraded when a core source is missing while a mode is demanded; this
         # pauses learning so stale readings don't poison the EMAs and (if
         # sustained) raises a Repairs issue.
@@ -402,23 +623,26 @@ class DcCoordinator(DataUpdateCoordinator):
             override_active=self.override_active,
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
-            trend_cph=self._update_trend(cfg, t_int, now_ts),
+            trend_cph=trend,
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
             wind=self._num(const.CONF_DC_WIND),
             vacation=self.vacation_enabled,
             window_lockout=self._is_on(const.CONF_DC_WINDOW),
+            window_inferred=self._window_inferred,
             dew_risk=self.dew_risk_active,
             extra_bias=facade_b,
             adaptive_lead_h=adaptive_lead,
         )
         decision = decide_climate(cfg, ins)
 
-        # Learn from real cycles (paused while disabled or degraded).
+        # Learn from real cycles (paused while disabled or degraded). An inferred
+        # open window also disturbs the cycle, so it aborts learning like the sensor.
+        window_open = self._is_on(const.CONF_DC_WINDOW) or self._window_inferred
         if self.adaptive_enabled and not self.degraded:
             self._learn_step(cfg, now_ts, self.hvac_mode, t_int, decision.target,
-                             self._is_on(const.CONF_DC_WINDOW), self.override_active)
+                             window_open, self.override_active)
         else:
-            self._valve_open = self._valve_demand(self.hvac_mode, t_int,
+            self._valve_open = self._valve_demand(cfg, self.hvac_mode, t_int,
                                                   decision.target)
             self._settling = False
 

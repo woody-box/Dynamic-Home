@@ -58,6 +58,10 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "adaptive_lead": ("Adaptive lead", "Lead adaptativo"),
     "condensation": ("Condensation", "Condensación"),
     "facade": ("Facade bias", "Bias de fachadas"),
+    "demand": ("Real demand signal", "Señal de demanda real"),
+    "mold": ("Mold risk", "Riesgo de moho"),
+    "window": ("Open-window detection", "Detección de ventana"),
+    "adjacent": ("Adjacent space", "Espacio adyacente"),
 }
 
 
@@ -264,6 +268,26 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("facade_gain_heat", "Facade gain heat (°C)", "Ganancia fachada calor (°C)"),
             _v("facade_gain_cool", "Facade gain cool (°C)", "Ganancia fachada frío (°C)"),
         ],
+        "demand": [
+            _v("valve_power_min", "Valve power threshold (W)", "Umbral potencia válvula (W)"),
+        ],
+        "mold": [
+            _v("mold_rh_threshold", "RH threshold (%)", "Umbral de HR (%)"),
+            _v("mold_on_h", "Arm at (h)", "Arma a (h)"),
+            _v("mold_off_h", "Disarm at (h)", "Desarma a (h)"),
+            _v("mold_decay_h", "Decay constant (h)", "Constante de decaimiento (h)"),
+            _v("mold_cap_h", "Index cap (h)", "Tope del índice (h)"),
+        ],
+        "window": [
+            _v("window_drop_cph", "Sensitivity (°C/h)", "Sensibilidad (°C/h)"),
+            _v("window_confirm_min", "Confirm (min)", "Confirmación (min)"),
+            _v("window_release_min", "Recovery (min)", "Recuperación (min)"),
+            _v("window_max_lockout_min", "Max lockout (min)", "Bloqueo máx. (min)"),
+        ],
+        "adjacent": [
+            _v("adj_open_dt", "Open ΔT (°C)", "ΔT abrir (°C)"),
+            _v("adj_alarm_dt", "Alarm ΔT (°C)", "ΔT alarma (°C)"),
+        ],
     },
 }
 
@@ -301,6 +325,9 @@ _ADVANCED: dict[str, set[str]] = {
         "adapt_on_rate_min_dt", "adapt_off_window_h",
         "lead_adaptive_min_h", "lead_adaptive_max_h",
         "facade_gain_heat", "facade_gain_cool",
+        "valve_power_min",
+        "mold_decay_h", "mold_cap_h",
+        "window_confirm_min", "window_release_min", "window_max_lockout_min",
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",

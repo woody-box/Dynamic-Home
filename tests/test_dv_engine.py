@@ -128,6 +128,24 @@ def test_dry_gate_blocks_below_margin():
     assert d.reason == "iaq" and d.speed == 1
 
 
+# --- F22: bus-driven dry request (DC mold alert) honours the dp_diff gate ---
+def test_dry_requested_via_bus_opens_when_outdoor_drier():
+    # No local dry switch / dew risk, but a bus request_dry + favourable dp_diff.
+    ins = DvInputs(dry_mode=False, dew_risk=False, dry_requested=True,
+                   dp_diff=1.5, co2_raw=500, pm_raw=5, current_speed=1,
+                   trigger_is_iaq=True)
+    d = decide(_dry_cfg(), DvState(), ins)
+    assert d.reason == "dry_mode" and d.speed == 3
+
+
+def test_dry_requested_via_bus_blocked_when_outdoor_humid():
+    ins = DvInputs(dry_mode=False, dew_risk=False, dry_requested=True,
+                   dp_diff=0.3, co2_raw=500, pm_raw=5, current_speed=1,
+                   trigger_is_iaq=True)
+    d = decide(_dry_cfg(), DvState(), ins)
+    assert d.reason == "iaq" and d.speed == 1
+
+
 def test_dry_gate_opens_above_margin():
     d = decide(_dry_cfg(), DvState(), _dry_ins(1.5))
     assert d.reason == "dry_mode" and d.speed == 3

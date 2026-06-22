@@ -323,6 +323,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             startup_grace_active=grace_active,
             rh_delta=self._rh_delta(),
             dry_mode=self.dry_mode_enabled,
+            dry_requested=(self.bus_explain["winner"] == "request_dry"),
             dew_risk=dew_r,
             dp_diff=dp_diff,
         )

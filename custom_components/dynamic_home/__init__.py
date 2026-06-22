@@ -68,6 +68,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             coordinator.clear_published()
             # Don't leave a degraded repair issue hanging for a removed zone.
             coordinator.clear_issue()
+            coordinator.clear_mold()
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
         # Tear the services down with the last entry so they don't linger as

@@ -12,6 +12,7 @@ from dc_engine import (  # noqa: E402
     DcConfig,
     DcInputs,
     adaptive_lead_target,
+    adjacent_advice,
     assemble_target,
     base_active,
     bias_exterior,
@@ -25,6 +26,7 @@ from dc_engine import (  # noqa: E402
     facade_bias,
     forecast_bias,
     is_night,
+    mold_index_step,
     on_rate_cph,
     publish_intent,
     quantize_step,
@@ -32,6 +34,7 @@ from dc_engine import (  # noqa: E402
     step_toward,
     sunlit_facades,
     trend_bias,
+    window_anomaly,
 )
 
 
@@ -40,6 +43,84 @@ def _cfg(**kw):
     for k, v in kw.items():
         setattr(c, k, v)
     return c
+
+
+# --- F22: mold-risk index ---
+def test_mold_index_accumulates_above_threshold():
+    cfg = _cfg(mold_rh_threshold=70, mold_cap_h=48)
+    idx = mold_index_step(0.0, 80.0, 2.0, cfg)      # 2 h above threshold
+    assert idx == 2.0
+    idx = mold_index_step(idx, 80.0, 3.0, cfg)
+    assert idx == 5.0
+
+
+def test_mold_index_decays_below_threshold():
+    cfg = _cfg(mold_rh_threshold=70, mold_decay_h=24)
+    idx = mold_index_step(10.0, 50.0, 24.0, cfg)    # one time-constant of decay
+    assert 3.0 < idx < 4.0                          # 10 * e^-1 ≈ 3.68
+
+
+def test_mold_index_clamps_to_cap():
+    cfg = _cfg(mold_rh_threshold=70, mold_cap_h=12)
+    assert mold_index_step(11.0, 90.0, 5.0, cfg) == 12.0
+
+
+def test_mold_index_unchanged_without_rh_or_time():
+    cfg = _cfg()
+    assert mold_index_step(4.0, None, 2.0, cfg) == 4.0
+    assert mold_index_step(4.0, 90.0, 0.0, cfg) == 4.0
+
+
+# --- F20: open-window inference signature + decision branch ---
+def test_window_anomaly_heat_dropping():
+    cfg = _cfg(window_drop_cph=2.5)
+    assert window_anomaly("heat", True, -3.0, cfg) is True
+    assert window_anomaly("heat", True, -1.0, cfg) is False   # below threshold
+    assert window_anomaly("heat", True, 2.0, cfg) is False    # rising, not a window
+
+
+def test_window_anomaly_cool_rising():
+    cfg = _cfg(window_drop_cph=2.5)
+    assert window_anomaly("cool", True, 3.0, cfg) is True
+    assert window_anomaly("cool", True, -3.0, cfg) is False
+
+
+def test_window_anomaly_needs_active_demand_and_mode():
+    cfg = _cfg(window_drop_cph=2.5)
+    assert window_anomaly("heat", False, -5.0, cfg) is False   # valve closed
+    assert window_anomaly("off", True, -5.0, cfg) is False
+
+
+# --- F31: adjacent warm-space advisory ---
+def test_adjacent_heat_advises_open_when_warmer():
+    cfg = _cfg(adj_open_dt=6.0)
+    assert adjacent_advice("heat", 20.0, 50.0, None, cfg) == "open_gain"
+    assert adjacent_advice("heat", 20.0, 24.0, None, cfg) == "none"  # below ΔT
+    # Already open -> nothing to advise.
+    assert adjacent_advice("heat", 20.0, 50.0, True, cfg) == "none"
+
+
+def test_adjacent_cool_alarms_only_when_door_open():
+    cfg = _cfg(adj_alarm_dt=4.0)
+    assert adjacent_advice("cool", 26.0, 50.0, True, cfg) == "close_alarm"
+    assert adjacent_advice("cool", 26.0, 50.0, False, cfg) == "none"
+    assert adjacent_advice("cool", 26.0, 50.0, None, cfg) == "none"  # no door sensor
+
+
+def test_adjacent_none_when_off_or_missing():
+    cfg = _cfg()
+    assert adjacent_advice("off", 20.0, 50.0, None, cfg) == "none"
+    assert adjacent_advice("heat", None, 50.0, None, cfg) == "none"
+    assert adjacent_advice("heat", 20.0, None, None, cfg) == "none"
+
+
+def test_decide_window_inferred_turns_off():
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=20.0, window_inferred=True))
+    assert d.action == "off" and d.reason == "off_window_inferred"
+    # The real sensor lockout still takes precedence with its own reason.
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=20.0, window_lockout=True))
+    assert d.action == "off" and d.reason == "off_window"
 
 
 # --------------------------------------------------------------------------- #

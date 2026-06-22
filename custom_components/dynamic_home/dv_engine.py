@@ -16,6 +16,7 @@ INTENT_QUIET = {"request_quiet", "request_eco", "request_weather_protect"}
 INTENT_BOOST = "request_boost"
 INTENT_FREECOOL = "request_freecool"
 INTENT_NORMAL = "request_normal"
+INTENT_DRY = "request_dry"            # F22: DC mold alert asks the VMC to dry
 
 # Safe-range validation (SPEC §2).
 CO2_MIN, CO2_MAX = 0.0, 5000.0
@@ -220,6 +221,7 @@ class DvInputs:
     shower_level: str | None = None  # "v2" | "v3" | None
 
     dry_mode: bool = False
+    dry_requested: bool = False        # F22: bus-driven dry request (DC mold)
     dew_risk: bool = False
     dew_prerisk: bool = False
     dp_diff: float | None = None
@@ -481,7 +483,10 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     # Dry mode (F13): gate ventilation on a dew-point advantage (dp_diff) with
     # hysteresis. Only ventilate to dry when the outdoor air is actually drier;
     # otherwise fall through to the normal IAQ/auto path (drying would add moisture).
-    dry_demanded = ins.dry_mode and ins.dew_risk and ins.dp_diff is not None
+    # F22: a bus-driven dry request (from a DC mold alert) also demands drying,
+    # bypassing the local switch/dew-risk but still honouring the dp_diff gate.
+    dry_demanded = (((ins.dry_mode and ins.dew_risk) or ins.dry_requested)
+                    and ins.dp_diff is not None)
     if dry_demanded:
         if state.dry_active:
             state.dry_active = ins.dp_diff > (cfg.dry_margin - cfg.dry_hys)

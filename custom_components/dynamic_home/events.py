@@ -42,6 +42,33 @@ def fire_conflict(hass: HomeAssistant, entry: ConfigEntry, module: str,
     hass.bus.async_fire(const.EVENT_CONFLICT, data)
 
 
+def fire_mold(hass: HomeAssistant, entry: ConfigEntry, module: str,
+              active: bool, index: float) -> None:
+    """The zone's mold-risk index armed/disarmed (fired once per transition)."""
+    data = _base(entry, module)
+    data["active"] = active
+    data["index"] = round(index, 1)
+    hass.bus.async_fire(const.EVENT_MOLD, data)
+
+
+def fire_adjacent(hass: HomeAssistant, entry: ConfigEntry, module: str,
+                  advice: str, dt: float) -> None:
+    """Adjacent warm-space advisory changed (F31): open_gain / close_alarm / none."""
+    data = _base(entry, module)
+    data["advice"] = advice
+    data["dt"] = round(dt, 1)
+    hass.bus.async_fire(const.EVENT_ADJACENT, data)
+
+
+def fire_window(hass: HomeAssistant, entry: ConfigEntry, module: str,
+                inferred: bool, trend_cph: float) -> None:
+    """An open window was inferred from temperature (or cleared) — F20."""
+    data = _base(entry, module)
+    data["inferred"] = inferred
+    data["trend_cph"] = round(trend_cph, 2)
+    hass.bus.async_fire(const.EVENT_WINDOW, data)
+
+
 def fire_filter_due(hass: HomeAssistant, entry: ConfigEntry, module: str,
                     pct: float, hours: float, life: float) -> None:
     """The VMC filter crossed the replacement threshold (fired once per crossing)."""

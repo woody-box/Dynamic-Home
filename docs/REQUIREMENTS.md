@@ -419,8 +419,8 @@ inferida) que mejora el Adaptive Lead y da horas frío/calor exactas.
 
 **Dependencias:** Adaptive Lead (ya existe), F06 (horas exactas).
 **Criterios de aceptación:**
-- ☐ Con la señal real, las horas de calor/frío coinciden con la actuación del relé.
-- ☐ Si el termostato de backup abre la válvula, el sistema lo refleja, no lo combate.
+- ☐ Con la señal real, las horas de calor/frío coinciden con la actuación del relé. *(horas exactas: pend. F06; la señal ya sigue al relé)*
+- ☑ Si el termostato de backup abre la válvula, el sistema lo refleja, no lo combate.
 
 ### 5.9 · Anti-ciclado corto (F09)
 
@@ -455,8 +455,8 @@ aprendizaje ya mide.
 
 **Dependencias:** DC, F24 (por zona).
 **Criterios de aceptación:**
-- ☐ Abrir el contacto de ventana pausa la demanda de la zona.
-- ☐ Sin sensor, una caída brusca coherente con la demanda dispara el lockout; recupera por timeout.
+- ☑ Abrir el contacto de ventana pausa la demanda de la zona.
+- ☑ Sin sensor, una caída brusca coherente con la demanda dispara el lockout; recupera por estabilización o timeout.
 
 ### 5.11 · Índice de moho (F22)
 
@@ -468,12 +468,14 @@ alerta de salud y, si es efectivo, secar.
   configurables.
 - **REQ-MOH-2 (M):** **aviso** (sensor + alerta) y **dispara secado (F13) solo si
   es efectivo** (gateado por `dp_diff`: no ventilar si el exterior no está más seco).
+  *(También puede disparar un **deshumidificador** opcional por zona — siempre
+  efectivo, sin gate `dp_diff`.)*
 - **REQ-MOH-3 (S):** **activable por zona** (baños/dormitorios sí, salón quizá no).
 
 **Dependencias:** F13 (secado por rocío), F24 (por zona).
 **Criterios de aceptación:**
-- ☐ Mantener HR alta varias horas eleva el índice y emite aviso.
-- ☐ El secado solo arranca cuando el aire exterior está más seco (`dp_diff` favorable).
+- ☑ Mantener HR alta varias horas eleva el índice y emite aviso.
+- ☑ El secado solo arranca cuando el aire exterior está más seco (`dp_diff` favorable).
 
 ### 5.12 · Espacio adyacente / terraza (F31)
 
@@ -491,8 +493,8 @@ galería) comunicado por una puerta, para **avisar/aprovechar** (advisory).
 
 **Dependencias:** DC, F24, F33 (orientación/sol opcional).
 **Criterios de aceptación:**
-- ☐ En `heat` con terraza al sol muy por encima del salón, llega un aviso para abrir.
-- ☐ En `cool`, abrir la puerta con la terraza caliente dispara la alarma configurada.
+- ☑ En `heat` con terraza al sol muy por encima del salón, llega un aviso para abrir.
+- ☑ En `cool`, abrir la puerta con la terraza caliente dispara la alarma configurada.
 
 ---
 
@@ -1201,3 +1203,111 @@ hostil común se **difieren a F33** (su dependencia).
 
 **Diferido a F33:** observación de contaminantes exteriores (CO/PM10/NO2/SO2/O3) y
 su agregación a un índice hostil; NOx (REQ-IAQ-3) si aparece en el caso de uso.
+
+### 12.12 · F27 — Señal de demanda/válvula real (DC)
+
+Entrada opcional por entrada DC con la **demanda real** de la zona, que alimenta el
+**Adaptive Lead** (detección de ciclo) en lugar de inferirla de `t_int` vs
+`target`. Prioridad **c > b > a**, con *fallback* a la inferencia actual
+(compatibilidad):
+
+- **(c)** `CONF_DC_VALVE`: estado real de relé/potencia (Shelly). Numérico →
+  `> valve_power_min` (W); binario → on/off. La más fiable; **captura el termostato
+  analógico de backup** que `hvac_action` no ve.
+- **(b)** `CONF_DC_DEMAND_HEAT`/`CONF_DC_DEMAND_COOL`: helpers explícitos por modo.
+- **(a)** `hvac_action` del `CONF_DC_CLIMATE` (`heating`/`cooling`→on; `idle`/`off`→off).
+
+Diagnóstico: `binary_sensor` "Demanda real" (device_class `running`, atributo
+`source`), creado **solo si hay fuente real** (`has_real_demand()`). Tunable
+`valve_power_min` (opciones, categoría "demand", avanzado).
+
+**Aceptación:**
+
+- ☐ Con `CONF_DC_VALVE` (c), la demanda sigue al relé independientemente del modo/orden de DC.
+- ☐ Helpers (b) y `hvac_action` (a) en su prioridad; sin fuentes → inferencia (sin regresión).
+- ☐ El `binary_sensor` aparece solo con fuente real configurada.
+
+**Diferido a F06:** el contador de **horas exactas** de calor/frío (la señal real
+ya está lista para alimentarlo cuando se construya F06).
+
+### 12.13 · F22 — Índice de moho (DC)
+
+Riesgo de moho **sostenido** por entrada DC: índice = "horas por encima de
+`mold_rh_threshold` con decaimiento exponencial" (helper puro `mold_index_step`),
+acumulado en el coordinator e integrado por tiempo (patrón `_accumulate`),
+**persistido** vía `MoldIndexSensor` (RestoreSensor, unidad h). Histéresis
+`mold_on_h`/`mold_off_h` arma/desarma. Solo se expone con RH interior
+(`has_mold()` ← `CONF_DC_HUMIDITY`).
+
+Al armarse: **Repairs issue** (`mold_risk`) + **evento** `dynamic_home_mold`, y
+**dos vías de secado**:
+1. **Bus** → publica `request_dry` a `"dv"`; DV lo consume (`INTENT_DRY`,
+   `DvInputs.dry_requested`) aplicando su **gate `dp_diff` (F13)** → solo seca si
+   el exterior está más seco. DC no necesita humedad exterior.
+2. **Deshumidificador** opcional (`CONF_DC_DEHUMIDIFIER`) → `homeassistant.turn_on/off`
+   (siempre efectivo, sin gate; respeta modo *observe*).
+Al desarmarse se borran issue, bus y deshumidificador.
+
+**Aceptación:**
+
+- ☐ RH alta sostenida sube el índice → Repairs + evento + `request_dry` + deshumidificador ON.
+- ☐ DV solo seca con `dp_diff` favorable (gate F13 intacto para la vía bus).
+- ☐ Sin `CONF_DC_HUMIDITY` no se expone el sensor de índice.
+
+**Notas:** "por zona" = por entrada DC (F24 añadirá grupo). Caveat: arbitraje
+multi-intent en `"dv"` (dry vs quiet/boost) en primer corte.
+
+### 12.14 · F20 — Detección de ventana abierta (DC)
+
+Con sensor (`CONF_DC_WINDOW`) el comportamiento previo se mantiene
+(`window_lockout` → `DcDecision OFF`, reason `off_window`). F20 añade una
+**inferencia por temperatura** para zonas **sin sensor** (`has_window_infer()` ⇒
+`not _hw(CONF_DC_WINDOW)`):
+
+- Señal pura `window_anomaly(hvac, valve_open, trend_cph, cfg)`: zona climatizando
+  cuya Tª interior se mueve **en contra** de la demanda más rápido que
+  `window_drop_cph` (cae calentando / sube enfriando). `valve_open` viene de la
+  señal real F27 (`_real_valve_open`) o, sin fuente, de `hvac in (heat,cool)`.
+- Latch en el coordinator (`_infer_window`) con **confirm** (debounce para armar),
+  **release** (estabilización para desarmar) y **timeout** de seguridad
+  (`window_confirm_min` / `window_release_min` / `window_max_lockout_min`).
+- Al armar: `DcInputs.window_inferred` → `decide()` devuelve OFF con reason
+  `off_window_inferred`, y **aborta el aprendizaje** igual que el sensor. Evento
+  `dynamic_home_window` en cada transición.
+- Diagnóstico: `WindowInferredBinarySensor` (device_class window) solo cuando
+  aplica. Opciones: categoría `window` (sensibilidad principal + 3 avanzados).
+
+**Aceptación:**
+
+- ☐ Sin sensor, caída coherente sostenida ≥ confirm → OFF (`off_window_inferred`).
+- ☐ Recupera al estabilizarse la Tª (release) o por timeout de seguridad.
+- ☐ Con sensor configurado, la inferencia queda inactiva (manda el sensor).
+
+**Notas:** decisión usuario = solo sin sensor; con sensor, sin inferencia. La
+lógica de latch se testea inyectando `now_ts`/`trend_cph` en `_infer_window`
+(el derivado real usa reloj de pared).
+
+### 12.15 · F31 — Espacio adyacente / terraza (DC)
+
+Advisory por entrada DC, **sin actuar la puerta**. Requiere sensor de Tª del
+adyacente (`CONF_DC_ADJ_TEMP`); puerta opcional (`CONF_DC_ADJ_DOOR`).
+
+- Señal pura `adjacent_advice(hvac, t_int, t_adj, door_open, cfg)` →
+  `"open_gain"` / `"close_alarm"` / `"none"`:
+  - **heat**: `t_adj − t_int ≥ adj_open_dt` y puerta cerrada (o sin sensor) →
+    `open_gain` (avisar para abrir y aprovechar ganancia solar gratuita).
+  - **cool**: `t_adj − t_int ≥ adj_alarm_dt` y **puerta abierta** → `close_alarm`
+    (entra calor mientras enfrías). Sin sensor de puerta no hay alarma.
+- Coordinator `_adjacent_step`: evalúa cada ciclo y emite evento
+  `dynamic_home_adjacent` en cada transición; expone `AdjacentAdviceSensor`
+  (enum diagnóstico) solo si `has_adjacent()`.
+- Opciones: categoría `adjacent` (`adj_open_dt`, `adj_alarm_dt`), por zona.
+
+**Aceptación:**
+
+- ☐ heat + adyacente muy por encima + puerta cerrada → `open_gain` + evento.
+- ☐ cool + adyacente caliente + puerta abierta → `close_alarm` + evento.
+- ☐ Sin `CONF_DC_ADJ_TEMP` no se expone el sensor de aviso.
+
+**Diferido (REQ-ADY-4, S):** sesgar decisiones vía bus además del aviso; el primer
+corte es solo advisory (evento + sensor).

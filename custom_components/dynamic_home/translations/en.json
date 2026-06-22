@@ -58,7 +58,13 @@
           "dc_humidity": "Indoor humidity (optional, dew-point protection)",
           "dc_weather": "Weather (optional, forecast bias)",
           "dc_wind": "Wind sensor (optional, lead model)",
-          "ds_target": "Shutter target on the bus (e.g. ds)"
+          "ds_target": "Shutter target on the bus (e.g. ds)",
+          "dc_valve": "Real valve/relay or power (optional)",
+          "dc_demand_heat": "Heat-demand helper (optional)",
+          "dc_demand_cool": "Cool-demand helper (optional)",
+          "dc_dehumidifier": "Dehumidifier (optional)",
+          "dc_adj_temp": "Adjacent space temperature (optional)",
+          "dc_adj_door": "Door to adjacent space (optional)"
         }
       }
     },
@@ -99,7 +105,11 @@
           "cat_anticipatory": "Anticipatory boost",
           "cat_filter": "Filter life",
           "cat_quiet": "Quiet hours",
-          "cat_recuperator": "Heat recovery"
+          "cat_recuperator": "Heat recovery",
+          "cat_demand": "Real demand signal",
+          "cat_mold": "Mold risk",
+          "cat_window": "Open-window detection",
+          "cat_adjacent": "Adjacent space"
         }
       },
       "cat_iaq": {
@@ -550,6 +560,58 @@
           "hrv_bypass_eff_max": "Efficiency (0..1) at or below which, with a real ΔT, the exchanger is considered in bypass / not recovering.",
           "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass."
         }
+      },
+      "cat_demand": {
+        "title": "Real demand signal",
+        "data": {
+          "valve_power_min": "Valve power threshold (W)"
+        },
+        "data_description": {
+          "valve_power_min": "When the valve source is numeric (power, W), a reading above this counts the valve/relay as active."
+        }
+      },
+      "cat_mold": {
+        "title": "Mold risk",
+        "data": {
+          "mold_rh_threshold": "RH threshold (%)",
+          "mold_on_h": "Arm at (h)",
+          "mold_off_h": "Disarm at (h)",
+          "mold_decay_h": "Decay constant (h)",
+          "mold_cap_h": "Index cap (h)"
+        },
+        "data_description": {
+          "mold_rh_threshold": "Relative humidity at/above which mold-risk hours accrue.",
+          "mold_on_h": "Accumulated hours that arm the alert and drying.",
+          "mold_off_h": "Accumulated hours below which it disarms (hysteresis).",
+          "mold_decay_h": "Exponential decay time constant while RH is below the threshold.",
+          "mold_cap_h": "Maximum value the index can reach."
+        }
+      },
+      "cat_window": {
+        "title": "Open-window detection",
+        "data": {
+          "window_drop_cph": "Sensitivity (°C/h)",
+          "window_confirm_min": "Confirm (min)",
+          "window_release_min": "Recovery (min)",
+          "window_max_lockout_min": "Max lockout (min)"
+        },
+        "data_description": {
+          "window_drop_cph": "Indoor-temperature change against the demand (°C/h) that flags a likely open window (only when no window sensor is configured).",
+          "window_confirm_min": "Minutes the anomaly must persist before the zone is switched off.",
+          "window_release_min": "Minutes of stable temperature before normal control resumes.",
+          "window_max_lockout_min": "Safety timeout that resumes control even if the temperature has not stabilised."
+        }
+      },
+      "cat_adjacent": {
+        "title": "Adjacent space",
+        "data": {
+          "adj_open_dt": "Open ΔT (°C)",
+          "adj_alarm_dt": "Alarm ΔT (°C)"
+        },
+        "data_description": {
+          "adj_open_dt": "In heat, advise opening the door when the adjacent space is at least this much warmer than indoors (free solar gain).",
+          "adj_alarm_dt": "In cool, warn when the door is open and the adjacent space is at least this much warmer than indoors."
+        }
       }
     },
     "abort": {
@@ -594,6 +656,10 @@
     "required_source_missing": {
       "title": "{name}: required sensor unavailable",
       "description": "The climate zone \"{name}\" is calling for heating or cooling but its {missing} source is unavailable. Adaptive learning is paused and the zone falls back to its base setpoint until the sensor recovers. Check the sensor wiring or its entity in Home Assistant."
+    },
+    "mold_risk": {
+      "title": "{name}: sustained mold risk",
+      "description": "The zone \"{name}\" has had a high relative humidity for a sustained period (mold-risk index {index} h). Ventilation drying is requested when the outdoor air is drier, and a dehumidifier (if configured) is switched on. Consider airing the room or checking for moisture sources."
     }
   }
 }

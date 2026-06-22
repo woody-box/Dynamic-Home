@@ -78,6 +78,13 @@ STEP_CLIMATE_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_DC_WEATHER): _entity("weather"),
         vol.Optional(const.CONF_DC_WIND): _entity("sensor"),
         vol.Optional(const.CONF_DC_WINDOW): _entity(["binary_sensor", "input_boolean"]),
+        vol.Optional(const.CONF_DC_VALVE): _entity(["binary_sensor", "switch", "sensor"]),
+        vol.Optional(const.CONF_DC_DEMAND_HEAT): _entity(["binary_sensor", "input_boolean"]),
+        vol.Optional(const.CONF_DC_DEMAND_COOL): _entity(["binary_sensor", "input_boolean"]),
+        vol.Optional(const.CONF_DC_DEHUMIDIFIER):
+            _entity(["switch", "humidifier", "input_boolean"]),
+        vol.Optional(const.CONF_DC_ADJ_TEMP): _entity(["sensor"]),
+        vol.Optional(const.CONF_DC_ADJ_DOOR): _entity(["binary_sensor"]),
         vol.Optional(const.CONF_DC_TARGET, default="ds"): str,
     }
 )

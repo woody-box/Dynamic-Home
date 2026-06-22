@@ -10,7 +10,10 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_mock_service,
+)
 
 from custom_components.dynamic_home import const
 
@@ -108,6 +111,211 @@ async def test_climate_manual_setpoint_is_override(hass: HomeAssistant) -> None:
     state = hass.states.get("climate.salon")
     assert state.attributes["temperature"] == 21.0
     assert state.attributes["reason"] == "override"
+
+
+# --- F27: real heating/cooling demand signal ---
+async def test_real_demand_valve_reflects_relay(hass: HomeAssistant) -> None:
+    """Source (c): the valve/relay state is reflected regardless of DC's command."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    hass.states.async_set("switch.valve", "on")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_VALVE: "switch.valve"}, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Backup thermostat opened the relay even though the zone is OFF -> reflected.
+    assert co.has_real_demand() is True
+    assert co.real_demand_source == "valve"
+    assert co.real_demand_open is True
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_real_demand")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state == "on" and st.attributes["source"] == "valve"
+
+
+async def test_real_demand_valve_power_threshold(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.valve_power", "120")     # W, > valve_power_min
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_VALVE: "sensor.valve_power"},
+                       "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.real_demand_open is True
+    hass.states.async_set("sensor.valve_power", "0")
+    assert co.real_demand_open is False
+
+
+async def test_real_demand_helper_priority(hass: HomeAssistant) -> None:
+    """Source (b): the per-mode demand helper drives valve_open."""
+    _seed(hass)
+    hass.states.async_set("input_boolean.heat_demand", "on")
+    entry = await _add(
+        hass, {**CLIMATE, const.CONF_DC_DEMAND_HEAT: "input_boolean.heat_demand"},
+        "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.real_demand_source == "helper"
+    assert co.real_demand_open is True
+
+
+async def test_real_demand_absent_falls_back_to_inference(
+        hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_real_demand() is False
+    assert co.real_demand_source == "inferred"
+    assert co.real_demand_open is None
+    eid = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_real_demand")
+    assert eid is None
+
+
+# --- F22: mold-risk index ---
+async def test_mold_index_arms_alert_dry_request_and_dehumidifier(
+        hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers import issue_registry as ir
+    on_calls = async_mock_service(hass, "homeassistant", "turn_on")
+    _seed(hass)
+    hass.states.async_set("sensor.salon_rh", "85")          # high RH
+    hass.states.async_set("switch.dehum", "off")
+    entry = await _add(hass, {
+        **CLIMATE,
+        const.CONF_DC_HUMIDITY: "sensor.salon_rh",
+        const.CONF_DC_DEHUMIDIFIER: "switch.dehum",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Mold index sensor exists (RH source present).
+    assert co.has_mold() is True
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is not None
+
+    # Force the index over the arm threshold and re-evaluate.
+    co.mold_index = co._cfg().mold_on_h + 1
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    assert co._mold_active is True
+    # Repairs issue raised, dehumidifier turned on, request_dry on the bus.
+    assert ir.async_get(hass).async_get_issue(const.DOMAIN, co._mold_issue_id)
+    assert any(c.data["entity_id"] == "switch.dehum" for c in on_calls)
+    assert co.hub.winner("dv") == "request_dry"
+
+
+async def test_mold_index_absent_without_rh(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_HUMIDITY
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_mold() is False
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is None
+
+
+# --- F31: adjacent warm-space advisory ---
+async def test_adjacent_advisory_heat_and_cool(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    events = []
+    hass.bus.async_listen(const.EVENT_ADJACENT, lambda e: events.append(e.data))
+    _seed(hass)
+    hass.states.async_set("sensor.terraza", "50")
+    hass.states.async_set("binary_sensor.puerta", "off")
+    entry = await _add(hass, {
+        **CLIMATE,
+        const.CONF_DC_ADJ_TEMP: "sensor.terraza",
+        const.CONF_DC_ADJ_DOOR: "binary_sensor.puerta",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_adjacent() is True
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_adjacent_advice") is not None
+
+    # Heat + terrace much warmer + door closed -> advise opening for free gain.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.adjacent_advice == "open_gain"
+    assert events and events[-1]["advice"] == "open_gain"
+
+    # Cool + terrace hot + door OPEN -> alarm (heat leaking in).
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.COOL}, blocking=True)
+    hass.states.async_set("binary_sensor.puerta", "on")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.adjacent_advice == "close_alarm"
+    assert events[-1]["advice"] == "close_alarm"
+
+
+async def test_adjacent_absent_without_sensor(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_ADJ_TEMP
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_adjacent() is False
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_adjacent_advice") is None
+
+
+# --- F20: open-window inference (latch / recovery), driven with injected time ---
+async def test_window_inference_arm_and_stabilise(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_WINDOW
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    assert co.has_window_infer() is True
+
+    t = 1000.0
+    # Anomaly (heating but temp dropping fast): debounced, not armed yet.
+    assert co._infer_window(cfg, "heat", 20.0, -3.0, t) is False
+    assert co._infer_window(cfg, "heat", 20.0, -3.0, t + 60) is False
+    # Past the confirm window -> armed.
+    armed_t = t + cfg.window_confirm_min * 60 + 1
+    assert co._infer_window(cfg, "heat", 20.0, -3.0, armed_t) is True
+    # Temperature stabilises: the recovery window counts from this moment.
+    stable_t = armed_t + 60
+    assert co._infer_window(cfg, "heat", 20.0, 0.0, stable_t) is True
+    assert co._infer_window(
+        cfg, "heat", 20.0, 0.0,
+        stable_t + cfg.window_release_min * 60 + 1) is False
+
+
+async def test_window_inference_safety_timeout(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    co._infer_window(cfg, "heat", 20.0, -3.0, 0.0)
+    assert co._infer_window(cfg, "heat", 20.0, -3.0,
+                            cfg.window_confirm_min * 60 + 1) is True
+    # Anomaly persists, but the safety timeout forces recovery anyway.
+    out = co._infer_window(
+        cfg, "heat", 20.0, -3.0,
+        co._window_armed_ts + cfg.window_max_lockout_min * 60 + 1)
+    assert out is False
+
+
+async def test_window_inference_disabled_with_sensor(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("binary_sensor.ventana", "off")
+    entry = await _add(hass, {**CLIMATE,
+                              const.CONF_DC_WINDOW: "binary_sensor.ventana"}, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    assert co.has_window_infer() is False
+    co._infer_window(cfg, "heat", 20.0, -10.0, 100.0)
+    assert co._infer_window(cfg, "heat", 20.0, -10.0, 100_000.0) is False
 
 
 async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:

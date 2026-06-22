@@ -58,7 +58,13 @@
           "dc_humidity": "Humedad interior (opcional, protección antirrocío)",
           "dc_weather": "Meteo/weather (opcional, bias por previsión)",
           "dc_wind": "Sensor de viento (opcional, modelo de lead)",
-          "ds_target": "Target de persianas en el bus (p.ej. ds)"
+          "ds_target": "Target de persianas en el bus (p.ej. ds)",
+          "dc_valve": "Válvula/relé real o potencia (opcional)",
+          "dc_demand_heat": "Helper de demanda de calor (opcional)",
+          "dc_demand_cool": "Helper de demanda de frío (opcional)",
+          "dc_dehumidifier": "Deshumidificador (opcional)",
+          "dc_adj_temp": "Temperatura del espacio adyacente (opcional)",
+          "dc_adj_door": "Puerta al espacio adyacente (opcional)"
         }
       }
     },
@@ -99,7 +105,11 @@
           "cat_anticipatory": "Refuerzo anticipatorio",
           "cat_filter": "Vida del filtro",
           "cat_quiet": "Horas de silencio",
-          "cat_recuperator": "Recuperador"
+          "cat_recuperator": "Recuperador",
+          "cat_demand": "Señal de demanda real",
+          "cat_mold": "Riesgo de moho",
+          "cat_window": "Detección de ventana",
+          "cat_adjacent": "Espacio adyacente"
         }
       },
       "cat_iaq": {
@@ -550,6 +560,58 @@
           "hrv_bypass_eff_max": "Eficiencia (0..1) por debajo de la cual, con un ΔT real, se considera que el recuperador está en bypass / sin recuperar.",
           "hrv_bypass_dt_min": "ΔT mínimo extracción−absorción (°C) necesario para juzgar recuperación vs bypass."
         }
+      },
+      "cat_demand": {
+        "title": "Señal de demanda real",
+        "data": {
+          "valve_power_min": "Umbral de potencia de válvula (W)"
+        },
+        "data_description": {
+          "valve_power_min": "Cuando la fuente de la válvula es numérica (potencia, W), una lectura por encima cuenta la válvula/relé como activa."
+        }
+      },
+      "cat_mold": {
+        "title": "Riesgo de moho",
+        "data": {
+          "mold_rh_threshold": "Umbral de HR (%)",
+          "mold_on_h": "Arma a (h)",
+          "mold_off_h": "Desarma a (h)",
+          "mold_decay_h": "Constante de decaimiento (h)",
+          "mold_cap_h": "Tope del índice (h)"
+        },
+        "data_description": {
+          "mold_rh_threshold": "Humedad relativa a partir de la cual se acumulan horas de riesgo de moho.",
+          "mold_on_h": "Horas acumuladas que arman el aviso y el secado.",
+          "mold_off_h": "Horas acumuladas por debajo de las cuales se desarma (histéresis).",
+          "mold_decay_h": "Constante de decaimiento exponencial cuando la HR está por debajo del umbral.",
+          "mold_cap_h": "Valor máximo que puede alcanzar el índice."
+        }
+      },
+      "cat_window": {
+        "title": "Detección de ventana",
+        "data": {
+          "window_drop_cph": "Sensibilidad (°C/h)",
+          "window_confirm_min": "Confirmación (min)",
+          "window_release_min": "Recuperación (min)",
+          "window_max_lockout_min": "Bloqueo máx. (min)"
+        },
+        "data_description": {
+          "window_drop_cph": "Cambio de la temperatura interior en contra de la demanda (°C/h) que indica probable ventana abierta (solo si no hay sensor de ventana configurado).",
+          "window_confirm_min": "Minutos que la anomalía debe persistir antes de apagar la zona.",
+          "window_release_min": "Minutos con temperatura estable antes de reanudar el control normal.",
+          "window_max_lockout_min": "Tiempo de seguridad que reanuda el control aunque la temperatura no se haya estabilizado."
+        }
+      },
+      "cat_adjacent": {
+        "title": "Espacio adyacente",
+        "data": {
+          "adj_open_dt": "ΔT abrir (°C)",
+          "adj_alarm_dt": "ΔT alarma (°C)"
+        },
+        "data_description": {
+          "adj_open_dt": "En calefacción, avisa para abrir la puerta cuando el espacio adyacente está al menos esto más caliente que el interior (ganancia solar gratuita).",
+          "adj_alarm_dt": "En refrigeración, avisa cuando la puerta está abierta y el espacio adyacente está al menos esto más caliente que el interior."
+        }
       }
     },
     "abort": {
@@ -594,6 +656,10 @@
     "required_source_missing": {
       "title": "{name}: sensor requerido no disponible",
       "description": "La zona de clima \"{name}\" está pidiendo calor o frío pero su fuente de {missing} no está disponible. El aprendizaje adaptativo queda en pausa y la zona usa su consigna base hasta que el sensor se recupere. Revisa el sensor o su entidad en Home Assistant."
+    },
+    "mold_risk": {
+      "title": "{name}: riesgo de moho sostenido",
+      "description": "La zona \"{name}\" ha tenido una humedad relativa alta de forma sostenida (índice de moho {index} h). Se solicita secado por ventilación cuando el aire exterior está más seco y se enciende un deshumidificador (si está configurado). Considera ventilar la estancia o revisar fuentes de humedad."
     }
   }
 }
