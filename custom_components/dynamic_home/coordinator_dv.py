@@ -12,6 +12,7 @@ from collections import deque
 from datetime import time as dtime
 from datetime import timedelta
 
+import homeassistant.helpers.issue_registry as ir
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -69,8 +70,10 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.machine_hours = 0.0
         self.filter_hours = 0.0
         self._accum_ts: float | None = None
-        # "Filter due" event arming (hysteresis so it fires once per crossing).
+        # "Filter due" event arming (hysteresis so it fires once per crossing)
+        # and the matching Repairs issue id (F08).
         self._filter_due_armed = True
+        self._filter_issue_id = f"filter_{entry.entry_id}"
         # Startup bootstrap kick (opt-in, hardware quirk).
         self.bootstrap_enabled = False
         # Dry-mode (anti-condensation ventilation) toggle.
@@ -127,6 +130,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
     def reset_filter_hours(self) -> None:
         self.filter_hours = 0.0
         self._filter_due_armed = True
+        self.clear_filter_issue()       # the filter is fresh again (F08)
 
     def start_boost(self, minutes: float) -> None:
         """Force V3 for ``minutes`` (F14); auto-reverts when the window elapses."""
@@ -171,14 +175,32 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         return filter_life_pct(self.filter_hours, self._cfg().filter_life_hours)
 
     def _check_filter_due(self, cfg: DvConfig) -> None:
-        """Fire ``dynamic_home_filter_due`` once when life drops below the threshold."""
+        """Fire the event and raise a Repairs issue once life drops below threshold.
+
+        The event fires once per crossing (hysteresis); the Repairs issue (F08)
+        is raised alongside it and removed when the filter recovers (i.e. after
+        a reset takes life back above the clear threshold).
+        """
         pct = filter_life_pct(self.filter_hours, cfg.filter_life_hours)
         if pct <= const.FILTER_DUE_PCT and self._filter_due_armed:
             events.fire_filter_due(self.hass, self.entry, const.MODULE_VMC,
                                    pct, self.filter_hours, cfg.filter_life_hours)
+            ir.async_create_issue(
+                self.hass, const.DOMAIN, self._filter_issue_id,
+                is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                translation_key=const.ISSUE_FILTER_DUE,
+                translation_placeholders={"name": self.entry.title,
+                                          "pct": str(round(pct)),
+                                          "life": str(round(cfg.filter_life_hours))},
+                learn_more_url=const.LEARN_MORE_URL)
             self._filter_due_armed = False
         elif pct >= const.FILTER_CLEAR_PCT:
             self._filter_due_armed = True
+            self.clear_filter_issue()
+
+    def clear_filter_issue(self) -> None:
+        """Remove this VMC's filter-due repair issue (no-op if absent)."""
+        ir.async_delete_issue(self.hass, const.DOMAIN, self._filter_issue_id)
 
     # --- config helpers ---
     def _hw(self, key: str) -> str | None:

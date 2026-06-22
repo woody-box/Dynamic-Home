@@ -92,7 +92,7 @@
   - Se borra el issue al recuperarse la fuente (`async_delete_issue`).
   - **Implementado:** mixin `DegradedTracker` (`repairs.py`) compartido por DV/DS/DC; issue por módulo con la lista de fuentes requeridas ausentes/obsoletas (DV `sw_pwr/v2/v3`+`co2`/`pm25`; DS `cover`; DC Tª interior), evento al instante, issue tras `ISSUE_STALE_S` (no-fixable + `learn_more_url`), borrado al recuperar/descargar; `binary_sensor` "Degradado" en los tres. **Botón que reabre el config flow → diferido** (decisión del usuario: no-fixable + enlace).
 
-### F08 · Vida del filtro VMC
+### F08 · Vida del filtro VMC — ✅ implementada
 - **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
 - **Idea:** % de vida del filtro + recordatorio al umbral, sobre `filter_hours` ya contabilizadas.
 - **Perfilado:** (réplica nativa de su sección "7) Filtros")
@@ -101,6 +101,7 @@
   - **Umbral único** (al 100% del intervalo). Pre-aviso al 90% queda opcional.
   - **Aviso:** issue de **Repairs** (sistema de F07) + opción de notificación persistente / evento para Telegram (como sus toggles "Notificaciones persistentes / Telegram").
   - Fecha/contador de último cambio: opcional, no por defecto.
+  - **Implementado:** número "Vida del filtro (h)" (3650) + `FilterLifeSensor` (%) + botón/servicio `reset_filter`; evento `dynamic_home_filter_due` con histéresis y, ahora, **issue de Repairs `filter_due`** (no-fixable + enlace) creado al cruzar el umbral y borrado al resetear/descargar. Fecha de último cambio → no.
 
 ### F09 · Anti-ciclado corto (DC)
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media (alta con compresor) · **Esfuerzo:** M
@@ -111,13 +112,14 @@
   - **La seguridad manda:** ante riesgo de condensación u orden de seguridad, el anti-ciclado **cede** (apaga aunque no se cumpla el min ON).
   - Contexto: hoy el usuario solo protege por seguridad (anticondensación); el ciclado de compresor no lo gestiona en su aerotermia comunitaria, pero es relevante para instalaciones individuales.
 
-### F10 · Servicios y eventos nativos
+### F10 · Servicios y eventos nativos — ✅ implementada
 - **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Media · **Esfuerzo:** S
 - **Idea:** capa de acciones (servicios) + eventos propios para automatizar/dashboards.
 - **Perfilado:** (aceptado tal cual)
   - **Ambos:** servicios (comodidad) + eventos (enganche para replicar su Telegram/notify).
   - **Servicios:** `reset_learning` (Adaptive Lead), `boost` (módulo, minutos), `set_observe` (on/off), `reset_filter`, `recalibrate`/`refresh`.
   - **Eventos:** `dynamic_home_degraded` (F07), `dynamic_home_conflict` (bus, F02), `dynamic_home_filter_due` (F08), `dynamic_home_mode_changed` (F01).
+  - **Implementado:** 5 servicios (`reset_learning`/`set_observe`/`reset_filter`/`recalibrate`/`boost`) registrados una vez por integración, resolución de destino por entidad/dispositivo/área (`async_extract_config_entry_ids`), `services.yaml` + traducciones EN/ES; los 4 eventos emitiéndose en transición (degraded/conflict/filter_due/mode_changed, + mold/window/adjacent).
   - **Prioridad:** *nice to have*; los **eventos primero** (para mantener el Telegram), los servicios después. No bloqueante.
 
 ## DV (ventilación)
@@ -417,9 +419,9 @@
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
 | **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
 | **F07** | ✅ implementada (botón→futuro) | Repairs transversal DV/DS/DC (mixin `DegradedTracker`): issue por módulo con fuentes requeridas ausentes/obsoletas >5min + evento `dynamic_home_degraded` + binary_sensor "Degradado". No-fixable + enlace; botón que reabre config flow diferido. |
-| **F08** | ☑ revisada | Vida del filtro: intervalo configurable (3650 h), sensor % , reset existente, aviso por Repairs/notif. |
+| **F08** | ✅ implementada | Vida del filtro: número (3650 h) + sensor %, reset (botón/servicio), evento `filter_due` + **issue de Repairs `filter_due`** (creado al cruzar el umbral, borrado al resetear/descargar). |
 | **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
-| **F10** | ☑ revisada | Servicios (reset_learning/boost/observe/reset_filter/recalibrate) + eventos (degraded/conflict/filter_due/mode_changed); eventos primero. |
+| **F10** | ✅ implementada | 5 servicios (`reset_learning`/`boost`/`set_observe`/`reset_filter`/`recalibrate`) con `services.yaml` + traducciones EN/ES, destino por entidad/dispositivo/área; 4 eventos emitiéndose (degraded/conflict/filter_due/mode_changed). |
 | **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
 | **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |

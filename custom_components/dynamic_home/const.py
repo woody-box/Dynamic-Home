@@ -148,6 +148,8 @@ ISSUE_REQUIRED_SOURCE = "required_source_missing"
 ISSUE_STALE_S = 300.0
 # A DC zone whose mold-risk index stays armed raises a (health) repair issue.
 ISSUE_MOLD_RISK = "mold_risk"
+# A VMC whose filter life crossed the replacement threshold raises a repair (F08).
+ISSUE_FILTER_DUE = "filter_due"
 LEARN_MORE_URL = "https://github.com/woody-box/dynamic-home"
 
 # How often the coordinator re-evaluates the control pipeline (seconds).

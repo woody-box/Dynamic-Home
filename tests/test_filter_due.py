@@ -3,6 +3,7 @@
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from pytest_homeassistant_custom_component.common import (
     MockConfigEntry,
     async_capture_events,
@@ -105,3 +106,40 @@ async def test_reset_rearms_and_restores(hass: HomeAssistant) -> None:
     await co.async_refresh()
     await hass.async_block_till_done()
     assert len(captured) == 2
+
+
+async def test_filter_due_raises_and_clears_repair_issue(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = ir.async_get(hass)
+    assert reg.async_get_issue(const.DOMAIN, co._filter_issue_id) is None
+
+    # Crossing the due threshold raises the Repairs issue (F08).
+    co.filter_hours = 3600.0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    issue = reg.async_get_issue(const.DOMAIN, co._filter_issue_id)
+    assert issue is not None
+    assert issue.translation_key == const.ISSUE_FILTER_DUE
+
+    # Resetting the filter clears the issue immediately (no refresh needed).
+    co.reset_filter_hours()
+    assert reg.async_get_issue(const.DOMAIN, co._filter_issue_id) is None
+
+
+async def test_filter_issue_removed_on_unload(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = ir.async_get(hass)
+
+    co.filter_hours = 3600.0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert reg.async_get_issue(const.DOMAIN, co._filter_issue_id) is not None
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert reg.async_get_issue(const.DOMAIN, co._filter_issue_id) is None
