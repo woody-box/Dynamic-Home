@@ -830,6 +830,10 @@
     "mold_risk": {
       "title": "{name}: riesgo de moho sostenido",
       "description": "La zona \"{name}\" ha tenido una humedad relativa alta de forma sostenida (índice de moho {index} h). Se solicita secado por ventilación cuando el aire exterior está más seco y se enciende un deshumidificador (si está configurado). Considera ventilar la estancia o revisar fuentes de humedad."
+    },
+    "filter_due": {
+      "title": "{name}: filtro pendiente de cambio",
+      "description": "La VMC \"{name}\" ha alcanzado el umbral de vida del filtro (queda {pct}% de {life} h). Cambia o limpia el filtro y luego pulsa su botón \"Reset filter hours\" (o llama al servicio dynamic_home.reset_filter) para borrar este aviso."
     }
   },
   "entity": {

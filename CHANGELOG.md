@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.11.3] — 2026-06-22
+
+### Added
+- **Aviso de filtro por Repairs (F08)**: al cruzar el umbral de vida del filtro, la
+  VMC crea ahora una incidencia en **Ajustes → Reparaciones** (`filter_due`,
+  no-fixable + `learn_more_url`) además del evento `dynamic_home_filter_due` que
+  ya emitía. La incidencia se **borra** al pulsar "Reset filter hours" (o el
+  servicio `dynamic_home.reset_filter`) y al descargar la entrada. Completa F08
+  (el número "Vida del filtro (h)", el sensor de % y el botón de reset ya existían).
+
+### Docs
+- F08 y **F10** (servicios + eventos, ya estaba completo: 5 servicios con
+  `services.yaml`/traducciones + 4 eventos) marcados como implementados.
+
+### Internal
+- Suite de 283 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.11.2] — 2026-06-22
 
 ### Added

@@ -89,6 +89,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if isinstance(coordinator, DcCoordinator):
             coordinator.clear_published()
             coordinator.clear_mold()
+        # A VMC must not leave a filter-due repair issue for a removed entry (F08).
+        if isinstance(coordinator, DvCoordinator):
+            coordinator.clear_filter_issue()
         if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
             hass.data[const.DOMAIN].pop(const.DATA_ZONES, None)
             hass.data[const.DOMAIN].pop(const.DATA_MODE, None)

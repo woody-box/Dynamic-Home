@@ -667,8 +667,10 @@ umbral, sobre las `filter_hours` ya contabilizadas.
 
 **Dependencias:** DV (`filter_hours`), F07 (aviso), F10 (evento).
 **Criterios de aceptación:**
-- ☐ Al llegar a las horas del intervalo, el % cae a 0 y se emite el issue de Repairs.
-- ☐ Pulsar el botón de reset devuelve el % a 100.
+- ☑ Al cruzar el umbral de vida, se emite el evento `dynamic_home_filter_due` y se
+  crea el issue de **Repairs** (`filter_due`, no-fixable + `learn_more_url`).
+- ☑ Pulsar el botón de reset (o el servicio `reset_filter`) devuelve el % a 100 y
+  **borra** el issue; el aviso también se limpia al descargar la entrada.
 
 ---
 
@@ -1074,17 +1076,21 @@ el `binary_sensor` "Degradado".
 ### 12.4 · F08 — Vida del filtro VMC
 
 Parámetro configurable "Vida del filtro (h)" (default 3650) y sensor "% de vida
-del filtro" = `100·(1 − filter_hours/vida)`. El evento `dynamic_home_filter_due`
-se emite **una vez** al cruzar el umbral, con histéresis (`FILTER_DUE_PCT` /
-`FILTER_CLEAR_PCT`). El reset (botón o servicio `reset_filter`) re-arma el evento.
+del filtro" = `100·(1 − filter_hours/vida)`. Al cruzar el umbral se emite **una
+vez** el evento `dynamic_home_filter_due` (histéresis `FILTER_DUE_PCT` /
+`FILTER_CLEAR_PCT`) **y** se crea un issue de **Repairs** (`filter_due`,
+no-fixable + `learn_more_url`). El reset (botón o servicio `reset_filter`) re-arma
+el evento, devuelve el % a 100 y **borra** el issue.
 
 **Aceptación:**
 
-- ☐ `filter_life_pct(hours, life)` acota a [0,100] y devuelve 100 si `life<=0`.
-- ☐ Sensor `sensor.<vmc>_filter_life` refleja el % restante.
-- ☐ `dynamic_home_filter_due` se emite una sola vez por cruce (no en cada ciclo).
-- ☐ Reset → re-arma el evento y el % vuelve a 100.
-- ☐ "Vida del filtro (h)" aparece como número/opción configurable de la VMC.
+- ☑ `filter_life_pct(hours, life)` acota a [0,100] y devuelve 100 si `life<=0`.
+- ☑ Sensor `sensor.<vmc>_filter_life` refleja el % restante.
+- ☑ `dynamic_home_filter_due` se emite una sola vez por cruce (no en cada ciclo).
+- ☑ Al cruzar el umbral se crea el issue de Repairs `filter_due`; el reset/descarga
+  lo borra.
+- ☑ Reset → re-arma el evento y el % vuelve a 100.
+- ☑ "Vida del filtro (h)" aparece como número/opción configurable de la VMC.
 
 ### 12.5 · F13 — Secado por punto de rocío (DV)
 
