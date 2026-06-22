@@ -79,7 +79,7 @@
 
 ## Robustez y mantenimiento
 
-### F07 · HA Repairs sobre `degraded` ⭐
+### F07 · HA Repairs sobre `degraded` ⭐ — ✅ implementada
 - **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Alta · **Esfuerzo:** S
 - **Idea:** cuando un sensor configurado desaparece o lleva obsoleto, emitir un *issue* accionable en Ajustes→Reparaciones (se apoya en el `binary_sensor degraded` ya existente).
 - **Perfilado:**
@@ -89,6 +89,7 @@
   - **Un issue por módulo**, listando las fuentes que faltan (como su Telegram "DV HW MAP / SENSORES REQUERIDOS KO ... Missing (2): ...").
   - **Extra opcional:** emitir además un **evento** (`dynamic_home_degraded`) para que quien quiera lo enrute a Telegram/notify (como hace hoy). Lo nativo es el *issue* de Reparaciones; el evento es para power-users.
   - Se borra el issue al recuperarse la fuente (`async_delete_issue`).
+  - **Implementado:** mixin `DegradedTracker` (`repairs.py`) compartido por DV/DS/DC; issue por módulo con la lista de fuentes requeridas ausentes/obsoletas (DV `sw_pwr/v2/v3`+`co2`/`pm25`; DS `cover`; DC Tª interior), evento al instante, issue tras `ISSUE_STALE_S` (no-fixable + `learn_more_url`), borrado al recuperar/descargar; `binary_sensor` "Degradado" en los tres. **Botón que reabre el config flow → diferido** (decisión del usuario: no-fixable + enlace).
 
 ### F08 · Vida del filtro VMC
 - **Estado:** ☑ revisada · **Módulos:** DV · **Valor:** Media · **Esfuerzo:** S
@@ -414,7 +415,7 @@
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
 | **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
-| **F07** | ☑ revisada | Repairs por módulo (ausente + obsoleto >5min, solo requeridos); botón reabre config flow; + evento opcional para Telegram. |
+| **F07** | ✅ implementada (botón→futuro) | Repairs transversal DV/DS/DC (mixin `DegradedTracker`): issue por módulo con fuentes requeridas ausentes/obsoletas >5min + evento `dynamic_home_degraded` + binary_sensor "Degradado". No-fixable + enlace; botón que reabre config flow diferido. |
 | **F08** | ☑ revisada | Vida del filtro: intervalo configurable (3650 h), sensor % , reset existente, aviso por Repairs/notif. |
 | **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
 | **F10** | ☑ revisada | Servicios (reset_learning/boost/observe/reset_filter/recalibrate) + eventos (degraded/conflict/filter_due/mode_changed); eventos primero. |

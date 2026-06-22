@@ -21,8 +21,14 @@ from .coordinator_weather import WxCoordinator
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
-    if entry.data.get(const.CONF_MODULE) == const.MODULE_WEATHER:
+    module = entry.data.get(const.CONF_MODULE)
+    if module == const.MODULE_WEATHER:
         async_add_entities([WeatherAlertBinarySensor(coordinator, entry)])
+        return
+    # DV/DS only expose the transversal "Degradado" health sensor (F07); the
+    # rest below are DC-specific (dew risk, real demand, inferred window).
+    if module in (const.MODULE_VMC, const.MODULE_SHUTTER):
+        async_add_entities([DegradedBinarySensor(coordinator, entry)])
         return
     entities = [DewRiskBinarySensor(coordinator, entry),
                 DegradedBinarySensor(coordinator, entry)]
@@ -125,8 +131,8 @@ class WeatherAlertBinarySensor(CoordinatorEntity[WxCoordinator],
         return {"source": self.coordinator.active_label}
 
 
-class DegradedBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
-    """Zone health: ON when a core source is missing (learning is paused)."""
+class DegradedBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Module health: ON when a required source is missing (F07, DV/DS/DC)."""
 
     _attr_has_entity_name = True
     _attr_name = "Degradado"
@@ -134,7 +140,7 @@ class DegradedBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity)
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
-    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_degraded"
         self._attr_device_info = DeviceInfo(

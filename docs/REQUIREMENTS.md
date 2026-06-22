@@ -338,8 +338,11 @@ Ajustes → Reparaciones cuando falta una fuente **requerida**.
 
 **Dependencias:** `binary_sensor degraded` existente (RNF-7).
 **Criterios de aceptación:**
-- ☐ Quitar una fuente requerida >5 min crea un issue con la lista de lo que falta.
-- ☐ Pulsar el botón abre el config flow; restaurar la fuente borra el issue.
+- ☑ Quitar una fuente requerida >5 min crea un issue con la lista de lo que falta
+  (transversal DV/DS/DC; evento `dynamic_home_degraded` al instante).
+- ◐ Restaurar la fuente borra el issue (☑); el **botón** que reabre el config flow
+  queda **diferido** (issue no-fixable + `learn_more_url`; el texto indica
+  Ajustes → Dispositivos y servicios → Configurar) — REQ-REP-4 pendiente.
 
 ### 5.5 · Servicios y eventos nativos (F10)
 
@@ -1042,23 +1045,29 @@ agrupan bajo un único dispositivo compartido "Dynamic Home Bus".
   `(dynamic_home, "bus")`.
 - ☐ Se emite `dynamic_home_conflict` al cambiar el ganador (no cada ciclo).
 
-### 12.3 · F07 — Repairs sobre `degraded` (solo DC)
+### 12.3 · F07 — Repairs sobre `degraded` (transversal DV·DS·DC)
 
-Cuando una zona DC pide calor/frío pero le falta su sensor de temperatura
-interior de forma **sostenida** (> `ISSUE_STALE_S` = 300 s), se crea una
-incidencia en **Reparaciones** de Home Assistant; se borra al recuperarse o al
-descargar la entrada. El evento `dynamic_home_degraded` se emite en la
-transición (inmediato), independientemente del umbral de la incidencia.
+Cuando una fuente **requerida** de un módulo está configurada pero **ausente/
+renombrada u obsoleta** (`unavailable`/`unknown`) de forma **sostenida**
+(> `ISSUE_STALE_S` = 300 s), se crea una incidencia en **Reparaciones** de Home
+Assistant que **lista las fuentes que faltan**; se borra al recuperarse o al
+descargar la entrada. El evento `dynamic_home_degraded` se emite en la transición
+(inmediato), independientemente del umbral de la incidencia. El mecanismo es
+**transversal**: un mixin `DegradedTracker` (`repairs.py`) lo comparten los tres
+módulos. Requeridas por módulo: **DV** relés `sw_pwr/v2/v3` + `co2`/`pm25`; **DS**
+el `cover`; **DC** la Tª interior (solo en heat/cool). Cada módulo expone además
+el `binary_sensor` "Degradado".
 
 **Aceptación:**
 
-- ☐ DC en heat/cool sin `t_int` → `degraded=True` y evento emitido.
-- ☐ La incidencia **no** aparece hasta superar el umbral de obsolescencia.
-- ☐ Superado el umbral → incidencia `required_source_missing` (no *fixable*,
-  con `learn_more_url`).
-- ☐ Recuperación del sensor → incidencia borrada + evento de salida.
-- ☐ Descarga de la entrada degradada → incidencia borrada.
-- ☐ DV/DS quedan fuera de alcance en esta fase.
+- ☑ Fuente requerida ausente/obsoleta → `degraded=True` y evento emitido (DV/DS/DC).
+- ☑ La incidencia **no** aparece hasta superar el umbral de obsolescencia.
+- ☑ Superado el umbral → incidencia `required_source_missing` con la lista de lo
+  que falta (no *fixable*, con `learn_more_url`).
+- ☑ Recuperación de la fuente → incidencia borrada + evento de salida.
+- ☑ Descarga de la entrada degradada → incidencia borrada.
+- ☑ Cobertura **transversal** DV/DS/DC (antes solo DC).
+- ◐ Botón que reabre el config flow (REQ-REP-4) **diferido** (issue no-fixable).
 
 ### 12.4 · F08 — Vida del filtro VMC
 

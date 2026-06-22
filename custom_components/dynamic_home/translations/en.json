@@ -824,8 +824,8 @@
   },
   "issues": {
     "required_source_missing": {
-      "title": "{name}: required sensor unavailable",
-      "description": "The climate zone \"{name}\" is calling for heating or cooling but its {missing} source is unavailable. Adaptive learning is paused and the zone falls back to its base setpoint until the sensor recovers. Check the sensor wiring or its entity in Home Assistant."
+      "title": "{name}: required source unavailable",
+      "description": "The Dynamic Home module \"{name}\" has a required source unavailable: {missing}. The module falls back to a safe state until it recovers. Check the sensor wiring or its entity in Home Assistant (Settings → Devices & Services → Configure)."
     },
     "mold_risk": {
       "title": "{name}: sustained mold risk",

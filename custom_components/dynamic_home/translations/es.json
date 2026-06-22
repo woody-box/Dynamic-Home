@@ -824,8 +824,8 @@
   },
   "issues": {
     "required_source_missing": {
-      "title": "{name}: sensor requerido no disponible",
-      "description": "La zona de clima \"{name}\" está pidiendo calor o frío pero su fuente de {missing} no está disponible. El aprendizaje adaptativo queda en pausa y la zona usa su consigna base hasta que el sensor se recupere. Revisa el sensor o su entidad en Home Assistant."
+      "title": "{name}: fuente requerida no disponible",
+      "description": "El módulo de Dynamic Home \"{name}\" tiene una fuente requerida no disponible: {missing}. El módulo recurre a un estado seguro hasta que se recupere. Revisa el sensor o su entidad en Home Assistant (Ajustes → Dispositivos y servicios → Configurar)."
     },
     "mold_risk": {
       "title": "{name}: riesgo de moho sostenido",
