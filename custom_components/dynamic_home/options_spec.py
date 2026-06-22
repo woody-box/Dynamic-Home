@@ -68,6 +68,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "alert": ("Weather alerts", "Avisos meteo"),
     "hood": ("Extractor hood", "Campana extractora"),
     "wx": ("Sources & alerts", "Fuentes y alertas"),
+    "energy": ("Energy estimate", "Estimación de energía"),
 }
 
 
@@ -165,6 +166,11 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "filter": [
             _v("filter_life_hours", "Filter life (h)", "Vida del filtro (h)"),
         ],
+        "energy": [
+            _v("est_w_v1", "V1 power (W)", "Potencia V1 (W)"),
+            _v("est_w_v2", "V2 power (W)", "Potencia V2 (W)"),
+            _v("est_w_v3", "V3 power (W)", "Potencia V3 (W)"),
+        ],
     },
     const.MODULE_SHUTTER: {
         "positions": [
@@ -193,6 +199,11 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "geometry": [
             _v("window_height_cm", "Window height (cm)", "Altura ventana (cm)"),
             _v("overhang_cm", "Overhang (cm)", "Voladizo (cm)"),
+            _v("sill_height_cm", "Sill height (cm)", "Altura del alféizar (cm)"),
+            _v("room_depth_m", "Room depth (m)", "Profundidad de sala (m)"),
+            _v("target_penetration_m", "Target penetration (m)",
+               "Penetración objetivo (m)"),
+            _v("shade_step_pct", "Shade step (%)", "Paso de sombreado (%)"),
         ],
         "night": [
             _v("night_iso_close_pct", "Night close (%)", "Cierre noche (%)"),
@@ -210,6 +221,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("dawn_target_pct", "Sunrise target (%)", "Objetivo amanecer (%)"),
             _v("dawn_trigger_elevation", "Trigger elevation (°)",
                "Elevación de disparo (°)"),
+        ],
+        "energy": [
+            _v("est_w_motor", "Motor power (W)", "Potencia motor (W)"),
+            _v("full_travel_s", "Full travel (s)", "Recorrido completo (s)"),
         ],
     },
     const.MODULE_CLIMATE: {
@@ -316,6 +331,9 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "adjacent": [
             _v("adj_open_dt", "Open ΔT (°C)", "ΔT abrir (°C)"),
             _v("adj_alarm_dt", "Alarm ΔT (°C)", "ΔT alarma (°C)"),
+        ],
+        "energy": [
+            _v("est_w_on", "Power while on (W)", "Potencia activa (W)"),
         ],
     },
     const.MODULE_WEATHER: {

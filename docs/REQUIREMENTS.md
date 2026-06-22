@@ -383,8 +383,10 @@ si no, integrado en el panel de Energía de HA.
 
 **Dependencias:** F26 (gating DC), F27 (horas exactas), F03 (pico).
 **Criterios de aceptación:**
-- ☐ Con Shelly, el kWh del módulo aparece en el panel de Energía.
-- ☐ Sin medidor, la estimación por estado produce un kWh creciente coherente.
+- ☑ Con Shelly (`power_meter`), el kWh del módulo aparece en el panel de Energía.
+- ☑ Sin medidor, la estimación por estado produce un kWh creciente coherente.
+- *(REQ-ENE-1/2/4 cubiertos en v0.12.0 para VMC/DC/DS; **coste (€)** REQ-ENE-3 y
+  **potencia instantánea/pico** REQ-ENE-5 quedan diferidos; ver §12.x.)*
 
 ### 5.7 · Anti-pico / reparto de cargas (F03)
 
@@ -702,8 +704,10 @@ necesario** (proteger X metros de suelo), no todo/nada.
 
 **Dependencias:** DS, posición/azimut del sol (HA), F33 (opcional, nubosidad).
 **Criterios de aceptación:**
-- ☐ Con sol bajo, la persiana cierra más; con sol alto, menos, para mantener X m.
-- ☐ Sin geometría configurada, aplica el % fijo actual sin error.
+- ☑ Con sol bajo, la persiana cierra más; con sol alto, menos, para mantener X m.
+- ☑ Con el sombreado geométrico apagado (por defecto) o sin sol aplicable, aplica
+  el % fijo actual (`summer_solar_shield`) sin error. *(Implementado en v0.12.0 como
+  switch opt-in "Geometric shading"; ver §12.x.)*
 
 ### 7.2 · Aislamiento nocturno estacional (F16)
 
@@ -1579,3 +1583,46 @@ cambio de ganador (no cada ciclo). Solo estado actual (sin logbook).
 - ☑ Cada consumidor cuelga del dispositivo "Dynamic Home · Bus".
 - ☑ `dynamic_home_conflict` se emite al cambiar el ganador.
 - ☑ Solo estado actual; sin registro de historial.
+
+### 12.25 · F06 — Energía (kWh) por módulo
+
+Cada módulo (**VMC, DC y persianas**) expone un sensor de **energía** (`device_class:
+energy`, `state_class: total_increasing`, `RestoreSensor`) que entra en el **panel
+de Energía** de HA. La **potencia** sale de un **medidor real** si se configura el
+campo opcional `power_meter`; si no, de una **estimación** (helper puro `energy.py`):
+la VMC integra W por velocidad (`est_w_v1/v2/v3`), DC integra `est_w_on` mientras la
+zona pide calor/frío (reaprovecha la señal de demanda real de F27), y la persiana
+estima la energía **marginal por movimiento** del motor (`est_w_motor` × `full_travel_s`
+× Δ%, porque un movimiento dura segundos y el muestreo a 60 s no lo capta). Solo
+**energía** en este ciclo.
+
+**Aceptación:**
+
+- ☑ Con `power_meter`, el kWh integra la potencia real y aparece en el panel de Energía.
+- ☑ Sin medidor, la estimación por estado/velocidad produce un kWh creciente coherente.
+- ☑ El total sobrevive a reinicios (`RestoreSensor`) en los tres módulos.
+
+**Diferido (anotado):** **coste (€)** (sensor de precio / tarifa fija, REQ-ENE-3);
+**potencia instantánea / pico** (REQ-ENE-5, cruza F03); **medidor real en DS**.
+
+### 12.26 · F15 — Sombreado geométrico real (DS)
+
+Switch **opt-in "Geometric shading"** por persiana. Activo, la rama de protección
+solar de verano (cooling + sol enfrentado + caluroso) deja el escudo fijo por
+"impacto" y calcula la **penetración real del sol en el suelo** —`solar_penetration_m`
+(alféizar `sill_height_cm`, alto de ventana, voladizo, azimut y `room_depth_m`)— y
+`geo_shade_pos` baja la persiana **por pasos** (`shade_step_pct`) solo hasta proteger
+`target_penetration_m`, con suelo en `summer_min_open_pct` (`reason: summer_solar_geo`,
+`penetration_m` en `details`). Apagado (por defecto) o cuando el sol no procede →
+**fallback** al escudo fijo `summer_solar_shield`. Lógica pura en `ds_engine`,
+respeta `PROTECTED`/slew/bus como el resto de la cascada.
+
+**Aceptación:**
+
+- ☑ Con sol alto la penetración es menor que con sol bajo; el cierre se ajusta a ello.
+- ☑ Penetración bajo el objetivo → no cierra (100 %); por encima → cierra por pasos,
+  con suelo en el mínimo de verano.
+- ☑ Con el switch apagado (o sin sol aplicable), comportamiento idéntico al actual
+  (`summer_solar_shield`) — sin regresión.
+
+**Diferido (anotado):** geometría aún más fina (luz difusa/reflejada) fuera de alcance.

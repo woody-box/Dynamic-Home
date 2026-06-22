@@ -142,6 +142,10 @@ class DcConfig:
     facade_gain_heat: float = 0.3
     facade_gain_cool: float = 0.3
 
+    # Energy (F06): estimated power (W) while the zone is calling for heat/cool,
+    # used when no real power meter is configured (idle draws nothing).
+    est_w_on: float = 1000.0
+
 
 @dataclass
 class DcInputs:

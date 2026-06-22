@@ -68,8 +68,8 @@
 - **Idea:** curva clásica de calefacción que ajusta la consigna de la fuente según la temperatura exterior.
 - **Perfilado:** _Congelada — para la instalación objetivo (aerotermia central, sin control de impulsión) se solapa con `bias_exterior`; reconsiderar para usuarios con caldera/aerotermia individual._
 
-### F06 · Sensor de coste/consumo/energía
-- **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Media-Alta · **Esfuerzo:** M
+### F06 · Sensor de coste/consumo/energía — ✅ implementada (solo energía)
+- **Estado:** ✅ implementada (energía; coste pendiente) · **Módulos:** DV·DS·DC · **Valor:** Media-Alta · **Esfuerzo:** M
 - **Idea:** energía/coste por módulo, con medidor real si lo hay o estimación por horas si no.
 - **Perfilado:**
   - **Potencia: medidor real preferente.** Si el módulo tiene un sensor de potencia (Shelly) → se usa ese. Si no, **estimación** por potencia configurable por estado/velocidad.
@@ -77,6 +77,7 @@
   - **Coste (€) opcional:** vía **sensor de precio** (tarifa plana que el usuario mete, o integración externa para variable) o un precio fijo configurable.
   - **Módulos:** VMC y Persianas (suelen tener Shelly). **DC opcional** y ligado a **F26**: en aerotermia comunitaria no aporta; en eléctrico/AC sí, si hay medidor. (El usuario ya calcula horas de frío/calor por el helper del climate; portarlo es interesante para él, opcional para otros.)
   - **Potencia instantánea / pico:** exponer la potencia total instantánea. **Cruza con F03**: aunque las persianas consumen poco, su **pico de arranque** importa (12 persianas bajando a la vez ≈ 2000 W → puede saltar el ICP), así que el anti-pico debe considerar también DS.
+  - **Implementado:** sensor de **energía (kWh)** (`device_class: energy`, `state_class: total_increasing`, `RestoreSensor`) en **VMC, DC y persianas** → entra en el **panel de Energía** de HA. **Medidor real** preferente (campo opcional `power_meter` en los tres asistentes); si no, **estimación**: VMC integra W por velocidad (tunables `est_w_v1/v2/v3`), DC integra `est_w_on` mientras pide calor/frío (reaprovecha la señal de demanda de F27), DS estima la energía marginal por movimiento del motor (`est_w_motor` × `full_travel_s` × Δ%). Helper puro `energy.py`. **Diferido:** coste (€) por sensor de precio/tarifa fija; potencia instantánea/pico (cruza F03); medidor real en DS (el muestreo a 60 s no captura un movimiento de segundos).
 
 ## Robustez y mantenimiento
 
@@ -161,8 +162,8 @@
 
 ## DS (persianas)
 
-### F15 · Sombreado geométrico real ⭐
-- **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Alta · **Esfuerzo:** L
+### F15 · Sombreado geométrico real ⭐ — ✅ implementada
+- **Estado:** ✅ implementada · **Módulos:** DS · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** calcular la penetración solar por geometría y cerrar solo lo necesario, no todo/nada.
 - **Perfilado:**
   - **Objetivo de control: "proteger X metros de suelo"** (no dejar que el sol directo entre más de X m). Configurable.
@@ -170,6 +171,7 @@
   - **Cálculo:** penetración = f(elevación y azimut del sol, geometría, voladizo); de ahí el % de cierre que tapa justo esa penetración hasta el objetivo de metros.
   - **Por pasos** (p.ej. 25/50/75), no continuo (el slew ya suaviza, y evita mover la persiana cada poco).
   - **Fallback:** si faltan datos de geometría → comportamiento actual (% fijo de solar shield).
+  - **Implementado:** switch opt-in **"Geometric shading"** por persiana. Cuando está activo, la rama solar de verano usa `geo_shade_pos`/`solar_penetration_m` (alféizar, alto de ventana, voladizo, azimut, profundidad de sala) para bajar la persiana **por pasos** (`shade_step_pct`) solo hasta proteger `target_penetration_m`, con suelo en `summer_min_open_pct` (`reason: summer_solar_geo`). Con el switch apagado (por defecto) o cuando el sol no procede, **fallback** al escudo fijo `summer_solar_shield`. Helper puro en `ds_engine`.
 
 ### F16 · Aislamiento nocturno estacional
 - **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** S
@@ -417,7 +419,7 @@
 | **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
-| **F06** | ☑ revisada | Energía/coste: medidor real (Shelly) o estimación; panel de Energía; precio opcional; pico instantáneo (cruza F03, incl. persianas). |
+| **F06** | ✅ implementada (energía) | Sensor de energía (kWh) en VMC/DC/DS: medidor real o estimación; panel de Energía. Coste (€) y pico instantáneo diferidos. |
 | **F07** | ✅ implementada (botón→futuro) | Repairs transversal DV/DS/DC (mixin `DegradedTracker`): issue por módulo con fuentes requeridas ausentes/obsoletas >5min + evento `dynamic_home_degraded` + binary_sensor "Degradado". No-fixable + enlace; botón que reabre config flow diferido. |
 | **F08** | ✅ implementada | Vida del filtro: número (3650 h) + sensor %, reset (botón/servicio), evento `filter_due` + **issue de Repairs `filter_due`** (creado al cruzar el umbral, borrado al resetear/descargar). |
 | **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
@@ -426,7 +428,7 @@
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
 | **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |
 | **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
-| **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
+| **F15** | ✅ implementada | Sombreado geométrico (switch opt-in): objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
 | **F16** | ✅ implementada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
 | **F17** | ✅ implementada | Alerta meteo genérica + granizo/viento (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
 | **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |

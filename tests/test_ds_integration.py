@@ -246,3 +246,72 @@ async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
     await co.async_refresh()
     assert co.data.reason == "ov_lock"
     assert co.data.pos == 50
+
+
+# --- F06: shutter energy (per-move estimate) + sensor wiring ---
+async def test_ds_energy_accumulates_on_move(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)                       # sun below horizon, cover open (no position)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Baseline established on the first cycle (default night -> fully open).
+    assert co.energy_kwh == 0.0
+
+    # Pin the shutter shut: a commanded position change accrues motor energy.
+    co.lock_enabled = True
+    co.lock_pct = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.pos == 0
+    assert co.energy_kwh > 0.0
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_energy")
+    assert eid is not None
+    assert hass.states.get(eid).attributes["device_class"] == "energy"
+
+
+# --- F15: geometric shading (opt-in) refines the summer solar branch ---
+GEO = {
+    **SHUTTER,
+    const.CONF_CLIMATE: "climate.salon",
+    const.CONF_DS_T_IN: "sensor.salon_in",
+    const.CONF_DS_T_OUT: "sensor.salon_out",
+}
+
+
+def _seed_geo(hass: HomeAssistant) -> None:
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180, "elevation": 70})   # high south sun
+    hass.states.async_set("climate.salon", "cool")
+    hass.states.async_set("sensor.salon_in", "24")
+    hass.states.async_set("sensor.salon_out", "30")            # hot outside
+
+
+async def test_geo_shade_switch_refines_solar_branch(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed_geo(hass)
+    entry = MockConfigEntry(domain=const.DOMAIN, data=GEO, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Opt-in switch exists and is off by default -> the fixed impact shield runs.
+    eid = er.async_get(hass).async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_geo_shade")
+    assert eid is not None
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "summer_solar_shield"
+
+    # Enabling it switches to the geometric solar-penetration model.
+    co.geo_shade_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "summer_solar_geo"
+    assert "penetration_m" in co.data.details

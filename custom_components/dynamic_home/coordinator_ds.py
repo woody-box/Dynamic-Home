@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events, repairs
+from . import const, energy, events, repairs
 from .bus import SdhbHub
 from .ds_engine import DsConfig, DsDecision, DsInputs, DsState, decide_cover
 from .options_spec import apply_options
@@ -53,6 +53,11 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._last_alert_pos = 0
         # Seasonal night insulation (F16): opt-in.
         self.night_iso_enabled = False
+        # Geometric shading (F15): opt-in real solar-penetration model.
+        self.geo_shade_enabled = False
+        # Energy (F06): cumulative kWh of (marginal) motor movements.
+        self.energy_kwh = 0.0
+        self._energy_last_pos: int | None = None
         # Gradual sunrise (F19): opt-in ramp state.
         self.dawn_enabled = False
         self._dawn_active = False
@@ -253,6 +258,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             dawn_pos=dawn_pos,
             night_pos=night_pos,
             alert_pos=alert_pos,
+            geo_shade=self.geo_shade_enabled,
             privacy_active=self.privacy_enabled,
             override_mode="lock" if self.lock_enabled else "none",
             override_pos=int(self.lock_pct),
@@ -263,4 +269,13 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             sun_elevation=sun_el,
             sun_effective=sun_above,
         )
-        return decide_cover(cfg, self.ds_state, ins)
+        decision = decide_cover(cfg, self.ds_state, ins)
+
+        # Energy (F06): a shutter move lasts seconds (missed by 60 s sampling), so
+        # estimate the marginal motor energy per commanded position change.
+        if self._energy_last_pos is not None and decision.pos != self._energy_last_pos:
+            self.energy_kwh += energy.ds_move_kwh(
+                decision.pos - self._energy_last_pos,
+                cfg.est_w_motor, cfg.full_travel_s)
+        self._energy_last_pos = decision.pos
+        return decision

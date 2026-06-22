@@ -59,6 +59,10 @@ _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
         "night_iso", "Night insulation", "mdi:weather-night",
         lambda c: c.night_iso_enabled,
         lambda c, v: setattr(c, "night_iso_enabled", v)),
+    _ToggleDesc(
+        "geo_shade", "Geometric shading", "mdi:sun-angle",
+        lambda c: c.geo_shade_enabled,
+        lambda c, v: setattr(c, "geo_shade_enabled", v)),
     _OBSERVE,
 )
 

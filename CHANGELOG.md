@@ -4,6 +4,33 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.12.0] — 2026-06-22
+
+### Added
+- **Energía por módulo (F06)**: la VMC, las zonas de clima y las persianas exponen
+  ahora un sensor de **energía (kWh)** (`device_class: energy`,
+  `state_class: total_increasing`) que entra directo en el **panel de Energía** de
+  Home Assistant y sobrevive a reinicios (`RestoreSensor`). Cada módulo usa un
+  **medidor de potencia real** si se configura (nuevo campo opcional "Power meter"
+  en los tres asistentes) y, si no, una **estimación**: la VMC integra la potencia
+  por velocidad (`V1/V2/V3`, tunables), el clima la potencia mientras pide
+  calor/frío (reaprovecha la señal de demanda real de F27), y la persiana estima la
+  energía (marginal) de cada movimiento del motor (`recorrido completo` × Δ%). Solo
+  energía por ahora; el coste (€) queda para un ciclo posterior.
+- **Sombreado geométrico real (F15)**: nuevo switch opt-in **"Geometric shading"**
+  por persiana. Cuando está activo, la rama de protección solar de verano deja de
+  usar el escudo fijo por "impacto" y calcula la **penetración real del sol en el
+  suelo** (geometría de alféizar, alto de ventana, voladizo, azimut y profundidad
+  de sala) para bajar la persiana **solo lo justo** —por pasos— y proteger los
+  `target_penetration_m` de suelo. Con sol alto apenas cierra; con sol de tarde
+  bajo cierra más. Con el switch apagado (por defecto), el comportamiento es
+  idéntico al actual (`summer_solar_shield`).
+
+### Internal
+- Nuevo módulo puro `energy.py` (helpers de integración kWh) con tests dedicados;
+  geometría de penetración en `ds_engine` (`solar_penetration_m`/`geo_shade_pos`).
+- Suite de 304 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.11.3] — 2026-06-22
 
 ### Added

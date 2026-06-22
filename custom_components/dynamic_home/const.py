@@ -84,6 +84,10 @@ CONF_DC_ADJ_TEMP = "dc_adj_temp"   # F31: adjacent space (terrace/sunroom) temp
 CONF_DC_ADJ_DOOR = "dc_adj_door"   # F31: optional door binary_sensor to it
 CONF_EXPOSE_MIRRORS = "expose_mirrors"  # F36: expose stable per-role mirror sensors
 
+# --- F06 Energy: optional real power meter (shared key across VMC/DC/DS) ---
+# When set, the module integrates this sensor's power instead of the estimate.
+CONF_POWER_METER = "power_meter"
+
 # --- F33 Weather (resilient multi-source forecast/alert provider) ---
 CONF_WX_SOURCE_1 = "wx_source_1"   # primary weather.* entity
 CONF_WX_SOURCE_2 = "wx_source_2"   # secondary (fallback)
