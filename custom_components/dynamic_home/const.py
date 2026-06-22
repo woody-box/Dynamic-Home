@@ -37,6 +37,10 @@ CONF_HRV_SUPPLY = "hrv_supply"    # supply into the house (after the exchanger)
 CONF_HRV_INTAKE = "hrv_intake"    # fresh outdoor air taken in
 CONF_HRV_EXTRACT = "hrv_extract"  # stale air extracted from the house
 CONF_VOC = "voc"                  # F30: VOC (observation only, does NOT actuate)
+# F35: coordinated extractor hood — 3 relays, one per speed (none on = OFF).
+CONF_HOOD_V1 = "hood_v1"
+CONF_HOOD_V2 = "hood_v2"
+CONF_HOOD_V3 = "hood_v3"
 
 REQUIRED_HW = (CONF_SW_PWR, CONF_SW_V2, CONF_SW_V3, CONF_CO2, CONF_PM25)
 OPTIONAL_HW = (CONF_T_IN, CONF_T_EXT, CONF_AQI, CONF_HUM_BATH, CONF_HUM_EXT,

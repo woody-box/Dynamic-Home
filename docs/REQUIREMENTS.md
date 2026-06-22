@@ -1414,3 +1414,34 @@ del usuario / F33, **no** de la integración.
 - ☐ Varias alertas activas → gana la más protectora (cierre).
 
 **Nota:** complementa (no sustituye) la protección por viento/lluvia *actuales*.
+
+### 12.20 · F35 — Campana extractora coordinada (DV)
+
+Sinergia de cocina: cuando el **PM2.5 interior** sube (cocinar/air-fryer), encender
+o subir la campana para limpiar el aire; complementa a la VMC. **Caso de hardware:
+3 relés, uno por velocidad** (ausencia de relés = OFF).
+
+- Pura `dv_engine.hood_speed(pm, prev, cfg)`: nivel 0..3 por umbrales
+  `hood_pm_v1/v2/v3` con **histéresis** `hood_hys` (baja de nivel solo cuando el PM
+  cae por debajo del umbral del nivel actual menos la histéresis); PM ausente →
+  mantiene el nivel.
+- `coordinator_dv`: `has_hood()` (algún relé configurado); calcula
+  `hood_speed_auto` cada ciclo con el PM ya leído.
+- `fan.HoodFan` (creada solo si `has_hood()`): entidad **fan** propia "Campana" con
+  presets auto/V1/V2/V3/off (restaurados), **driver break-before-make 1-de-3**
+  (baja los no-objetivo → `RELAY_SETTLE_S` → cierra el objetivo; off = todos
+  abiertos), **observe-mode** respetado, y un **vigilante de interlock**: si dos
+  relés quedan en `on` a la vez, fuerza corrección reaplicando la velocidad. En
+  auto, `_handle_coordinator_update` aplica el `hood_speed_auto`.
+- Config (categoría `hood`): `hood_pm_v1/v2/v3`, `hood_hys`; 3 selectores de relé
+  en el alta VMC.
+
+**Aceptación:**
+
+- ☐ PM interior alto sostenido → la campana sube de velocidad (auto).
+- ☐ Cambiar de velocidad nunca energiza dos relés a la vez (break-before-make).
+- ☐ Si dos relés quedan activos (manual), el interlock lo corrige.
+
+**Seguridad:** el software coordina, **no** sustituye un **interlock hardware**
+(relés mutuamente excluyentes / selector); recomendado para garantizar "nunca dos
+velocidades". Override/observe siguen mandando.

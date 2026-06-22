@@ -35,6 +35,13 @@ class DvConfig:
     co2_hys: float = 100.0
     pm_hys: float = 5.0
 
+    # Extractor hood (F35): indoor-PM thresholds (µg/m³) that pick the hood speed,
+    # with a hysteresis band so it doesn't flap as the cooking plume settles.
+    hood_pm_v1: float = 35.0
+    hood_pm_v2: float = 55.0
+    hood_pm_v3: float = 90.0
+    hood_hys: float = 10.0
+
     # EMA
     co2_ema_enabled: bool = True
     pm_ema_enabled: bool = True
@@ -162,6 +169,31 @@ def filter_life_pct(hours: float, life: float) -> float:
     if life <= 0:
         return 100.0
     return max(0.0, min(100.0, 100.0 * (1.0 - hours / life)))
+
+
+def hood_speed(pm: float | None, prev: int, cfg: DvConfig) -> int:
+    """Extractor-hood speed 0..3 from the indoor PM level (F35).
+
+    Rising thresholds pick the level; stepping *down* requires the PM to fall
+    below the held level's threshold minus ``hood_hys`` (hysteresis), so a
+    settling cooking plume doesn't make it flap. ``pm`` None -> hold ``prev``.
+    """
+    if pm is None:
+        return prev
+    if pm >= cfg.hood_pm_v3:
+        up = 3
+    elif pm >= cfg.hood_pm_v2:
+        up = 2
+    elif pm >= cfg.hood_pm_v1:
+        up = 1
+    else:
+        up = 0
+    if up >= prev:
+        return up
+    ons = {1: cfg.hood_pm_v1, 2: cfg.hood_pm_v2, 3: cfg.hood_pm_v3}
+    if prev >= 1 and pm >= ons[prev] - cfg.hood_hys:
+        return prev          # within the hysteresis band -> hold the level
+    return up
 
 
 @dataclass

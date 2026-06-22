@@ -28,7 +28,10 @@
           "hrv_supply": "Temp. insuflación recuperador (opcional)",
           "hrv_intake": "Temp. absorción aire nuevo (opcional)",
           "hrv_extract": "Temp. extracción aire viciado (opcional)",
-          "voc": "Sensor VOC (opcional)"
+          "voc": "Sensor VOC (opcional)",
+          "hood_v1": "Relé campana V1 (switch)",
+          "hood_v2": "Relé campana V2 (switch)",
+          "hood_v3": "Relé campana V3 (switch)"
         }
       },
       "shutter": {
@@ -116,7 +119,8 @@
           "mirrors": "Espejos de hardware",
           "cat_dawn": "Amanecer gradual",
           "cat_night": "Aislamiento nocturno",
-          "cat_alert": "Avisos meteo"
+          "cat_alert": "Avisos meteo",
+          "cat_hood": "Campana extractora"
         }
       },
       "cat_iaq": {
@@ -668,6 +672,21 @@
           "alert_hail_pct": "Posición de protección para alerta de granizo/tormenta (cerrar del todo protege mejor).",
           "alert_wind_pct": "Posición de protección para alerta de viento (una posición media puede proteger las lamas).",
           "alert_hold_min": "Minutos que se mantiene la protección tras levantarse la alerta."
+        }
+      },
+      "cat_hood": {
+        "title": "Campana extractora",
+        "data": {
+          "hood_pm_v1": "PM2.5 → V1 (µg/m³)",
+          "hood_pm_v2": "PM2.5 → V2 (µg/m³)",
+          "hood_pm_v3": "PM2.5 → V3 (µg/m³)",
+          "hood_hys": "Histéresis PM2.5 (µg/m³)"
+        },
+        "data_description": {
+          "hood_pm_v1": "PM2.5 interior a partir del cual la campana va a V1.",
+          "hood_pm_v2": "PM2.5 interior a partir del cual la campana va a V2.",
+          "hood_pm_v3": "PM2.5 interior a partir del cual la campana va a V3.",
+          "hood_hys": "Margen que el PM debe bajar antes de que la campana baje un nivel."
         }
       }
     },

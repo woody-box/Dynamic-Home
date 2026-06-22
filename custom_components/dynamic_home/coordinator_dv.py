@@ -28,6 +28,7 @@ from .dv_engine import (
     DvState,
     decide,
     filter_life_pct,
+    hood_speed,
     hrv_efficiency,
     hrv_state,
 )
@@ -52,6 +53,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self.state_data = DvState()
         self.current_speed = 1
         self.auto_mode = True
+        # Extractor hood (F35): auto speed from indoor PM + last applied speed.
+        self.hood_speed_auto = 0
+        self.hood_current = 0
         self.preset = "auto"            # mirrored from the fan, for the mode sensor
         self.in_grace = False           # within startup grace (observability)
         self.observe_enabled = False    # dry-run: compute but do not act on hw
@@ -148,6 +152,11 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
     # --- Extended IAQ (F30): VOC is observation-only and never enters decide() ---
     def has_voc(self) -> bool:
         return bool(self._hw(const.CONF_VOC))
+
+    # --- Extractor hood (F35) ---
+    def has_hood(self) -> bool:
+        return any(self._hw(k) for k in (const.CONF_HOOD_V1, const.CONF_HOOD_V2,
+                                         const.CONF_HOOD_V3))
 
     @property
     def voc_level(self) -> float | None:
@@ -295,6 +304,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
 
         co2_raw = self._num(const.CONF_CO2)
         pm_raw = self._num(const.CONF_PM25)
+        # Extractor hood (F35): auto speed from indoor PM (hysteresis in the engine).
+        if self.has_hood():
+            self.hood_speed_auto = hood_speed(pm_raw, self.hood_speed_auto, cfg)
         a_co2_v2, a_co2_v3, a_pm_v2, a_pm_v3 = self._update_adaptive(
             cfg, co2_raw, pm_raw)
         dew_r, dp_diff = self._dew(cfg)

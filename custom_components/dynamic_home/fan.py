@@ -14,7 +14,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_call_later
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_state_change_event,
+)
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
@@ -37,7 +40,143 @@ if hasattr(FanEntityFeature, "TURN_ON"):
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator: DvCoordinator = hass.data[const.DOMAIN][entry.entry_id]
-    async_add_entities([DvFan(coordinator, entry)])
+    ents: list[FanEntity] = [DvFan(coordinator, entry)]
+    if coordinator.has_hood():
+        ents.append(HoodFan(coordinator, entry))
+    async_add_entities(ents)
+
+
+class HoodFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
+    """Coordinated extractor hood (F35): 3 relays, one per speed (none on = OFF).
+
+    Auto: the speed follows the indoor PM (engine ``hood_speed``). Manual presets
+    pin a speed. The relay driver is **break-before-make** (drop the other relays,
+    let them settle, then close only the target), and an interlock watcher
+    force-corrects if two speed relays are ever energised at once.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Campana"
+    _attr_icon = "mdi:range-hood"
+    _attr_speed_count = const.SPEED_COUNT
+    _attr_preset_modes = const.PRESET_MODES
+    _attr_supported_features = _SUPPORTED_FEATURES
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_hood"
+        self._preset = const.PRESET_AUTO
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def _relays(self) -> list[str | None]:
+        d = self._entry.data
+        return [d.get(const.CONF_HOOD_V1), d.get(const.CONF_HOOD_V2),
+                d.get(const.CONF_HOOD_V3)]
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last and last.attributes.get("preset_mode") in const.PRESET_MODES:
+            self._preset = last.attributes["preset_mode"]
+        relays = [r for r in self._relays if r]
+        if relays:
+            self.async_on_remove(async_track_state_change_event(
+                self.hass, relays, self._interlock_check))
+        if self._preset != const.PRESET_AUTO:
+            await self._apply_hood(self._logical_speed)
+
+    @property
+    def _logical_speed(self) -> int:
+        if self._preset == const.PRESET_AUTO:
+            return self.coordinator.hood_speed_auto
+        if self._preset == const.PRESET_OFF:
+            return 0
+        return {const.PRESET_V1: 1, const.PRESET_V2: 2,
+                const.PRESET_V3: 3}[self._preset]
+
+    @property
+    def is_on(self) -> bool:
+        return self._logical_speed > 0
+
+    @property
+    def percentage(self) -> int:
+        spd = self._logical_speed
+        return ranged_value_to_percentage(_SPEED_RANGE, spd) if spd > 0 else 0
+
+    @property
+    def preset_mode(self) -> str:
+        return self._preset
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"source": self._preset,
+                "auto_speed": self.coordinator.hood_speed_auto}
+
+    async def async_set_preset_mode(self, preset_mode: str) -> None:
+        self._preset = preset_mode
+        if preset_mode == const.PRESET_AUTO:
+            await self.coordinator.async_request_refresh()
+            await self._apply_hood(self._logical_speed)
+        else:
+            await self._apply_hood(self._logical_speed)
+        self.async_write_ha_state()
+
+    async def async_set_percentage(self, percentage: int) -> None:
+        if percentage == 0:
+            await self.async_set_preset_mode(const.PRESET_OFF)
+            return
+        speed = math.ceil(percentage_to_ranged_value(_SPEED_RANGE, percentage))
+        await self.async_set_preset_mode({1: const.PRESET_V1, 2: const.PRESET_V2,
+                                          3: const.PRESET_V3}[speed])
+
+    async def async_turn_on(self, percentage=None, preset_mode=None,
+                            **kwargs) -> None:
+        if preset_mode:
+            await self.async_set_preset_mode(preset_mode)
+        elif percentage is not None:
+            await self.async_set_percentage(percentage)
+        else:
+            await self.async_set_preset_mode(const.PRESET_AUTO)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self.async_set_preset_mode(const.PRESET_OFF)
+
+    # --- hardware driver (break-before-make, 1-of-3) ---
+    async def _apply_hood(self, speed: int) -> None:
+        relays = self._relays
+        for i, ent in enumerate(relays, start=1):     # drop every non-target first
+            if i != speed:
+                await self._switch(ent, False)
+        if speed in (1, 2, 3):
+            await asyncio.sleep(const.RELAY_SETTLE_S)
+            await self._switch(relays[speed - 1], True)
+        self.coordinator.hood_current = speed
+
+    async def _switch(self, entity_id: str | None, on: bool) -> None:
+        if not entity_id or self.coordinator.observe_enabled:
+            return
+        await self.hass.services.async_call(
+            "switch", "turn_on" if on else "turn_off",
+            {"entity_id": entity_id}, blocking=True)
+
+    @callback
+    def _interlock_check(self, event) -> None:
+        """If two speed relays are ever on at once, re-assert the wanted speed."""
+        ons = sum(1 for r in self._relays
+                  if r and self.hass.states.is_state(r, "on"))
+        if ons > 1:
+            self.hass.async_create_task(self._apply_hood(self._logical_speed))
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        if (self._preset == const.PRESET_AUTO
+                and self.coordinator.hood_speed_auto != self.coordinator.hood_current):
+            self.hass.async_create_task(
+                self._apply_hood(self.coordinator.hood_speed_auto))
+        super()._handle_coordinator_update()
 
 
 class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):

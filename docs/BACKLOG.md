@@ -403,6 +403,7 @@
   - Entrada: entidad de la campana (`fan`/`switch`) + nivel objetivo.
   - Disparo por **PM interior** (nivel y/o derivada, reusa F11) por encima de umbral; retira al normalizar (histéresis/hold).
   - Opcional: subir también la VMC en paralelo.
+  - **Implementado:** entidad `fan` "Campana" (auto + manual) para **3 relés (uno por velocidad)**; auto por PM2.5 interior con histéresis (`hood_speed`); driver **break-before-make** + **vigilante de interlock** (corrige dos relés a la vez) + observe. Recomendado interlock hardware. _(Caso fan/switch simple queda para ampliar si se necesita.)_
 | ID | Estado | Decisión resumida |
 |----|--------|-------------------|
 | **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
@@ -439,5 +440,5 @@
 | **F30** | ☑ revisada | IAQ extendido: actúan solo CO₂/PM2.5; VOC informativo; NOx descartado; exteriores observación + hostil. |
 | **F33** | ☑ revisada | Weather agnóstico multi-fuente con fallback (AEMET poco fiable); meteo_sources.yaml compartido; forecast→DC/free-cooling, alertas→DS; sin FV (eso es F34). |
 | **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
-| **F35** | ☑ revisada | Campana coordinada (PM interior → encender campana; opt-in; reusa F11). |
+| **F35** | ✅ implementada | Campana coordinada (PM interior → subir campana; 3 relés break-before-make + interlock; entidad fan auto+manual). |
 | **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |

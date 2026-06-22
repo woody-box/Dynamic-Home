@@ -65,6 +65,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "dawn": ("Gradual sunrise", "Amanecer gradual"),
     "night": ("Night insulation", "Aislamiento nocturno"),
     "alert": ("Weather alerts", "Avisos meteo"),
+    "hood": ("Extractor hood", "Campana extractora"),
 }
 
 
@@ -83,6 +84,12 @@ def _tuple(attr, en, es, n) -> list[Opt]:
 # --------------------------------------------------------------------------- #
 SPEC: dict[str, dict[str, list[Opt]]] = {
     const.MODULE_VMC: {
+        "hood": [
+            _v("hood_pm_v1", "PM2.5 → V1 (µg/m³)", "PM2.5 → V1 (µg/m³)"),
+            _v("hood_pm_v2", "PM2.5 → V2 (µg/m³)", "PM2.5 → V2 (µg/m³)"),
+            _v("hood_pm_v3", "PM2.5 → V3 (µg/m³)", "PM2.5 → V3 (µg/m³)"),
+            _v("hood_hys", "PM2.5 hysteresis (µg/m³)", "Histéresis PM2.5 (µg/m³)"),
+        ],
         "iaq": [
             _v("co2_v2", "CO₂ → V2 (ppm)", "CO₂ → V2 (ppm)"),
             _v("co2_v3", "CO₂ → V3 (ppm)", "CO₂ → V3 (ppm)"),

@@ -379,3 +379,101 @@ async def test_weekly_schedule_builds_cfg(hass: HomeAssistant) -> None:
     assert cfg.schedule_enabled is True
     assert len(cfg.schedule) == 7
     assert cfg.schedule[0] == (8 * 60, 22 * 60)
+
+
+# --- F35: coordinated extractor hood (3 relays, one per speed) ---
+HW_HOOD = {
+    **HW,
+    const.CONF_HOOD_V1: "switch.hood_v1",
+    const.CONF_HOOD_V2: "switch.hood_v2",
+    const.CONF_HOOD_V3: "switch.hood_v3",
+}
+
+
+async def _setup_hood(hass: HomeAssistant) -> MockConfigEntry:
+    for e in ("switch.hood_v1", "switch.hood_v2", "switch.hood_v3"):
+        hass.states.async_set(e, "off")
+    entry = MockConfigEntry(domain=const.DOMAIN, data=HW_HOOD, options={},
+                            title="VMC")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_hood_created_and_auto_speed(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass, pm="5")
+    entry = await _setup_hood(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_hood() is True
+    assert er.async_get(hass).async_get_entity_id(
+        "fan", const.DOMAIN, f"{entry.entry_id}_hood") is not None
+    assert co.hood_speed_auto == 0                  # low PM -> off
+    hass.states.async_set("sensor.pm25", "60")      # cooking plume
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hood_speed_auto == 2
+
+
+async def test_hood_absent_without_relays(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)                # plain VMC, no hood
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_hood() is False
+    assert er.async_get(hass).async_get_entity_id(
+        "fan", const.DOMAIN, f"{entry.entry_id}_hood") is None
+
+
+def _hood_entity(hass: HomeAssistant, entry: MockConfigEntry):
+    """The HoodFan instance (state-only relays aren't real switch entities, so we
+    drive the entity directly and spy its relay calls)."""
+    from homeassistant.helpers import entity_registry as er
+    hood_id = er.async_get(hass).async_get_entity_id(
+        "fan", const.DOMAIN, f"{entry.entry_id}_hood")
+    comp = hass.data.get("entity_components", {}).get("fan") or hass.data["fan"]
+    return comp.get_entity(hood_id)
+
+
+async def test_hood_break_before_make(hass: HomeAssistant) -> None:
+    _seed_states(hass)
+    entry = await _setup_hood(hass)
+    hood = _hood_entity(hass, entry)
+    calls: list[tuple] = []
+
+    async def _spy(ent, on):
+        calls.append((ent, on))
+    hood._switch = _spy
+
+    await hood._apply_hood(2)
+    # The two non-target relays are dropped *before* the target is energised.
+    assert ("switch.hood_v1", False) in calls
+    assert ("switch.hood_v3", False) in calls
+    assert calls[-1] == ("switch.hood_v2", True)     # target closed last
+    assert ("switch.hood_v2", False) not in calls    # target never opened here
+    assert hood.coordinator.hood_current == 2
+
+
+async def test_hood_interlock_corrects_double_on(hass: HomeAssistant) -> None:
+    _seed_states(hass, pm="5")                        # auto speed 0
+    entry = await _setup_hood(hass)
+    hood = _hood_entity(hass, entry)
+    calls: list[tuple] = []
+
+    async def _spy(ent, on):
+        calls.append((ent, on))
+    hood._switch = _spy
+
+    # Illegal: two speed relays energised at once -> interlock re-asserts (off all,
+    # since the auto speed is 0).
+    hass.states.async_set("switch.hood_v2", "on")
+    hass.states.async_set("switch.hood_v3", "on")
+    await hass.async_block_till_done()
+    assert ("switch.hood_v2", False) in calls
+    assert ("switch.hood_v3", False) in calls
+    assert all(on is False for _, on in calls)       # nothing was energised

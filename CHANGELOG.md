@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.8.4] — 2026-06-22
+
+### Added
+- **DV · Campana extractora coordinada (F35)**: cuando el **PM2.5 interior** sube
+  (cocinar), la campana se enciende/sube para limpiar el aire (umbral por
+  velocidad con histéresis), complementando a la VMC. Para campanas de **3 relés
+  (uno por velocidad)** se expone una entidad `fan` "Campana" (auto + manual) con
+  **driver break-before-make** (nunca dos velocidades a la vez) y un **vigilante
+  de interlock** que corrige si dos relés quedan activos. Respeta *observe*.
+  Configurable (categoría *Campana extractora*). _Se recomienda además un
+  interlock hardware: el software coordina, no sustituye protecciones físicas._
+
+### Internal
+- Suite de 257 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.8.3] — 2026-06-22
 
 ### Added
