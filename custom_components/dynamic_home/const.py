@@ -69,6 +69,7 @@ CONF_DC_DEMAND_COOL = "dc_demand_cool"  # (b) explicit cool-demand helper
 CONF_DC_DEHUMIDIFIER = "dc_dehumidifier"  # F22: optional dehumidifier to drive
 CONF_DC_ADJ_TEMP = "dc_adj_temp"   # F31: adjacent space (terrace/sunroom) temp
 CONF_DC_ADJ_DOOR = "dc_adj_door"   # F31: optional door binary_sensor to it
+CONF_EXPOSE_MIRRORS = "expose_mirrors"  # F36: expose stable per-role mirror sensors
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;

@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.8.0] — 2026-06-22
+
+### Added
+- **Espejos de hardware para dashboards (F36)**: opción `expose_mirrors` por zona
+  (off por defecto) que expone un sensor **espejo estable por rol de entrada**
+  (temperatura, humedad, CO₂, viento, …) en DC/DV/DS. El dashboard apunta a la
+  entidad de la integración (`unique_id` por `entry`+rol), así **reemplazar un
+  sensor físico solo exige reconfigurar la entrada**, sin tocar dashboards. El
+  espejo copia valor/unidad/`device_class`/`state_class` y sigue al origen;
+  cambiar el toggle recarga la entrada.
+
+### Internal
+- Suite de 239 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.7.1] — 2026-06-22
 
 Release correctivo. El tag `v0.7.0` se creó apuntando por error al commit de

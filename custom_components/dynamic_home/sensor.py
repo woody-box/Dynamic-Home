@@ -17,9 +17,10 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
@@ -55,6 +56,50 @@ _HOURS: tuple[_HoursDesc, ...] = (
 )
 
 
+# F36: input roles republished as stable per-role mirror sensors (numeric
+# inputs only; switches/covers/climate/binary roles are skipped).
+_MIRROR_ROLES: dict[str, tuple[tuple[str, str], ...]] = {
+    const.MODULE_VMC: (
+        (const.CONF_CO2, "CO₂"),
+        (const.CONF_PM25, "PM2.5"),
+        (const.CONF_T_IN, "Temperatura interior"),
+        (const.CONF_T_EXT, "Temperatura exterior"),
+        (const.CONF_AQI, "AQI exterior"),
+        (const.CONF_HUM_IN, "Humedad interior"),
+        (const.CONF_HUM_BATH, "Humedad baño"),
+        (const.CONF_HUM_EXT, "Humedad exterior"),
+        (const.CONF_HRV_SUPPLY, "HRV impulsión"),
+        (const.CONF_HRV_INTAKE, "HRV admisión"),
+        (const.CONF_HRV_EXTRACT, "HRV extracción"),
+        (const.CONF_VOC, "COV"),
+    ),
+    const.MODULE_CLIMATE: (
+        (const.CONF_DC_T_INT, "Temperatura interior"),
+        (const.CONF_DC_T_EXT, "Temperatura exterior"),
+        (const.CONF_DC_HUMIDITY, "Humedad interior"),
+        (const.CONF_DC_WIND, "Viento"),
+        (const.CONF_DC_ADJ_TEMP, "Temperatura adyacente"),
+    ),
+    const.MODULE_SHUTTER: (
+        (const.CONF_DS_T_IN, "Temperatura interior"),
+        (const.CONF_DS_T_OUT, "Temperatura exterior"),
+        (const.CONF_WIND, "Viento"),
+    ),
+}
+
+
+def _mirror_sensors(entry: ConfigEntry, module: str) -> list[SensorEntity]:
+    """F36: a stable mirror sensor per configured input role (opt-in)."""
+    if not entry.options.get(const.CONF_EXPOSE_MIRRORS, False):
+        return []
+    out: list[SensorEntity] = []
+    for role, name in _MIRROR_ROLES.get(module, ()):
+        source = entry.data.get(role)
+        if source:
+            out.append(HwMirrorSensor(entry, role, name, source))
+    return out
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
@@ -68,10 +113,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         if coordinator.has_adjacent():
             ents.append(AdjacentAdviceSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
+        ents += _mirror_sensors(entry, module)
         async_add_entities(ents)
         return
     if module == const.MODULE_SHUTTER:
-        async_add_entities([BusSensor(coordinator, entry)])
+        async_add_entities([BusSensor(coordinator, entry),
+                            *_mirror_sensors(entry, module)])
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
                                     for d in _HOURS]
@@ -86,7 +133,80 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if coordinator.has_voc():
         entities.append(VocSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
+    entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
+
+
+class HwMirrorSensor(SensorEntity):
+    """F36: republishes a configured source entity under a stable id.
+
+    Dashboards/automations reference this entity instead of the raw hardware
+    entity_id, so replacing a physical sensor only means reconfiguring the entry
+    (the mirror's unique_id, keyed by entry+role, never changes). Copies the
+    source's value, unit, device_class and state_class.
+    """
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+
+    def __init__(self, entry: ConfigEntry, role: str, name: str,
+                 source: str) -> None:
+        self._source = source
+        self._attr_name = f"{name} (espejo)"
+        self._attr_unique_id = f"{entry.entry_id}_mirror_{role}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(async_track_state_change_event(
+            self.hass, [self._source], self._source_changed))
+
+    @callback
+    def _source_changed(self, event) -> None:
+        self.async_write_ha_state()
+
+    def _state(self):
+        return self.hass.states.get(self._source)
+
+    @property
+    def available(self) -> bool:
+        st = self._state()
+        return st is not None and st.state not in (
+            "unknown", "unavailable", "none", "")
+
+    @property
+    def native_value(self):
+        st = self._state()
+        if st is None:
+            return None
+        try:
+            return float(st.state)
+        except (TypeError, ValueError):
+            return st.state
+
+    @property
+    def native_unit_of_measurement(self):
+        st = self._state()
+        return st.attributes.get("unit_of_measurement") if st else None
+
+    @property
+    def device_class(self):
+        st = self._state()
+        raw = st.attributes.get("device_class") if st else None
+        try:
+            return SensorDeviceClass(raw) if raw else None
+        except ValueError:
+            return None
+
+    @property
+    def state_class(self):
+        st = self._state()
+        raw = st.attributes.get("state_class") if st else None
+        try:
+            return SensorStateClass(raw) if raw else None
+        except ValueError:
+            return None
 
 
 class BusSensor(CoordinatorEntity, SensorEntity):
