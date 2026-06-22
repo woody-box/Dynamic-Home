@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 # Reasons that must not be overridden by the soft caps (wind/SDHB/slew).
 PROTECTED = {"ov_lock", "ov_hold", "ov_ttl", "meteo_rain",
-             "meteo_wind_cap", "privacy_time"}
+             "meteo_wind_cap", "meteo_alert", "privacy_time"}
 
 
 @dataclass
@@ -53,6 +53,13 @@ class DsConfig:
     # owns the decision and passes the position in via DsInputs.night_pos.
     night_iso_close_pct: int = 0        # closed position (insulate / protect)
     night_iso_open_pct: int = 100       # open position (nocturnal purge)
+
+    # Weather alerts (F17): anticipatory protection. The coordinator picks the
+    # most protective position among the active alerts and holds it.
+    alert_pct: int = 0                  # generic alert protection position
+    alert_hail_pct: int = 0             # hail/storm (fully closed protects best)
+    alert_wind_pct: int = 50            # wind (a mid position protects the slats)
+    alert_hold_min: float = 30.0        # keep protecting after the alert clears
 
     # Facade geometry (solar impact model)
     facade_azimuth_deg: float = 180.0   # window orientation
@@ -98,6 +105,9 @@ class DsInputs:
 
     # Seasonal night insulation (F16): position while active at night, else None.
     night_pos: int | None = None
+
+    # Weather alert (F17): anticipatory protection position while active, else None.
+    alert_pos: int | None = None
 
     # SDHB bus consumption
     sdhb_allow_override: bool = False
@@ -197,6 +207,9 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         pos, reason = ins.override_pos, "ov_hold"
     elif ins.override_mode == "ttl" and ins.ttl_ok:
         pos, reason = ins.override_pos, "ov_ttl"
+    # 1b) Weather alert (F17): anticipatory protection (above rain/wind).
+    elif ins.alert_pos is not None:
+        pos, reason = ins.alert_pos, "meteo_alert"
     # 2) Meteo rain
     elif ins.weather_protect_enabled and ins.raining:
         pos, reason = cfg.rain_close_pct, "meteo_rain"

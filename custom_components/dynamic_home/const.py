@@ -49,6 +49,9 @@ CONF_DS_T_IN = "ds_t_in"
 CONF_DS_T_OUT = "ds_t_out"
 CONF_WIND = "wind"
 CONF_RAIN = "rain"
+CONF_DS_ALERT = "ds_alert"            # F17: generic weather-alert binary_sensor
+CONF_DS_ALERT_HAIL = "ds_alert_hail"  # F17: hail/storm alert (own protect pos)
+CONF_DS_ALERT_WIND = "ds_alert_wind"  # F17: wind alert (own protect pos)
 CONF_FACADE_AZIMUTH = "facade_azimuth_deg"
 CONF_FACADE_SPAN = "facade_span_deg"
 

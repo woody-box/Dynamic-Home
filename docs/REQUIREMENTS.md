@@ -739,8 +739,8 @@ actual.
 
 **Dependencias:** DS, F33 (puede proveer la alerta), protección viento/lluvia.
 **Criterios de aceptación:**
-- ☐ Activar el `binary_sensor` de alerta lleva la persiana a la posición de protección.
-- ☐ Al desactivarse, mantiene la protección el `hold` configurado antes de soltar.
+- ☑ Activar el `binary_sensor` de alerta lleva la persiana a la posición de protección.
+- ☑ Al desactivarse, mantiene la protección el `hold` configurado antes de soltar.
 
 ### 7.4 · Apertura gradual al amanecer (F19)
 
@@ -1389,3 +1389,28 @@ toca el `night`/free-cooling latentes; usa su propio `DsInputs.night_pos`.
 
 **Nota:** el `night`/free-cooling base siguen latentes (pre-existente); F16 es
 independiente y opt-in.
+
+### 12.19 · F17 — Avisos meteo / protección anticipatoria (DS)
+
+Capa anticipatoria sobre la protección viento/lluvia. **Agnóstica de proveedor**:
+el usuario enchufa hasta 3 `binary_sensor` (genérico `CONF_DS_ALERT`, granizo
+`CONF_DS_ALERT_HAIL`, viento `CONF_DS_ALERT_WIND`); cada uno con su posición de
+protección. La **adquisición** del dato es de Meteoalarm / Open-Meteo / template
+del usuario / F33, **no** de la integración.
+
+- `coordinator_ds._weather_alert(cfg, now_ts)`: entre las alertas activas toma la
+  posición **más protectora** (`min` de `alert_pct`/`alert_hail_pct`/
+  `alert_wind_pct`); al despejarse mantiene un **hold** (`alert_hold_min`) antes
+  de soltar. Devuelve la posición o `None`.
+- Motor: rama `meteo_alert` en `decide_cover` (tras override, **antes** de lluvia),
+  añadida a `PROTECTED` (slew/viento/bus no la mueven). Override sigue por encima.
+- Config (categoría `alert`): `alert_pct`, `alert_hail_pct`, `alert_wind_pct`,
+  `alert_hold_min`.
+
+**Aceptación:**
+
+- ☐ Activar el binary_sensor de alerta → persiana a la posición de protección.
+- ☐ Al desactivarse, mantiene el `hold` configurado antes de soltar.
+- ☐ Varias alertas activas → gana la más protectora (cierre).
+
+**Nota:** complementa (no sustituye) la protección por viento/lluvia *actuales*.

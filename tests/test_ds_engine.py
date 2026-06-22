@@ -104,6 +104,22 @@ def test_dawn_ramp_yields_to_safety_and_privacy():
     assert d.reason == "privacy_time"
 
 
+def test_weather_alert_protects_and_is_protected():
+    # F17: an active alert drives the protection position with reason meteo_alert.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(alert_pos=0))
+    assert d.pos == 0 and d.reason == "meteo_alert"
+    # PROTECTED: slew does not soften it even with a far current position.
+    d = decide_cover(_cfg(slew_enabled=True, slew_step_pct=10), DsState(),
+                     DsInputs(alert_pos=0, current_pos=100))
+    assert d.pos == 0 and d.reason == "meteo_alert"
+
+
+def test_weather_alert_yields_to_override():
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(alert_pos=0, override_mode="lock", override_pos=80))
+    assert d.reason == "ov_lock" and d.pos == 80
+
+
 def test_night_insulate_drives_position():
     # F16: an active night strategy sets the position.
     d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(night_pos=0))

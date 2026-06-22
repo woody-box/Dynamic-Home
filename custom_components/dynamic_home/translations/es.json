@@ -43,7 +43,10 @@
           "ds_t_in": "Temperatura interior (opcional)",
           "ds_t_out": "Temperatura exterior (opcional)",
           "wind": "Viento km/h (opcional)",
-          "rain": "Lluvia (opcional)"
+          "rain": "Lluvia (opcional)",
+          "ds_alert": "Alerta meteo (binary_sensor)",
+          "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor)",
+          "ds_alert_wind": "Alerta viento (binary_sensor)"
         }
       },
       "climate": {
@@ -112,7 +115,8 @@
           "cat_adjacent": "Espacio adyacente",
           "mirrors": "Espejos de hardware",
           "cat_dawn": "Amanecer gradual",
-          "cat_night": "Aislamiento nocturno"
+          "cat_night": "Aislamiento nocturno",
+          "cat_alert": "Avisos meteo"
         }
       },
       "cat_iaq": {
@@ -649,6 +653,21 @@
         "data_description": {
           "night_iso_close_pct": "Posición cerrada de noche para aislar (calor) o proteger la masa térmica (frío, noche cálida).",
           "night_iso_open_pct": "Posición abierta de noche para purgar la masa térmica cuando el exterior está más fresco (frío)."
+        }
+      },
+      "cat_alert": {
+        "title": "Avisos meteo",
+        "data": {
+          "alert_pct": "Protección alerta (%)",
+          "alert_hail_pct": "Protección granizo (%)",
+          "alert_wind_pct": "Protección viento (%)",
+          "alert_hold_min": "Hold alerta (min)"
+        },
+        "data_description": {
+          "alert_pct": "Posición de protección para la alerta meteo genérica.",
+          "alert_hail_pct": "Posición de protección para alerta de granizo/tormenta (cerrar del todo protege mejor).",
+          "alert_wind_pct": "Posición de protección para alerta de viento (una posición media puede proteger las lamas).",
+          "alert_hold_min": "Minutos que se mantiene la protección tras levantarse la alerta."
         }
       }
     },

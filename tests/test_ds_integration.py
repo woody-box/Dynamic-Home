@@ -41,6 +41,50 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+# --- F17: anticipatory weather-alert protection ---
+ALERTS = {
+    **SHUTTER,
+    const.CONF_DS_ALERT: "binary_sensor.meteo_alert",
+    const.CONF_DS_ALERT_HAIL: "binary_sensor.meteo_hail",
+    const.CONF_DS_ALERT_WIND: "binary_sensor.meteo_wind",
+}
+
+
+async def test_weather_alert_protects_min_and_holds(hass: HomeAssistant) -> None:
+    _seed(hass)
+    for e in ("binary_sensor.meteo_alert", "binary_sensor.meteo_hail",
+              "binary_sensor.meteo_wind"):
+        hass.states.async_set(e, "off")
+    entry = MockConfigEntry(domain=const.DOMAIN, data=ALERTS, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()  # alert 0, hail 0, wind 50, hold 30 min
+
+    # No alert -> None.
+    assert co._weather_alert(cfg, 1000.0) is None
+    # Wind alert -> its protection position (50).
+    hass.states.async_set("binary_sensor.meteo_wind", "on")
+    assert co._weather_alert(cfg, 1000.0) == 50
+    # Hail also on -> most protective (min) wins (0).
+    hass.states.async_set("binary_sensor.meteo_hail", "on")
+    assert co._weather_alert(cfg, 1000.0) == 0
+    # All clear -> held at the last position during the hold window...
+    for e in ("binary_sensor.meteo_hail", "binary_sensor.meteo_wind"):
+        hass.states.async_set(e, "off")
+    assert co._weather_alert(cfg, 1000.0 + 60) == 0
+    # ...then released after the hold elapses.
+    assert co._weather_alert(cfg, 1000.0 + cfg.alert_hold_min * 60 + 2) is None
+
+
+async def test_weather_alert_absent_without_sensors(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)            # plain SHUTTER, no alert sensors
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co._weather_alert(co._cfg(), 1000.0) is None
+
+
 # --- F16: seasonal night insulation ---
 async def test_night_insulation_heat_and_cool(hass: HomeAssistant) -> None:
     _seed(hass)

@@ -178,7 +178,7 @@
   - **Seguridad manda** (viento/lluvia/override por encima del aislamiento).
   - **Implementado:** switch "Night insulation" (opt-in); por modo del climate (heat→cerrar, cool→abrir si exterior más fresco / cerrar si más cálido); noche = sol bajo horizonte; rama `night_insulate` (cede a override/lluvia/privacidad). Autocontenido (no toca el free-cooling latente).
 
-### F17 · Avisos meteo (tormenta/granizo)
+### F17 · Avisos meteo (tormenta/granizo) — ✅ implementada
 - **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** M
 - **Idea:** alerta meteo → cierre/protección preventiva (anticipa el granizo, no reacciona cuando ya cae).
 - **Perfilado:**
@@ -187,6 +187,7 @@
   - **Posición de protección configurable** (no siempre cerrar del todo; a veces media protege mejor las lamas).
   - **Hold configurable** tras levantarse la alerta (mantener protegido X min).
   - Complementa la protección por **viento/lluvia actuales** ya existentes (esto es la capa anticipatoria).
+  - **Implementado:** 3 binary_sensor opcionales (genérico/granizo/viento) con posiciones distintas; gana la más protectora; rama `meteo_alert` (PROTECTED, tras override y antes de lluvia); hold configurable. El dato meteo lo provee el usuario (Meteoalarm/Open-Meteo/template) o F33 — sin APIs en la integración.
 
 ### F18 · Protección anti-helada
 - **Estado:** ❄️ congelada · **Módulos:** DS · **Valor:** Baja · **Esfuerzo:** S
@@ -420,7 +421,7 @@
 | **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
 | **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
 | **F16** | ✅ implementada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
-| **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
+| **F17** | ✅ implementada | Alerta meteo genérica + granizo/viento (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
 | **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |
 | **F19** | ✅ implementada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
 | **F20** | ☑ revisada | Ventana abierta: sensor real primero + inferencia por caída temp (coherente con demanda); recuperación por estabilización/timeout. |
