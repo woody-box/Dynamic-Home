@@ -108,6 +108,10 @@ _CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
         "schedule", "Schedule", "mdi:calendar-clock",
         lambda c: c.schedule_enabled,
         lambda c, v: setattr(c, "schedule_enabled", v)),
+    _ToggleDesc(
+        "anticycle", "Anti short-cycle", "mdi:sync-alert",
+        lambda c: c.anticycle_enabled,
+        lambda c, v: setattr(c, "anticycle_enabled", v)),
     _OBSERVE,
 )
 

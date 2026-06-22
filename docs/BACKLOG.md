@@ -104,14 +104,15 @@
   - Fecha/contador de último cambio: opcional, no por defecto.
   - **Implementado:** número "Vida del filtro (h)" (3650) + `FilterLifeSensor` (%) + botón/servicio `reset_filter`; evento `dynamic_home_filter_due` con histéresis y, ahora, **issue de Repairs `filter_due`** (no-fixable + enlace) creado al cruzar el umbral y borrado al resetear/descargar. Fecha de último cambio → no.
 
-### F09 · Anti-ciclado corto (DC)
-- **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media (alta con compresor) · **Esfuerzo:** M
+### F09 · Anti-ciclado corto (DC) — ✅ implementada
+- **Estado:** ✅ implementada · **Módulos:** DC · **Valor:** Media (alta con compresor) · **Esfuerzo:** M
 - **Idea:** tiempos mínimos ON/OFF para proteger compresores; el aprendizaje ya mide la tasa, así que hay datos.
 - **Perfilado:**
   - **Protege con:** `min ON`, `min OFF` **y** `máx arranques/hora` (default **6/h**).
   - **Gated por F26:** **oculto** en gas, eléctrico y aerotermia comunitaria; **visible/activo** con **compresor** (aerotermia o AC individual). El **sistema de emisión** (suelo radiante / radiadores / fancoil / conductos…) también influye en los valores por inercia.
   - **La seguridad manda:** ante riesgo de condensación u orden de seguridad, el anti-ciclado **cede** (apaga aunque no se cumpla el min ON).
   - Contexto: hoy el usuario solo protege por seguridad (anticondensación); el ciclado de compresor no lo gestiona en su aerotermia comunitaria, pero es relevante para instalaciones individuales.
+  - **Implementado:** switch opt-in "Anti short-cycle" por zona; modelo puro `anticycle.py` (min ON/OFF + máx arranques/h, default 6) sobre el **agregado del compresor compartido** (hub único en `hass.data`: cualquier zona ON lo despierta; el flap de una zona no cuenta como arranque). Vigila el ON/OFF que DC manda al termostato (lo conduce a OFF mientras retiene); la seguridad cede. Gating F26 y agrupación por compresor F25 diferidos.
 
 ### F10 · Servicios y eventos nativos — ✅ implementada
 - **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Media · **Esfuerzo:** S
@@ -424,7 +425,7 @@
 | **F06** | ✅ implementada (energía) | Sensor de energía (kWh) en VMC/DC/DS: medidor real o estimación; panel de Energía. Coste (€) y pico instantáneo diferidos. |
 | **F07** | ✅ implementada (botón→futuro) | Repairs transversal DV/DS/DC (mixin `DegradedTracker`): issue por módulo con fuentes requeridas ausentes/obsoletas >5min + evento `dynamic_home_degraded` + binary_sensor "Degradado". No-fixable + enlace; botón que reabre config flow diferido. |
 | **F08** | ✅ implementada | Vida del filtro: número (3650 h) + sensor %, reset (botón/servicio), evento `filter_due` + **issue de Repairs `filter_due`** (creado al cruzar el umbral, borrado al resetear/descargar). |
-| **F09** | ☑ revisada | Anti-ciclado: min ON/OFF + máx 6 arranques/h; gated por F26 (compresor); la seguridad manda. |
+| **F09** | ✅ implementada | Anti-ciclado opt-in: min ON/OFF + máx 6 arranques/h sobre el agregado del compresor compartido; vigila el ON/OFF que manda DC; la seguridad cede. Gating F26 / grupos F25 diferidos. |
 | **F10** | ✅ implementada | 5 servicios (`reset_learning`/`boost`/`set_observe`/`reset_filter`/`recalibrate`) con `services.yaml` + traducciones EN/ES, destino por entidad/dispositivo/área; 4 eventos emitiéndose (degraded/conflict/filter_due/mode_changed). |
 | **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |

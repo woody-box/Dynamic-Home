@@ -148,6 +148,7 @@
           "cat_hood": "Extractor hood",
           "cat_wx": "Sources & alerts",
           "cat_energy": "Energy estimate",
+          "cat_cycle": "Short-cycle protection",
           "schedule": "Weekly schedule",
           "zone_add": "Add zone",
           "zone_edit": "Edit zone",
@@ -741,6 +742,19 @@
           "stale_after_h": "A source whose data is older than this counts as down (fall back to the next).",
           "alert_wind_kmh": "Wind at/above this raises the weather alert.",
           "alert_precip_mm": "Precipitation at/above this raises the weather alert."
+        }
+      },
+      "cat_cycle": {
+        "title": "Short-cycle protection",
+        "data": {
+          "anticycle_min_on_s": "Min ON (s)",
+          "anticycle_min_off_s": "Min OFF (s)",
+          "anticycle_max_starts_per_h": "Max starts/hour"
+        },
+        "data_description": {
+          "anticycle_min_on_s": "Minimum time the shared compressor stays on before a stop is registered (protects against short cycling). Safety stops override it.",
+          "anticycle_min_off_s": "Minimum time the compressor stays off before it may restart.",
+          "anticycle_max_starts_per_h": "Maximum compressor starts allowed per rolling hour (default 6)."
         }
       },
       "cat_energy": {

@@ -69,6 +69,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "hood": ("Extractor hood", "Campana extractora"),
     "wx": ("Sources & alerts", "Fuentes y alertas"),
     "energy": ("Energy estimate", "Estimación de energía"),
+    "cycle": ("Short-cycle protection", "Protección anti-ciclado"),
 }
 
 
@@ -334,6 +335,11 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         ],
         "energy": [
             _v("est_w_on", "Power while on (W)", "Potencia activa (W)"),
+        ],
+        "cycle": [
+            _v("anticycle_min_on_s", "Min ON (s)", "Min ON (s)"),
+            _v("anticycle_min_off_s", "Min OFF (s)", "Min OFF (s)"),
+            _v("anticycle_max_starts_per_h", "Max starts/hour", "Máx arranques/hora"),
         ],
     },
     const.MODULE_WEATHER: {

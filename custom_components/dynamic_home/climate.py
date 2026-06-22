@@ -88,7 +88,9 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         if not data:
             return {}
         return {"reason": data.reason,
-                "published_intent": data.published_intent}
+                "published_intent": data.published_intent,
+                "anticycle_hold": self.coordinator.anticycle_hold,
+                "anticycle_reason": self.coordinator.anticycle_reason}
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         self.coordinator.hvac_mode = str(hvac_mode)
@@ -117,8 +119,13 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         if not real or self.coordinator.observe_enabled:
             return
         data = self.coordinator.data
-        mode = self.coordinator.hvac_mode
-        target = data.target if data else None
+        # F09: while the anti-cycling guard holds this zone off, command the
+        # thermostat OFF (protect the shared compressor) instead of heat/cool.
+        if getattr(self.coordinator, "anticycle_hold", False):
+            mode, target = HVACMode.OFF, None
+        else:
+            mode = self.coordinator.hvac_mode
+            target = data.target if data else None
         prev_mode, prev_target = self._applied or (None, None)
         # Anti-jitter: when only the target moved and the change is below
         # apply_min_delta, don't bother the thermostat with a new setpoint.
