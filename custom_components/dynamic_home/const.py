@@ -10,12 +10,14 @@ MODULE_VMC = "vmc"
 MODULE_SHUTTER = "shutter"
 MODULE_CLIMATE = "climate_zone"
 MODULE_WEATHER = "weather"
+MODULE_ZONES = "zones"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time"]
 PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
+PLATFORMS_ZONES: list[str] = ["sensor"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
 # whole bus is observable from one place in the HA UI, not scattered per entry).
@@ -88,6 +90,10 @@ CONF_WX_TEMP = "wx_temp"           # raw-sensor fallback: temperature
 CONF_WX_WIND = "wx_wind"           # raw-sensor fallback: wind (km/h)
 CONF_WX_PRECIP = "wx_precip"       # raw-sensor fallback: precipitation (mm)
 EVENT_WEATHER_SOURCE = f"{DOMAIN}_weather_source"  # active source changed
+
+# --- F24 Zones/groups hierarchy (own structure, not HA Areas) ---
+CONF_ZONES_TREE = "zones_tree"     # the whole tree, stored in the entry's options
+DATA_ZONES = "_zones_tree"         # published in hass.data[DOMAIN] for consumers
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;

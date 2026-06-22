@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const, options_spec, presets
+from . import const, options_spec, presets, zones
 
 
 def _entity(domain: str | list[str] | None = None,
@@ -107,6 +107,12 @@ STEP_WEATHER_SCHEMA = vol.Schema(
     }
 )
 
+STEP_ZONES_SCHEMA = vol.Schema({vol.Required(const.CONF_NAME, default="Zonas"): str})
+
+# Module entries that can be assigned to a zone (everything but the Zones entry).
+_ASSIGNABLE = (const.MODULE_VMC, const.MODULE_SHUTTER, const.MODULE_CLIMATE,
+               const.MODULE_WEATHER)
+
 
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
@@ -117,7 +123,16 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
         """Entry point: choose which module to add."""
         return self.async_show_menu(
             step_id="user",
-            menu_options=["vmc", "shutter", "climate", "weather"])
+            menu_options=["vmc", "shutter", "climate", "weather", "zones"])
+
+    async def async_step_zones(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            await self.async_set_unique_id("zones_singleton")
+            self._abort_if_unique_id_configured()       # one zones entry only
+            data = {**user_input, const.CONF_MODULE: const.MODULE_ZONES}
+            return self.async_create_entry(
+                title=user_input[const.CONF_NAME], data=data)
+        return self.async_show_form(step_id="zones", data_schema=STEP_ZONES_SCHEMA)
 
     async def async_step_vmc(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
@@ -162,6 +177,8 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(entry: ConfigEntry) -> OptionsFlow:
+        if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
+            return ZonesOptionsFlow(entry)
         return DynamicHomeOptionsFlow(entry)
 
 
@@ -251,3 +268,110 @@ class DynamicHomeOptionsFlow(OptionsFlow):
                 selector_t = vol.Coerce(float)
             out[vol.Optional(key, default=default)] = selector_t
         return vol.Schema(out)
+
+
+class ZonesOptionsFlow(OptionsFlow):
+    """Tree editor (F24): create zones/groups and assign modules/zones."""
+
+    def __init__(self, entry: ConfigEntry) -> None:
+        self.entry = entry
+        self._tree = zones.normalize(entry.options.get(const.CONF_ZONES_TREE))
+        self._sel: str | None = None   # zone/group being edited
+
+    def _save(self):
+        return self.async_create_entry(
+            title="", data={const.CONF_ZONES_TREE: self._tree})
+
+    def _module_options(self) -> list[selector.SelectOptionDict]:
+        out = []
+        for e in self.hass.config_entries.async_entries(const.DOMAIN):
+            if e.data.get(const.CONF_MODULE) in _ASSIGNABLE:
+                out.append(selector.SelectOptionDict(value=e.entry_id,
+                                                     label=e.title))
+        return out
+
+    def _select(self, options, multiple=False, default=None):
+        return selector.SelectSelector(selector.SelectSelectorConfig(
+            options=options, multiple=multiple, mode=selector.SelectSelectorMode.LIST))
+
+    async def async_step_init(self, user_input=None):
+        menu = ["zone_add", "group_add"]
+        if self._tree["zones"]:
+            menu.insert(1, "zone_edit")
+        if self._tree["groups"]:
+            menu.append("group_edit")
+        return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_zone_add(self, user_input=None):
+        if user_input is not None:
+            self._tree = zones.add_zone(self._tree, user_input[const.CONF_NAME])
+            return self._save()
+        return self.async_show_form(
+            step_id="zone_add",
+            data_schema=vol.Schema({vol.Required(const.CONF_NAME): str}))
+
+    async def async_step_group_add(self, user_input=None):
+        if user_input is not None:
+            self._tree = zones.add_group(self._tree, user_input[const.CONF_NAME])
+            return self._save()
+        return self.async_show_form(
+            step_id="group_add",
+            data_schema=vol.Schema({vol.Required(const.CONF_NAME): str}))
+
+    async def async_step_zone_edit(self, user_input=None):
+        if user_input is not None:
+            self._sel = user_input["zone"]
+            return await self.async_step_zone_detail()
+        opts = [selector.SelectOptionDict(value=z, label=v["name"])
+                for z, v in self._tree["zones"].items()]
+        return self.async_show_form(
+            step_id="zone_edit",
+            data_schema=vol.Schema({vol.Required("zone"): self._select(opts)}))
+
+    async def async_step_zone_detail(self, user_input=None):
+        z = self._tree["zones"][self._sel]
+        if user_input is not None:
+            if user_input.get("delete"):
+                self._tree = zones.remove_zone(self._tree, self._sel)
+            else:
+                z["name"] = user_input.get(const.CONF_NAME, z["name"])
+                self._tree = zones.assign_modules(
+                    self._tree, self._sel, user_input.get("modules", []))
+            return self._save()
+        schema = vol.Schema({
+            vol.Optional(const.CONF_NAME, default=z["name"]): str,
+            vol.Optional("modules", default=z["modules"]):
+                self._select(self._module_options(), multiple=True),
+            vol.Optional("delete", default=False): bool,
+        })
+        return self.async_show_form(step_id="zone_detail", data_schema=schema)
+
+    async def async_step_group_edit(self, user_input=None):
+        if user_input is not None:
+            self._sel = user_input["group"]
+            return await self.async_step_group_detail()
+        opts = [selector.SelectOptionDict(value=g, label=v["name"])
+                for g, v in self._tree["groups"].items()]
+        return self.async_show_form(
+            step_id="group_edit",
+            data_schema=vol.Schema({vol.Required("group"): self._select(opts)}))
+
+    async def async_step_group_detail(self, user_input=None):
+        g = self._tree["groups"][self._sel]
+        if user_input is not None:
+            if user_input.get("delete"):
+                self._tree = zones.remove_group(self._tree, self._sel)
+            else:
+                g["name"] = user_input.get(const.CONF_NAME, g["name"])
+                self._tree = zones.assign_zones(
+                    self._tree, self._sel, user_input.get("zones", []))
+            return self._save()
+        zopts = [selector.SelectOptionDict(value=z, label=v["name"])
+                 for z, v in self._tree["zones"].items()]
+        schema = vol.Schema({
+            vol.Optional(const.CONF_NAME, default=g["name"]): str,
+            vol.Optional("zones", default=g["zones"]):
+                self._select(zopts, multiple=True),
+            vol.Optional("delete", default=False): bool,
+        })
+        return self.async_show_form(step_id="group_detail", data_schema=schema)

@@ -8,7 +8,8 @@
           "vmc": "Ventilation (VMC)",
           "shutter": "Shutter",
           "climate": "Climate (zone)",
-          "weather": "Dynamic Weather"
+          "weather": "Dynamic Weather",
+          "zones": "Dynamic Home · Zones"
         }
       },
       "vmc": {
@@ -86,6 +87,13 @@
           "wx_wind": "Fallback wind (sensor, km/h)",
           "wx_precip": "Precipitation (sensor, mm)"
         }
+      },
+      "zones": {
+        "title": "Dynamic Home · Zones",
+        "description": "Create the zone → group → house hierarchy (one entry). Assign modules to zones and zones to groups from this entry's options.",
+        "data": {
+          "name": "Name"
+        }
       }
     },
     "abort": {
@@ -135,7 +143,11 @@
           "cat_night": "Night insulation",
           "cat_alert": "Weather alerts",
           "cat_hood": "Extractor hood",
-          "cat_wx": "Sources & alerts"
+          "cat_wx": "Sources & alerts",
+          "zone_add": "Add zone",
+          "zone_edit": "Edit zone",
+          "group_add": "Add group",
+          "group_edit": "Edit group"
         }
       },
       "cat_iaq": {
@@ -715,6 +727,46 @@
           "stale_after_h": "A source whose data is older than this counts as down (fall back to the next).",
           "alert_wind_kmh": "Wind at/above this raises the weather alert.",
           "alert_precip_mm": "Precipitation at/above this raises the weather alert."
+        }
+      },
+      "zone_add": {
+        "title": "Add zone",
+        "data": {
+          "name": "Zone name"
+        }
+      },
+      "group_add": {
+        "title": "Add group",
+        "data": {
+          "name": "Group name"
+        }
+      },
+      "zone_edit": {
+        "title": "Edit zone",
+        "data": {
+          "zone": "Zone"
+        }
+      },
+      "group_edit": {
+        "title": "Edit group",
+        "data": {
+          "group": "Group"
+        }
+      },
+      "zone_detail": {
+        "title": "Zone",
+        "data": {
+          "name": "Name",
+          "modules": "Modules",
+          "delete": "Delete this zone"
+        }
+      },
+      "group_detail": {
+        "title": "Group",
+        "data": {
+          "name": "Name",
+          "zones": "Zones",
+          "delete": "Delete this group"
         }
       }
     },
