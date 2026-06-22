@@ -52,6 +52,7 @@ It is **not** a plug-and-forget solution. It is not a good fit if you:
 | **DC** · Dynamic Climate | `climate` | Heating and radiant cooling (per-zone setpoint) |
 | **DV** · Dynamic Ventilation | `fan` | Dual-flow HRV (speed by air quality) |
 | **DS** · Dynamic Shutter | `cover` | Shutters (position by sun, climate and weather) |
+| **Weather** · Dynamic Weather | `weather` | Optional: resilient multi-source forecast/alert provider (fallback) |
 
 <p align="center">
   <img src="docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">

@@ -13,7 +13,13 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import service as service_helper
 
 from . import const
-from .coordinator import DcCoordinator, DsCoordinator, DvCoordinator, SdhbHub
+from .coordinator import (
+    DcCoordinator,
+    DsCoordinator,
+    DvCoordinator,
+    SdhbHub,
+    WxCoordinator,
+)
 
 
 def _platforms(entry: ConfigEntry) -> list[str]:
@@ -22,6 +28,8 @@ def _platforms(entry: ConfigEntry) -> list[str]:
         return const.PLATFORMS_SHUTTER
     if module == const.MODULE_CLIMATE:
         return const.PLATFORMS_CLIMATE
+    if module == const.MODULE_WEATHER:
+        return const.PLATFORMS_WEATHER
     return const.PLATFORMS_VMC
 
 
@@ -43,6 +51,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         }
     elif module == const.MODULE_CLIMATE:
         coordinator = DcCoordinator(hass, entry, hub)
+    elif module == const.MODULE_WEATHER:
+        coordinator = WxCoordinator(hass, entry)   # read-only; no bus
     else:
         coordinator = DvCoordinator(hass, entry, hub)
         coordinator.async_setup_listeners()

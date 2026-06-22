@@ -11,5 +11,7 @@ from .bus import SdhbHub
 from .coordinator_dc import DcCoordinator
 from .coordinator_ds import DsCoordinator
 from .coordinator_dv import DvCoordinator
+from .coordinator_weather import WxCoordinator
 
-__all__ = ["DcCoordinator", "DsCoordinator", "DvCoordinator", "SdhbHub"]
+__all__ = ["DcCoordinator", "DsCoordinator", "DvCoordinator", "WxCoordinator",
+           "SdhbHub"]

@@ -53,6 +53,7 @@ y automatizada. Encaja si tienes:
 | **DC** · Dynamic Climate | `climate` | Calefacción y suelo refrescante (consigna por zona) |
 | **DV** · Dynamic Ventilation | `fan` | VMC de doble flujo (velocidad por calidad de aire) |
 | **DS** · Dynamic Shutter | `cover` | Persianas (posición por sol, clima y meteo) |
+| **Weather** · Dynamic Weather | `weather` | Opcional: proveedor meteo resiliente multi-fuente (forecast/alertas con fallback) |
 
 <p align="center">
   <img src="docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">

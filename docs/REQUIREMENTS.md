@@ -221,8 +221,8 @@ resto, sin depender de integraciones inestables.
 
 **Dependencias:** ninguna. **Habilita:** forecast DC, F17 avisos, free-cooling.
 **Criterios de aceptación:**
-- ☐ Si la fuente primaria no responde, el forecast sigue disponible por la secundaria.
-- ☐ DC recibe forecast y DS recibe alertas sin configurar una integración meteo concreta.
+- ☑ Si la fuente primaria no responde, el forecast sigue disponible por la secundaria.
+- ☑ DC recibe forecast y DS recibe alertas sin configurar una integración meteo concreta.
 
 ### 4.6 · Explicador de conflictos del bus (F02)
 
@@ -1445,3 +1445,39 @@ o subir la campana para limpiar el aire; complementa a la VMC. **Caso de hardwar
 **Seguridad:** el software coordina, **no** sustituye un **interlock hardware**
 (relés mutuamente excluyentes / selector); recomendado para garantizar "nunca dos
 velocidades". Override/observe siguen mandando.
+
+### 12.21 · F33 — Dynamic Weather (módulo nuevo)
+
+Capa meteo **resiliente y agnóstica**: módulo propio (`MODULE_WEATHER`,
+plataformas `weather`/`binary_sensor`/`sensor`) que **no obtiene datos**, sino que
+elige la primera fuente sana de una lista priorizada y **reexpone** una vista
+normalizada con fallback. **No mete APIs/keys** en la integración (RNF-6): consume
+entidades `weather.*` de HA (Open-Meteo oficial sin clave, OWM, met.no, AEMET…) y,
+como último recurso, **sensores crudos** del usuario.
+
+- Motor puro `weather_engine`: `pick_source` (primera disponible por prioridad),
+  `is_fresh` (caduca tras `stale_after_h`), `derive_alert` (condición peligrosa /
+  viento / precipitación → alerta).
+- `coordinator_weather.WxCoordinator`: fuentes `wx_source_1/2/3` (weather) →
+  fallback `wx_temp/wx_wind/wx_precip` (sensores); elige activa, expone
+  `active_label`/`active_entity`/`active_since`, condición/temp/humedad/presión/
+  viento y la alerta; evento `dynamic_home_weather_source` al cambiar de fuente.
+- `weather.ProxyWeather`: entidad `weather` que **espeja** la fuente activa y
+  **reenvía `get_forecasts`** a ella → DC (forecast bias) y free-cooling la
+  consumen transparente, con fallback. `unavailable` solo si **todas** caen.
+- `binary_sensor` "Alerta meteo" (device_class safety) → consumible por **DS/F17**.
+  `sensor` "Fuente activa" (diagnóstico, con `since`). Opciones (categoría `wx`):
+  `stale_after_h`, `alert_wind_kmh`, `alert_precip_mm`.
+
+**Aceptación:**
+
+- ☐ Si la primaria cae, el forecast sigue por la secundaria; si todas caen, por
+  los sensores crudos (sin forecast).
+- ☐ DC apunta `CONF_DC_WEATHER` a la entidad proxy y recibe forecast con fallback;
+  DS apunta su alerta (F17) al `binary_sensor` derivado.
+- ☐ Diagnóstico de fuente activa + `since`; `unavailable` solo si todas fallan.
+
+**Notas:** el forecast solo está disponible cuando la fuente activa es una
+entidad `weather` (los sensores crudos dan solo valores actuales). La alerta
+derivada es heurística (condición/viento/precip); para avisos oficiales,
+Meteoalarm sigue siendo enchufable en F17.

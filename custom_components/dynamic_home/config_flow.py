@@ -95,6 +95,18 @@ STEP_CLIMATE_SCHEMA = vol.Schema(
     }
 )
 
+STEP_WEATHER_SCHEMA = vol.Schema(
+    {
+        vol.Required(const.CONF_NAME, default="Meteo"): str,
+        vol.Optional(const.CONF_WX_SOURCE_1): _entity("weather"),
+        vol.Optional(const.CONF_WX_SOURCE_2): _entity("weather"),
+        vol.Optional(const.CONF_WX_SOURCE_3): _entity("weather"),
+        vol.Optional(const.CONF_WX_TEMP): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_WX_WIND): _entity("sensor"),
+        vol.Optional(const.CONF_WX_PRECIP): _entity("sensor"),
+    }
+)
+
 
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
@@ -104,7 +116,8 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         """Entry point: choose which module to add."""
         return self.async_show_menu(
-            step_id="user", menu_options=["vmc", "shutter", "climate"])
+            step_id="user",
+            menu_options=["vmc", "shutter", "climate", "weather"])
 
     async def async_step_vmc(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
@@ -114,6 +127,16 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
             return self.async_create_entry(
                 title=user_input[const.CONF_NAME], data=data)
         return self.async_show_form(step_id="vmc", data_schema=STEP_USER_SCHEMA)
+
+    async def async_step_weather(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            await self.async_set_unique_id(f"wx_{user_input[const.CONF_NAME]}")
+            self._abort_if_unique_id_configured()
+            data = {**user_input, const.CONF_MODULE: const.MODULE_WEATHER}
+            return self.async_create_entry(
+                title=user_input[const.CONF_NAME], data=data)
+        return self.async_show_form(
+            step_id="weather", data_schema=STEP_WEATHER_SCHEMA)
 
     async def async_step_shutter(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:

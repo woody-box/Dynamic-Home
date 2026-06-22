@@ -104,6 +104,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
     module = entry.data.get(const.CONF_MODULE)
+    if module == const.MODULE_WEATHER:
+        async_add_entities([WeatherSourceSensor(coordinator, entry)])
+        return
     if module == const.MODULE_CLIMATE:
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
                                     for d in _DC_SENSORS]
@@ -135,6 +138,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(BusSensor(coordinator, entry))
     entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
+
+
+class WeatherSourceSensor(CoordinatorEntity, SensorEntity):
+    """Active weather source (F33): which source is serving, and whether degraded."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Fuente activa"
+    _attr_icon = "mdi:weather-partly-cloudy"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_wx_source"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.active_label
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        co = self.coordinator
+        since = co.active_since
+        return {"alert": co.alert_active,
+                "since": dt_util.utc_from_timestamp(since).isoformat()
+                if since else None}
 
 
 class HwMirrorSensor(SensorEntity):

@@ -15,11 +15,15 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import const
 from .coordinator import DcCoordinator
+from .coordinator_weather import WxCoordinator
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
-    coordinator: DcCoordinator = hass.data[const.DOMAIN][entry.entry_id]
+    coordinator = hass.data[const.DOMAIN][entry.entry_id]
+    if entry.data.get(const.CONF_MODULE) == const.MODULE_WEATHER:
+        async_add_entities([WeatherAlertBinarySensor(coordinator, entry)])
+        return
     entities = [DewRiskBinarySensor(coordinator, entry),
                 DegradedBinarySensor(coordinator, entry)]
     if coordinator.has_real_demand():
@@ -95,6 +99,30 @@ class WindowInferredBinarySensor(CoordinatorEntity[DcCoordinator],
     @property
     def extra_state_attributes(self) -> dict:
         return {"trend_cph": round(self.coordinator._cph, 2)}
+
+
+class WeatherAlertBinarySensor(CoordinatorEntity[WxCoordinator],
+                               BinarySensorEntity):
+    """Generic weather alert derived from the active source (F33 → F17)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Alerta meteo"
+    _attr_icon = "mdi:weather-lightning"
+    _attr_device_class = BinarySensorDeviceClass.SAFETY
+
+    def __init__(self, coordinator: WxCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_wx_alert"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.alert_active
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"source": self.coordinator.active_label}
 
 
 class DegradedBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):

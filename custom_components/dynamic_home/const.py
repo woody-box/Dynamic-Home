@@ -9,11 +9,13 @@ CONF_MODULE = "module"
 MODULE_VMC = "vmc"
 MODULE_SHUTTER = "shutter"
 MODULE_CLIMATE = "climate_zone"
+MODULE_WEATHER = "weather"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time"]
 PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
+PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
 # whole bus is observable from one place in the HA UI, not scattered per entry).
@@ -77,6 +79,15 @@ CONF_DC_DEHUMIDIFIER = "dc_dehumidifier"  # F22: optional dehumidifier to drive
 CONF_DC_ADJ_TEMP = "dc_adj_temp"   # F31: adjacent space (terrace/sunroom) temp
 CONF_DC_ADJ_DOOR = "dc_adj_door"   # F31: optional door binary_sensor to it
 CONF_EXPOSE_MIRRORS = "expose_mirrors"  # F36: expose stable per-role mirror sensors
+
+# --- F33 Weather (resilient multi-source forecast/alert provider) ---
+CONF_WX_SOURCE_1 = "wx_source_1"   # primary weather.* entity
+CONF_WX_SOURCE_2 = "wx_source_2"   # secondary (fallback)
+CONF_WX_SOURCE_3 = "wx_source_3"   # tertiary (fallback)
+CONF_WX_TEMP = "wx_temp"           # raw-sensor fallback: temperature
+CONF_WX_WIND = "wx_wind"           # raw-sensor fallback: wind (km/h)
+CONF_WX_PRECIP = "wx_precip"       # raw-sensor fallback: precipitation (mm)
+EVENT_WEATHER_SOURCE = f"{DOMAIN}_weather_source"  # active source changed
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;

@@ -7,7 +7,8 @@
         "menu_options": {
           "vmc": "Ventilation (VMC)",
           "shutter": "Shutter",
-          "climate": "Climate (zone)"
+          "climate": "Climate (zone)",
+          "weather": "Dynamic Weather"
         }
       },
       "vmc": {
@@ -72,6 +73,19 @@
           "dc_adj_temp": "Adjacent space temperature (optional)",
           "dc_adj_door": "Door to adjacent space (optional)"
         }
+      },
+      "weather": {
+        "title": "Dynamic Weather",
+        "description": "Resilient multi-source forecast/alert provider. Lists weather sources in priority order with fallback; the user's own sensors can be plugged in too.",
+        "data": {
+          "name": "Name",
+          "wx_source_1": "Primary source (weather)",
+          "wx_source_2": "Secondary source (weather)",
+          "wx_source_3": "Tertiary source (weather)",
+          "wx_temp": "Fallback temperature (sensor)",
+          "wx_wind": "Fallback wind (sensor, km/h)",
+          "wx_precip": "Precipitation (sensor, mm)"
+        }
       }
     },
     "abort": {
@@ -120,7 +134,8 @@
           "cat_dawn": "Gradual sunrise",
           "cat_night": "Night insulation",
           "cat_alert": "Weather alerts",
-          "cat_hood": "Extractor hood"
+          "cat_hood": "Extractor hood",
+          "cat_wx": "Sources & alerts"
         }
       },
       "cat_iaq": {
@@ -687,6 +702,19 @@
           "hood_pm_v2": "Indoor PM2.5 at/above which the hood runs at V2.",
           "hood_pm_v3": "Indoor PM2.5 at/above which the hood runs at V3.",
           "hood_hys": "Margin the PM must fall below before the hood steps down a level."
+        }
+      },
+      "cat_wx": {
+        "title": "Sources & alerts",
+        "data": {
+          "stale_after_h": "Stale after (h)",
+          "alert_wind_kmh": "Alert wind (km/h)",
+          "alert_precip_mm": "Alert precip (mm)"
+        },
+        "data_description": {
+          "stale_after_h": "A source whose data is older than this counts as down (fall back to the next).",
+          "alert_wind_kmh": "Wind at/above this raises the weather alert.",
+          "alert_precip_mm": "Precipitation at/above this raises the weather alert."
         }
       }
     },
