@@ -18,7 +18,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events
+from . import const, events, modes
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import (
@@ -302,6 +302,12 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         if self.boost_until is not None and now_ts >= self.boost_until:
             self.boost_until = None
 
+        # House mode (F01): cap the auto speed / force boost by the zone's mode.
+        mode_data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE)
+        mode = modes.effective_from_published(mode_data, self.entry.entry_id)
+        mode_cap = modes.dv_cap(mode, (mode_data or {}).get("caps"))
+        mode_boost = modes.is_boost(mode)
+
         co2_raw = self._num(const.CONF_CO2)
         pm_raw = self._num(const.CONF_PM25)
         # Extractor hood (F35): auto speed from indoor PM (hysteresis in the engine).
@@ -338,5 +344,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
             dry_requested=(self.bus_explain["winner"] == "request_dry"),
             dew_risk=dew_r,
             dp_diff=dp_diff,
+            mode_cap=mode_cap,
+            mode_boost=mode_boost,
         )
         return decide(cfg, self.state_data, ins)

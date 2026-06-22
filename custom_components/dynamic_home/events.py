@@ -51,6 +51,15 @@ def fire_mold(hass: HomeAssistant, entry: ConfigEntry, module: str,
     hass.bus.async_fire(const.EVENT_MOLD, data)
 
 
+def fire_mode_changed(hass: HomeAssistant, entry: ConfigEntry,
+                      house: str, zone_modes: dict) -> None:
+    """The house mode or a zone override changed (F01)."""
+    data = _base(entry, "zones")
+    data["house"] = house
+    data["zones"] = dict(zone_modes)
+    hass.bus.async_fire(const.EVENT_MODE_CHANGED, data)
+
+
 def fire_adjacent(hass: HomeAssistant, entry: ConfigEntry, module: str,
                   advice: str, dt: float) -> None:
     """Adjacent warm-space advisory changed (F31): open_gain / close_alarm / none."""

@@ -147,7 +147,8 @@
           "zone_add": "Add zone",
           "zone_edit": "Edit zone",
           "group_add": "Add group",
-          "group_edit": "Edit group"
+          "group_edit": "Edit group",
+          "mode_caps": "Mode speed caps"
         }
       },
       "cat_iaq": {
@@ -768,6 +769,19 @@
           "zones": "Zones",
           "delete": "Delete this group"
         }
+      },
+      "mode_caps": {
+        "title": "Mode speed caps",
+        "data": {
+          "eco": "Eco cap (V)",
+          "sleep": "Sleep cap (V)",
+          "away": "Away cap (V)"
+        },
+        "data_description": {
+          "eco": "Max VMC speed in Eco mode.",
+          "sleep": "Max VMC speed in Sleep mode (noise / WAF).",
+          "away": "Max VMC speed in Away mode."
+        }
       }
     },
     "abort": {
@@ -816,6 +830,29 @@
     "mold_risk": {
       "title": "{name}: sustained mold risk",
       "description": "The zone \"{name}\" has had a high relative humidity for a sustained period (mold-risk index {index} h). Ventilation drying is requested when the outdoor air is drier, and a dehumidifier (if configured) is switched on. Consider airing the room or checking for moisture sources."
+    }
+  },
+  "entity": {
+    "select": {
+      "house_mode": {
+        "state": {
+          "home": "Home",
+          "away": "Away",
+          "sleep": "Sleep",
+          "boost": "Boost",
+          "eco": "Eco"
+        }
+      },
+      "zone_mode": {
+        "state": {
+          "auto": "Auto",
+          "home": "Home",
+          "away": "Away",
+          "sleep": "Sleep",
+          "boost": "Boost",
+          "eco": "Eco"
+        }
+      }
     }
   }
 }

@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events
+from . import const, events, modes
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -447,6 +447,12 @@ class DcCoordinator(DataUpdateCoordinator):
             self.hub.clear(src)
         self._active_sources = set()
 
+    def _mode(self) -> str:
+        """This zone's effective house mode (F01), or 'home' if modes unset."""
+        return modes.effective_from_published(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE),
+            self.entry.entry_id)
+
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
 
@@ -626,7 +632,7 @@ class DcCoordinator(DataUpdateCoordinator):
             trend_cph=trend,
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
             wind=self._num(const.CONF_DC_WIND),
-            vacation=self.vacation_enabled,
+            vacation=self.vacation_enabled or modes.is_away(self._mode()),
             window_lockout=self._is_on(const.CONF_DC_WINDOW),
             window_inferred=self._window_inferred,
             dew_risk=self.dew_risk_active,

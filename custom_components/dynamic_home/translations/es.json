@@ -147,7 +147,8 @@
           "zone_add": "Añadir zona",
           "zone_edit": "Editar zona",
           "group_add": "Añadir grupo",
-          "group_edit": "Editar grupo"
+          "group_edit": "Editar grupo",
+          "mode_caps": "Cap de velocidad por modo"
         }
       },
       "cat_iaq": {
@@ -768,6 +769,19 @@
           "zones": "Zonas",
           "delete": "Eliminar este grupo"
         }
+      },
+      "mode_caps": {
+        "title": "Cap de velocidad por modo",
+        "data": {
+          "eco": "Cap Eco (V)",
+          "sleep": "Cap Dormir (V)",
+          "away": "Cap Fuera (V)"
+        },
+        "data_description": {
+          "eco": "Velocidad máx. de la VMC en modo Eco.",
+          "sleep": "Velocidad máx. en modo Dormir (ruido / WAF).",
+          "away": "Velocidad máx. en modo Fuera."
+        }
       }
     },
     "abort": {
@@ -816,6 +830,29 @@
     "mold_risk": {
       "title": "{name}: riesgo de moho sostenido",
       "description": "La zona \"{name}\" ha tenido una humedad relativa alta de forma sostenida (índice de moho {index} h). Se solicita secado por ventilación cuando el aire exterior está más seco y se enciende un deshumidificador (si está configurado). Considera ventilar la estancia o revisar fuentes de humedad."
+    }
+  },
+  "entity": {
+    "select": {
+      "house_mode": {
+        "state": {
+          "home": "En casa",
+          "away": "Fuera",
+          "sleep": "Dormir",
+          "boost": "Refuerzo",
+          "eco": "Eco"
+        }
+      },
+      "zone_mode": {
+        "state": {
+          "auto": "Auto",
+          "home": "En casa",
+          "away": "Fuera",
+          "sleep": "Dormir",
+          "boost": "Refuerzo",
+          "eco": "Eco"
+        }
+      }
     }
   }
 }

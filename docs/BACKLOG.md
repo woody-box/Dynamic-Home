@@ -408,7 +408,7 @@
   - **Implementado:** entidad `fan` "Campana" (auto + manual) para **3 relés (uno por velocidad)**; auto por PM2.5 interior con histéresis (`hood_speed`); driver **break-before-make** + **vigilante de interlock** (corrige dos relés a la vez) + observe. Recomendado interlock hardware. _(Caso fan/switch simple queda para ampliar si se necesita.)_
 | ID | Estado | Decisión resumida |
 |----|--------|-------------------|
-| **F01** | ☑ revisada | Modos base configurables; vive en el bus (sustituye vacaciones DC); por grupos (F24); extensible a AC (F25). Jerarquía: override > horario > manual > modo. |
+| **F01** | ✅ implementada (DS/horario→futuro) | Modos Home/Away/Sleep/Boost/Eco; casa + override por zona (F24); DV cap por modo, DC vacación en Away; select + caps configurables. Horario→F21, efecto DS pendiente. |
 | **F02** | ☑ revisada | Una entidad por consumidor bajo un dispositivo "Bus" nuevo; ganador + motivo; solo estado actual. |
 | **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
@@ -432,7 +432,7 @@
 | **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
-| **F24** | ✅ estructura (modo→F01) | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo/perfil por ámbito → F01. |
+| **F24** | ✅ implementada | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo por ámbito ya lo aplica F01. |
 | **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
 | **F26** | ☑ revisada | Asistente fuente→emisión: defaults + gating; incluye primario/stage2 (F25); por zona o global; catálogo cerrado validado; comunitaria desactiva F03/F09. |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |

@@ -254,6 +254,8 @@ class DvInputs:
 
     dry_mode: bool = False
     dry_requested: bool = False        # F22: bus-driven dry request (DC mold)
+    mode_cap: int | None = None        # F01: house-mode speed cap (None = none)
+    mode_boost: bool = False           # F01: house-mode boost -> V3
     dew_risk: bool = False
     dew_prerisk: bool = False
     dp_diff: float | None = None
@@ -631,6 +633,15 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         critical = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
         if not critical:
             t, reason = cfg.quiet_max_level, "quiet_cap"
+
+    # 7) House mode (F01): boost forces V3; other modes cap the auto path, but
+    # health overrides the cap (critical air still raises, like quiet hours).
+    if ins.mode_boost:
+        t, reason = 3, "mode_boost"
+    elif ins.mode_cap is not None and t > ins.mode_cap:
+        critical = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
+        if not critical:
+            t, reason = ins.mode_cap, "mode_cap"
 
     return DvDecision(t, reason, base_target=base,
                       details={"co2": round(co2, 1), "pm": round(pm, 2),

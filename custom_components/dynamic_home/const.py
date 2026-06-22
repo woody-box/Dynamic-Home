@@ -17,7 +17,7 @@ PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time
 PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
-PLATFORMS_ZONES: list[str] = ["sensor"]
+PLATFORMS_ZONES: list[str] = ["sensor", "select"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
 # whole bus is observable from one place in the HA UI, not scattered per entry).
@@ -94,6 +94,11 @@ EVENT_WEATHER_SOURCE = f"{DOMAIN}_weather_source"  # active source changed
 # --- F24 Zones/groups hierarchy (own structure, not HA Areas) ---
 CONF_ZONES_TREE = "zones_tree"     # the whole tree, stored in the entry's options
 DATA_ZONES = "_zones_tree"         # published in hass.data[DOMAIN] for consumers
+
+# --- F01 House modes (live on the zones entry; bias modules by scope) ---
+CONF_MODE_CAPS = "mode_caps"       # per-mode VMC speed cap (options dict)
+DATA_MODE = "_mode"                # resolved modes published in hass.data[DOMAIN]
+EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;
