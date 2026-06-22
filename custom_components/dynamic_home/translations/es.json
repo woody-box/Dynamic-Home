@@ -111,7 +111,8 @@
           "cat_window": "Detección de ventana",
           "cat_adjacent": "Espacio adyacente",
           "mirrors": "Espejos de hardware",
-          "cat_dawn": "Amanecer gradual"
+          "cat_dawn": "Amanecer gradual",
+          "cat_night": "Aislamiento nocturno"
         }
       },
       "cat_iaq": {
@@ -637,6 +638,17 @@
           "dawn_step_min": "Minutos entre pasos.",
           "dawn_target_pct": "Apertura a la que llega la rampa.",
           "dawn_trigger_elevation": "Elevación del sol (grados) que inicia la rampa al amanecer."
+        }
+      },
+      "cat_night": {
+        "title": "Aislamiento nocturno",
+        "data": {
+          "night_iso_close_pct": "Cierre noche (%)",
+          "night_iso_open_pct": "Apertura purga noche (%)"
+        },
+        "data_description": {
+          "night_iso_close_pct": "Posición cerrada de noche para aislar (calor) o proteger la masa térmica (frío, noche cálida).",
+          "night_iso_open_pct": "Posición abierta de noche para purgar la masa térmica cuando el exterior está más fresco (frío)."
         }
       }
     },

@@ -41,6 +41,29 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+# --- F16: seasonal night insulation ---
+async def test_night_insulation_heat_and_cool(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()  # close 0, open 100
+
+    # Disabled by default (opt-in).
+    assert co._night_iso(cfg, "heat", -5.0, 18.0, 2.0) is None
+    co.night_iso_enabled = True
+
+    # Daytime (sun up) -> no night strategy.
+    assert co._night_iso(cfg, "heat", 10.0, 18.0, 2.0) is None
+    # Heat at night -> close to insulate.
+    assert co._night_iso(cfg, "heat", -5.0, 18.0, 2.0) == 0
+    # Cool, cooler outside -> open to purge the mass.
+    assert co._night_iso(cfg, "cool", -5.0, 26.0, 20.0) == 100
+    # Cool, warmer outside -> close to protect the mass.
+    assert co._night_iso(cfg, "cool", -5.0, 26.0, 30.0) == 0
+    # Cool, temps unknown -> defer to the cascade.
+    assert co._night_iso(cfg, "cool", -5.0, None, 20.0) is None
+
+
 # --- F19: gradual sunrise ramp (driven with injected sun/time) ---
 async def test_dawn_ramp_triggers_and_climbs(hass: HomeAssistant) -> None:
     _seed(hass, position=0)

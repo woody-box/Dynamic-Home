@@ -104,6 +104,19 @@ def test_dawn_ramp_yields_to_safety_and_privacy():
     assert d.reason == "privacy_time"
 
 
+def test_night_insulate_drives_position():
+    # F16: an active night strategy sets the position.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(night_pos=0))
+    assert d.pos == 0 and d.reason == "night_insulate"
+
+
+def test_night_insulate_yields_to_safety():
+    d = decide_cover(_cfg(rain_close_pct=0, slew_enabled=False), DsState(),
+                     DsInputs(night_pos=100, weather_protect_enabled=True,
+                              raining=True))
+    assert d.reason == "meteo_rain"
+
+
 def test_freecool_night_opens():
     d = decide_cover(_cfg(freecool_max_open_pct=60, freecool_delta=0.8,
                           slew_enabled=False), DsState(),

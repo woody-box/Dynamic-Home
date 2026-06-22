@@ -716,8 +716,8 @@ necesario** (proteger X metros de suelo), no todo/nada.
 
 **Dependencias:** DS, modo del `climate` de la zona (F25), free-cooling existente.
 **Criterios de aceptación:**
-- ☐ En `heat`, al caer la noche la persiana cierra para aislar.
-- ☐ En `cool`, la apertura nocturna no entra en conflicto con el free-cooling.
+- ☑ En `heat`, al caer la noche la persiana cierra para aislar.
+- ☑ En `cool`, la apertura nocturna no entra en conflicto con el free-cooling.
 
 ### 7.3 · Avisos meteo (tormenta/granizo) (F17)
 
@@ -1362,3 +1362,30 @@ abierta**, arranca una rampa que sube `dawn_step_pct` cada `dawn_step_min` hasta
 - ☐ Al amanecer la persiana sube por pasos según la rampa.
 - ☐ Si ya estaba abierta (free-cooling/usuario), la rampa no la mueve.
 - ☐ Opt-in: desactivada por defecto (switch).
+
+### 12.18 · F16 — Aislamiento nocturno estacional (DS)
+
+Opt-in por zona (switch "Night insulation"). Estación por el **modo del climate**
+de la zona; **noche = sol bajo el horizonte** (`sun_el <= 0`). Autocontenido: no
+toca el `night`/free-cooling latentes; usa su propio `DsInputs.night_pos`.
+
+- `coordinator_ds._night_iso(cfg, hvac, sun_el, t_in, t_out)`:
+  - `heat` + noche → `night_iso_close_pct` (cerrar para aislar).
+  - `cool` + noche → `night_iso_open_pct` si `t_out <= t_in` (purga de la masa),
+    si no `night_iso_close_pct` (proteger la masa en noche cálida); temps
+    desconocidas → `None` (decide la cascada).
+  - Desactivado / de día / sol desconocido → `None`.
+- Motor: rama `night_insulate` en `decide_cover` (en el `else`, tras
+  override/lluvia/privacidad y la rampa de amanecer, **antes** de las ramas de
+  clima). Caps (viento/bus/slew) y seguridad siguen mandando.
+- Config (categoría `night`): `night_iso_close_pct`, `night_iso_open_pct`.
+
+**Aceptación:**
+
+- ☐ En `heat`, de noche cierra para aislar.
+- ☐ En `cool`, de noche abre solo si el exterior está más fresco (no mete calor);
+  no duplica el free-cooling (cuando F16 está activo, posee la estrategia nocturna).
+- ☐ Opt-in: desactivado por defecto.
+
+**Nota:** el `night`/free-cooling base siguen latentes (pre-existente); F16 es
+independiente y opt-in.

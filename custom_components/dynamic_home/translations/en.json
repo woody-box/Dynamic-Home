@@ -111,7 +111,8 @@
           "cat_window": "Open-window detection",
           "cat_adjacent": "Adjacent space",
           "mirrors": "Hardware mirrors",
-          "cat_dawn": "Gradual sunrise"
+          "cat_dawn": "Gradual sunrise",
+          "cat_night": "Night insulation"
         }
       },
       "cat_iaq": {
@@ -637,6 +638,17 @@
           "dawn_step_min": "Minutes between steps.",
           "dawn_target_pct": "Opening the ramp climbs to.",
           "dawn_trigger_elevation": "Sun elevation (degrees) that starts the ramp at dawn."
+        }
+      },
+      "cat_night": {
+        "title": "Night insulation",
+        "data": {
+          "night_iso_close_pct": "Night close (%)",
+          "night_iso_open_pct": "Night purge open (%)"
+        },
+        "data_description": {
+          "night_iso_close_pct": "Closed position at night to insulate (heat) or protect the thermal mass (cool, warm night).",
+          "night_iso_open_pct": "Open position at night to purge the thermal mass when the outside is cooler (cool)."
         }
       }
     },

@@ -176,6 +176,7 @@
   - **No duplicar free-cooling:** la cara de verano se **coordina** con el free-cooling existente. Lo distintivo es la **estrategia de inercia**: en cool, abrir de noche para **pre-acondicionar la masa** y empezar el día siguiente con ventaja, incluso en condiciones marginales (zona en/por encima de consigna). _Condiciones térmicas exactas (ext vs int, consigna) a detallar en implementación._
   - **Noche = sol bajo horizonte.**
   - **Seguridad manda** (viento/lluvia/override por encima del aislamiento).
+  - **Implementado:** switch "Night insulation" (opt-in); por modo del climate (heat→cerrar, cool→abrir si exterior más fresco / cerrar si más cálido); noche = sol bajo horizonte; rama `night_insulate` (cede a override/lluvia/privacidad). Autocontenido (no toca el free-cooling latente).
 
 ### F17 · Avisos meteo (tormenta/granizo)
 - **Estado:** ☑ revisada · **Módulos:** DS · **Valor:** Media · **Esfuerzo:** M
@@ -418,7 +419,7 @@
 | **F13** | ☑ revisada | Secado por punto de rocío (dp_diff): mejora del dry_mode; margen + histéresis regulables. |
 | **F14** | ☑ revisada | Boost V3 temporizado: duración configurable, vía servicio, re-disparo reinicia. |
 | **F15** | ☑ revisada | Sombreado geométrico: objetivo "X m de suelo"; +geometría (alféizar, profundidad); por pasos; fallback a % fijo. |
-| **F16** | ☑ revisada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
+| **F16** | ✅ implementada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
 | **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
 | **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |
 | **F19** | ✅ implementada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
