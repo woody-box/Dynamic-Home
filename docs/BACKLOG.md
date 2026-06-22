@@ -32,7 +32,7 @@
     4. **Modo** (global / de grupo) — capa base.
     > Nota: un preset manual normal NO se salta el horario; solo el override manual sí (como en el YAML).
 
-### F02 · Explicador de conflictos del bus ⭐
+### F02 · Explicador de conflictos del bus ⭐ — ✅ implementada
 - **Estado:** ☑ revisada · **Módulos:** DV·DS·DC · **Valor:** Alta · **Esfuerzo:** S
 - **Idea:** sensor que expone "quién ganó y por qué" cuando hay intents en conflicto (p.ej. DC pide abrir por ganancia solar y DS quiere cerrar por viento).
 - **Perfilado:**
@@ -41,6 +41,7 @@
   - **Contenido: ganador + motivo** (intent ganador como estado, motivo como atributo: prioridad/TTL). Sin la lista completa de descartados.
   - **Solo estado actual** del sensor; **sin** registro en logbook/historial de conflictos.
   - Encaje: el `SdhbHub` ya tiene `source/intent/target/priority/ttl`; basta añadir un `explain(targets)` que devuelva ganador + motivo.
+  - **Implementado:** `BusSensor` por consumidor (DV/DS/DC) bajo el dispositivo central "Dynamic Home · Bus" (`(DOMAIN, "bus")`); estado = intent ganador; atributos `source`/`priority`/`candidates`/`reason`/`target`/`ttl_remaining_s` + **aspirante** (`runner_up`/`runner_up_priority`, sin la lista completa). `hub.explain()` devuelve todo (incluido TTL restante y runner-up, orden estable = `winner()`). Evento `dynamic_home_conflict` al cambiar el ganador; solo estado actual.
 
 ### F03 · Anti-pico / reparto de cargas
 - **Estado:** ☑ revisada · **Módulos:** DC (vía bus) · **Valor:** Media (alta solo en eléctricas) · **Esfuerzo:** M
@@ -410,7 +411,7 @@
 | ID | Estado | Decisión resumida |
 |----|--------|-------------------|
 | **F01** | ✅ implementada (DS/horario→futuro) | Modos Home/Away/Sleep/Boost/Eco; casa + override por zona (F24); DV cap por modo, DC vacación en Away; select + caps configurables. Horario→F21, efecto DS pendiente. |
-| **F02** | ☑ revisada | Una entidad por consumidor bajo un dispositivo "Bus" nuevo; ganador + motivo; solo estado actual. |
+| **F02** | ✅ implementada | `BusSensor` por consumidor (DV/DS/DC) bajo el dispositivo central "Dynamic Home · Bus"; estado=ganador, atributos origen/prioridad/candidatos/motivo/target/TTL + aspirante (runner-up); evento `dynamic_home_conflict`; solo estado actual. |
 | **F03** | ☑ revisada | Depende del tipo de instalación (F26); solo eléctricas; límite por amperios/kW o N zonas; escalonado temporal (~10 s). |
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
