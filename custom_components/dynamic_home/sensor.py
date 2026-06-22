@@ -16,7 +16,12 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import PERCENTAGE, EntityCategory, UnitOfTime
+from homeassistant.const import (
+    PERCENTAGE,
+    EntityCategory,
+    UnitOfEnergy,
+    UnitOfTime,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -119,11 +124,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         if coordinator.has_adjacent():
             ents.append(AdjacentAdviceSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
+        ents.append(EnergySensor(coordinator, entry))
         ents += _mirror_sensors(entry, module)
         async_add_entities(ents)
         return
     if module == const.MODULE_SHUTTER:
         async_add_entities([BusSensor(coordinator, entry),
+                            EnergySensor(coordinator, entry),
                             *_mirror_sensors(entry, module)])
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
@@ -139,6 +146,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if coordinator.has_voc():
         entities.append(VocSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
+    entities.append(EnergySensor(coordinator, entry))
     entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
 
@@ -351,6 +359,34 @@ class HoursSensor(_Base, RestoreSensor):
     @property
     def native_value(self) -> float:
         return round(self._desc.getter(self.coordinator), 3)
+
+
+class EnergySensor(_Base, RestoreSensor):
+    """Cumulative energy (F06), real or estimated; feeds the Energy dashboard.
+
+    Shared by the VMC/DC/DS coordinators (all expose ``energy_kwh``). Restored
+    across restarts so the total keeps climbing.
+    """
+
+    _attr_name = "Energy"
+    _attr_icon = "mdi:lightning-bolt"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_suggested_display_precision = 3
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "energy")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_sensor_data()
+        if last is not None and last.native_value is not None:
+            self.coordinator.energy_kwh = float(last.native_value)
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.energy_kwh, 3)
 
 
 class SpeedSensor(_Base):

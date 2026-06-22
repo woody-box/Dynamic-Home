@@ -67,6 +67,19 @@ class DsConfig:
     window_height_cm: float = 100.0
     overhang_cm: float = 0.0
 
+    # Geometric shading (F15): opt-in real solar-penetration model. The shutter
+    # closes from the top just enough to keep direct sun off the floor beyond
+    # ``target_penetration_m`` into the room, in steps of ``shade_step_pct``.
+    sill_height_cm: float = 90.0        # window sill height above the floor
+    room_depth_m: float = 4.0           # floor depth (penetration is clamped here)
+    target_penetration_m: float = 0.5   # allowed sunlit depth before shading
+    shade_step_pct: int = 25            # quantization of the geometric position
+
+    # Energy (F06): estimated shutter-motor power (W) and full-travel time (s),
+    # used to estimate the (marginal) energy of each movement.
+    est_w_motor: float = 150.0
+    full_travel_s: float = 20.0
+
 
 @dataclass
 class DsState:
@@ -105,6 +118,10 @@ class DsInputs:
 
     # Seasonal night insulation (F16): position while active at night, else None.
     night_pos: int | None = None
+
+    # Geometric shading (F15): opt-in. When True, the summer solar-shield branch
+    # uses the real solar-penetration model instead of the fixed impact shield.
+    geo_shade: bool = False
 
     # Weather alert (F17): anticipatory protection position while active, else None.
     alert_pos: int | None = None
@@ -155,6 +172,74 @@ def solar_impact(cfg: DsConfig, sun_azimuth: float, sun_elevation: float,
     impact = exposed if (in_front and sun_effective) else 0.0
     step10 = math.floor(impact * 10) / 10.0
     return int(step10 * 100)
+
+
+def _sun_in_front(cfg: DsConfig, sun_azimuth: float) -> float | None:
+    """cos(Δazimuth) if the sun faces the window (within the span), else None."""
+    half = cfg.facade_span_deg / 2.0
+    diff = ((sun_azimuth - cfg.facade_azimuth_deg + 540) % 360) - 180
+    if abs(diff) > half:
+        return None
+    return math.cos(math.radians(diff))
+
+
+def solar_penetration_m(cfg: DsConfig, sun_azimuth: float | None,
+                        sun_elevation: float | None,
+                        sun_effective: bool) -> float | None:
+    """Perpendicular depth (m) that direct sun reaches across the floor (F15).
+
+    Geometry: the highest unshaded point of the window (head height, lowered by
+    the overhang's shadow) projects onto the floor at a horizontal run of
+    ``height / tan(elevation)``; the component perpendicular into the room is
+    scaled by ``cos(Δazimuth)``. Returns ``None`` when the sun is below the
+    horizon, not effective, or not facing this facade. Clamped to the room depth.
+    """
+    if (sun_azimuth is None or sun_elevation is None or not sun_effective
+            or sun_elevation <= 0):
+        return None
+    cos_diff = _sun_in_front(cfg, sun_azimuth)
+    if cos_diff is None or cos_diff <= 0:
+        return None
+    tan_el = math.tan(math.radians(sun_elevation))
+    if tan_el <= 0:
+        return None
+    shadow = cfg.overhang_cm * tan_el                       # overhang shades top
+    unshaded_h = max(0.0, cfg.window_height_cm - shadow)
+    top_m = (cfg.sill_height_cm + unshaded_h) / 100.0       # highest sunlit point
+    pen = (top_m / tan_el) * cos_diff
+    return max(0.0, min(pen, cfg.room_depth_m))
+
+
+def geo_shade_pos(cfg: DsConfig, sun_azimuth: float | None,
+                  sun_elevation: float | None,
+                  sun_effective: bool) -> int | None:
+    """Cover position (0..100) that keeps sun penetration ≤ target (F15).
+
+    Returns ``100`` when no shading is needed, ``None`` when the sun does not
+    apply (caller falls back to the fixed impact shield). Otherwise the shutter
+    is closed from the top so the top of the opening drops to the height whose
+    projection lands at ``target_penetration_m``; the result is quantized down to
+    ``shade_step_pct`` and floored at ``summer_min_open_pct``.
+    """
+    if (sun_azimuth is None or sun_elevation is None or not sun_effective
+            or sun_elevation <= 0):
+        return None
+    cos_diff = _sun_in_front(cfg, sun_azimuth)
+    if cos_diff is None or cos_diff <= 0:
+        return None
+    pen = solar_penetration_m(cfg, sun_azimuth, sun_elevation, sun_effective)
+    if pen is None or pen <= cfg.target_penetration_m:
+        return 100                                          # already fine
+    tan_el = math.tan(math.radians(sun_elevation))
+    # Height (m above floor) of the highest sunlit point allowed by the target.
+    top_allowed = cfg.target_penetration_m * tan_el / cos_diff
+    if cfg.window_height_cm <= 0:
+        return cfg.summer_min_open_pct
+    # Position exposing the lower p% of the window: exposed top = sill + h·p/100.
+    raw = (top_allowed * 100.0 - cfg.sill_height_cm) / cfg.window_height_cm * 100.0
+    step = cfg.shade_step_pct if cfg.shade_step_pct > 0 else 1
+    quant = int(math.floor(max(0.0, raw) / step) * step)
+    return max(cfg.summer_min_open_pct, min(100, quant))
 
 
 def compute_wind_cap(cfg: DsConfig, ins: DsInputs) -> int:
@@ -237,9 +322,17 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         if free_ok and not ins.sleep_mode:
             pos, reason = cfg.freecool_max_open_pct, "freecool_night"
         elif shield_ok:
-            raw = max(100 - impact, cfg.summer_min_open_pct)
-            pos, reason = quantize10(raw), "summer_solar_shield"
-            detail = {"impact": impact}
+            geo = (geo_shade_pos(cfg, ins.sun_azimuth, ins.sun_elevation,
+                                 ins.sun_effective) if ins.geo_shade else None)
+            if geo is not None:
+                pen = solar_penetration_m(cfg, ins.sun_azimuth, ins.sun_elevation,
+                                          ins.sun_effective)
+                pos, reason = geo, "summer_solar_geo"
+                detail = {"penetration_m": round(pen, 2) if pen is not None else None}
+            else:
+                raw = max(100 - impact, cfg.summer_min_open_pct)
+                pos, reason = quantize10(raw), "summer_solar_shield"
+                detail = {"impact": impact}
         elif is_heat and impact > 0:
             pos, reason = 100, "winter_solar_gain"
         elif is_heat and impact == 0:

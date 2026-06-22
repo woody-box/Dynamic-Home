@@ -477,3 +477,43 @@ async def test_hood_interlock_corrects_double_on(hass: HomeAssistant) -> None:
     assert ("switch.hood_v2", False) in calls
     assert ("switch.hood_v3", False) in calls
     assert all(on is False for _, on in calls)       # nothing was energised
+
+
+# --- F06: energy (kWh) sensor — estimate and real-meter paths ---
+async def test_energy_sensor_estimate(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # No power meter -> per-speed estimate: V2 (30 W) for one hour = 0.03 kWh.
+    co.current_speed = 2
+    co._accum_ts = 1000.0
+    co._accumulate(1000.0 + 3600.0, co._cfg())
+    assert abs(co.energy_kwh - 0.03) < 1e-9
+
+    # The sensor exists and is wired for the Energy dashboard.
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_energy")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.attributes["device_class"] == "energy"
+    assert st.attributes["state_class"] == "total_increasing"
+
+
+async def test_energy_sensor_uses_real_meter(hass: HomeAssistant) -> None:
+    _seed_states(hass)
+    hass.states.async_set("sensor.vmc_power", "500")       # W
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, title="VMC",
+        data={**HW, const.CONF_POWER_METER: "sensor.vmc_power"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Real meter integrated regardless of the logical speed: 500 W * 1 h = 0.5 kWh.
+    co.current_speed = 1
+    co._accum_ts = 1000.0
+    co._accumulate(1000.0 + 3600.0, co._cfg())
+    assert abs(co.energy_kwh - 0.5) < 1e-9

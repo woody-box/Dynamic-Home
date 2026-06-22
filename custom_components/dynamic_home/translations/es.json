@@ -33,7 +33,8 @@
           "voc": "Sensor VOC (opcional)",
           "hood_v1": "Relé campana V1 (switch)",
           "hood_v2": "Relé campana V2 (switch)",
-          "hood_v3": "Relé campana V3 (switch)"
+          "hood_v3": "Relé campana V3 (switch)",
+          "power_meter": "Medidor de potencia (opcional, W)"
         }
       },
       "shutter": {
@@ -51,7 +52,8 @@
           "rain": "Lluvia (opcional)",
           "ds_alert": "Alerta meteo (binary_sensor)",
           "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor)",
-          "ds_alert_wind": "Alerta viento (binary_sensor)"
+          "ds_alert_wind": "Alerta viento (binary_sensor)",
+          "power_meter": "Medidor de potencia (opcional, W)"
         }
       },
       "climate": {
@@ -72,7 +74,8 @@
           "dc_demand_cool": "Helper de demanda de frío (opcional)",
           "dc_dehumidifier": "Deshumidificador (opcional)",
           "dc_adj_temp": "Temperatura del espacio adyacente (opcional)",
-          "dc_adj_door": "Puerta al espacio adyacente (opcional)"
+          "dc_adj_door": "Puerta al espacio adyacente (opcional)",
+          "power_meter": "Medidor de potencia (opcional, W)"
         }
       },
       "weather": {
@@ -144,6 +147,7 @@
           "cat_alert": "Avisos meteo",
           "cat_hood": "Campana extractora",
           "cat_wx": "Fuentes y alertas",
+          "cat_energy": "Estimación de energía",
           "zone_add": "Añadir zona",
           "zone_edit": "Editar zona",
           "group_add": "Añadir grupo",
@@ -329,11 +333,19 @@
         "title": "Geometría de ventana",
         "data": {
           "window_height_cm": "Altura ventana (cm)",
-          "overhang_cm": "Voladizo (cm)"
+          "overhang_cm": "Voladizo (cm)",
+          "sill_height_cm": "Altura del alféizar (cm)",
+          "room_depth_m": "Profundidad de sala (m)",
+          "target_penetration_m": "Penetración objetivo (m)",
+          "shade_step_pct": "Paso de sombreado (%)"
         },
         "data_description": {
           "window_height_cm": "Altura de la ventana para la geometría de penetración solar.",
-          "overhang_cm": "Profundidad del voladizo/alero sobre la ventana."
+          "overhang_cm": "Profundidad del voladizo/alero sobre la ventana.",
+          "sill_height_cm": "Altura del alféizar sobre el suelo (sombreado geométrico).",
+          "room_depth_m": "Profundidad del suelo de la sala; la penetración solar se limita aquí.",
+          "target_penetration_m": "Profundidad de sol directo admitida en la sala antes de que el sombreado geométrico baje la persiana.",
+          "shade_step_pct": "Paso de cuantización de la posición geométrica de la persiana."
         }
       },
       "cat_setpoints": {
@@ -728,6 +740,25 @@
           "stale_after_h": "Una fuente con datos más viejos que esto se considera caída (pasa a la siguiente).",
           "alert_wind_kmh": "Viento a partir del cual se activa la alerta meteo.",
           "alert_precip_mm": "Precipitación a partir de la cual se activa la alerta meteo."
+        }
+      },
+      "cat_energy": {
+        "title": "Estimación de energía",
+        "data": {
+          "est_w_v1": "Potencia V1 (W)",
+          "est_w_v2": "Potencia V2 (W)",
+          "est_w_v3": "Potencia V3 (W)",
+          "est_w_on": "Potencia activa (W)",
+          "est_w_motor": "Potencia motor (W)",
+          "full_travel_s": "Recorrido completo (s)"
+        },
+        "data_description": {
+          "est_w_v1": "Potencia estimada de la VMC a velocidad V1, usada cuando no hay medidor de potencia.",
+          "est_w_v2": "Potencia estimada de la VMC a velocidad V2.",
+          "est_w_v3": "Potencia estimada de la VMC a velocidad V3.",
+          "est_w_on": "Potencia estimada del clima mientras la zona pide calor/frío (sin medidor configurado).",
+          "est_w_motor": "Potencia estimada del motor de la persiana, usada para estimar la energía de cada movimiento.",
+          "full_travel_s": "Tiempo de un recorrido completo abrir↔cerrar de la persiana (escala la energía por movimiento)."
         }
       },
       "zone_add": {

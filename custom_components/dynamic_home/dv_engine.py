@@ -125,6 +125,12 @@ class DvConfig:
     # Filter life: total hours a filter is rated for (replacement interval).
     filter_life_hours: float = 3650.0
 
+    # Energy (F06): estimated motor power per speed (W), used when no real power
+    # meter is configured. Off (speed 0) draws nothing.
+    est_w_v1: float = 15.0
+    est_w_v2: float = 30.0
+    est_w_v3: float = 55.0
+
 
 HRV_MIN_DT = 1.0  # min |extract - intake| ΔT (°C) to compute a stable efficiency
 

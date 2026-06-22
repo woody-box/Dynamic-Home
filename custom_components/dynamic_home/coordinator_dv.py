@@ -19,7 +19,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events, modes, repairs
+from . import const, energy, events, modes, repairs
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import (
@@ -69,6 +69,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.speed_hours = {1: 0.0, 2: 0.0, 3: 0.0}
         self.machine_hours = 0.0
         self.filter_hours = 0.0
+        self.energy_kwh = 0.0           # F06: cumulative energy (real or estimated)
         self._accum_ts: float | None = None
         # "Filter due" event arming (hysteresis so it fires once per crossing)
         # and the matching Repairs issue id (F08).
@@ -116,15 +117,22 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                                      const.MODULE_VMC, self.bus_explain)
             self._prev_winner = winner
 
-    def _accumulate(self, now_ts: float) -> None:
-        """Add elapsed time to the running-hours counters."""
+    def _accumulate(self, now_ts: float, cfg: DvConfig) -> None:
+        """Add elapsed time to the running-hours counters and energy (F06)."""
         if self._accum_ts is not None:
-            dt_h = (now_ts - self._accum_ts) / 3600.0
+            dt_s = now_ts - self._accum_ts
+            dt_h = dt_s / 3600.0
             spd = self.current_speed
             if spd in (1, 2, 3) and dt_h > 0:
                 self.speed_hours[spd] += dt_h
                 self.machine_hours += dt_h
                 self.filter_hours += dt_h
+            # Energy: a real power meter if configured, else the per-speed estimate.
+            power = self._num(const.CONF_POWER_METER)
+            if power is None:
+                power = energy.vmc_power_w(
+                    spd, (cfg.est_w_v1, cfg.est_w_v2, cfg.est_w_v3))
+            self.energy_kwh = energy.add_kwh(self.energy_kwh, power, dt_s)
         self._accum_ts = now_ts
 
     def reset_filter_hours(self) -> None:
@@ -317,7 +325,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         now = dt_util.now()  # local time for the weekly schedule
         now_ts = now.timestamp()
         self._refresh_bus_explain(now_ts)
-        self._accumulate(now_ts)
+        self._accumulate(now_ts, cfg)
         self._check_filter_due(cfg)
         self.degraded = self._update_degraded(self._missing_required(), now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s

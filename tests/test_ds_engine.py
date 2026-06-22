@@ -15,8 +15,10 @@ from ds_engine import (  # noqa: E402
     DsInputs,
     DsState,
     decide_cover,
+    geo_shade_pos,
     quantize10,
     solar_impact,
+    solar_penetration_m,
     update_wind_cap_active,
 )
 
@@ -228,6 +230,89 @@ def test_slew_not_applied_to_rain():
                      DsInputs(weather_protect_enabled=True, raining=True,
                               current_pos=100))
     assert d.pos == 0 and d.reason == "meteo_rain"
+
+
+# --------------------------------------------------------------------------- #
+# F15: geometric solar penetration / shading
+# --------------------------------------------------------------------------- #
+def _geo_cfg(**kw):
+    # summer_min_open_pct defaults to 20 on DsConfig (kept as the geo floor).
+    base = dict(facade_azimuth_deg=180, facade_span_deg=180,
+                window_height_cm=100, overhang_cm=0, sill_height_cm=90,
+                room_depth_m=4.0, target_penetration_m=0.5, shade_step_pct=25)
+    base.update(kw)
+    return _cfg(**base)
+
+
+def test_penetration_high_sun_shallower_than_low_sun():
+    cfg = _geo_cfg()
+    high = solar_penetration_m(cfg, 180, 70, True)
+    low = solar_penetration_m(cfg, 180, 30, True)
+    assert high is not None and low is not None
+    assert high < low                       # high sun -> sun stays near the window
+
+
+def test_penetration_none_when_sun_not_in_front():
+    cfg = _geo_cfg()
+    assert solar_penetration_m(cfg, 0, 45, True) is None     # sun behind facade
+    assert solar_penetration_m(cfg, 180, -2, True) is None   # below horizon
+    assert solar_penetration_m(cfg, 180, 45, False) is None  # not effective
+
+
+def test_penetration_overhang_reduces():
+    base = solar_penetration_m(_geo_cfg(), 180, 45, True)
+    shaded = solar_penetration_m(_geo_cfg(overhang_cm=50), 180, 45, True)
+    assert base is not None and shaded is not None
+    assert shaded < base
+
+
+def test_penetration_clamped_to_room_depth():
+    cfg = _geo_cfg(room_depth_m=4.0)
+    # Very low sun would project far beyond the room -> clamped to the depth.
+    assert solar_penetration_m(cfg, 180, 10, True) == 4.0
+
+
+def test_geo_shade_no_shade_when_below_target():
+    cfg = _geo_cfg()
+    # Very high sun: penetration below the target -> keep fully open.
+    assert geo_shade_pos(cfg, 180, 85, True) == 100
+
+
+def test_geo_shade_partial_step_when_above_target():
+    cfg = _geo_cfg()
+    pos = geo_shade_pos(cfg, 180, 70, True)
+    assert pos is not None
+    assert 20 <= pos < 100 and pos % 25 == 0       # quantized, partly closed
+
+
+def test_geo_shade_floors_at_summer_min():
+    cfg = _geo_cfg()
+    # Low sun the shutter cannot fully shield -> floored at the summer minimum.
+    assert geo_shade_pos(cfg, 180, 30, True) == 20
+
+
+def test_geo_shade_none_when_sun_not_applicable():
+    cfg = _geo_cfg()
+    assert geo_shade_pos(cfg, 0, 45, True) is None      # behind facade
+    assert geo_shade_pos(cfg, 180, -1, True) is None    # below horizon
+
+
+def test_decide_cover_geo_shade_branch():
+    cfg = _geo_cfg()
+    ins = DsInputs(hvac_mode="cool", t_in=24.0, t_out=30.0, geo_shade=True,
+                   sun_azimuth=180, sun_elevation=70, sun_effective=True)
+    d = decide_cover(cfg, DsState(), ins)
+    assert d.reason == "summer_solar_geo"
+    assert d.pos == geo_shade_pos(cfg, 180, 70, True)
+    assert "penetration_m" in d.details
+
+
+def test_decide_cover_falls_back_to_fixed_shield_without_geo():
+    cfg = _geo_cfg()
+    ins = DsInputs(hvac_mode="cool", t_in=24.0, t_out=30.0, geo_shade=False,
+                   sun_azimuth=180, sun_elevation=70, sun_effective=True)
+    d = decide_cover(cfg, DsState(), ins)
+    assert d.reason == "summer_solar_shield"       # no regression when opted out
 
 
 if __name__ == "__main__":

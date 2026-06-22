@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events, modes, repairs
+from . import const, energy, events, modes, repairs
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -74,6 +74,9 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._prev_winner: str | None = None
         self.dew_point_c: float | None = None   # observability
         self.dew_risk_active = False
+        # Energy (F06): cumulative kWh while calling for heat/cool (real or est.).
+        self.energy_kwh = 0.0
+        self._energy_ts: float | None = None
         # Trend (indoor temp derivative) state.
         self._prev_tint: float | None = None
         self._prev_ts: float | None = None
@@ -282,6 +285,18 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 events.fire_conflict(self.hass, self.entry,
                                      const.MODULE_CLIMATE, self.bus_explain)
             self._prev_winner = winner
+
+    def _accumulate_energy(self, cfg: DcConfig, now_ts: float) -> None:
+        """Integrate energy (F06): real meter if configured, else est. while ON."""
+        if self._energy_ts is not None:
+            dt_s = now_ts - self._energy_ts
+            power = self._num(const.CONF_POWER_METER)
+            if power is None:
+                valve = self._real_valve_open(cfg, self.hvac_mode)
+                on = valve if valve is not None else self.hvac_mode in ("heat", "cool")
+                power = energy.dc_power_w(on, cfg.est_w_on)
+            self.energy_kwh = energy.add_kwh(self.energy_kwh, power, dt_s)
+        self._energy_ts = now_ts
 
     # --- mold-risk index (F22) ---
     def has_mold(self) -> bool:
@@ -552,6 +567,9 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
+
+        # Energy (F06): integrate before the decision (uses the demand signal).
+        self._accumulate_energy(cfg, now_ts)
 
         # Mold-risk index (F22): integrate, alert and drive drying when armed.
         if self.has_mold():

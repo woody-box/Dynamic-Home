@@ -51,6 +51,7 @@ STEP_USER_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_HOOD_V1): _entity("switch"),
         vol.Optional(const.CONF_HOOD_V2): _entity("switch"),
         vol.Optional(const.CONF_HOOD_V3): _entity("switch"),
+        vol.Optional(const.CONF_POWER_METER): _entity("sensor", "power"),
     }
 )
 
@@ -70,6 +71,7 @@ STEP_SHUTTER_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_DS_ALERT): _entity(["binary_sensor"]),
         vol.Optional(const.CONF_DS_ALERT_HAIL): _entity(["binary_sensor"]),
         vol.Optional(const.CONF_DS_ALERT_WIND): _entity(["binary_sensor"]),
+        vol.Optional(const.CONF_POWER_METER): _entity("sensor", "power"),
     }
 )
 
@@ -91,6 +93,7 @@ STEP_CLIMATE_SCHEMA = vol.Schema(
             _entity(["switch", "humidifier", "input_boolean"]),
         vol.Optional(const.CONF_DC_ADJ_TEMP): _entity(["sensor"]),
         vol.Optional(const.CONF_DC_ADJ_DOOR): _entity(["binary_sensor"]),
+        vol.Optional(const.CONF_POWER_METER): _entity("sensor", "power"),
         vol.Optional(const.CONF_DC_TARGET, default="ds"): str,
     }
 )

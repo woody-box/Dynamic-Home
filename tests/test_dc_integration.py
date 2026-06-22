@@ -436,3 +436,43 @@ async def test_observability_sensors(hass: HomeAssistant) -> None:
     await co.async_refresh()
     assert "bias_exterior" in co.data.details
     assert co.data.details["base"] is not None
+
+
+# --- F06: energy (kWh) — accrues while calling for heat/cool, meter overrides ---
+async def test_dc_energy_accumulates_while_on(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+
+    # Calling for heat, no meter -> est_w_on (1000 W) for one hour = 1 kWh.
+    co.hvac_mode = "heat"
+    co._energy_ts = 1000.0
+    co._accumulate_energy(cfg, 1000.0 + 3600.0)
+    assert abs(co.energy_kwh - 1.0) < 1e-9
+
+    # Idle -> no further accrual.
+    co.hvac_mode = "off"
+    co._energy_ts = 5000.0
+    before = co.energy_kwh
+    co._accumulate_energy(cfg, 5000.0 + 3600.0)
+    assert co.energy_kwh == before
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_energy")
+    assert eid is not None
+    assert hass.states.get(eid).attributes["device_class"] == "energy"
+
+
+async def test_dc_energy_real_meter_overrides_estimate(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.dc_power", "800")
+    entry = await _add(
+        hass, {**CLIMATE, const.CONF_POWER_METER: "sensor.dc_power"}, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    # Even idle, the real meter is integrated: 800 W * 1 h = 0.8 kWh.
+    co.hvac_mode = "off"
+    co._energy_ts = 1000.0
+    co._accumulate_energy(co._cfg(), 1000.0 + 3600.0)
+    assert abs(co.energy_kwh - 0.8) < 1e-9
