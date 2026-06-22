@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.8.2] — 2026-06-22
+
+### Added
+- **DS · Aislamiento nocturno estacional (F16)**: switch *opt-in* por zona que, de
+  noche (sol bajo el horizonte), aplica la estrategia según el **modo del climate**:
+  en `heat` **cierra para aislar**; en `cool` **abre para purgar** la masa térmica
+  si el exterior está más fresco, o **cierra para protegerla** en noche cálida.
+  Rama `night_insulate` en la cascada (cede a override/lluvia/privacidad);
+  autocontenido (no toca el free-cooling base). Configurable (categoría
+  *Aislamiento nocturno*).
+
+### Internal
+- Suite de 247 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.8.1] — 2026-06-22
 
 ### Added

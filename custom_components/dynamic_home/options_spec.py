@@ -63,6 +63,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "window": ("Open-window detection", "Detección de ventana"),
     "adjacent": ("Adjacent space", "Espacio adyacente"),
     "dawn": ("Gradual sunrise", "Amanecer gradual"),
+    "night": ("Night insulation", "Aislamiento nocturno"),
 }
 
 
@@ -182,6 +183,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "geometry": [
             _v("window_height_cm", "Window height (cm)", "Altura ventana (cm)"),
             _v("overhang_cm", "Overhang (cm)", "Voladizo (cm)"),
+        ],
+        "night": [
+            _v("night_iso_close_pct", "Night close (%)", "Cierre noche (%)"),
+            _v("night_iso_open_pct", "Night purge open (%)", "Apertura purga noche (%)"),
         ],
         "dawn": [
             _v("dawn_step_pct", "Sunrise step (%)", "Paso amanecer (%)"),

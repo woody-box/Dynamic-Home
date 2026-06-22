@@ -47,6 +47,13 @@ class DsConfig:
     dawn_target_pct: int = 100          # opening the ramp climbs to
     dawn_trigger_elevation: float = 0.0  # sun elevation that starts the ramp
 
+    # Seasonal night insulation (F16): opt-in per zone. At night (sun below the
+    # horizon), heat -> close to insulate; cool -> open to purge the thermal mass
+    # when the outside is cooler, otherwise close to protect it. The coordinator
+    # owns the decision and passes the position in via DsInputs.night_pos.
+    night_iso_close_pct: int = 0        # closed position (insulate / protect)
+    night_iso_open_pct: int = 100       # open position (nocturnal purge)
+
     # Facade geometry (solar impact model)
     facade_azimuth_deg: float = 180.0   # window orientation
     facade_span_deg: float = 180.0      # angular acceptance
@@ -88,6 +95,9 @@ class DsInputs:
 
     # Gradual sunrise (F19): stepped target while the ramp is active, else None.
     dawn_pos: int | None = None
+
+    # Seasonal night insulation (F16): position while active at night, else None.
+    night_pos: int | None = None
 
     # SDHB bus consumption
     sdhb_allow_override: bool = False
@@ -198,6 +208,9 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # ramp is active and never below the current position (it only ever opens).
     elif ins.dawn_pos is not None:
         pos, reason = ins.dawn_pos, "dawn_ramp"
+    # 5) Seasonal night insulation (F16): owns the night strategy when enabled.
+    elif ins.night_pos is not None:
+        pos, reason = ins.night_pos, "night_insulate"
     else:
         is_cool = ins.hvac_mode == "cool"
         is_heat = ins.hvac_mode == "heat"

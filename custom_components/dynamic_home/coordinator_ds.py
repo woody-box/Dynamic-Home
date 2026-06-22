@@ -48,6 +48,8 @@ class DsCoordinator(DataUpdateCoordinator):
         self.privacy_pct = 40
         self.lock_enabled = False
         self.lock_pct = 50
+        # Seasonal night insulation (F16): opt-in.
+        self.night_iso_enabled = False
         # Gradual sunrise (F19): opt-in ramp state.
         self.dawn_enabled = False
         self._dawn_active = False
@@ -133,6 +135,25 @@ class DsCoordinator(DataUpdateCoordinator):
         pos = st.attributes.get("current_position")
         return int(pos) if pos is not None else None
 
+    def _night_iso(self, cfg: DsConfig, hvac: str, sun_el: float | None,
+                   t_in: float | None, t_out: float | None) -> int | None:
+        """Seasonal night insulation (F16): position at night, or None.
+
+        Night = sun below the horizon. ``heat`` closes to insulate; ``cool``
+        opens to purge the thermal mass when the outside is cooler, else closes
+        to protect it. Disabled, daytime or unknown sun -> None (cascade decides).
+        """
+        if not self.night_iso_enabled or sun_el is None or sun_el > 0:
+            return None
+        if hvac == "heat":
+            return cfg.night_iso_close_pct
+        if hvac == "cool":
+            if t_in is None or t_out is None:
+                return None
+            return (cfg.night_iso_open_pct if t_out <= t_in
+                    else cfg.night_iso_close_pct)
+        return None
+
     def _dawn_step(self, cfg: DsConfig, sun_el: float | None,
                    current_pos: int | None, now_ts: float) -> int | None:
         """Gradual sunrise (F19): stepped opening target, or None when inactive.
@@ -186,17 +207,21 @@ class DsCoordinator(DataUpdateCoordinator):
         sun_az, sun_el, sun_above = self._sun()
         current_pos = self._current_pos()
         dawn_pos = self._dawn_step(cfg, sun_el, current_pos, now_ts)
+        t_in = self._num(const.CONF_DS_T_IN)
+        t_out = self._num(const.CONF_DS_T_OUT)
+        night_pos = self._night_iso(cfg, self._hvac_mode(), sun_el, t_in, t_out)
 
         ins = DsInputs(
             hvac_mode=self._hvac_mode(),
-            t_in=self._num(const.CONF_DS_T_IN),
-            t_out=self._num(const.CONF_DS_T_OUT),
+            t_in=t_in,
+            t_out=t_out,
             weather_protect_enabled=bool(self._hw(const.CONF_WIND) or
                                          self._hw(const.CONF_RAIN)),
             raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
             current_pos=current_pos,
             dawn_pos=dawn_pos,
+            night_pos=night_pos,
             privacy_active=self.privacy_enabled,
             override_mode="lock" if self.lock_enabled else "none",
             override_pos=int(self.lock_pct),
