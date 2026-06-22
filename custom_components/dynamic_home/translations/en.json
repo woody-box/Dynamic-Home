@@ -105,7 +105,8 @@
           "cat_quiet": "Quiet hours",
           "cat_recuperator": "Heat recovery",
           "cat_demand": "Real demand signal",
-          "cat_mold": "Mold risk"
+          "cat_mold": "Mold risk",
+          "cat_window": "Open-window detection"
         }
       },
       "cat_iaq": {
@@ -581,6 +582,21 @@
           "mold_off_h": "Accumulated hours below which it disarms (hysteresis).",
           "mold_decay_h": "Exponential decay time constant while RH is below the threshold.",
           "mold_cap_h": "Maximum value the index can reach."
+        }
+      },
+      "cat_window": {
+        "title": "Open-window detection",
+        "data": {
+          "window_drop_cph": "Sensitivity (°C/h)",
+          "window_confirm_min": "Confirm (min)",
+          "window_release_min": "Recovery (min)",
+          "window_max_lockout_min": "Max lockout (min)"
+        },
+        "data_description": {
+          "window_drop_cph": "Indoor-temperature change against the demand (°C/h) that flags a likely open window (only when no window sensor is configured).",
+          "window_confirm_min": "Minutes the anomaly must persist before the zone is switched off.",
+          "window_release_min": "Minutes of stable temperature before normal control resumes.",
+          "window_max_lockout_min": "Safety timeout that resumes control even if the temperature has not stabilised."
         }
       }
     },

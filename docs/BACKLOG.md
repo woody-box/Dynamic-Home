@@ -211,6 +211,7 @@
   - **Inferencia por caída de temperatura** como **fallback/red extra** (con o sin sensor): derivada brusca **+ coherencia con la demanda** (cae mientras calientas / sube mientras enfrías = sospechoso) para evitar falsos positivos.
   - **Recuperación:** al estabilizarse/recuperar la temperatura **o** por timeout, lo que ocurra antes.
   - **Activable por zona**, sensibilidad configurable.
+  - **Implementado:** sensor real (previo) + inferencia por temperatura **solo sin sensor** (caída coherente con la demanda), con confirm/release/timeout; OFF (`off_window_inferred`) + binary_sensor + evento. Por entrada DC.
 
 ### F21 · Programador semanal (consigna/velocidad)
 - **Estado:** ☑ revisada · **Módulos:** DC + DV · **Valor:** Media · **Esfuerzo:** M

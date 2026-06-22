@@ -51,6 +51,15 @@ def fire_mold(hass: HomeAssistant, entry: ConfigEntry, module: str,
     hass.bus.async_fire(const.EVENT_MOLD, data)
 
 
+def fire_window(hass: HomeAssistant, entry: ConfigEntry, module: str,
+                inferred: bool, trend_cph: float) -> None:
+    """An open window was inferred from temperature (or cleared) — F20."""
+    data = _base(entry, module)
+    data["inferred"] = inferred
+    data["trend_cph"] = round(trend_cph, 2)
+    hass.bus.async_fire(const.EVENT_WINDOW, data)
+
+
 def fire_filter_due(hass: HomeAssistant, entry: ConfigEntry, module: str,
                     pct: float, hours: float, life: float) -> None:
     """The VMC filter crossed the replacement threshold (fired once per crossing)."""

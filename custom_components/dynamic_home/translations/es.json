@@ -105,7 +105,8 @@
           "cat_quiet": "Horas de silencio",
           "cat_recuperator": "Recuperador",
           "cat_demand": "Señal de demanda real",
-          "cat_mold": "Riesgo de moho"
+          "cat_mold": "Riesgo de moho",
+          "cat_window": "Detección de ventana"
         }
       },
       "cat_iaq": {
@@ -581,6 +582,21 @@
           "mold_off_h": "Horas acumuladas por debajo de las cuales se desarma (histéresis).",
           "mold_decay_h": "Constante de decaimiento exponencial cuando la HR está por debajo del umbral.",
           "mold_cap_h": "Valor máximo que puede alcanzar el índice."
+        }
+      },
+      "cat_window": {
+        "title": "Detección de ventana",
+        "data": {
+          "window_drop_cph": "Sensibilidad (°C/h)",
+          "window_confirm_min": "Confirmación (min)",
+          "window_release_min": "Recuperación (min)",
+          "window_max_lockout_min": "Bloqueo máx. (min)"
+        },
+        "data_description": {
+          "window_drop_cph": "Cambio de la temperatura interior en contra de la demanda (°C/h) que indica probable ventana abierta (solo si no hay sensor de ventana configurado).",
+          "window_confirm_min": "Minutos que la anomalía debe persistir antes de apagar la zona.",
+          "window_release_min": "Minutos con temperatura estable antes de reanudar el control normal.",
+          "window_max_lockout_min": "Tiempo de seguridad que reanuda el control aunque la temperatura no se haya estabilizado."
         }
       }
     },

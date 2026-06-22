@@ -455,8 +455,8 @@ aprendizaje ya mide.
 
 **Dependencias:** DC, F24 (por zona).
 **Criterios de aceptación:**
-- ☐ Abrir el contacto de ventana pausa la demanda de la zona.
-- ☐ Sin sensor, una caída brusca coherente con la demanda dispara el lockout; recupera por timeout.
+- ☑ Abrir el contacto de ventana pausa la demanda de la zona.
+- ☑ Sin sensor, una caída brusca coherente con la demanda dispara el lockout; recupera por estabilización o timeout.
 
 ### 5.11 · Índice de moho (F22)
 
@@ -1256,3 +1256,33 @@ Al desarmarse se borran issue, bus y deshumidificador.
 
 **Notas:** "por zona" = por entrada DC (F24 añadirá grupo). Caveat: arbitraje
 multi-intent en `"dv"` (dry vs quiet/boost) en primer corte.
+
+### 12.14 · F20 — Detección de ventana abierta (DC)
+
+Con sensor (`CONF_DC_WINDOW`) el comportamiento previo se mantiene
+(`window_lockout` → `DcDecision OFF`, reason `off_window`). F20 añade una
+**inferencia por temperatura** para zonas **sin sensor** (`has_window_infer()` ⇒
+`not _hw(CONF_DC_WINDOW)`):
+
+- Señal pura `window_anomaly(hvac, valve_open, trend_cph, cfg)`: zona climatizando
+  cuya Tª interior se mueve **en contra** de la demanda más rápido que
+  `window_drop_cph` (cae calentando / sube enfriando). `valve_open` viene de la
+  señal real F27 (`_real_valve_open`) o, sin fuente, de `hvac in (heat,cool)`.
+- Latch en el coordinator (`_infer_window`) con **confirm** (debounce para armar),
+  **release** (estabilización para desarmar) y **timeout** de seguridad
+  (`window_confirm_min` / `window_release_min` / `window_max_lockout_min`).
+- Al armar: `DcInputs.window_inferred` → `decide()` devuelve OFF con reason
+  `off_window_inferred`, y **aborta el aprendizaje** igual que el sensor. Evento
+  `dynamic_home_window` en cada transición.
+- Diagnóstico: `WindowInferredBinarySensor` (device_class window) solo cuando
+  aplica. Opciones: categoría `window` (sensibilidad principal + 3 avanzados).
+
+**Aceptación:**
+
+- ☐ Sin sensor, caída coherente sostenida ≥ confirm → OFF (`off_window_inferred`).
+- ☐ Recupera al estabilizarse la Tª (release) o por timeout de seguridad.
+- ☐ Con sensor configurado, la inferencia queda inactiva (manda el sensor).
+
+**Notas:** decisión usuario = solo sin sensor; con sensor, sin inferencia. La
+lógica de latch se testea inyectando `now_ts`/`trend_cph` en `_infer_window`
+(el derivado real usa reloj de pared).

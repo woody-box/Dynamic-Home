@@ -32,6 +32,7 @@ from .dc_engine import (
     on_rate_cph,
     step_toward,
     sunlit_facades,
+    window_anomaly,
 )
 from .dc_engine import (
     decide as decide_climate,
@@ -88,6 +89,11 @@ class DcCoordinator(DataUpdateCoordinator):
         self._mold_active = False
         self._mold_issue_id = f"mold_{entry.entry_id}"
         self._mold_source = f"dc_{entry.entry_id}__mold_dry"
+        # Open-window inference (F20): latch + debounce/recovery timers.
+        self._window_inferred = False
+        self._window_anom_since: float | None = None
+        self._window_ok_since: float | None = None
+        self._window_armed_ts: float | None = None
         self.learn_rate_ema = 0.0        # learned heating/cooling rate (°C/h)
         self.learn_overshoot_ema = 0.0   # learned overshoot beyond setpoint (°C)
         self.learned_lag_h = 0.0         # learned thermal lag OFF->peak (h)
@@ -348,6 +354,59 @@ class DcCoordinator(DataUpdateCoordinator):
             self.hub.clear(self._mold_source)
             self._drive_dehumidifier(False)
 
+    # --- open-window inference (F20) ---
+    def has_window_infer(self) -> bool:
+        """Whether temperature-based window inference applies (no window sensor)."""
+        return not self._hw(const.CONF_DC_WINDOW)
+
+    def _infer_window(self, cfg: DcConfig, hvac: str, t_int: float | None,
+                      trend_cph: float, now_ts: float) -> bool:
+        """Latch an inferred open window: arm on a sustained anomaly, recover on
+        stabilisation or a safety timeout. Active only without a window sensor."""
+        if not self.has_window_infer() or t_int is None:
+            self._window_anom_since = None
+            self._window_ok_since = None
+            self._window_armed_ts = None
+            if self._window_inferred:
+                self._window_inferred = False
+            return False
+
+        valve = self._real_valve_open(cfg, hvac)
+        valve_open = valve if valve is not None else hvac in ("heat", "cool")
+        anom = window_anomaly(hvac, valve_open, trend_cph, cfg)
+
+        if not self._window_inferred:
+            self._window_ok_since = None
+            if anom:
+                if self._window_anom_since is None:
+                    self._window_anom_since = now_ts
+                elif now_ts - self._window_anom_since >= cfg.window_confirm_min * 60:
+                    self._window_inferred = True
+                    self._window_armed_ts = now_ts
+                    events.fire_window(self.hass, self.entry,
+                                       const.MODULE_CLIMATE, True, trend_cph)
+            else:
+                self._window_anom_since = None
+        else:
+            self._window_anom_since = None
+            timed_out = (self._window_armed_ts is not None
+                         and now_ts - self._window_armed_ts
+                         >= cfg.window_max_lockout_min * 60)
+            if not anom:
+                if self._window_ok_since is None:
+                    self._window_ok_since = now_ts
+                stable = now_ts - self._window_ok_since >= cfg.window_release_min * 60
+            else:
+                self._window_ok_since = None
+                stable = False
+            if stable or timed_out:
+                self._window_inferred = False
+                self._window_armed_ts = None
+                self._window_ok_since = None
+                events.fire_window(self.hass, self.entry, const.MODULE_CLIMATE,
+                                   False, trend_cph)
+        return self._window_inferred
+
     def _drive_dehumidifier(self, on: bool) -> None:
         """Turn a configured dehumidifier on/off (skipped in observe/dry-run)."""
         ent = self._hw(const.CONF_DC_DEHUMIDIFIER)
@@ -507,6 +566,11 @@ class DcCoordinator(DataUpdateCoordinator):
         if self.has_mold():
             self._mold_step(cfg, rh, now_ts)
 
+        # Open-window inference (F20): only when no window sensor is configured.
+        trend = self._update_trend(cfg, t_int, now_ts)
+        self._window_inferred = self._infer_window(cfg, self.hvac_mode, t_int,
+                                                   trend, now_ts)
+
         # Degraded when a core source is missing while a mode is demanded; this
         # pauses learning so stale readings don't poison the EMAs and (if
         # sustained) raises a Repairs issue.
@@ -535,21 +599,24 @@ class DcCoordinator(DataUpdateCoordinator):
             override_active=self.override_active,
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
-            trend_cph=self._update_trend(cfg, t_int, now_ts),
+            trend_cph=trend,
             forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
             wind=self._num(const.CONF_DC_WIND),
             vacation=self.vacation_enabled,
             window_lockout=self._is_on(const.CONF_DC_WINDOW),
+            window_inferred=self._window_inferred,
             dew_risk=self.dew_risk_active,
             extra_bias=facade_b,
             adaptive_lead_h=adaptive_lead,
         )
         decision = decide_climate(cfg, ins)
 
-        # Learn from real cycles (paused while disabled or degraded).
+        # Learn from real cycles (paused while disabled or degraded). An inferred
+        # open window also disturbs the cycle, so it aborts learning like the sensor.
+        window_open = self._is_on(const.CONF_DC_WINDOW) or self._window_inferred
         if self.adaptive_enabled and not self.degraded:
             self._learn_step(cfg, now_ts, self.hvac_mode, t_int, decision.target,
-                             self._is_on(const.CONF_DC_WINDOW), self.override_active)
+                             window_open, self.override_active)
         else:
             self._valve_open = self._valve_demand(cfg, self.hvac_mode, t_int,
                                                   decision.target)

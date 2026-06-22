@@ -33,6 +33,7 @@ from dc_engine import (  # noqa: E402
     step_toward,
     sunlit_facades,
     trend_bias,
+    window_anomaly,
 )
 
 
@@ -67,6 +68,35 @@ def test_mold_index_unchanged_without_rh_or_time():
     cfg = _cfg()
     assert mold_index_step(4.0, None, 2.0, cfg) == 4.0
     assert mold_index_step(4.0, 90.0, 0.0, cfg) == 4.0
+
+
+# --- F20: open-window inference signature + decision branch ---
+def test_window_anomaly_heat_dropping():
+    cfg = _cfg(window_drop_cph=2.5)
+    assert window_anomaly("heat", True, -3.0, cfg) is True
+    assert window_anomaly("heat", True, -1.0, cfg) is False   # below threshold
+    assert window_anomaly("heat", True, 2.0, cfg) is False    # rising, not a window
+
+
+def test_window_anomaly_cool_rising():
+    cfg = _cfg(window_drop_cph=2.5)
+    assert window_anomaly("cool", True, 3.0, cfg) is True
+    assert window_anomaly("cool", True, -3.0, cfg) is False
+
+
+def test_window_anomaly_needs_active_demand_and_mode():
+    cfg = _cfg(window_drop_cph=2.5)
+    assert window_anomaly("heat", False, -5.0, cfg) is False   # valve closed
+    assert window_anomaly("off", True, -5.0, cfg) is False
+
+
+def test_decide_window_inferred_turns_off():
+    cfg = _cfg()
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=20.0, window_inferred=True))
+    assert d.action == "off" and d.reason == "off_window_inferred"
+    # The real sensor lockout still takes precedence with its own reason.
+    d = decide(cfg, DcInputs(hvac_mode="heat", t_int=20.0, window_lockout=True))
+    assert d.action == "off" and d.reason == "off_window"
 
 
 # --------------------------------------------------------------------------- #

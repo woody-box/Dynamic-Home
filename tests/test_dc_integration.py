@@ -219,6 +219,56 @@ async def test_mold_index_absent_without_rh(hass: HomeAssistant) -> None:
         "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is None
 
 
+# --- F20: open-window inference (latch / recovery), driven with injected time ---
+async def test_window_inference_arm_and_stabilise(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_WINDOW
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    assert co.has_window_infer() is True
+
+    t = 1000.0
+    # Anomaly (heating but temp dropping fast): debounced, not armed yet.
+    assert co._infer_window(cfg, "heat", 20.0, -3.0, t) is False
+    assert co._infer_window(cfg, "heat", 20.0, -3.0, t + 60) is False
+    # Past the confirm window -> armed.
+    armed_t = t + cfg.window_confirm_min * 60 + 1
+    assert co._infer_window(cfg, "heat", 20.0, -3.0, armed_t) is True
+    # Temperature stabilises: the recovery window counts from this moment.
+    stable_t = armed_t + 60
+    assert co._infer_window(cfg, "heat", 20.0, 0.0, stable_t) is True
+    assert co._infer_window(
+        cfg, "heat", 20.0, 0.0,
+        stable_t + cfg.window_release_min * 60 + 1) is False
+
+
+async def test_window_inference_safety_timeout(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    co._infer_window(cfg, "heat", 20.0, -3.0, 0.0)
+    assert co._infer_window(cfg, "heat", 20.0, -3.0,
+                            cfg.window_confirm_min * 60 + 1) is True
+    # Anomaly persists, but the safety timeout forces recovery anyway.
+    out = co._infer_window(
+        cfg, "heat", 20.0, -3.0,
+        co._window_armed_ts + cfg.window_max_lockout_min * 60 + 1)
+    assert out is False
+
+
+async def test_window_inference_disabled_with_sensor(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("binary_sensor.ventana", "off")
+    entry = await _add(hass, {**CLIMATE,
+                              const.CONF_DC_WINDOW: "binary_sensor.ventana"}, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    assert co.has_window_infer() is False
+    co._infer_window(cfg, "heat", 20.0, -10.0, 100.0)
+    assert co._infer_window(cfg, "heat", 20.0, -10.0, 100_000.0) is False
+
+
 async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:
     """An open window forces OFF; vacation switch feeds the engine."""
     _seed(hass)

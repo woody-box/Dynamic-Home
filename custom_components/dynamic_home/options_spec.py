@@ -60,6 +60,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "facade": ("Facade bias", "Bias de fachadas"),
     "demand": ("Real demand signal", "Señal de demanda real"),
     "mold": ("Mold risk", "Riesgo de moho"),
+    "window": ("Open-window detection", "Detección de ventana"),
 }
 
 
@@ -276,6 +277,12 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("mold_decay_h", "Decay constant (h)", "Constante de decaimiento (h)"),
             _v("mold_cap_h", "Index cap (h)", "Tope del índice (h)"),
         ],
+        "window": [
+            _v("window_drop_cph", "Sensitivity (°C/h)", "Sensibilidad (°C/h)"),
+            _v("window_confirm_min", "Confirm (min)", "Confirmación (min)"),
+            _v("window_release_min", "Recovery (min)", "Recuperación (min)"),
+            _v("window_max_lockout_min", "Max lockout (min)", "Bloqueo máx. (min)"),
+        ],
     },
 }
 
@@ -315,6 +322,7 @@ _ADVANCED: dict[str, set[str]] = {
         "facade_gain_heat", "facade_gain_cool",
         "valve_power_min",
         "mold_decay_h", "mold_cap_h",
+        "window_confirm_min", "window_release_min", "window_max_lockout_min",
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",

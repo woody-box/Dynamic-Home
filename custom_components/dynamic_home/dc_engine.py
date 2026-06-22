@@ -115,6 +115,15 @@ class DcConfig:
     # coordinator's Adaptive Lead, not by the pure decision pipeline.
     valve_power_min: float = 5.0
 
+    # Open-window inference (F20): when no window sensor exists, an actively
+    # conditioning zone whose indoor temp moves against the demand faster than
+    # window_drop_cph (°C/h) is treated as a likely open window. Debounced and
+    # auto-recovering (stabilisation or timeout).
+    window_drop_cph: float = 2.5      # opposing trend that flags an anomaly
+    window_confirm_min: float = 3.0   # minutes the anomaly must persist to arm
+    window_release_min: float = 5.0   # minutes of stability to disarm
+    window_max_lockout_min: float = 30.0  # safety timeout to auto-disarm
+
     # Mold-risk index (F22): "hours above an RH threshold with decay". on/off are
     # the hysteresis arm/disarm thresholds (in accumulated hours).
     mold_rh_threshold: float = 70.0   # %RH at/above which risk accrues
@@ -157,6 +166,7 @@ class DcInputs:
     # Safety / gating
     dew_risk: bool = False
     window_lockout: bool = False
+    window_inferred: bool = False      # F20: open window inferred from temperature
 
     # Manual override
     override_active: bool = False
@@ -227,6 +237,22 @@ def mold_index_step(prev_h: float, rh: float | None, dt_h: float,
         idx = prev_h * math.exp(-dt_h / cfg.mold_decay_h) if cfg.mold_decay_h > 0 \
             else 0.0
     return max(0.0, min(idx, cfg.mold_cap_h))
+
+
+def window_anomaly(hvac: str, valve_open: bool, trend_cph: float,
+                   cfg: DcConfig) -> bool:
+    """Instantaneous open-window signature (F20).
+
+    True when the zone is actively conditioning (``valve_open``) but the indoor
+    temperature moves *against* the demand faster than ``window_drop_cph``:
+    dropping while heating, or rising while cooling. ``trend_cph`` is the
+    (pre-deadbanded) indoor-temperature derivative in °C/h.
+    """
+    if not valve_open or hvac not in ("heat", "cool"):
+        return False
+    if hvac == "heat":
+        return trend_cph <= -cfg.window_drop_cph
+    return trend_cph >= cfg.window_drop_cph
 
 
 def dew_point(t_c: float | None, rh: float | None) -> float | None:
@@ -471,6 +497,8 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
         return DcDecision("off", None, "off_dew", "none")
     if ins.window_lockout:
         return DcDecision("off", None, "off_window", "none")
+    if ins.window_inferred:
+        return DcDecision("off", None, "off_window_inferred", "none")
     if ins.hvac_mode not in ("heat", "cool"):
         return DcDecision("off", None, "off", "none")
 

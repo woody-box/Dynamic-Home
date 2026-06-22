@@ -24,6 +24,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                 DegradedBinarySensor(coordinator, entry)]
     if coordinator.has_real_demand():
         entities.append(RealDemandBinarySensor(coordinator, entry))
+    if coordinator.has_window_infer():
+        entities.append(WindowInferredBinarySensor(coordinator, entry))
     async_add_entities(entities)
 
 
@@ -68,6 +70,31 @@ class RealDemandBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntit
     @property
     def extra_state_attributes(self) -> dict:
         return {"source": self.coordinator.real_demand_source}
+
+
+class WindowInferredBinarySensor(CoordinatorEntity[DcCoordinator],
+                                 BinarySensorEntity):
+    """Open window inferred from temperature (F20): ON forces the zone OFF."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Ventana (inferida)"
+    _attr_icon = "mdi:window-open-variant"
+    _attr_device_class = BinarySensorDeviceClass.WINDOW
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_window_inferred"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator._window_inferred
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"trend_cph": round(self.coordinator._cph, 2)}
 
 
 class DegradedBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
