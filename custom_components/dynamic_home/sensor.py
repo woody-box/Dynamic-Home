@@ -299,7 +299,7 @@ class BusSensor(CoordinatorEntity, SensorEntity):
         self._attr_name = entry.title
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, const.BUS_DEVICE_ID)},
-            name="Dynamic Home Bus")
+            name="Dynamic Home · Bus")
 
     @property
     def native_value(self) -> str | None:
@@ -308,8 +308,13 @@ class BusSensor(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         ex = self.coordinator.bus_explain
+        ttl = ex.get("ttl_remaining")
         return {"source": ex.get("source"), "priority": ex.get("priority"),
-                "candidates": ex.get("candidates"), "reason": ex.get("reason")}
+                "candidates": ex.get("candidates"), "reason": ex.get("reason"),
+                "target": ex.get("target") or "(broadcast)",
+                "ttl_remaining_s": round(ttl) if ttl is not None else None,
+                "runner_up": ex.get("runner_up"),
+                "runner_up_priority": ex.get("runner_up_priority")}
 
 
 class _Base(CoordinatorEntity[DvCoordinator], SensorEntity):

@@ -57,15 +57,32 @@ class SdhbHub:
     def explain(self, targets, now_ts: float | None = None) -> dict:
         """Same arbitration as :meth:`winner`, but return the *why*.
 
-        Returns ``{winner, source, priority, candidates, reason}`` for the
-        consumer's targets — used to surface bus decisions as diagnostic
-        sensors and ``dynamic_home_conflict`` events.
+        Returns ``{winner, source, priority, candidates, reason, target,
+        ttl_remaining, runner_up, runner_up_priority}`` for the consumer's
+        targets — used to surface bus decisions as diagnostic sensors and
+        ``dynamic_home_conflict`` events. ``ttl_remaining`` is the winner's
+        seconds left (``None`` if it never expires or ``now_ts`` is unknown);
+        ``runner_up`` is the next-highest intent that lost (``None`` if it was
+        the only candidate), for debugging a conflict without the full list.
         """
         candidates = self._candidates(targets, now_ts)
         if not candidates:
             return {"winner": "none", "source": None, "priority": None,
-                    "candidates": 0, "reason": "no_candidates"}
-        src, slot = max(candidates, key=lambda kv: kv[1]["priority"])
+                    "candidates": 0, "reason": "no_candidates", "target": None,
+                    "ttl_remaining": None, "runner_up": None,
+                    "runner_up_priority": None}
+        # Stable sort by priority desc picks the same slot as winner() (the
+        # first maximal in insertion order) and exposes the runner-up for free.
+        ranked = sorted(candidates, key=lambda kv: -kv[1]["priority"])
+        src, slot = ranked[0]
+        runner = ranked[1][1] if len(ranked) > 1 else None
+        expires_at = slot.get("expires_at")
+        ttl_remaining = (max(0.0, expires_at - now_ts)
+                         if expires_at is not None and now_ts is not None
+                         else None)
         return {"winner": slot["intent"], "source": src,
                 "priority": slot["priority"], "candidates": len(candidates),
-                "reason": "single" if len(candidates) == 1 else "priority"}
+                "reason": "single" if len(candidates) == 1 else "priority",
+                "target": slot["target"], "ttl_remaining": ttl_remaining,
+                "runner_up": runner["intent"] if runner else None,
+                "runner_up_priority": runner["priority"] if runner else None}

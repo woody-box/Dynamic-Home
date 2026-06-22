@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.11.2] — 2026-06-22
+
+### Added
+- **Explicador de conflictos del bus (F02)**: cada **consumidor** del SDHB (cada
+  VMC, cada persiana y DC en su self-bias) expone un `sensor` con el **intent
+  ganador** como estado y el **porqué** en atributos —`source`, `priority`,
+  `candidates`, `reason`, `target`, `ttl_remaining_s`— más el **aspirante**
+  (`runner_up`/`runner_up_priority`, el segundo intent de mayor prioridad que
+  pierde, sin la lista completa de descartados). Todos cuelgan de un **dispositivo
+  central** "Dynamic Home · Bus". `hub.explain()` devuelve ahora el TTL restante
+  del ganador y el runner-up (orden estable que coincide con `winner()`). Emite
+  `dynamic_home_conflict` al cambiar el ganador; solo estado actual (sin logbook).
+
+### Internal
+- Suite de 281 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.11.1] — 2026-06-22
 
 ### Added

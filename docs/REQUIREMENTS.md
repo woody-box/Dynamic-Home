@@ -245,8 +245,10 @@ fundacionales.
 **Dependencias:** bus (`SdhbHub` ya tiene source/intent/target/priority/ttl;
 basta un `explain(targets)`). **Habilita:** depuración de coordinación.
 **Criterios de aceptación:**
-- ☐ Cuando DC pide ganancia solar y DS quiere cerrar por viento, la entidad de esa persiana muestra el ganador y el motivo.
-- ☐ Cada consumidor tiene su entidad bajo el dispositivo "Bus".
+- ☑ Cuando DC pide ganancia solar y DS quiere cerrar por viento, la entidad de esa
+  persiana muestra el ganador y el motivo (origen/prioridad/TTL + aspirante).
+- ☑ Cada consumidor (VMC/persiana/DC) tiene su entidad bajo el dispositivo
+  "Dynamic Home · Bus".
 
 ---
 
@@ -1551,3 +1553,23 @@ es **independiente de DC** y **sustituye** la vacación de DC en `Away`.
 
 **Diferido (anotado):** horario (F21) en la jerarquía; efecto de modo en DS;
 override por **grupo** (v0.11.0 solo zona); perfil completo por módulo+modo.
+
+### 12.24 · F02 — Explicador de conflictos del bus
+
+Hace **observable el arbitraje del SDHB**: una entidad `sensor` por **consumidor**
+(cada VMC, cada persiana y DC en su self-bias), agrupadas bajo un **dispositivo
+central** "Dynamic Home · Bus" (`(DOMAIN, "bus")`). El **estado** es el intent
+ganador; los **atributos** explican el porqué: `source`, `priority`, `candidates`,
+`reason`, `target`, `ttl_remaining_s` y el **aspirante** (`runner_up` +
+`runner_up_priority`) — el segundo intent de mayor prioridad que pierde, sin la
+lista completa de descartados. `hub.explain(targets, now_ts)` calcula todo (con
+orden estable que coincide con `winner()`). Emite `dynamic_home_conflict` en cada
+cambio de ganador (no cada ciclo). Solo estado actual (sin logbook).
+
+**Aceptación:**
+
+- ☑ La entidad de un consumidor muestra el ganador y el motivo
+  (origen/prioridad/TTL/target + aspirante).
+- ☑ Cada consumidor cuelga del dispositivo "Dynamic Home · Bus".
+- ☑ `dynamic_home_conflict` se emite al cambiar el ganador.
+- ☑ Solo estado actual; sin registro de historial.

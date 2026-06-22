@@ -67,7 +67,9 @@ def test_explain_no_candidates():
     h = SdhbHub()
     ex = h.explain("ds")
     assert ex == {"winner": "none", "source": None, "priority": None,
-                  "candidates": 0, "reason": "no_candidates"}
+                  "candidates": 0, "reason": "no_candidates", "target": None,
+                  "ttl_remaining": None, "runner_up": None,
+                  "runner_up_priority": None}
 
 
 def test_explain_single_candidate():
@@ -79,6 +81,9 @@ def test_explain_single_candidate():
     assert ex["priority"] == 70
     assert ex["candidates"] == 1
     assert ex["reason"] == "single"
+    assert ex["target"] == "ds"
+    # A lone candidate has no runner-up.
+    assert ex["runner_up"] is None and ex["runner_up_priority"] is None
 
 
 def test_explain_priority_tiebreak_and_count():
@@ -91,6 +96,19 @@ def test_explain_priority_tiebreak_and_count():
     assert ex["priority"] == 90
     assert ex["candidates"] == 2
     assert ex["reason"] == "priority"
+    # The loser is surfaced as the runner-up (one only, not the full list).
+    assert ex["runner_up"] == "request_solar_gain"
+    assert ex["runner_up_priority"] == 70
+
+
+def test_explain_ttl_remaining():
+    h = SdhbHub()
+    h.publish("dc1", "request_solar_shield", target="ds", priority=70,
+              ttl_s=300, now_ts=1000)
+    assert h.explain("ds", now_ts=1100)["ttl_remaining"] == 200
+    # A never-expiring intent reports no remaining TTL.
+    h.publish("dc2", "request_quiet", target="dv", priority=60)
+    assert h.explain("dv", now_ts=1100)["ttl_remaining"] is None
 
 
 def test_explain_matches_winner():

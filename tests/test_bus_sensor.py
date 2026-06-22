@@ -66,6 +66,10 @@ async def test_bus_sensor_reports_solar_shield(hass: HomeAssistant) -> None:
     assert state.state == "request_solar_shield"
     assert state.attributes["priority"] == 70
     assert state.attributes["candidates"] >= 1
+    # F02 detail: the winner's target, its remaining TTL, and the runner-up.
+    assert state.attributes["target"] in ("ds", "ds_f180")
+    assert state.attributes["ttl_remaining_s"] is not None
+    assert "runner_up" in state.attributes
 
 
 async def test_bus_sensors_share_one_device(hass: HomeAssistant) -> None:
