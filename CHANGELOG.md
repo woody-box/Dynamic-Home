@@ -4,6 +4,17 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.7.1] — 2026-06-22
+
+Release correctivo. El tag `v0.7.0` se creó apuntando por error al commit de
+`v0.6.0` (antes de mergear la sub-fase 1b), por lo que empaquetaba el código de
+0.6.0. `v0.7.1` re-publica desde `main` el contenido previsto para 0.7.0.
+
+### Fixed
+- **Versión empaquetada**: `manifest` y tag coherentes con el código realmente
+  mergeado (F27/F22/F20/F31 + README de adopción). Sin cambios funcionales
+  respecto al contenido descrito en [0.7.0].
+
 ## [0.7.0] — 2026-06-22
 
 Cierre de la sub-fase 1b (clima, DC) y reescritura del README orientada a la
