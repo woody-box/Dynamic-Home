@@ -4,6 +4,38 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.7.0] — 2026-06-22
+
+Cierre de la sub-fase 1b (clima, DC) y reescritura del README orientada a la
+adopción.
+
+### Added
+- **DC · Señal de demanda real (F27)**: usa el estado real de relé/potencia,
+  helpers de demanda o `hvac_action` (prioridad c > b > a) para alimentar el
+  Adaptive Lead, con *fallback* a la inferencia previa; `binary_sensor` "Demanda
+  real". Convive con un termostato de backup sin combatirlo.
+- **DC · Índice de moho (F22)**: índice "horas sobre umbral de HR con
+  decaimiento" (persistido, con histéresis) que avisa (Repairs + evento) y dispara
+  secado por **dos vías**: petición al bus de DV (respetando su gate `dp_diff`) y
+  un **deshumidificador** opcional por zona.
+- **DC · Ventana abierta inferida (F20)**: sin sensor de ventana, una caída de
+  temperatura coherente con la demanda apaga la zona (`off_window_inferred`) con
+  confirmación/recuperación/timeout; `binary_sensor` "Ventana (inferida)".
+- **DC · Aviso de espacio adyacente (F31)**: advisory por zona (terraza/galería):
+  en `heat` avisa para abrir (ganancia solar), en `cool` alarma si la puerta está
+  abierta con el adyacente caliente. Evento + sensor enum.
+
+### Docs
+- **README de adopción** en inglés (primario) + `README.es.md` en español:
+  para quién es/no es, diagrama de arquitectura (Mermaid), tabla de estado,
+  arranque seguro, limitaciones y seguridad ampliada.
+- Nuevo **`docs/EXAMPLES.md`** con 3 ejemplos mínimos (VMC 3 velocidades, zona de
+  clima, persiana por fachada).
+- Nota de backlog **F36** (sensores espejo de hardware para dashboards estables).
+
+### Internal
+- Suite de 236 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.6.0] — 2026-06-21
 
 Cierre de la sub-fase 1a (ventilación, DV) y de la infraestructura transversal
