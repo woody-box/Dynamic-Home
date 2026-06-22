@@ -93,9 +93,10 @@ zonas → casa** para aplicar modo/perfil/avisos por ámbito.
 
 **Dependencias:** ninguna (base). **Habilita:** F01, F21, F23, F25(ámbito), F32.
 **Criterios de aceptación:**
-- ☐ Puedo crear zonas y grupos y asignar módulos desde la UI.
-- ☐ Un cambio de modo en una zona no afecta a otras.
-- ☐ La jerarquía se persiste y sobrevive a reinicios.
+- ☑ Puedo crear zonas y grupos y asignar módulos desde la UI.
+- ☐ Un cambio de modo en una zona no afecta a otras. *(diferido a F01: el modo lo
+  aporta F01, que consumirá esta estructura)*
+- ☑ La jerarquía se persiste y sobrevive a reinicios.
 
 ### 4.2 · Tipo de instalación (F26)
 
@@ -1481,3 +1482,34 @@ como último recurso, **sensores crudos** del usuario.
 entidad `weather` (los sensores crudos dan solo valores actuales). La alerta
 derivada es heurística (condición/viento/precip); para avisos oficiales,
 Meteoalarm sigue siendo enchufable en F17.
+
+### 12.22 · F24 — Zonas y grupos (estructura)
+
+Jerarquía **propia** zona → grupo → casa (no Areas de HA), en una **entrada
+singleton** "Dynamic Home · Zonas" (`MODULE_ZONES`, `unique_id="zones_singleton"`).
+**Alcance v0.10.0 = solo estructura**; el **modo por ámbito (REQ-ZON-4) se difiere
+a F01**, que consumirá esta estructura.
+
+- Modelo puro `zones.py`: árbol en `entry.options[CONF_ZONES_TREE]`
+  (`{zones:{zid:{name,modules[]}}, groups:{gid:{name,zones[]}}}`); helpers
+  `assign_modules` (1 módulo→1 zona, expulsando de otras), `assign_zones`
+  (1 zona→1 grupo), `add/remove_*`, `scope_for_module` (API para F01/F21/F25),
+  `counts`.
+- **Editor de árbol** en un `ZonesOptionsFlow` dedicado (devuelto por
+  `async_get_options_flow` para el módulo zonas): pasos `zone_add`/`zone_edit`/
+  `zone_detail`/`group_add`/`group_edit`/`group_detail` con multi-select de
+  módulos/zonas existentes.
+- `ZonesCoordinator` (read-only, config-time) **publica** el árbol normalizado en
+  `hass.data[DOMAIN][DATA_ZONES]`; la entrada **recarga** al editar para
+  re-publicarlo. `ZonesSensor` diagnóstico (nº zonas + árbol legible).
+
+**Aceptación:**
+
+- ☑ Crear zonas/grupos y asignar módulos desde la UI (singleton; 2ª alta aborta).
+- ☑ Persiste en `entry.options` y sobrevive a reinicios; 1 módulo no queda en dos
+  zonas (validación).
+- ☐ "Un cambio de modo en una zona no afecta a otras" → **F01** (consume
+  `scope_for_module` + `DATA_ZONES`).
+
+**Nota:** F24 entrega solo la estructura + la API de resolución de ámbito; sin
+consumidores de modo todavía.

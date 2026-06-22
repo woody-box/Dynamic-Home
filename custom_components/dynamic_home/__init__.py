@@ -19,6 +19,7 @@ from .coordinator import (
     DvCoordinator,
     SdhbHub,
     WxCoordinator,
+    ZonesCoordinator,
 )
 
 
@@ -30,6 +31,8 @@ def _platforms(entry: ConfigEntry) -> list[str]:
         return const.PLATFORMS_CLIMATE
     if module == const.MODULE_WEATHER:
         return const.PLATFORMS_WEATHER
+    if module == const.MODULE_ZONES:
+        return const.PLATFORMS_ZONES
     return const.PLATFORMS_VMC
 
 
@@ -53,6 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         coordinator = DcCoordinator(hass, entry, hub)
     elif module == const.MODULE_WEATHER:
         coordinator = WxCoordinator(hass, entry)   # read-only; no bus
+    elif module == const.MODULE_ZONES:
+        coordinator = ZonesCoordinator(hass, entry)  # config-time hierarchy
     else:
         coordinator = DvCoordinator(hass, entry, hub)
         coordinator.async_setup_listeners()
@@ -82,6 +87,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             # Don't leave a degraded repair issue hanging for a removed zone.
             coordinator.clear_issue()
             coordinator.clear_mold()
+        if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
+            hass.data[const.DOMAIN].pop(const.DATA_ZONES, None)
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
         # Tear the services down with the last entry so they don't linger as
@@ -175,6 +182,10 @@ async def _async_options_updated(hass: HomeAssistant, entry: ConfigEntry) -> Non
     """
     coordinator = hass.data[const.DOMAIN].get(entry.entry_id)
     if coordinator is None:
+        return
+    # F24: the zones tree is config-time -> always reload to re-publish it.
+    if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
+        await hass.config_entries.async_reload(entry.entry_id)
         return
     # F36: the mirror toggle changes which entities exist, so it needs a reload
     # (not just a refresh). Everything else is read live, so a refresh suffices.

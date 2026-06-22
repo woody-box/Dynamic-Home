@@ -255,6 +255,7 @@
   - **Configuración dedicada** para definir **zonas y grupos** (qué módulos pertenecen a cada zona, qué zonas forman cada grupo) — no solo un campo por módulo.
   - **Modo/perfil independiente por ámbito:** F01 (modo) y F21 (perfil) se aplican **por zona/grupo**, no solo global (p.ej. una habitación en "Sleep" sin afectar al resto). _(Esto es lo que se entendía por "presets por persona"; el "quién" lo gestiona HA con sus usuarios/dashboards.)_
   - **Zonas propias** (no reutilizar las Areas nativas de HA) para máximo control.
+  - **Implementado (estructura):** entrada singleton "Dynamic Home · Zonas" con editor de árbol (options flow); modelo `zones.py` (zona→grupo, 1 módulo→1 zona, 1 zona→1 grupo, `scope_for_module`); árbol publicado en `hass.data[DATA_ZONES]` + sensor diagnóstico. **Modo/perfil por ámbito → F01** (consumirá esta estructura).
 
 ### F25 · Dynamic AC = emisor (no módulo aparte) + multi-emisor por zona
 - **Estado:** ☑ revisada · **Módulos:** DC (+ F26) · **Valor:** Alta · **Esfuerzo:** L
@@ -431,7 +432,7 @@
 | **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
-| **F24** | ☑ revisada | Tres niveles zona→grupo→casa; config dedicada; modo/perfil por ámbito; zonas propias (no Areas HA). |
+| **F24** | ✅ estructura (modo→F01) | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo/perfil por ámbito → F01. |
 | **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
 | **F26** | ☑ revisada | Asistente fuente→emisión: defaults + gating; incluye primario/stage2 (F25); por zona o global; catálogo cerrado validado; comunitaria desactiva F03/F09. |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |

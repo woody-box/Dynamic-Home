@@ -8,7 +8,8 @@
           "vmc": "Ventilación (VMC)",
           "shutter": "Persiana",
           "climate": "Clima (zona)",
-          "weather": "Dynamic Weather"
+          "weather": "Dynamic Weather",
+          "zones": "Dynamic Home · Zonas"
         }
       },
       "vmc": {
@@ -86,6 +87,13 @@
           "wx_wind": "Viento de respaldo (sensor, km/h)",
           "wx_precip": "Precipitación (sensor, mm)"
         }
+      },
+      "zones": {
+        "title": "Dynamic Home · Zonas",
+        "description": "Crea la jerarquía zona → grupo → casa (una sola entrada). Asigna módulos a zonas y zonas a grupos desde las opciones de esta entrada.",
+        "data": {
+          "name": "Nombre"
+        }
       }
     },
     "abort": {
@@ -135,7 +143,11 @@
           "cat_night": "Aislamiento nocturno",
           "cat_alert": "Avisos meteo",
           "cat_hood": "Campana extractora",
-          "cat_wx": "Fuentes y alertas"
+          "cat_wx": "Fuentes y alertas",
+          "zone_add": "Añadir zona",
+          "zone_edit": "Editar zona",
+          "group_add": "Añadir grupo",
+          "group_edit": "Editar grupo"
         }
       },
       "cat_iaq": {
@@ -715,6 +727,46 @@
           "stale_after_h": "Una fuente con datos más viejos que esto se considera caída (pasa a la siguiente).",
           "alert_wind_kmh": "Viento a partir del cual se activa la alerta meteo.",
           "alert_precip_mm": "Precipitación a partir de la cual se activa la alerta meteo."
+        }
+      },
+      "zone_add": {
+        "title": "Añadir zona",
+        "data": {
+          "name": "Nombre de la zona"
+        }
+      },
+      "group_add": {
+        "title": "Añadir grupo",
+        "data": {
+          "name": "Nombre del grupo"
+        }
+      },
+      "zone_edit": {
+        "title": "Editar zona",
+        "data": {
+          "zone": "Zona"
+        }
+      },
+      "group_edit": {
+        "title": "Editar grupo",
+        "data": {
+          "group": "Grupo"
+        }
+      },
+      "zone_detail": {
+        "title": "Zona",
+        "data": {
+          "name": "Nombre",
+          "modules": "Módulos",
+          "delete": "Eliminar esta zona"
+        }
+      },
+      "group_detail": {
+        "title": "Grupo",
+        "data": {
+          "name": "Nombre",
+          "zones": "Zonas",
+          "delete": "Eliminar este grupo"
         }
       }
     },

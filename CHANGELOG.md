@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.10.0] — 2026-06-22
+
+### Added
+- **Zonas y grupos — estructura (F24)**: jerarquía **propia** zona → grupo → casa
+  (no Areas de HA) en una **entrada singleton** "Dynamic Home · Zonas" con un
+  **editor de árbol** en sus opciones (crear zonas/grupos, asignar módulos a zonas
+  y zonas a grupos, con validación 1 módulo→1 zona y 1 zona→1 grupo). El árbol se
+  persiste y se **publica** para que otros módulos resuelvan el ámbito de cada
+  módulo (`scope_for_module`); sensor diagnóstico de la jerarquía. **Alcance: solo
+  estructura** — el **modo/perfil por ámbito llega con F01**, que consumirá esto.
+
+### Internal
+- Suite de 269 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.9.0] — 2026-06-22
 
 Primer **módulo nuevo** desde el port: una capa meteo propia. (Salto de versión

@@ -24,7 +24,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from . import const
+from . import const, zones
 from .coordinator import DvCoordinator
 
 
@@ -107,6 +107,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if module == const.MODULE_WEATHER:
         async_add_entities([WeatherSourceSensor(coordinator, entry)])
         return
+    if module == const.MODULE_ZONES:
+        async_add_entities([ZonesSensor(coordinator, entry)])
+        return
     if module == const.MODULE_CLIMATE:
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
                                     for d in _DC_SENSORS]
@@ -138,6 +141,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(BusSensor(coordinator, entry))
     entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
+
+
+class ZonesSensor(CoordinatorEntity, SensorEntity):
+    """Zone/group hierarchy (F24): zone count + a readable tree in attributes."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Zonas"
+    _attr_icon = "mdi:home-group"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_zones"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    def _titles(self) -> dict:
+        return {e.entry_id: e.title
+                for e in self.hass.config_entries.async_entries(const.DOMAIN)}
+
+    @property
+    def native_value(self) -> int:
+        return len(self.coordinator.tree["zones"])
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        tree = self.coordinator.tree
+        titles = self._titles()
+        n_z, n_g, n_m = zones.counts(tree)
+        readable = {
+            z["name"]: [titles.get(m, m) for m in z["modules"]]
+            for z in tree["zones"].values()
+        }
+        return {"groups": n_g, "assigned_modules": n_m,
+                "zones": readable,
+                "group_members": {g["name"]: list(g["zones"])
+                                  for g in tree["groups"].values()}}
 
 
 class WeatherSourceSensor(CoordinatorEntity, SensorEntity):
