@@ -109,7 +109,8 @@
           "cat_demand": "Señal de demanda real",
           "cat_mold": "Riesgo de moho",
           "cat_window": "Detección de ventana",
-          "cat_adjacent": "Espacio adyacente"
+          "cat_adjacent": "Espacio adyacente",
+          "mirrors": "Espejos de hardware"
         }
       },
       "cat_iaq": {
@@ -611,6 +612,15 @@
         "data_description": {
           "adj_open_dt": "En calefacción, avisa para abrir la puerta cuando el espacio adyacente está al menos esto más caliente que el interior (ganancia solar gratuita).",
           "adj_alarm_dt": "En refrigeración, avisa cuando la puerta está abierta y el espacio adyacente está al menos esto más caliente que el interior."
+        }
+      },
+      "mirrors": {
+        "title": "Espejos de hardware",
+        "data": {
+          "expose_mirrors": "Exponer sensores espejo de entrada"
+        },
+        "data_description": {
+          "expose_mirrors": "Crea un sensor espejo estable por cada entrada configurada (temperatura, humedad, CO₂, …) para que los dashboards sigan funcionando al reemplazar un sensor físico — solo hay que reconfigurar la entrada. Desactivado por defecto."
         }
       }
     },

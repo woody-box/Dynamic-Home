@@ -155,7 +155,19 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         menu = [f"cat_{c}" for c in cats]
         if presets.preset_ids(self._module):
             menu.append("preset")
+        menu.append("mirrors")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_mirrors(self, user_input: dict[str, Any] | None = None):
+        """Toggle stable per-role hardware mirror sensors (F36)."""
+        if user_input is not None:
+            return self.async_create_entry(
+                title="", data={**self.entry.options, **user_input})
+        cur = self.entry.options.get(const.CONF_EXPOSE_MIRRORS, False)
+        schema = vol.Schema({
+            vol.Optional(const.CONF_EXPOSE_MIRRORS, default=cur): bool,
+        })
+        return self.async_show_form(step_id="mirrors", data_schema=schema)
 
     async def async_step_preset(self, user_input: dict[str, Any] | None = None):
         """Apply a ready-made preset (merges its values into the options)."""

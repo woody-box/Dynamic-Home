@@ -338,6 +338,7 @@
   - **Fidelidad:** el espejo copia `unit`/`device_class`/`state_class` por rol (historial y tarjetas se comportan igual que el original).
   - **Anti-bloat:** detrás de un toggle ("Exponer espejos de entrada", *off* por defecto).
   - **Apaño inmediato sin código:** al sustituir un sensor, reasignar al nuevo el mismo `entity_id` del viejo en el registro de entidades.
+  - **Implementado:** `HwMirrorSensor` por rol de entrada numérico (DC/DV/DS), `unique_id` estable `(entry, rol)`, copia valor/unidad/device_class/state_class y sigue al origen; toggle `expose_mirrors` por entrada (off por defecto) con recarga al cambiar.
 
 ---
 
@@ -436,4 +437,4 @@
 | **F33** | ☑ revisada | Weather agnóstico multi-fuente con fallback (AEMET poco fiable); meteo_sources.yaml compartido; forecast→DC/free-cooling, alertas→DS; sin FV (eso es F34). |
 | **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
 | **F35** | ☑ revisada | Campana coordinada (PM interior → encender campana; opt-in; reusa F11). |
-| **F36** | ☑ revisada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle anti-bloat. |
+| **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |

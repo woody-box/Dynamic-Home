@@ -109,7 +109,8 @@
           "cat_demand": "Real demand signal",
           "cat_mold": "Mold risk",
           "cat_window": "Open-window detection",
-          "cat_adjacent": "Adjacent space"
+          "cat_adjacent": "Adjacent space",
+          "mirrors": "Hardware mirrors"
         }
       },
       "cat_iaq": {
@@ -611,6 +612,15 @@
         "data_description": {
           "adj_open_dt": "In heat, advise opening the door when the adjacent space is at least this much warmer than indoors (free solar gain).",
           "adj_alarm_dt": "In cool, warn when the door is open and the adjacent space is at least this much warmer than indoors."
+        }
+      },
+      "mirrors": {
+        "title": "Hardware mirrors",
+        "data": {
+          "expose_mirrors": "Expose input mirror sensors"
+        },
+        "data_description": {
+          "expose_mirrors": "Create a stable mirror sensor for each configured input (temperature, humidity, CO₂, …) so dashboards keep working when you replace a physical sensor — only the entry needs reconfiguring. Off by default."
         }
       }
     },

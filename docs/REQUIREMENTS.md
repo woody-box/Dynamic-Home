@@ -1311,3 +1311,30 @@ adyacente (`CONF_DC_ADJ_TEMP`); puerta opcional (`CONF_DC_ADJ_DOOR`).
 
 **Diferido (REQ-ADY-4, S):** sesgar decisiones vía bus además del aviso; el primer
 corte es solo advisory (evento + sensor).
+
+### 12.16 · F36 — Espejos de hardware para dashboards (HAL de salida)
+
+La integración ya es el mapa rol→`entity_id` para la lógica; F36 lo extiende a los
+**dashboards**: expone un sensor "espejo" estable por cada **rol de entrada
+numérico** configurado, con `unique_id = (entry_id, rol)`. El dashboard apunta a la
+entidad de la integración; reemplazar el sensor físico = solo reconfigurar la
+entrada (el `unique_id` no cambia).
+
+- **Opt-in por entrada**: opción booleana `expose_mirrors` (off por defecto) en un
+  paso propio del options flow. Al cambiarla, `_async_options_updated` **recarga**
+  la entrada (las entidades se crean en el setup de la plataforma).
+- `HwMirrorSensor` (en `sensor.py`): sigue al origen vía
+  `async_track_state_change_event` y copia `value`/`unit`/`device_class`/
+  `state_class`. Roles cubiertos: DV (co2, pm25, t_in/t_ext, AQI, humedades, HRV,
+  voc), DC (dc_t_int/dc_t_ext/dc_humidity/dc_wind/dc_adj_temp), DS (ds_t_in/
+  ds_t_out/wind). Se omiten switches/cover/climate/binarios.
+
+**Aceptación:**
+
+- ☐ Con `expose_mirrors` on, aparece un espejo por rol configurado, reflejando
+  valor y unidad/clase del origen.
+- ☐ Off por defecto: no se crea ninguna entidad espejo.
+- ☐ Cambiar el toggle recarga la entrada y crea/elimina los espejos.
+
+**Diferido:** mirror de roles binarios (ventana/puerta/lluvia) como
+`binary_sensor`; nivel de grupo (F24).

@@ -219,6 +219,61 @@ async def test_mold_index_absent_without_rh(hass: HomeAssistant) -> None:
         "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is None
 
 
+# --- F36: hardware mirror sensors (opt-in, stable per-role) ---
+async def _add_opts(hass: HomeAssistant, data: dict, title: str,
+                    options: dict) -> MockConfigEntry:
+    entry = MockConfigEntry(domain=const.DOMAIN, data=data, title=title,
+                            options=options)
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_mirror_sensors_off_by_default(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    reg = er.async_get(hass)
+    assert reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mirror_dc_t_int") is None
+
+
+async def test_mirror_sensors_created_when_enabled(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "21.5",
+                          {"unit_of_measurement": "°C",
+                           "device_class": "temperature"})
+    entry = await _add_opts(hass, CLIMATE, "Salon",
+                            {const.CONF_EXPOSE_MIRRORS: True})
+    reg = er.async_get(hass)
+    mirror = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mirror_dc_t_int")
+    assert mirror is not None
+    st = hass.states.get(mirror)
+    assert st.state == "21.5"
+    assert st.attributes.get("unit_of_measurement") == "°C"
+    assert st.attributes.get("device_class") == "temperature"
+    # No mirror for an unconfigured role.
+    assert reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mirror_dc_wind") is None
+
+
+async def test_mirror_toggle_reloads_entry(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")            # off
+    reg = er.async_get(hass)
+    uid = f"{entry.entry_id}_mirror_dc_t_int"
+    assert reg.async_get_entity_id("sensor", const.DOMAIN, uid) is None
+    # Flip the option -> the entry reloads and the mirror appears.
+    hass.config_entries.async_update_entry(
+        entry, options={const.CONF_EXPOSE_MIRRORS: True})
+    await hass.async_block_till_done()
+    assert reg.async_get_entity_id("sensor", const.DOMAIN, uid) is not None
+
+
 # --- F31: adjacent warm-space advisory ---
 async def test_adjacent_advisory_heat_and_cool(hass: HomeAssistant) -> None:
     from homeassistant.helpers import entity_registry as er
