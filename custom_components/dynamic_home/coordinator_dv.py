@@ -19,7 +19,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, modes, repairs, schedule
+from . import comfort, const, energy, events, modes, repairs, schedule
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import (
@@ -236,6 +236,10 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             off_m = self.schedule_off.hour * 60 + self.schedule_off.minute
             cfg.schedule_enabled = True
             cfg.schedule = {d: (on_m, off_m) for d in range(7)}
+        # F23: comfort↔economy preset (global + per-zone), resolved like F01.
+        comfort.apply_dv(cfg, comfort.effective_from_published(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE),
+            self.entry.entry_id))
         return cfg
 
     def _update_adaptive(self, cfg: DvConfig, co2: float | None,

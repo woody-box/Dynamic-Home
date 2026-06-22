@@ -243,14 +243,15 @@
   - **Umbral de HR y ventana/decaimiento configurables.**
   - **Implementado:** índice (horas con decaimiento) + Repairs/evento + secado por bus (DV/`dp_diff`) **y** deshumidificador opcional. Por entrada DC.
 
-### F23 · Confort ↔ economía (presets)
-- **Estado:** ☑ revisada · **Módulos:** DC (y DV) · **Valor:** Media-Alta (UX) · **Esfuerzo:** M
+### F23 · Confort ↔ economía (presets) — ✅ implementada
+- **Estado:** ✅ implementada · **Módulos:** DC (y DV) · **Valor:** Media-Alta (UX) · **Esfuerzo:** M
 - **Idea:** un único mando que escala la agresividad del sistema entre confort y ahorro.
 - **Perfilado:**
   - **Con presets** (no slider continuo): p.ej. **Eco / Equilibrado / Confort** (más predecible).
   - **Mueve a la vez de forma coherente:** bandas/histéresis, atenuación nocturna, agresividad del lead y márgenes/límites.
   - **Global con override por zona** (como el modo F01).
   - **Ligado al modo F01:** el modo `Eco` puede fijar el preset de economía; también seleccionable de forma independiente.
+  - **Implementado:** modelo puro `comfort.py` (resolución por ámbito calcando `modes.py` + deltas DC/DV integrados y predecibles); dos `select` en la entrada de Zonas (global + override por zona) publicados en el blob `DATA_MODE`; aplicado en `coordinator_*._cfg()` tras `apply_options`; enlace F01 (modo Eco → preset eco con el mando en neutro). `Equilibrado` = identidad. Deltas editables y efecto en DS diferidos.
 
 ## Fundacionales (emergentes de la revisión)
 
@@ -438,7 +439,7 @@
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
 | **F21** | ✅ implementada | Programador semanal (editor común, perfil por entrada; fusiona F29): 4 tramos/día por día; DC fija base absoluta (biases encima), DV velocidad/suelo; switch + sensor; presencia diferida. |
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
-| **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
+| **F23** | ✅ implementada | Confort↔economía por presets (Eco/Equilibrado/Confort, deltas integrados); mueve bandas/atenuación/lead/umbrales; select global + override zona; ligado a F01. |
 | **F24** | ✅ implementada | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo por ámbito ya lo aplica F01. |
 | **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
 | **F26** | ☑ revisada | Asistente fuente→emisión: defaults + gating; incluye primario/stage2 (F25); por zona o global; catálogo cerrado validado; comunitaria desactiva F03/F09. |

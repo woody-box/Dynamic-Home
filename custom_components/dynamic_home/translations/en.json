@@ -911,6 +911,21 @@
           "boost": "Boost",
           "eco": "Eco"
         }
+      },
+      "comfort": {
+        "state": {
+          "eco": "Eco",
+          "balanced": "Balanced",
+          "comfort": "Comfort"
+        }
+      },
+      "zone_comfort": {
+        "state": {
+          "auto": "Auto",
+          "eco": "Eco",
+          "balanced": "Balanced",
+          "comfort": "Comfort"
+        }
       }
     }
   }

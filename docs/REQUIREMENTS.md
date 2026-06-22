@@ -301,8 +301,11 @@ escala de forma coherente la agresividad del sistema.
 
 **Dependencias:** F01, F24, F26 (defaults por instalación).
 **Criterios de aceptación:**
-- ☐ Pasar a `Eco` ensancha bandas y reduce la agresividad del lead de forma observable.
-- ☐ Una zona puede mantener `Confort` mientras el resto está en `Eco`.
+- ☑ Pasar a `Eco` ensancha bandas (DC) y sube umbrales (DV) y suaviza el lead de
+  forma observable (`_cfg()` cambia); `Equilibrado` restaura.
+- ☑ Una zona puede mantener `Confort` mientras el resto está en `Eco` (override por
+  zona); el modo `Eco` (F01) fija el preset económico con el mando en neutro.
+  *(Implementado en v0.14.0; deltas integrados predecibles. Ver §12.28.)*
 
 ### 5.3 · Programador semanal (F21, fusiona F29)
 
@@ -1660,3 +1663,33 @@ simple legacy). Sensor diagnóstico "Programación".
 **Diferido (anotado):** **hook de presencia** (F32 away/home ajustando sobre el plan,
 REQ-SCH-5) — arquitectura preparada, efecto real → futuro; jerarquía completa
 temporizado>horario>manual>modo con DS.
+
+### 12.28 · F23 — Confort↔Economía (presets)
+
+Un **mando por presets discretos** (`Eco / Equilibrado / Confort`) que escala de
+forma **coherente** la agresividad en DC y DV a la vez. **Calca la maquinaria de
+F01**: dos `select` en la entrada de Zonas — global ("Confort casa") + override por
+zona ("Confort {zona}", `auto` hereda) — publicados en el blob `DATA_MODE` y
+resueltos por ámbito (`comfort.effective_from_published`, vía `zones.scope_for_module`).
+Modelo puro `comfort.py`. Los presets son **deltas integrados y predecibles** (no
+editables, REQ-CMF-1), aplicados en runtime en `coordinator_*._cfg()` tras
+`apply_options`:
+
+- **DC eco**: banda más ancha (`base_heat_day −0.7`, `base_cool_day +0.7`),
+  `delta_night +0.3`, lead más suave (`lead_base_h`/`trend_lead_h ×0.6`),
+  `apply_min_delta +0.2`. **DC confort**: lo contrario (banda más estrecha, lead más
+  agresivo). **DV eco**: ventila menos (`co2_v2/v3 +150`, `pm` arriba, `co2_hys +50`);
+  **DV confort**: umbrales a la baja (manteniendo el orden v3>v2). `Equilibrado` =
+  identidad.
+- **Enlace F01 (REQ-CMF-4)**: con el mando en `Equilibrado` y el modo de la casa en
+  `Eco`, se sigue el preset económico; una elección explícita del mando manda.
+
+**Aceptación:**
+
+- ☑ `Eco` ensancha la banda de DC y sube los umbrales de DV de forma observable;
+  `Equilibrado` restaura los valores por defecto.
+- ☑ Override por zona: una zona en `Confort` con el resto en `Eco`.
+- ☑ El modo `Eco` (F01) aplica el preset económico con el mando en neutro.
+
+**Diferido (anotado):** deltas **editables** por el usuario (ahora fijos); defaults
+por instalación (F26); efecto del preset en DS (persianas).

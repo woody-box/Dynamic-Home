@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, modes, repairs, schedule
+from . import comfort, const, energy, events, modes, repairs, schedule
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -458,9 +458,13 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         return self._num(const.CONF_DC_T_INT)
 
     def _cfg(self) -> DcConfig:
-        """Build the DC config, overlaying any UI-tunable options."""
+        """Build the DC config, overlaying UI options then the comfort preset."""
         cfg = DcConfig()
         apply_options(cfg, self.entry.options, const.MODULE_CLIMATE)
+        # F23: comfort↔economy preset (global + per-zone), resolved like F01.
+        comfort.apply_dc(cfg, comfort.effective_from_published(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE),
+            self.entry.entry_id))
         return cfg
 
     def _scheduled_base(self) -> float | None:
