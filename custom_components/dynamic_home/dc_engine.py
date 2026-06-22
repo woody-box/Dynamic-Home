@@ -115,6 +115,14 @@ class DcConfig:
     # coordinator's Adaptive Lead, not by the pure decision pipeline.
     valve_power_min: float = 5.0
 
+    # Mold-risk index (F22): "hours above an RH threshold with decay". on/off are
+    # the hysteresis arm/disarm thresholds (in accumulated hours).
+    mold_rh_threshold: float = 70.0   # %RH at/above which risk accrues
+    mold_decay_h: float = 24.0        # exponential decay time constant (h)
+    mold_on_h: float = 12.0           # index (h) that arms the alert/drying
+    mold_off_h: float = 6.0           # index (h) that disarms it (hysteresis)
+    mold_cap_h: float = 48.0          # clamp the index here
+
     # Facade solar-gain bias: max °C correction at full openness on sunlit facades.
     facade_gain_heat: float = 0.3
     facade_gain_cool: float = 0.3
@@ -201,6 +209,24 @@ def bias_exterior(cfg: DcConfig, hvac: str, t_ext: float | None) -> float:
             return cfg.bias_ext_cool_mild * ais
         return 0.0
     return 0.0
+
+
+def mold_index_step(prev_h: float, rh: float | None, dt_h: float,
+                    cfg: DcConfig) -> float:
+    """Mold-risk index (F22): accumulate hours above an RH threshold with decay.
+
+    Above ``mold_rh_threshold`` the index grows by the elapsed hours; below it it
+    decays exponentially (time constant ``mold_decay_h``). Clamped to
+    ``[0, mold_cap_h]``. ``rh`` None or non-positive dt -> unchanged.
+    """
+    if dt_h <= 0 or rh is None:
+        return max(0.0, min(prev_h, cfg.mold_cap_h))
+    if rh >= cfg.mold_rh_threshold:
+        idx = prev_h + dt_h
+    else:
+        idx = prev_h * math.exp(-dt_h / cfg.mold_decay_h) if cfg.mold_decay_h > 0 \
+            else 0.0
+    return max(0.0, min(idx, cfg.mold_cap_h))
 
 
 def dew_point(t_c: float | None, rh: float | None) -> float | None:

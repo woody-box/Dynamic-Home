@@ -10,7 +10,10 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import ATTR_TEMPERATURE
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant_custom_component.common import (
+    MockConfigEntry,
+    async_mock_service,
+)
 
 from custom_components.dynamic_home import const
 
@@ -171,6 +174,49 @@ async def test_real_demand_absent_falls_back_to_inference(
     eid = er.async_get(hass).async_get_entity_id(
         "binary_sensor", const.DOMAIN, f"{entry.entry_id}_real_demand")
     assert eid is None
+
+
+# --- F22: mold-risk index ---
+async def test_mold_index_arms_alert_dry_request_and_dehumidifier(
+        hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers import issue_registry as ir
+    on_calls = async_mock_service(hass, "homeassistant", "turn_on")
+    _seed(hass)
+    hass.states.async_set("sensor.salon_rh", "85")          # high RH
+    hass.states.async_set("switch.dehum", "off")
+    entry = await _add(hass, {
+        **CLIMATE,
+        const.CONF_DC_HUMIDITY: "sensor.salon_rh",
+        const.CONF_DC_DEHUMIDIFIER: "switch.dehum",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Mold index sensor exists (RH source present).
+    assert co.has_mold() is True
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is not None
+
+    # Force the index over the arm threshold and re-evaluate.
+    co.mold_index = co._cfg().mold_on_h + 1
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    assert co._mold_active is True
+    # Repairs issue raised, dehumidifier turned on, request_dry on the bus.
+    assert ir.async_get(hass).async_get_issue(const.DOMAIN, co._mold_issue_id)
+    assert any(c.data["entity_id"] == "switch.dehum" for c in on_calls)
+    assert co.hub.winner("dv") == "request_dry"
+
+
+async def test_mold_index_absent_without_rh(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_HUMIDITY
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_mold() is False
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is None
 
 
 async def test_window_lockout_and_vacation(hass: HomeAssistant) -> None:

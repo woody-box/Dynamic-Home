@@ -468,12 +468,14 @@ alerta de salud y, si es efectivo, secar.
   configurables.
 - **REQ-MOH-2 (M):** **aviso** (sensor + alerta) y **dispara secado (F13) solo si
   es efectivo** (gateado por `dp_diff`: no ventilar si el exterior no está más seco).
+  *(También puede disparar un **deshumidificador** opcional por zona — siempre
+  efectivo, sin gate `dp_diff`.)*
 - **REQ-MOH-3 (S):** **activable por zona** (baños/dormitorios sí, salón quizá no).
 
 **Dependencias:** F13 (secado por rocío), F24 (por zona).
 **Criterios de aceptación:**
-- ☐ Mantener HR alta varias horas eleva el índice y emite aviso.
-- ☐ El secado solo arranca cuando el aire exterior está más seco (`dp_diff` favorable).
+- ☑ Mantener HR alta varias horas eleva el índice y emite aviso.
+- ☑ El secado solo arranca cuando el aire exterior está más seco (`dp_diff` favorable).
 
 ### 5.12 · Espacio adyacente / terraza (F31)
 
@@ -1227,3 +1229,30 @@ Diagnóstico: `binary_sensor` "Demanda real" (device_class `running`, atributo
 
 **Diferido a F06:** el contador de **horas exactas** de calor/frío (la señal real
 ya está lista para alimentarlo cuando se construya F06).
+
+### 12.13 · F22 — Índice de moho (DC)
+
+Riesgo de moho **sostenido** por entrada DC: índice = "horas por encima de
+`mold_rh_threshold` con decaimiento exponencial" (helper puro `mold_index_step`),
+acumulado en el coordinator e integrado por tiempo (patrón `_accumulate`),
+**persistido** vía `MoldIndexSensor` (RestoreSensor, unidad h). Histéresis
+`mold_on_h`/`mold_off_h` arma/desarma. Solo se expone con RH interior
+(`has_mold()` ← `CONF_DC_HUMIDITY`).
+
+Al armarse: **Repairs issue** (`mold_risk`) + **evento** `dynamic_home_mold`, y
+**dos vías de secado**:
+1. **Bus** → publica `request_dry` a `"dv"`; DV lo consume (`INTENT_DRY`,
+   `DvInputs.dry_requested`) aplicando su **gate `dp_diff` (F13)** → solo seca si
+   el exterior está más seco. DC no necesita humedad exterior.
+2. **Deshumidificador** opcional (`CONF_DC_DEHUMIDIFIER`) → `homeassistant.turn_on/off`
+   (siempre efectivo, sin gate; respeta modo *observe*).
+Al desarmarse se borran issue, bus y deshumidificador.
+
+**Aceptación:**
+
+- ☐ RH alta sostenida sube el índice → Repairs + evento + `request_dry` + deshumidificador ON.
+- ☐ DV solo seca con `dp_diff` favorable (gate F13 intacto para la vía bus).
+- ☐ Sin `CONF_DC_HUMIDITY` no se expone el sensor de índice.
+
+**Notas:** "por zona" = por entrada DC (F24 añadirá grupo). Caveat: arbitraje
+multi-intent en `"dv"` (dry vs quiet/boost) en primer corte.

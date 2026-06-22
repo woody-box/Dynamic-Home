@@ -59,6 +59,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "condensation": ("Condensation", "Condensación"),
     "facade": ("Facade bias", "Bias de fachadas"),
     "demand": ("Real demand signal", "Señal de demanda real"),
+    "mold": ("Mold risk", "Riesgo de moho"),
 }
 
 
@@ -268,6 +269,13 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "demand": [
             _v("valve_power_min", "Valve power threshold (W)", "Umbral potencia válvula (W)"),
         ],
+        "mold": [
+            _v("mold_rh_threshold", "RH threshold (%)", "Umbral de HR (%)"),
+            _v("mold_on_h", "Arm at (h)", "Arma a (h)"),
+            _v("mold_off_h", "Disarm at (h)", "Desarma a (h)"),
+            _v("mold_decay_h", "Decay constant (h)", "Constante de decaimiento (h)"),
+            _v("mold_cap_h", "Index cap (h)", "Tope del índice (h)"),
+        ],
     },
 }
 
@@ -306,6 +314,7 @@ _ADVANCED: dict[str, set[str]] = {
         "lead_adaptive_min_h", "lead_adaptive_max_h",
         "facade_gain_heat", "facade_gain_cool",
         "valve_power_min",
+        "mold_decay_h", "mold_cap_h",
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",

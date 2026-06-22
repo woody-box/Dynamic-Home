@@ -230,6 +230,7 @@
   - **Modelo simple y configurable:** "horas por encima de HR umbral con decaimiento" (no el VTT completo).
   - **Activable por zona** (baños/dormitorios sí, salón quizá no).
   - **Umbral de HR y ventana/decaimiento configurables.**
+  - **Implementado:** índice (horas con decaimiento) + Repairs/evento + secado por bus (DV/`dp_diff`) **y** deshumidificador opcional. Por entrada DC.
 
 ### F23 · Confort ↔ economía (presets)
 - **Estado:** ☑ revisada · **Módulos:** DC (y DV) · **Valor:** Media-Alta (UX) · **Esfuerzo:** M

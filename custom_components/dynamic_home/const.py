@@ -66,6 +66,7 @@ CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout
 CONF_DC_VALVE = "dc_valve"           # (c) real relay/power state (most reliable)
 CONF_DC_DEMAND_HEAT = "dc_demand_heat"  # (b) explicit heat-demand helper
 CONF_DC_DEMAND_COOL = "dc_demand_cool"  # (b) explicit cool-demand helper
+CONF_DC_DEHUMIDIFIER = "dc_dehumidifier"  # F22: optional dehumidifier to drive
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;
@@ -96,6 +97,7 @@ BOOST_MIN_DEFAULT = 15.0
 EVENT_DEGRADED = f"{DOMAIN}_degraded"
 EVENT_CONFLICT = f"{DOMAIN}_conflict"
 EVENT_FILTER_DUE = f"{DOMAIN}_filter_due"
+EVENT_MOLD = f"{DOMAIN}_mold"
 EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
 
 # Guard key in hass.data[DOMAIN]: services are registered once for the whole
@@ -108,6 +110,8 @@ DATA_SERVICES_REGISTERED = "_services_registered"
 # issue (a transient blip on restart should not nag the user).
 ISSUE_REQUIRED_SOURCE = "required_source_missing"
 ISSUE_STALE_S = 300.0
+# A DC zone whose mold-risk index stays armed raises a (health) repair issue.
+ISSUE_MOLD_RISK = "mold_risk"
 LEARN_MORE_URL = "https://github.com/woody-box/dynamic-home"
 
 # How often the coordinator re-evaluates the control pipeline (seconds).

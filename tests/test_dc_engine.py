@@ -25,6 +25,7 @@ from dc_engine import (  # noqa: E402
     facade_bias,
     forecast_bias,
     is_night,
+    mold_index_step,
     on_rate_cph,
     publish_intent,
     quantize_step,
@@ -40,6 +41,32 @@ def _cfg(**kw):
     for k, v in kw.items():
         setattr(c, k, v)
     return c
+
+
+# --- F22: mold-risk index ---
+def test_mold_index_accumulates_above_threshold():
+    cfg = _cfg(mold_rh_threshold=70, mold_cap_h=48)
+    idx = mold_index_step(0.0, 80.0, 2.0, cfg)      # 2 h above threshold
+    assert idx == 2.0
+    idx = mold_index_step(idx, 80.0, 3.0, cfg)
+    assert idx == 5.0
+
+
+def test_mold_index_decays_below_threshold():
+    cfg = _cfg(mold_rh_threshold=70, mold_decay_h=24)
+    idx = mold_index_step(10.0, 50.0, 24.0, cfg)    # one time-constant of decay
+    assert 3.0 < idx < 4.0                          # 10 * e^-1 ≈ 3.68
+
+
+def test_mold_index_clamps_to_cap():
+    cfg = _cfg(mold_rh_threshold=70, mold_cap_h=12)
+    assert mold_index_step(11.0, 90.0, 5.0, cfg) == 12.0
+
+
+def test_mold_index_unchanged_without_rh_or_time():
+    cfg = _cfg()
+    assert mold_index_step(4.0, None, 2.0, cfg) == 4.0
+    assert mold_index_step(4.0, 90.0, 0.0, cfg) == 4.0
 
 
 # --------------------------------------------------------------------------- #

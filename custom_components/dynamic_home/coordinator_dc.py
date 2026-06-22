@@ -28,6 +28,7 @@ from .dc_engine import (
     dew_risk,
     ema,
     facade_bias,
+    mold_index_step,
     on_rate_cph,
     step_toward,
     sunlit_facades,
@@ -81,6 +82,12 @@ class DcCoordinator(DataUpdateCoordinator):
         self._prev_degraded = False
         self._degraded_since: float | None = None
         self._issue_id = f"degraded_{entry.entry_id}"
+        # Mold-risk index (F22): accumulated hours, hysteresis latch + alert.
+        self.mold_index = 0.0
+        self._mold_ts: float | None = None
+        self._mold_active = False
+        self._mold_issue_id = f"mold_{entry.entry_id}"
+        self._mold_source = f"dc_{entry.entry_id}__mold_dry"
         self.learn_rate_ema = 0.0        # learned heating/cooling rate (°C/h)
         self.learn_overshoot_ema = 0.0   # learned overshoot beyond setpoint (°C)
         self.learned_lag_h = 0.0         # learned thermal lag OFF->peak (h)
@@ -302,6 +309,59 @@ class DcCoordinator(DataUpdateCoordinator):
         """Remove this zone's degraded repair issue (no-op if absent)."""
         ir.async_delete_issue(self.hass, const.DOMAIN, self._issue_id)
 
+    # --- mold-risk index (F22) ---
+    def has_mold(self) -> bool:
+        """Whether the mold index can be computed (needs an indoor RH source)."""
+        return bool(self._hw(const.CONF_DC_HUMIDITY))
+
+    def _mold_step(self, cfg: DcConfig, rh: float | None, now_ts: float) -> None:
+        """Integrate the index, flip the hysteresis latch and arm/disarm actions."""
+        if self._mold_ts is not None:
+            dt_h = max(0.0, (now_ts - self._mold_ts) / 3600.0)
+            self.mold_index = mold_index_step(self.mold_index, rh, dt_h, cfg)
+        self._mold_ts = now_ts
+
+        was = self._mold_active
+        if self.mold_index >= cfg.mold_on_h:
+            self._mold_active = True
+        elif self.mold_index < cfg.mold_off_h:
+            self._mold_active = False
+
+        if self._mold_active != was:
+            events.fire_mold(self.hass, self.entry, const.MODULE_CLIMATE,
+                             self._mold_active, self.mold_index)
+
+        if self._mold_active:
+            ir.async_create_issue(
+                self.hass, const.DOMAIN, self._mold_issue_id,
+                is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                translation_key=const.ISSUE_MOLD_RISK,
+                translation_placeholders={"name": self.entry.title,
+                                          "index": str(round(self.mold_index, 1))},
+                learn_more_url=const.LEARN_MORE_URL)
+            # Drying via the bus (DV applies its own dp_diff gate).
+            self.hub.publish(source=self._mold_source, intent="request_dry",
+                             target="dv", priority=60, ttl_s=1800, now_ts=now_ts)
+            self._drive_dehumidifier(True)
+        elif was:
+            ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
+            self.hub.clear(self._mold_source)
+            self._drive_dehumidifier(False)
+
+    def _drive_dehumidifier(self, on: bool) -> None:
+        """Turn a configured dehumidifier on/off (skipped in observe/dry-run)."""
+        ent = self._hw(const.CONF_DC_DEHUMIDIFIER)
+        if not ent or self.observe_enabled:
+            return
+        service = "turn_on" if on else "turn_off"
+        self.hass.async_create_task(self.hass.services.async_call(
+            "homeassistant", service, {"entity_id": ent}, blocking=False))
+
+    def clear_mold(self) -> None:
+        """Remove the mold repair issue and bus request (called on unload)."""
+        ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
+        self.hub.clear(self._mold_source)
+
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
         for src in self._active_sources:
@@ -442,6 +502,10 @@ class DcCoordinator(DataUpdateCoordinator):
 
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
+
+        # Mold-risk index (F22): integrate, alert and drive drying when armed.
+        if self.has_mold():
+            self._mold_step(cfg, rh, now_ts)
 
         # Degraded when a core source is missing while a mode is demanded; this
         # pauses learning so stale readings don't poison the EMAs and (if

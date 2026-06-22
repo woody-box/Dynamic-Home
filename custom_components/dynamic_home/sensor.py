@@ -62,6 +62,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
                                     for d in _DC_SENSORS]
         ents += [DcLearnSensor(coordinator, entry, d) for d in _DC_LEARN]
+        if coordinator.has_mold():
+            ents.append(MoldIndexSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
         async_add_entities(ents)
         return
@@ -409,6 +411,33 @@ class DcLearnSensor(_Base, RestoreSensor):
     def native_value(self):
         v = self._desc.getter(self.coordinator)
         return int(v) if self._desc.as_int else round(float(v), 3)
+
+
+class MoldIndexSensor(_Base, RestoreSensor):
+    """Mold-risk index (F22): accumulated hours, restored across restarts."""
+
+    _attr_name = "Índice de moho"
+    _attr_icon = "mdi:mushroom-outline"
+    _attr_native_unit_of_measurement = "h"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "mold_index")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_sensor_data()
+        if last is not None and last.native_value is not None:
+            self.coordinator.mold_index = float(last.native_value)
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.mold_index, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"active": self.coordinator._mold_active}
 
 
 class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
