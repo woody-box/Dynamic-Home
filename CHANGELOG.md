@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.11.1] — 2026-06-22
+
+### Added
+- **Repairs sobre `degraded` — transversal DV·DS·DC (F07)**: un módulo cuya
+  fuente **requerida** está configurada pero **ausente/renombrada u obsoleta**
+  (`unavailable`/`unknown`) de forma sostenida (> 5 min) crea una incidencia en
+  **Ajustes → Reparaciones** que **lista las fuentes que faltan**, y emite el
+  evento `dynamic_home_degraded` al instante (en la transición). La lógica se
+  factoriza en un mixin `DegradedTracker` (`repairs.py`) compartido por los tres
+  módulos: **DV** vigila los relés `sw_pwr/v2/v3` + `co2`/`pm25`; **DS** el
+  `cover`; **DC** la Tª interior (igual que antes). Cada módulo expone ahora el
+  `binary_sensor` "Degradado". La incidencia se borra al recuperarse la fuente o
+  al descargar la entrada.
+
+### Notes
+- Incidencia **no-fixable** + `learn_more_url` (el texto remite a *Dispositivos y
+  servicios → Configurar*); el **botón que reabre el config flow** queda diferido.
+
+### Internal
+- Suite de 280 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.11.0] — 2026-06-22
 
 ### Added

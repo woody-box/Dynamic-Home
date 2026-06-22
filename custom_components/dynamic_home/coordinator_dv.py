@@ -18,7 +18,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events, modes
+from . import const, events, modes, repairs
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import (
@@ -37,7 +37,7 @@ from .options_spec import apply_options
 _LOGGER = logging.getLogger(__name__)
 
 
-class DvCoordinator(DataUpdateCoordinator[DvDecision]):
+class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
     """Periodically evaluates the DV pipeline and tracks source-entity changes."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry,
@@ -95,6 +95,9 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         # Bus-conflict observability.
         self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
         self._prev_winner: str | None = None
+        # Degraded / repair-issue tracking for required hardware (F07).
+        self._module = const.MODULE_VMC
+        self.init_degraded(entry)
 
     def bus_listen_targets(self):
         """Targets this VMC consumes from the bus."""
@@ -294,6 +297,7 @@ class DvCoordinator(DataUpdateCoordinator[DvDecision]):
         self._refresh_bus_explain(now_ts)
         self._accumulate(now_ts)
         self._check_filter_due(cfg)
+        self.degraded = self._update_degraded(self._missing_required(), now_ts)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
         self.in_grace = grace_active
 

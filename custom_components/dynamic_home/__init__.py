@@ -21,6 +21,7 @@ from .coordinator import (
     WxCoordinator,
     ZonesCoordinator,
 )
+from .repairs import DegradedTracker
 
 
 def _platforms(entry: ConfigEntry) -> list[str]:
@@ -80,12 +81,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         entry, _platforms(entry))
     if unloaded:
         coordinator = hass.data[const.DOMAIN].get(entry.entry_id)
+        # Don't leave a degraded repair issue hanging for a removed module (F07).
+        if isinstance(coordinator, DegradedTracker):
+            coordinator.clear_issue()
         # A climate zone must release its bus intents so shutters don't stay
         # clamped to a ghost solar-shield after the zone is removed/reloaded.
         if isinstance(coordinator, DcCoordinator):
             coordinator.clear_published()
-            # Don't leave a degraded repair issue hanging for a removed zone.
-            coordinator.clear_issue()
             coordinator.clear_mold()
         if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
             hass.data[const.DOMAIN].pop(const.DATA_ZONES, None)

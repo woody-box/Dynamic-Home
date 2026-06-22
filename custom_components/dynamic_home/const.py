@@ -13,8 +13,10 @@ MODULE_WEATHER = "weather"
 MODULE_ZONES = "zones"
 
 # Platforms forwarded per module.
-PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch", "time"]
-PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor"]
+PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch",
+                            "time", "binary_sensor"]
+PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor",
+                                "binary_sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
 PLATFORMS_ZONES: list[str] = ["sensor", "select"]

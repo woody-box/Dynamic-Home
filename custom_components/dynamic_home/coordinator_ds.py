@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events
+from . import const, events, repairs
 from .bus import SdhbHub
 from .ds_engine import DsConfig, DsDecision, DsInputs, DsState, decide_cover
 from .options_spec import apply_options
@@ -23,7 +23,7 @@ from .options_spec import apply_options
 _LOGGER = logging.getLogger(__name__)
 
 
-class DsCoordinator(DataUpdateCoordinator):
+class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     """Evaluates the DS (shutter) cascade and tracks the source entities.
 
     Shares the same :class:`SdhbHub` as the VMC coordinators: when another
@@ -62,6 +62,9 @@ class DsCoordinator(DataUpdateCoordinator):
         # Bus-conflict observability.
         self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
         self._prev_winner: str | None = None
+        # Degraded / repair-issue tracking for the required cover (F07).
+        self._module = const.MODULE_SHUTTER
+        self.init_degraded(entry)
 
     def bus_listen_targets(self) -> set[str]:
         """Targets this shutter consumes: broadcast ``ds`` plus its facade."""
@@ -228,6 +231,7 @@ class DsCoordinator(DataUpdateCoordinator):
         cfg.privacy_pos_pct = int(self.privacy_pct)
         now_ts = dt_util.utcnow().timestamp()
         self._refresh_bus_explain(now_ts)
+        self.degraded = self._update_degraded(self._missing_required(), now_ts)
         winner = self.bus_explain["winner"]
         sun_az, sun_el, sun_above = self._sun()
         current_pos = self._current_pos()

@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, events, modes
+from . import const, events, modes, repairs
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -43,7 +43,7 @@ from .options_spec import apply_options
 _LOGGER = logging.getLogger(__name__)
 
 
-class DcCoordinator(DataUpdateCoordinator):
+class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     """Evaluates the DC (climate) pipeline and PUBLISHES intents to the bus.
 
     DC is the brain: while heating it publishes ``request_solar_gain`` and while
@@ -80,10 +80,8 @@ class DcCoordinator(DataUpdateCoordinator):
         self._cph: float = 0.0
         # Adaptive lead (learned). Opt-in via the "Adaptive Lead" switch.
         self.adaptive_enabled = False
-        self.degraded = False
-        self._prev_degraded = False
-        self._degraded_since: float | None = None
-        self._issue_id = f"degraded_{entry.entry_id}"
+        self._module = const.MODULE_CLIMATE
+        self.init_degraded(entry)       # degraded / repair-issue tracking (F07)
         # Mold-risk index (F22): accumulated hours, hysteresis latch + alert.
         self.mold_index = 0.0
         self._mold_ts: float | None = None
@@ -284,39 +282,6 @@ class DcCoordinator(DataUpdateCoordinator):
                 events.fire_conflict(self.hass, self.entry,
                                      const.MODULE_CLIMATE, self.bus_explain)
             self._prev_winner = winner
-
-    def _update_degraded(self, missing: list[str], now_ts: float) -> bool:
-        """Track the degraded state: fire on transition, raise a repair if sustained.
-
-        ``missing`` is the list of human-readable required sources currently
-        absent (empty == healthy). The event fires immediately on any flip; the
-        Repairs issue only appears once the zone has been degraded longer than
-        :data:`const.ISSUE_STALE_S`, so a brief startup blip never nags.
-        """
-        degraded = bool(missing)
-        if degraded != self._prev_degraded:
-            events.fire_degraded(self.hass, self.entry, const.MODULE_CLIMATE,
-                                 degraded, missing)
-            self._prev_degraded = degraded
-        if degraded:
-            if self._degraded_since is None:
-                self._degraded_since = now_ts
-            elif now_ts - self._degraded_since >= const.ISSUE_STALE_S:
-                ir.async_create_issue(
-                    self.hass, const.DOMAIN, self._issue_id,
-                    is_fixable=False, severity=ir.IssueSeverity.WARNING,
-                    translation_key=const.ISSUE_REQUIRED_SOURCE,
-                    translation_placeholders={"name": self.entry.title,
-                                              "missing": ", ".join(missing)},
-                    learn_more_url=const.LEARN_MORE_URL)
-        else:
-            self._degraded_since = None
-            self.clear_issue()
-        return degraded
-
-    def clear_issue(self) -> None:
-        """Remove this zone's degraded repair issue (no-op if absent)."""
-        ir.async_delete_issue(self.hass, const.DOMAIN, self._issue_id)
 
     # --- mold-risk index (F22) ---
     def has_mold(self) -> bool:
