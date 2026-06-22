@@ -4,6 +4,31 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.13.0] — 2026-06-22
+
+### Added
+- **Programador semanal (F21)**: nuevo **editor de programación por días** (hasta
+  **4 tramos/día**, por día de la semana) en las opciones de la VMC y de cada zona
+  de clima. La **estética/mecánica es común**, pero **cada entrada tiene su propia
+  programación independiente**:
+  - **Clima (DC)**: el tramo fija la **consigna BASE absoluta** (no un offset); los
+    biases del motor siguen aplicándose encima (Base → biases → TARGET). Las
+    vacaciones siguen teniendo prioridad sobre la programada.
+  - **VMC (DV)**: el tramo fija la **velocidad/encendido base** — `Off` apaga la
+    franja (como el horario simple), `V1/V2/V3` actúan de **suelo** sobre la
+    velocidad automática; el cap de horas de silencio y los modos siguen mandando.
+  - El perfil se activa con el switch **"Programador"** (en DV reaprovecha el switch
+    de horario; si el perfil semanal está vacío, sigue valiendo el horario on/off
+    simple por entidades `time`). Helper puro `schedule.py`, editor que reutiliza el
+    patrón del editor de zonas (menú de 7 días → tramos, con copiar-a-días). Sensor
+    diagnóstico **"Programación"** con el valor del tramo activo y el próximo cambio.
+    Hook de presencia (F32) previsto para el futuro.
+
+### Internal
+- Nuevo módulo puro `schedule.py` (modelo semanal: tramos, valor activo con
+  continuidad en medianoche) con tests dedicados.
+- Suite de 323 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.12.0] — 2026-06-22
 
 ### Added

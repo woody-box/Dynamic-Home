@@ -222,15 +222,16 @@
   - **Activable por zona**, sensibilidad configurable.
   - **Implementado:** sensor real (previo) + inferencia por temperatura **solo sin sensor** (caída coherente con la demanda), con confirm/release/timeout; OFF (`off_window_inferred`) + binary_sensor + evento. Por entrada DC.
 
-### F21 · Programador semanal (consigna/velocidad)
-- **Estado:** ☑ revisada · **Módulos:** DC + DV · **Valor:** Media · **Esfuerzo:** M
+### F21 · Programador semanal (consigna/velocidad) — ✅ implementada
+- **Estado:** ✅ implementada · **Módulos:** DC + DV · **Valor:** Media · **Esfuerzo:** M
 - **Idea:** consignas/velocidad por franja y día de la semana (equivalente a su "Programador Semanal").
 - **Perfilado:**
-  - **Unificado: un "Programador Semanal" común** reutilizable por **DC** (consigna) y **DV** (velocidad/encendido). **Fusiona F29.**
+  - **Editor/estética común** reutilizable por **DC** (consigna) y **DV** (velocidad/encendido), pero **perfil independiente por entrada** (no un perfil único compartido). **Fusiona F29.**
   - **Máximo 4 tramos por día**, por día de la semana.
   - **DC:** el perfil fija la **consigna BASE**; DC **modula encima** con sus biases (como su "Flujo de Consigna": Base → biases → TARGET). **Consigna absoluta**, no offset.
   - **DV:** el perfil fija velocidad/encendido base por tramo.
   - **Presencia prevista:** arquitectura preparada para que, más adelante, la **presencia** (away/home) ajuste sobre el "plan" del perfil. Dejar el hook.
+  - **Implementado:** modelo puro `schedule.py` (4 tramos/día/día, valor activo con continuidad en medianoche); editor en opciones (menú de 7 días → tramos + copiar-a-días) por entrada; DC `scheduled_base` absoluto (biases encima, vacaciones ganan); DV velocidad base/suelo (0=off, 1/2/3 suelo, cede a silencio/modo); switch "Programador" (DV reusa el de horario; perfil vacío → on/off legacy); sensor "Programación". Hook de presencia (F32) diferido.
 
 ### F22 · Índice de moho
 - **Estado:** ☑ revisada · **Módulos:** DC · **Valor:** Media · **Esfuerzo:** S
@@ -435,7 +436,7 @@
 | **F19** | ✅ implementada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
 | **F20** | ☑ revisada | Ventana abierta: sensor real primero + inferencia por caída temp (coherente con demanda); recuperación por estabilización/timeout. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
-| **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |
+| **F21** | ✅ implementada | Programador semanal (editor común, perfil por entrada; fusiona F29): 4 tramos/día por día; DC fija base absoluta (biases encima), DV velocidad/suelo; switch + sensor; presencia diferida. |
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ☑ revisada | Confort↔economía por presets (Eco/Equilibrado/Confort); mueve bandas/atenuación/lead/márgenes; global + override zona; ligado a F01. |
 | **F24** | ✅ implementada | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo por ámbito ya lo aplica F01. |

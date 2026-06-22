@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, modes, repairs
+from . import const, energy, events, modes, repairs, schedule
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -65,6 +65,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.override_active = False
         self.override_temp: float | None = None
         self.vacation_enabled = False
+        self.schedule_enabled = False   # F21: weekly base-setpoint program
         self.observe_enabled = False    # dry-run: compute but do not act on hw
         self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
@@ -462,6 +463,16 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         apply_options(cfg, self.entry.options, const.MODULE_CLIMATE)
         return cfg
 
+    def _scheduled_base(self) -> float | None:
+        """F21: absolute base setpoint from the active weekly slot, or None."""
+        if not self.schedule_enabled:
+            return None
+        now = dt_util.now()                         # local time for the program
+        val = schedule.active_value(
+            self.entry.options.get(const.CONF_SCHEDULE),
+            now.weekday(), now.hour * 60 + now.minute)
+        return None if val is None else float(val)
+
     def _sun(self) -> tuple[float | None, float | None]:
         st = self.hass.states.get("sun.sun")
         if st is None:
@@ -621,6 +632,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             dew_risk=self.dew_risk_active,
             extra_bias=facade_b,
             adaptive_lead_h=adaptive_lead,
+            scheduled_base=self._scheduled_base(),
         )
         decision = decide_climate(cfg, ins)
 

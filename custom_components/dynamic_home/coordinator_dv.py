@@ -19,7 +19,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, modes, repairs
+from . import const, energy, events, modes, repairs, schedule
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import (
@@ -351,6 +351,15 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             cfg, co2_raw, pm_raw)
         dew_r, dp_diff = self._dew(cfg)
 
+        # Weekly schedule (F21): a non-empty profile drives the base speed/on-off
+        # (slot 0 = off, 1/2/3 = floor); empty profile -> legacy on/off gate.
+        profile = self.entry.options.get(const.CONF_SCHEDULE)
+        sched_speed: int | None = None
+        if self.schedule_enabled and not schedule.is_empty(profile):
+            v = schedule.active_value(profile, now.weekday(),
+                                      now.hour * 60 + now.minute)
+            sched_speed = int(v) if v is not None else None
+
         ins = DvInputs(
             co2_raw=co2_raw,
             pm_raw=pm_raw,
@@ -370,6 +379,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             now_ts=now_ts,
             weekday=now.weekday(),
             minute_of_day=now.hour * 60 + now.minute,
+            schedule_speed=sched_speed,
             co2_age_s=self._age_s(const.CONF_CO2),
             pm_age_s=self._age_s(const.CONF_PM25),
             startup_grace_active=grace_active,

@@ -104,6 +104,10 @@ _CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
         "adaptive_lead", "Adaptive lead", "mdi:brain",
         lambda c: c.adaptive_enabled,
         lambda c, v: setattr(c, "adaptive_enabled", v)),
+    _ToggleDesc(
+        "schedule", "Schedule", "mdi:calendar-clock",
+        lambda c: c.schedule_enabled,
+        lambda c, v: setattr(c, "schedule_enabled", v)),
     _OBSERVE,
 )
 

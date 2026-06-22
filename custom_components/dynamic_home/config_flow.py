@@ -17,7 +17,15 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const, modes, options_spec, presets, zones
+from . import const, modes, options_spec, presets, schedule, zones
+
+# Weekday labels for the scheduler editor (Mon..Sun = 0..6, datetime.weekday()).
+_WEEKDAYS = {
+    "es": ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado",
+           "Domingo"],
+    "en": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday",
+           "Sunday"],
+}
 
 
 def _entity(domain: str | list[str] | None = None,
@@ -196,6 +204,7 @@ class DynamicHomeOptionsFlow(OptionsFlow):
     def __init__(self, entry: ConfigEntry) -> None:
         self.entry = entry
         self._module = entry.data.get(const.CONF_MODULE)
+        self._sched_day = 0             # weekday being edited (F21)
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         cats = options_spec.categories(self._module, self.show_advanced_options)
@@ -204,8 +213,97 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         menu = [f"cat_{c}" for c in cats]
         if presets.preset_ids(self._module):
             menu.append("preset")
+        # Weekly scheduler (F21): VMC (speed) and climate (base setpoint) only.
+        if self._module in (const.MODULE_VMC, const.MODULE_CLIMATE):
+            menu.append("schedule")
         menu.append("mirrors")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    # --- F21 weekly scheduler editor (shared format; one profile per entry) ---
+    def _weekday_names(self) -> list[str]:
+        lang = getattr(self.hass.config, "language", "en") if self.hass else "en"
+        return _WEEKDAYS.get(lang, _WEEKDAYS["en"])
+
+    def _slot_label(self, slot: dict) -> str:
+        v = slot["value"]
+        if self._module == const.MODULE_VMC:
+            return f"{slot['start']}→{'Off' if int(v) == 0 else f'V{int(v)}'}"
+        return f"{slot['start']}→{v}°"
+
+    async def async_step_schedule(self, user_input: dict[str, Any] | None = None):
+        """Pick the weekday to edit (each shows a one-line summary)."""
+        if user_input is not None:
+            self._sched_day = int(user_input["day"])
+            return await self.async_step_schedule_day()
+        sched = schedule.normalize(self.entry.options.get(const.CONF_SCHEDULE))
+        names = self._weekday_names()
+        opts = []
+        for d in range(7):
+            slots = sched.get(str(d), [])
+            summary = ", ".join(self._slot_label(s) for s in slots) or "—"
+            opts.append(selector.SelectOptionDict(
+                value=str(d), label=f"{names[d]}: {summary}"))
+        schema = vol.Schema({vol.Required("day"): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=opts, mode=selector.SelectSelectorMode.LIST))})
+        return self.async_show_form(step_id="schedule", data_schema=schema)
+
+    async def async_step_schedule_day(self,
+                                      user_input: dict[str, Any] | None = None):
+        """Edit one weekday's up to 4 slots (start + value), with copy/clear."""
+        d = self._sched_day
+        sched = schedule.normalize(self.entry.options.get(const.CONF_SCHEDULE))
+        is_vmc = self._module == const.MODULE_VMC
+        if user_input is not None:
+            if user_input.get("clear"):
+                sched = schedule.clear_day(sched, d)
+            else:
+                slots = []
+                for i in range(1, schedule.MAX_SLOTS + 1):
+                    start = user_input.get(f"start_{i}")
+                    val = user_input.get(f"value_{i}")
+                    if start and val not in (None, ""):
+                        slots.append({"start": start,
+                                      "value": int(val) if is_vmc else float(val)})
+                sched = schedule.set_day(sched, d, slots)
+                copy_to = user_input.get("copy_to") or []
+                if copy_to:
+                    sched = schedule.copy_day(sched, d, [int(x) for x in copy_to])
+            return self.async_create_entry(
+                title="", data={**self.entry.options, const.CONF_SCHEDULE: sched})
+        day_slots = sched.get(str(d), [])
+        out: dict = {}
+        for i in range(1, schedule.MAX_SLOTS + 1):
+            cur = day_slots[i - 1] if i - 1 < len(day_slots) else None
+            t_key = vol.Optional(
+                f"start_{i}", description={"suggested_value":
+                                           f"{cur['start']}:00" if cur else None})
+            out[t_key] = selector.TimeSelector()
+            v_key = vol.Optional(
+                f"value_{i}", description={"suggested_value":
+                                           cur["value"] if cur else None})
+            out[v_key] = self._value_selector(is_vmc)
+        names = self._weekday_names()
+        out[vol.Optional("copy_to", default=[])] = selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=[selector.SelectOptionDict(value=str(x), label=names[x])
+                         for x in range(7)],
+                multiple=True, mode=selector.SelectSelectorMode.LIST))
+        out[vol.Optional("clear", default=False)] = bool
+        return self.async_show_form(
+            step_id="schedule_day", data_schema=vol.Schema(out),
+            description_placeholders={"day": names[d]})
+
+    def _value_selector(self, is_vmc: bool):
+        if is_vmc:
+            return selector.SelectSelector(selector.SelectSelectorConfig(
+                options=[selector.SelectOptionDict(value="0", label="Off"),
+                         selector.SelectOptionDict(value="1", label="V1"),
+                         selector.SelectOptionDict(value="2", label="V2"),
+                         selector.SelectOptionDict(value="3", label="V3")]))
+        return selector.NumberSelector(selector.NumberSelectorConfig(
+            min=5, max=35, step=0.1, unit_of_measurement="°C",
+            mode=selector.NumberSelectorMode.BOX))
 
     async def async_step_mirrors(self, user_input: dict[str, Any] | None = None):
         """Toggle stable per-role hardware mirror sensors (F36)."""

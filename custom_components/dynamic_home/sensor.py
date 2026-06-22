@@ -29,7 +29,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 
-from . import const, zones
+from . import const, schedule, zones
 from .coordinator import DvCoordinator
 
 
@@ -125,6 +125,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ents.append(AdjacentAdviceSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
         ents.append(EnergySensor(coordinator, entry))
+        ents.append(ScheduleSensor(coordinator, entry, is_vmc=False))
         ents += _mirror_sensors(entry, module)
         async_add_entities(ents)
         return
@@ -147,6 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         entities.append(VocSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
     entities.append(EnergySensor(coordinator, entry))
+    entities.append(ScheduleSensor(coordinator, entry, is_vmc=True))
     entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
 
@@ -387,6 +389,51 @@ class EnergySensor(_Base, RestoreSensor):
     @property
     def native_value(self) -> float:
         return round(self.coordinator.energy_kwh, 3)
+
+
+class ScheduleSensor(CoordinatorEntity, SensorEntity):
+    """Weekly scheduler (F21): the active slot's value + next change (diagnostic).
+
+    Shared by VMC (speed) and DC (base setpoint). State is ``off`` when the
+    program is disabled and ``—`` when enabled but no slot applies.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Programación"
+    _attr_icon = "mdi:calendar-clock"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry, is_vmc: bool) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._is_vmc = is_vmc
+        self._attr_unique_id = f"{entry.entry_id}_schedule"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    def _now(self):
+        n = dt_util.now()
+        return n.weekday(), n.hour * 60 + n.minute
+
+    @property
+    def native_value(self):
+        if not self.coordinator.schedule_enabled:
+            return "off"
+        wd, m = self._now()
+        v = schedule.active_value(self._entry.options.get(const.CONF_SCHEDULE),
+                                  wd, m)
+        if v is None:
+            return "—"
+        if self._is_vmc:
+            return "Off" if int(v) == 0 else f"V{int(v)}"
+        return v
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        wd, m = self._now()
+        prof = self._entry.options.get(const.CONF_SCHEDULE)
+        return {"enabled": self.coordinator.schedule_enabled,
+                "next_change": schedule.next_change(prof, wd, m)}
 
 
 class SpeedSensor(_Base):

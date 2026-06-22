@@ -148,6 +148,7 @@
           "cat_hood": "Extractor hood",
           "cat_wx": "Sources & alerts",
           "cat_energy": "Energy estimate",
+          "schedule": "Weekly schedule",
           "zone_add": "Add zone",
           "zone_edit": "Edit zone",
           "group_add": "Add group",
@@ -759,6 +760,29 @@
           "est_w_on": "Estimated climate power while the zone is calling for heat/cool (no meter configured).",
           "est_w_motor": "Estimated shutter-motor power, used to estimate the energy of each movement.",
           "full_travel_s": "Time for a full open↔close travel of the shutter (scales the per-move energy)."
+        }
+      },
+      "schedule": {
+        "title": "Weekly schedule",
+        "description": "Pick a day to edit its time-slots. Each entry has its own program: a VMC slot sets the base speed, a climate slot sets the absolute base setpoint (biases still apply on top). Enable it with the \"Schedule\" switch.",
+        "data": {
+          "day": "Day"
+        }
+      },
+      "schedule_day": {
+        "title": "Schedule · {day}",
+        "description": "Up to 4 slots. Each slot's value applies from its start time until the next slot (wrapping past midnight). Leave a row empty to drop it.",
+        "data": {
+          "start_1": "Slot 1 start",
+          "value_1": "Slot 1 value",
+          "start_2": "Slot 2 start",
+          "value_2": "Slot 2 value",
+          "start_3": "Slot 3 start",
+          "value_3": "Slot 3 value",
+          "start_4": "Slot 4 start",
+          "value_4": "Slot 4 value",
+          "copy_to": "Also copy this day to",
+          "clear": "Clear this day"
         }
       },
       "zone_add": {

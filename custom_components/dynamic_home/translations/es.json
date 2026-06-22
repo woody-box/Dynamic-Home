@@ -148,6 +148,7 @@
           "cat_hood": "Campana extractora",
           "cat_wx": "Fuentes y alertas",
           "cat_energy": "Estimación de energía",
+          "schedule": "Programador semanal",
           "zone_add": "Añadir zona",
           "zone_edit": "Editar zona",
           "group_add": "Añadir grupo",
@@ -759,6 +760,29 @@
           "est_w_on": "Potencia estimada del clima mientras la zona pide calor/frío (sin medidor configurado).",
           "est_w_motor": "Potencia estimada del motor de la persiana, usada para estimar la energía de cada movimiento.",
           "full_travel_s": "Tiempo de un recorrido completo abrir↔cerrar de la persiana (escala la energía por movimiento)."
+        }
+      },
+      "schedule": {
+        "title": "Programador semanal",
+        "description": "Elige un día para editar sus tramos. Cada entrada tiene su propia programación: en la VMC el tramo fija la velocidad base; en clima fija la consigna BASE absoluta (los biases se aplican encima). Actívalo con el switch \"Programador\".",
+        "data": {
+          "day": "Día"
+        }
+      },
+      "schedule_day": {
+        "title": "Programación · {day}",
+        "description": "Hasta 4 tramos. El valor de cada tramo se aplica desde su hora de inicio hasta el siguiente (continúa pasada la medianoche). Deja una fila vacía para quitarla.",
+        "data": {
+          "start_1": "Inicio tramo 1",
+          "value_1": "Valor tramo 1",
+          "start_2": "Inicio tramo 2",
+          "value_2": "Valor tramo 2",
+          "start_3": "Inicio tramo 3",
+          "value_3": "Valor tramo 3",
+          "start_4": "Inicio tramo 4",
+          "value_4": "Valor tramo 4",
+          "copy_to": "Copiar este día también a",
+          "clear": "Vaciar este día"
         }
       },
       "zone_add": {

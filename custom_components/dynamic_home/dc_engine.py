@@ -182,6 +182,11 @@ class DcInputs:
     override_active: bool = False
     override_temp: float | None = None
 
+    # Weekly scheduler (F21): absolute BASE setpoint from the active slot (°C),
+    # replacing the day/night base. None = no schedule (use base_active). Vacation
+    # still takes precedence over a scheduled base.
+    scheduled_base: float | None = None
+
 
 @dataclass
 class DcDecision:
@@ -532,7 +537,12 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
         return DcDecision("off", None, "off", "none")
 
     night = is_night(ins.sun_elevation)
-    base = base_active(cfg, ins.hvac_mode, night, ins.vacation)
+    # Weekly schedule (F21): a programmed slot fixes the absolute BASE (no night
+    # easing); vacation still wins. Biases then apply on top of this base.
+    if ins.scheduled_base is not None and not ins.vacation:
+        base, base_source = ins.scheduled_base, "schedule"
+    else:
+        base, base_source = base_active(cfg, ins.hvac_mode, night, ins.vacation), "auto"
     if ins.adaptive_lead_h is not None:
         lead = max(cfg.lead_adaptive_min_h,
                    min(ins.adaptive_lead_h, cfg.lead_adaptive_max_h))
@@ -552,6 +562,7 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
     target_raw = round(base + mods + self_bias, 2)
     details = {
         "base": round(base, 2),
+        "base_source": base_source,
         "target_raw": target_raw,
         "mods_total": round(mods, 2),
         "lead_h": round(lead, 2),
