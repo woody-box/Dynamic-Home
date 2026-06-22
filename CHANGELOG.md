@@ -4,6 +4,29 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.9.0] — 2026-06-22
+
+Primer **módulo nuevo** desde el port: una capa meteo propia. (Salto de versión
+menor por estrenar un módulo.)
+
+### Added
+- **Dynamic Weather (F33)** — nuevo módulo `weather`, capa meteo **resiliente y
+  agnóstica** que **no obtiene datos** sino que agrega **varias fuentes en cascada
+  con fallback**: hasta 3 entidades `weather.*` priorizadas (Open-Meteo sin clave,
+  OWM, met.no, AEMET…) + **sensores crudos** de respaldo. Expone:
+  - una entidad **`weather` proxy** que espeja la fuente activa y **reenvía
+    `get_forecasts`** → DC (forecast bias) y free-cooling la consumen transparente
+    y con fallback;
+  - un **`binary_sensor` de alerta** derivada (condición peligrosa / viento /
+    precipitación) consumible por **DS (F17)**;
+  - un **sensor de fuente activa** (diagnóstico, con `since`) y evento al cambiar.
+  Caducidad y umbrales de alerta configurables. **Sin APIs/keys** en la
+  integración (RNF-6). El forecast solo está disponible si la fuente activa es una
+  entidad `weather`.
+
+### Internal
+- Suite de 263 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.8.4] — 2026-06-22
 
 ### Added

@@ -373,6 +373,7 @@
   - **lat/lon configurables**; **sin claves obligatorias** para la fuente libre, **clave opcional** para la de pago.
   - **Resiliencia/observabilidad:** exponer qué fuente está activa y desde cuándo (para depurar caídas); marcar `unavailable` solo si **todas** las fuentes fallan (degradación, RNF-7).
   - **Fuera de alcance F33:** nada de energía/FV (eso es F34).
+  - **Implementado:** módulo `weather` (entidad `weather` proxy con fallback + reenvío de `get_forecasts`; `binary_sensor` de alerta derivada para F17; sensor de fuente activa). Fuentes: hasta 3 `weather.*` priorizadas + sensores crudos de respaldo; caducidad/umbral de alerta configurables. Forecast solo si la activa es `weather`. Sin APIs en la integración.
 
 ### F34 · Dynamic Energy (módulo)
 - **Estado:** ☑ revisada · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
@@ -438,7 +439,7 @@
 | **F29** | ☑ fusionada | Programación por día → fusionada en F21. |
 | **F28** | ☑ revisada | Eficiencia recuperador (3 sondas, sin expulsión) + inferencia bypass (aviso solo si desplome inesperado). |
 | **F30** | ☑ revisada | IAQ extendido: actúan solo CO₂/PM2.5; VOC informativo; NOx descartado; exteriores observación + hostil. |
-| **F33** | ☑ revisada | Weather agnóstico multi-fuente con fallback (AEMET poco fiable); meteo_sources.yaml compartido; forecast→DC/free-cooling, alertas→DS; sin FV (eso es F34). |
+| **F33** | ✅ implementada | Weather agnóstico multi-fuente con fallback; entidad weather proxy (reenvía get_forecasts) + alerta derivada (F17) + fuente activa; weather.* + sensores crudos; sin FV (eso es F34). |
 | **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
 | **F35** | ✅ implementada | Campana coordinada (PM interior → subir campana; 3 relés break-before-make + interlock; entidad fan auto+manual). |
 | **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |

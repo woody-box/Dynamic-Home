@@ -7,7 +7,8 @@
         "menu_options": {
           "vmc": "Ventilación (VMC)",
           "shutter": "Persiana",
-          "climate": "Clima (zona)"
+          "climate": "Clima (zona)",
+          "weather": "Dynamic Weather"
         }
       },
       "vmc": {
@@ -72,6 +73,19 @@
           "dc_adj_temp": "Temperatura del espacio adyacente (opcional)",
           "dc_adj_door": "Puerta al espacio adyacente (opcional)"
         }
+      },
+      "weather": {
+        "title": "Dynamic Weather",
+        "description": "Proveedor meteo resiliente multi-fuente (forecast/alertas). Lista de fuentes por prioridad con fallback; también puedes enchufar tus propios sensores.",
+        "data": {
+          "name": "Nombre",
+          "wx_source_1": "Fuente primaria (weather)",
+          "wx_source_2": "Fuente secundaria (weather)",
+          "wx_source_3": "Fuente terciaria (weather)",
+          "wx_temp": "Temperatura de respaldo (sensor)",
+          "wx_wind": "Viento de respaldo (sensor, km/h)",
+          "wx_precip": "Precipitación (sensor, mm)"
+        }
       }
     },
     "abort": {
@@ -120,7 +134,8 @@
           "cat_dawn": "Amanecer gradual",
           "cat_night": "Aislamiento nocturno",
           "cat_alert": "Avisos meteo",
-          "cat_hood": "Campana extractora"
+          "cat_hood": "Campana extractora",
+          "cat_wx": "Fuentes y alertas"
         }
       },
       "cat_iaq": {
@@ -687,6 +702,19 @@
           "hood_pm_v2": "PM2.5 interior a partir del cual la campana va a V2.",
           "hood_pm_v3": "PM2.5 interior a partir del cual la campana va a V3.",
           "hood_hys": "Margen que el PM debe bajar antes de que la campana baje un nivel."
+        }
+      },
+      "cat_wx": {
+        "title": "Fuentes y alertas",
+        "data": {
+          "stale_after_h": "Caduca tras (h)",
+          "alert_wind_kmh": "Alerta viento (km/h)",
+          "alert_precip_mm": "Alerta precip. (mm)"
+        },
+        "data_description": {
+          "stale_after_h": "Una fuente con datos más viejos que esto se considera caída (pasa a la siguiente).",
+          "alert_wind_kmh": "Viento a partir del cual se activa la alerta meteo.",
+          "alert_precip_mm": "Precipitación a partir de la cual se activa la alerta meteo."
         }
       }
     },

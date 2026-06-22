@@ -17,6 +17,7 @@ from . import const
 from .dc_engine import DcConfig
 from .ds_engine import DsConfig
 from .dv_engine import DvConfig
+from .weather_engine import WxConfig
 
 
 @dataclass(frozen=True)
@@ -66,6 +67,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "night": ("Night insulation", "Aislamiento nocturno"),
     "alert": ("Weather alerts", "Avisos meteo"),
     "hood": ("Extractor hood", "Campana extractora"),
+    "wx": ("Sources & alerts", "Fuentes y alertas"),
 }
 
 
@@ -316,12 +318,20 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("adj_alarm_dt", "Alarm ΔT (°C)", "ΔT alarma (°C)"),
         ],
     },
+    const.MODULE_WEATHER: {
+        "wx": [
+            _v("stale_after_h", "Stale after (h)", "Caduca tras (h)"),
+            _v("alert_wind_kmh", "Alert wind (km/h)", "Alerta viento (km/h)"),
+            _v("alert_precip_mm", "Alert precip (mm)", "Alerta precip. (mm)"),
+        ],
+    },
 }
 
 _FRESH = {
     const.MODULE_VMC: DvConfig,
     const.MODULE_SHUTTER: DsConfig,
     const.MODULE_CLIMATE: DcConfig,
+    const.MODULE_WEATHER: WxConfig,
 }
 
 
