@@ -757,8 +757,8 @@ pelear con el resto de la lógica DS.
 
 **Dependencias:** DS, amanecer (sol), free-cooling/F16.
 **Criterios de aceptación:**
-- ☐ Al amanecer, la persiana sube por pasos según la rampa configurada.
-- ☐ Si ya estaba abierta por free-cooling, la rampa no la mueve.
+- ☑ Al amanecer, la persiana sube por pasos según la rampa configurada.
+- ☑ Si ya estaba abierta por free-cooling, la rampa no la mueve.
 
 ---
 
@@ -1338,3 +1338,27 @@ entrada (el `unique_id` no cambia).
 
 **Diferido:** mirror de roles binarios (ventana/puerta/lluvia) como
 `binary_sensor`; nivel de grupo (F24).
+
+### 12.17 · F19 — Apertura gradual al amanecer (DS)
+
+Opt-in por zona (switch "Gradual sunrise"). Al cruzar el sol la
+`dawn_trigger_elevation` hacia arriba y **solo si la persiana no está ya (casi)
+abierta**, arranca una rampa que sube `dawn_step_pct` cada `dawn_step_min` hasta
+`dawn_target_pct`.
+
+- Señal pura: nueva rama `dawn_ramp` en `decide_cover` (en el `else`, tras
+  override/lluvia/privacidad y **antes** de las ramas de clima), que usa
+  `DsInputs.dawn_pos`.
+- Estado/tiempo en `coordinator_ds._dawn_step`: detecta el cruce del sol
+  (`_prev_sun_el`), gestiona la rampa y devuelve la posición escalonada o `None`.
+  **Solo sube** (floor creciente, `max(target, current_pos)`); termina al llegar
+  al objetivo o si algo la abre antes → no pelea con free-cooling ni con el
+  usuario. Caps (viento/bus/slew) y seguridad siguen mandando.
+- Config (categoría `dawn`): `dawn_step_pct`, `dawn_step_min`, `dawn_target_pct`,
+  `dawn_trigger_elevation`.
+
+**Aceptación:**
+
+- ☐ Al amanecer la persiana sube por pasos según la rampa.
+- ☐ Si ya estaba abierta (free-cooling/usuario), la rampa no la mueve.
+- ☐ Opt-in: desactivada por defecto (switch).

@@ -110,7 +110,8 @@
           "cat_mold": "Riesgo de moho",
           "cat_window": "Detección de ventana",
           "cat_adjacent": "Espacio adyacente",
-          "mirrors": "Espejos de hardware"
+          "mirrors": "Espejos de hardware",
+          "cat_dawn": "Amanecer gradual"
         }
       },
       "cat_iaq": {
@@ -621,6 +622,21 @@
         },
         "data_description": {
           "expose_mirrors": "Crea un sensor espejo estable por cada entrada configurada (temperatura, humedad, CO₂, …) para que los dashboards sigan funcionando al reemplazar un sensor físico — solo hay que reconfigurar la entrada. Desactivado por defecto."
+        }
+      },
+      "cat_dawn": {
+        "title": "Amanecer gradual",
+        "data": {
+          "dawn_step_pct": "Paso amanecer (%)",
+          "dawn_step_min": "Paso amanecer (min)",
+          "dawn_target_pct": "Objetivo amanecer (%)",
+          "dawn_trigger_elevation": "Elevación de disparo (°)"
+        },
+        "data_description": {
+          "dawn_step_pct": "Cuánto sube la persiana en cada paso.",
+          "dawn_step_min": "Minutos entre pasos.",
+          "dawn_target_pct": "Apertura a la que llega la rampa.",
+          "dawn_trigger_elevation": "Elevación del sol (grados) que inicia la rampa al amanecer."
         }
       }
     },

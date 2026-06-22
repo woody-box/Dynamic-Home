@@ -200,6 +200,7 @@
   - **Rampa por pasos de % + duración entre pasos**, configurable por zona.
   - **Disparo por amanecer** (sol).
   - **Coordinación:** si la persiana **ya está abierta** (p.ej. free-cooling en verano), la rampa **no hace nada**; no pelea con el resto de lógica DS. Seguridad manda.
+  - **Implementado:** switch "Gradual sunrise" (opt-in), rampa `dawn_step_pct`/`dawn_step_min`→`dawn_target_pct` disparada por elevación del sol; rama `dawn_ramp` en la cascada (cede a override/lluvia/privacidad), floor creciente (no cierra), respeta ya-abierta.
 
 ## DC (clima)
 
@@ -420,7 +421,7 @@
 | **F16** | ☑ revisada | Aislamiento nocturno por modo del climate (heat=cerrar/aislar, cool=abrir/inercia); coordina con free-cooling; seguridad manda. |
 | **F17** | ☑ revisada | Alerta meteo genérica (binary_sensor que enchufa el usuario); posición protección + hold configurables; agnóstico de proveedor. |
 | **F18** | ❄️ congelada | Anti-helada persianas. Marginal (clima español + enrollables). |
-| **F19** | ☑ revisada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
+| **F19** | ✅ implementada | Amanecer gradual: opt-in por zona, rampa %/duración, disparo por sol; respeta si ya está abierta (free-cooling). |
 | **F20** | ☑ revisada | Ventana abierta: sensor real primero + inferencia por caída temp (coherente con demanda); recuperación por estabilización/timeout. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar si se abre. Advisory. |
 | **F21** | ☑ revisada | Programador semanal común DC+DV (fusiona F29): 4 tramos/día por día; DC fija base (biases encima); hook de presencia. |

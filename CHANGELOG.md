@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.8.1] — 2026-06-22
+
+### Added
+- **DS · Apertura gradual al amanecer (F19)**: switch *opt-in* por zona que, al
+  amanecer (cruce de elevación del sol), sube la persiana **por pasos**
+  (`dawn_step_pct` cada `dawn_step_min` hasta `dawn_target_pct`) en lugar de
+  abrirla de golpe. Cede a override/lluvia/privacidad, **solo abre** (no pelea con
+  free-cooling ni con el usuario) y respeta si ya estaba abierta. Configurable
+  (categoría *Amanecer gradual*).
+
+### Internal
+- Suite de 244 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.8.0] — 2026-06-22
 
 ### Added

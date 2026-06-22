@@ -88,6 +88,22 @@ def test_privacy_time():
     assert d.pos == 40 and d.reason == "privacy_time"
 
 
+def test_dawn_ramp_drives_position():
+    # F19: an active sunrise ramp sets the stepped opening.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(dawn_pos=30))
+    assert d.pos == 30 and d.reason == "dawn_ramp"
+
+
+def test_dawn_ramp_yields_to_safety_and_privacy():
+    # Override / rain / privacy outrank the dawn ramp.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(dawn_pos=30, override_mode="lock", override_pos=0))
+    assert d.reason == "ov_lock"
+    d = decide_cover(_cfg(privacy_pos_pct=40, slew_enabled=False), DsState(),
+                     DsInputs(dawn_pos=30, privacy_active=True))
+    assert d.reason == "privacy_time"
+
+
 def test_freecool_night_opens():
     d = decide_cover(_cfg(freecool_max_open_pct=60, freecool_delta=0.8,
                           slew_enabled=False), DsState(),

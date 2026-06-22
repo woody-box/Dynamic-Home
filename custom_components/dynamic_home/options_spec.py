@@ -62,6 +62,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "mold": ("Mold risk", "Riesgo de moho"),
     "window": ("Open-window detection", "Detección de ventana"),
     "adjacent": ("Adjacent space", "Espacio adyacente"),
+    "dawn": ("Gradual sunrise", "Amanecer gradual"),
 }
 
 
@@ -181,6 +182,13 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "geometry": [
             _v("window_height_cm", "Window height (cm)", "Altura ventana (cm)"),
             _v("overhang_cm", "Overhang (cm)", "Voladizo (cm)"),
+        ],
+        "dawn": [
+            _v("dawn_step_pct", "Sunrise step (%)", "Paso amanecer (%)"),
+            _v("dawn_step_min", "Sunrise step (min)", "Paso amanecer (min)"),
+            _v("dawn_target_pct", "Sunrise target (%)", "Objetivo amanecer (%)"),
+            _v("dawn_trigger_elevation", "Trigger elevation (°)",
+               "Elevación de disparo (°)"),
         ],
     },
     const.MODULE_CLIMATE: {
@@ -339,6 +347,7 @@ _ADVANCED: dict[str, set[str]] = {
     },
     const.MODULE_SHUTTER: {
         "wind_cap_span_kmh", "wind_cap_hyst_kmh",
+        "dawn_target_pct", "dawn_trigger_elevation",
     },
 }
 
