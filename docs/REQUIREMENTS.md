@@ -94,8 +94,8 @@ zonas → casa** para aplicar modo/perfil/avisos por ámbito.
 **Dependencias:** ninguna (base). **Habilita:** F01, F21, F23, F25(ámbito), F32.
 **Criterios de aceptación:**
 - ☑ Puedo crear zonas y grupos y asignar módulos desde la UI.
-- ☐ Un cambio de modo en una zona no afecta a otras. *(diferido a F01: el modo lo
-  aporta F01, que consumirá esta estructura)*
+- ☑ Un cambio de modo en una zona no afecta a otras. *(cubierto por F01: override de
+  modo por zona)*
 - ☑ La jerarquía se persiste y sobrevive a reinicios.
 
 ### 4.2 · Tipo de instalación (F26)
@@ -279,9 +279,10 @@ sesga todos los módulos a la vez, por ámbito (zona/grupo/casa).
 **Dependencias:** F24 (ámbito), bus, F32 (away/home/sleep automáticos).
 **Habilita:** F23 (Eco fija preset), F12/F16 (Sleep aplica caps).
 **Criterios de aceptación:**
-- ☐ Cambiar a `Sleep` baja la VMC al cap configurado por ruido (WAF).
-- ☐ `Away` del bus apaga/atenúa sin necesidad del toggle de DC.
-- ☐ El override manual temporizado prevalece sobre el horario; al expirar, vuelve al plan.
+- ☑ Cambiar a `Sleep` baja la VMC al cap configurado por ruido (WAF).
+- ☑ `Away` apaga/atenúa (DC en vacación) sin necesidad del toggle de DC.
+- ◐ El override manual prevalece (el preset manual/override local ya gana al modo);
+  la pieza de **horario** depende de **F21** (no implementado).
 
 ### 5.2 · Confort ↔ economía (F23)
 
@@ -1513,3 +1514,31 @@ a F01**, que consumirá esta estructura.
 
 **Nota:** F24 entrega solo la estructura + la API de resolución de ámbito; sin
 consumidores de modo todavía.
+
+### 12.23 · F01 — Modos de la casa
+
+Un **modo** (`Home/Away/Sleep/Boost/Eco`) que sesga todos los módulos por ámbito
+(**casa + override por zona**, vía F24). Alojado en la entrada de Zonas; el modo
+es **independiente de DC** y **sustituye** la vacación de DC en `Away`.
+
+- Capa de coordinación: la entrada de Zonas resuelve el **modo efectivo por
+  módulo** (override de zona ?? casa, `modes.effective_mode_for_entry` con
+  `zones.scope_for_module`) y lo **publica** en `hass.data[DOMAIN][DATA_MODE]`;
+  cada coordinator lee su modo (sin meter el modo como intent en el SDHB). Evento
+  `dynamic_home_mode_changed`. *(Un módulo futuro —F25— solo lee
+  `effective_from_published`, REQ-MOD-5.)*
+- Plataforma `select` en la entrada de Zonas: **Modo casa** + un **Modo por zona**
+  (`auto` hereda), restaurados.
+- Consumo: **DV** capa la velocidad del modo (`mode_cap`/`mode_boost` → ramas
+  `mode_cap`/`mode_boost` en `decide`, con excepción de seguridad por IAQ crítico);
+  **DC** `vacation = switch or is_away(modo)`. **DS** lee el modo sin efecto
+  todavía (extensible). Caps por modo configurables (paso `mode_caps`).
+
+**Aceptación:**
+
+- ☑ `Sleep` → la VMC de la zona baja a su cap (WAF), salvo aire crítico.
+- ☑ `Away` → DC en vacación sin su switch; override de zona resuelve por zona.
+- ◐ Jerarquía override>manual>modo (el local ya prevalece); **horario → F21**.
+
+**Diferido (anotado):** horario (F21) en la jerarquía; efecto de modo en DS;
+override por **grupo** (v0.11.0 solo zona); perfil completo por módulo+modo.

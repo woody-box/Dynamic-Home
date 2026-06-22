@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.11.0] — 2026-06-22
+
+### Added
+- **Modos de la casa (F01)**: un modo `Home/Away/Sleep/Boost/Eco` que sesga todos
+  los módulos a la vez, **por ámbito** (modo casa + **override por zona**, sobre la
+  jerarquía de F24). En la entrada de Zonas: un `select` "Modo casa" + un "Modo
+  <zona>" por zona (restaurados). La entrada resuelve el **modo efectivo por
+  módulo** y lo publica; **DV** capa su velocidad por modo (Sleep/Eco/Away,
+  configurable, con excepción de seguridad por aire crítico) y **Boost** fuerza V3;
+  **DC** entra en **vacación** en `Away` (sustituye/añade al switch, existe aunque
+  DC no esté). Evento `dynamic_home_mode_changed`; la capa de modo
+  (`effective_from_published`) queda lista para módulos futuros (F25).
+
+### Notes
+- Pendiente (anotado): pieza de **horario** de la jerarquía (es F21), efecto de
+  modo en DS y override por **grupo** (v0.11.0 cubre zona).
+
+### Internal
+- Suite de 277 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.10.0] — 2026-06-22
 
 ### Added

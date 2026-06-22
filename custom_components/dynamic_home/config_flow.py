@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const, options_spec, presets, zones
+from . import const, modes, options_spec, presets, zones
 
 
 def _entity(domain: str | list[str] | None = None,
@@ -300,7 +300,24 @@ class ZonesOptionsFlow(OptionsFlow):
             menu.insert(1, "zone_edit")
         if self._tree["groups"]:
             menu.append("group_edit")
+        menu.append("mode_caps")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_mode_caps(self, user_input=None):
+        """F01: per-mode VMC speed cap (0..3; for eco/sleep/away)."""
+        if user_input is not None:
+            caps = {k: int(v) for k, v in user_input.items()}
+            return self.async_create_entry(
+                title="", data={**self.entry.options, const.CONF_MODE_CAPS: caps})
+        cur = self.entry.options.get(const.CONF_MODE_CAPS) or {}
+        defaults = {**modes.DEFAULT_CAPS, **cur}
+        num = vol.All(vol.Coerce(int), vol.Range(min=0, max=3))
+        schema = vol.Schema({
+            vol.Required(m, default=defaults.get(m) if defaults.get(m) is not None
+                         else 3): num
+            for m in ("eco", "sleep", "away")
+        })
+        return self.async_show_form(step_id="mode_caps", data_schema=schema)
 
     async def async_step_zone_add(self, user_input=None):
         if user_input is not None:
