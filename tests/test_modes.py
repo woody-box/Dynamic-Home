@@ -160,3 +160,85 @@ async def test_sleep_caps_vmc_and_away_sets_dc_vacation(
     dc_co = hass.data[const.DOMAIN][dc.entry_id]
     assert dc_co.vacation_enabled is False
     assert modes.is_away(dc_co._mode()) is True
+
+
+# --- F23: comfort↔economy presets ---
+async def _setup_zone_with_dv_dc(hass: HomeAssistant):
+    """A zone holding one VMC + one DC, plus the zones entry. Returns the ids."""
+    from pytest_homeassistant_custom_component.common import async_mock_service
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    for e in ("switch.p", "switch.v2", "switch.v3"):
+        hass.states.async_set(e, "off")
+    hass.states.async_set("sensor.co2", "500")
+    hass.states.async_set("sensor.pm", "5")
+    hass.states.async_set("sensor.dc_temp", "21")
+
+    dv = MockConfigEntry(domain=const.DOMAIN, data=_VMC, options={}, title="VMC")
+    dv.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(dv.entry_id)
+    dc = MockConfigEntry(domain=const.DOMAIN, title="Salon", data={
+        const.CONF_NAME: "Salon", const.CONF_MODULE: const.MODULE_CLIMATE,
+        const.CONF_DC_T_INT: "sensor.dc_temp", const.CONF_DC_TARGET: "ds"})
+    dc.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(dc.entry_id)
+    await hass.async_block_till_done()
+
+    tree = zones.assign_modules(zones.add_zone({}, "Salon"), "salon",
+                                [dv.entry_id, dc.entry_id])
+    zentry = MockConfigEntry(
+        domain=const.DOMAIN, title="Zonas", unique_id="zones_singleton",
+        data={const.CONF_NAME: "Zonas", const.CONF_MODULE: const.MODULE_ZONES},
+        options={const.CONF_ZONES_TREE: tree})
+    zentry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(zentry.entry_id)
+    await hass.async_block_till_done()
+    return dv, dc, zentry
+
+
+async def _select(hass, entry, uid_suffix, option):
+    from homeassistant.helpers import entity_registry as er
+    eid = er.async_get(hass).async_get_entity_id(
+        "select", const.DOMAIN, f"{entry.entry_id}_{uid_suffix}")
+    assert eid is not None
+    await hass.services.async_call(
+        "select", "select_option", {"entity_id": eid, "option": option},
+        blocking=True)
+    await hass.async_block_till_done()
+
+
+async def test_comfort_global_shifts_dc_and_dv(hass: HomeAssistant) -> None:
+    from dc_engine import DcConfig
+    from dv_engine import DvConfig
+    dv, dc, zentry = await _setup_zone_with_dv_dc(hass)
+    dv_co = hass.data[const.DOMAIN][dv.entry_id]
+    dc_co = hass.data[const.DOMAIN][dc.entry_id]
+
+    # Default (balanced) -> config untouched.
+    assert dc_co._cfg().base_heat_day == DcConfig().base_heat_day
+    assert dv_co._cfg().co2_v2 == DvConfig().co2_v2
+
+    # Eco -> wider DC band + higher DV thresholds (less ventilation).
+    await _select(hass, zentry, "comfort", "eco")
+    assert dc_co._cfg().base_heat_day < DcConfig().base_heat_day
+    assert dc_co._cfg().base_cool_day > DcConfig().base_cool_day
+    assert dv_co._cfg().co2_v2 > DvConfig().co2_v2
+
+    # Back to balanced restores the defaults.
+    await _select(hass, zentry, "comfort", "balanced")
+    assert dc_co._cfg().base_heat_day == DcConfig().base_heat_day
+
+
+async def test_comfort_zone_override_and_eco_mode_link(hass: HomeAssistant) -> None:
+    from dc_engine import DcConfig
+    dv, dc, zentry = await _setup_zone_with_dv_dc(hass)
+    dc_co = hass.data[const.DOMAIN][dc.entry_id]
+
+    # Per-zone override: Comfort tightens the band even with global balanced.
+    await _select(hass, zentry, "comfort_salon", "comfort")
+    assert dc_co._cfg().base_heat_day > DcConfig().base_heat_day
+
+    # F01 link: with the dials neutral, the Eco house mode pulls the eco preset.
+    await _select(hass, zentry, "comfort_salon", "auto")
+    await _select(hass, zentry, "house_mode", "eco")
+    assert dc_co._cfg().base_heat_day < DcConfig().base_heat_day

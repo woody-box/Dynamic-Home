@@ -14,7 +14,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from . import const, modes
+from . import comfort, const, modes
 from .coordinator_zones import ZonesCoordinator
 
 
@@ -23,9 +23,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if entry.data.get(const.CONF_MODULE) != const.MODULE_ZONES:
         return
     coordinator: ZonesCoordinator = hass.data[const.DOMAIN][entry.entry_id]
-    ents: list[SelectEntity] = [HouseModeSelect(coordinator, entry)]
+    ents: list[SelectEntity] = [HouseModeSelect(coordinator, entry),
+                                GlobalComfortSelect(coordinator, entry)]
     for zid, z in coordinator.tree["zones"].items():
         ents.append(ZoneModeSelect(coordinator, entry, zid, z["name"]))
+        ents.append(ZoneComfortSelect(coordinator, entry, zid, z["name"]))
     async_add_entities(ents)
 
 
@@ -92,5 +94,72 @@ class ZoneModeSelect(RestoreEntity, SelectEntity):
 
     async def async_select_option(self, option: str) -> None:
         self._co.zone_modes[self._zid] = option
+        self.async_write_ha_state()
+        self._co.publish_modes()
+
+
+class GlobalComfortSelect(RestoreEntity, SelectEntity):
+    """The house-wide comfort↔economy preset (F23)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Confort casa"
+    _attr_icon = "mdi:scale-balance"
+    _attr_translation_key = "comfort"
+    _attr_options = comfort.LEVELS
+
+    def __init__(self, coordinator: ZonesCoordinator, entry: ConfigEntry) -> None:
+        self._co = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_comfort"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last and last.state in comfort.LEVELS:
+            self._co.comfort_global = last.state
+        self._co.publish_modes(notify=False)
+
+    @property
+    def current_option(self) -> str:
+        return self._co.comfort_global
+
+    async def async_select_option(self, option: str) -> None:
+        self._co.comfort_global = option
+        self.async_write_ha_state()
+        self._co.publish_modes()
+
+
+class ZoneComfortSelect(RestoreEntity, SelectEntity):
+    """Per-zone comfort override (``auto`` inherits the house preset)."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:scale-balance"
+    _attr_translation_key = "zone_comfort"
+    _attr_options = [comfort.AUTO, *comfort.LEVELS]
+
+    def __init__(self, coordinator: ZonesCoordinator, entry: ConfigEntry,
+                 zid: str, name: str) -> None:
+        self._co = coordinator
+        self._zid = zid
+        self._attr_name = f"Confort {name}"
+        self._attr_unique_id = f"{entry.entry_id}_comfort_{zid}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        state = last.state if last else comfort.AUTO
+        self._co.zone_comfort[self._zid] = (
+            state if state in self._attr_options else comfort.AUTO)
+        self._co.publish_modes(notify=False)
+
+    @property
+    def current_option(self) -> str:
+        return self._co.zone_comfort.get(self._zid, comfort.AUTO)
+
+    async def async_select_option(self, option: str) -> None:
+        self._co.zone_comfort[self._zid] = option
         self.async_write_ha_state()
         self._co.publish_modes()

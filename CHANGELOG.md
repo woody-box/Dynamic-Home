@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.14.0] — 2026-06-22
+
+### Added
+- **Confort↔Economía (F23)**: nuevo **mando por presets** `Eco / Equilibrado /
+  Confort` que escala de forma **coherente** la agresividad del sistema en clima y
+  ventilación a la vez — bandas/consignas, atenuación nocturna, agresividad del lead
+  y umbrales de ventilación. **Global con override por zona**, exactamente como el
+  modo de la casa (F01): dos `select` en la entrada de Zonas ("Confort casa" +
+  "Confort {zona}", con `auto` heredando). Los presets son **deltas integrados
+  predecibles** (no editables): `Eco` ensancha la banda, atenúa más de noche, suaviza
+  el lead y ventila menos; `Confort` al revés; `Equilibrado` no toca nada. **Ligado a
+  F01**: con el mando en `Equilibrado`, el modo `Eco` de la casa aplica el preset
+  económico (una elección explícita del mando siempre manda). Helper puro
+  `comfort.py`.
+
+### Internal
+- Nuevo módulo puro `comfort.py` (resolución por ámbito + deltas DC/DV) con tests
+  dedicados; reutiliza la maquinaria de F01 (`coordinator_zones.publish_modes`,
+  `select.py`, `zones.scope_for_module`).
+- Suite de 334 tests; `ruff` + `hassfest` + HACS en verde.
+
 ## [0.13.0] — 2026-06-22
 
 ### Added

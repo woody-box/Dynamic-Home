@@ -14,7 +14,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
-from . import const, events, modes, zones
+from . import comfort, const, events, modes, zones
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,6 +29,9 @@ class ZonesCoordinator(DataUpdateCoordinator):
         # F01: house mode + per-zone overrides (set/restored by the select entities).
         self.house_mode = "home"
         self.zone_modes: dict[str, str] = {}
+        # F23: comfort↔economy preset (global + per-zone overrides), same selects.
+        self.comfort_global = "balanced"
+        self.zone_comfort: dict[str, str] = {}
 
     @property
     def tree(self) -> dict:
@@ -45,12 +48,19 @@ class ZonesCoordinator(DataUpdateCoordinator):
         return modes.effective_mode_for_entry(
             self.tree, self.house_mode, self.zone_modes, entry_id)
 
+    def effective_comfort_for(self, entry_id: str) -> str:
+        """The comfort level in force for a module entry (F23)."""
+        return comfort.effective_level_for_entry(
+            self.tree, self.comfort_global, self.zone_comfort, entry_id)
+
     def publish_modes(self, notify: bool = True) -> None:
-        """Publish the resolved modes for consumers, and nudge the modules."""
+        """Publish the resolved modes + comfort for consumers, and nudge modules."""
         data = self.hass.data.setdefault(const.DOMAIN, {})
         data[const.DATA_MODE] = {"house": self.house_mode,
                                  "zones": dict(self.zone_modes),
-                                 "caps": self.mode_caps, "tree": self.tree}
+                                 "caps": self.mode_caps, "tree": self.tree,
+                                 "comfort": self.comfort_global,
+                                 "zone_comfort": dict(self.zone_comfort)}
         events.fire_mode_changed(self.hass, self.entry, self.house_mode,
                                  self.zone_modes)
         if notify:                          # re-evaluate every module right away
