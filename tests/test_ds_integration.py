@@ -41,6 +41,46 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+# --- F19: gradual sunrise ramp (driven with injected sun/time) ---
+async def test_dawn_ramp_triggers_and_climbs(hass: HomeAssistant) -> None:
+    _seed(hass, position=0)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.dawn_enabled = True
+    cfg = co._cfg()  # defaults: step 10% every 5 min, target 100, trigger 0°
+
+    t = 1000.0
+    # Sun still below horizon -> no ramp, just primes prev elevation.
+    assert co._dawn_step(cfg, -1.0, 0, t) is None
+    # Sun crosses the trigger upward -> ramp starts, first step immediately.
+    assert co._dawn_step(cfg, 1.0, 0, t + 60) == 10
+    # Climbs by a step every dawn_step_min.
+    assert co._dawn_step(cfg, 2.0, 10, t + 60 + cfg.dawn_step_min * 60) == 20
+    # Near the top it completes and hands back to the cascade (None).
+    assert co._dawn_step(cfg, 5.0, 90, t + 60 + 60 * cfg.dawn_step_min * 60) is None
+
+
+async def test_dawn_ramp_skips_when_already_open(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.dawn_enabled = True
+    cfg = co._cfg()
+    co._dawn_step(cfg, -1.0, 100, 1000.0)                  # prime prev elevation
+    # Crosses sunrise but the shutter is already fully open -> no ramp.
+    assert co._dawn_step(cfg, 1.0, 100, 1060.0) is None
+    assert co._dawn_active is False
+
+
+async def test_dawn_ramp_disabled_by_default(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    co._dawn_step(cfg, -1.0, 0, 1000.0)
+    assert co._dawn_step(cfg, 1.0, 0, 1060.0) is None      # opt-in, off by default
+
+
 async def test_shutter_config_flow(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": "user"})

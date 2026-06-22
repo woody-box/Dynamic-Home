@@ -39,6 +39,14 @@ class DsConfig:
     slew_enabled: bool = True
     slew_step_pct: int = 10
 
+    # Gradual sunrise (F19): opt-in per zone. At dawn, raise the shutter in
+    # steps instead of snapping open. The coordinator owns the ramp state and
+    # passes the stepped position in via DsInputs.dawn_pos.
+    dawn_step_pct: int = 10              # % opened per step
+    dawn_step_min: float = 5.0          # minutes between steps
+    dawn_target_pct: int = 100          # opening the ramp climbs to
+    dawn_trigger_elevation: float = 0.0  # sun elevation that starts the ramp
+
     # Facade geometry (solar impact model)
     facade_azimuth_deg: float = 180.0   # window orientation
     facade_span_deg: float = 180.0      # angular acceptance
@@ -77,6 +85,9 @@ class DsInputs:
 
     # Current physical position (for slew + quiet freeze)
     current_pos: int | None = None
+
+    # Gradual sunrise (F19): stepped target while the ramp is active, else None.
+    dawn_pos: int | None = None
 
     # SDHB bus consumption
     sdhb_allow_override: bool = False
@@ -182,6 +193,11 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # 3) Privacy by time
     elif ins.privacy_active:
         pos, reason = cfg.privacy_pos_pct, "privacy_time"
+    # 4) Gradual sunrise ramp (F19): drives the morning opening in steps. Yields
+    # to override/rain/privacy above; the coordinator only sets dawn_pos when the
+    # ramp is active and never below the current position (it only ever opens).
+    elif ins.dawn_pos is not None:
+        pos, reason = ins.dawn_pos, "dawn_ramp"
     else:
         is_cool = ins.hvac_mode == "cool"
         is_heat = ins.hvac_mode == "heat"

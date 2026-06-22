@@ -51,6 +51,10 @@ _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
         "lock", "Lock", "mdi:lock",
         lambda c: c.lock_enabled,
         lambda c, v: setattr(c, "lock_enabled", v)),
+    _ToggleDesc(
+        "dawn", "Gradual sunrise", "mdi:weather-sunset-up",
+        lambda c: c.dawn_enabled,
+        lambda c, v: setattr(c, "dawn_enabled", v)),
     _OBSERVE,
 )
 

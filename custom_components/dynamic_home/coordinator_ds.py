@@ -48,6 +48,12 @@ class DsCoordinator(DataUpdateCoordinator):
         self.privacy_pct = 40
         self.lock_enabled = False
         self.lock_pct = 50
+        # Gradual sunrise (F19): opt-in ramp state.
+        self.dawn_enabled = False
+        self._dawn_active = False
+        self._dawn_start_ts: float | None = None
+        self._dawn_start_pos = 0
+        self._prev_sun_el: float | None = None
         # Bus-conflict observability.
         self.bus_explain: dict = self.hub.explain(self.bus_listen_targets())
         self._prev_winner: str | None = None
@@ -127,6 +133,41 @@ class DsCoordinator(DataUpdateCoordinator):
         pos = st.attributes.get("current_position")
         return int(pos) if pos is not None else None
 
+    def _dawn_step(self, cfg: DsConfig, sun_el: float | None,
+                   current_pos: int | None, now_ts: float) -> int | None:
+        """Gradual sunrise (F19): stepped opening target, or None when inactive.
+
+        Starts when the sun crosses ``dawn_trigger_elevation`` upward and the
+        shutter isn't already (near) open; then climbs ``dawn_step_pct`` every
+        ``dawn_step_min`` up to ``dawn_target_pct``. Only ever raises the
+        position (never closes), so it doesn't fight free-cooling or the user.
+        """
+        prev = self._prev_sun_el
+        self._prev_sun_el = sun_el
+        if not self.dawn_enabled or sun_el is None:
+            self._dawn_active = False
+            return None
+        trig = cfg.dawn_trigger_elevation
+        if (prev is not None and prev <= trig < sun_el and not self._dawn_active):
+            start = current_pos if current_pos is not None else 0
+            if start < cfg.dawn_target_pct:               # skip if already open
+                self._dawn_active = True
+                self._dawn_start_ts = now_ts
+                self._dawn_start_pos = start
+        if not self._dawn_active:
+            return None
+        if current_pos is not None and current_pos >= cfg.dawn_target_pct:
+            self._dawn_active = False                       # opened by other means
+            return None
+        steps = int((now_ts - self._dawn_start_ts) / (cfg.dawn_step_min * 60.0)) + 1
+        target = self._dawn_start_pos + steps * cfg.dawn_step_pct
+        if target >= cfg.dawn_target_pct:                  # ramp complete
+            self._dawn_active = False
+            return None
+        if current_pos is not None:                        # rising floor only
+            target = max(target, current_pos)
+        return int(target)
+
     def _sun(self) -> tuple[float | None, float | None, bool]:
         st = self.hass.states.get("sun.sun")
         if st is None:
@@ -143,6 +184,8 @@ class DsCoordinator(DataUpdateCoordinator):
         self._refresh_bus_explain(now_ts)
         winner = self.bus_explain["winner"]
         sun_az, sun_el, sun_above = self._sun()
+        current_pos = self._current_pos()
+        dawn_pos = self._dawn_step(cfg, sun_el, current_pos, now_ts)
 
         ins = DsInputs(
             hvac_mode=self._hvac_mode(),
@@ -152,7 +195,8 @@ class DsCoordinator(DataUpdateCoordinator):
                                          self._hw(const.CONF_RAIN)),
             raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
-            current_pos=self._current_pos(),
+            current_pos=current_pos,
+            dawn_pos=dawn_pos,
             privacy_active=self.privacy_enabled,
             override_mode="lock" if self.lock_enabled else "none",
             override_pos=int(self.lock_pct),

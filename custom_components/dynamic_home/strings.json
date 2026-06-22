@@ -110,7 +110,8 @@
           "cat_mold": "Mold risk",
           "cat_window": "Open-window detection",
           "cat_adjacent": "Adjacent space",
-          "mirrors": "Hardware mirrors"
+          "mirrors": "Hardware mirrors",
+          "cat_dawn": "Gradual sunrise"
         }
       },
       "cat_iaq": {
@@ -621,6 +622,21 @@
         },
         "data_description": {
           "expose_mirrors": "Create a stable mirror sensor for each configured input (temperature, humidity, CO₂, …) so dashboards keep working when you replace a physical sensor — only the entry needs reconfiguring. Off by default."
+        }
+      },
+      "cat_dawn": {
+        "title": "Gradual sunrise",
+        "data": {
+          "dawn_step_pct": "Sunrise step (%)",
+          "dawn_step_min": "Sunrise step (min)",
+          "dawn_target_pct": "Sunrise target (%)",
+          "dawn_trigger_elevation": "Trigger elevation (°)"
+        },
+        "data_description": {
+          "dawn_step_pct": "How much the shutter opens at each step.",
+          "dawn_step_min": "Minutes between steps.",
+          "dawn_target_pct": "Opening the ramp climbs to.",
+          "dawn_trigger_elevation": "Sun elevation (degrees) that starts the ramp at dawn."
         }
       }
     },
