@@ -28,7 +28,10 @@
           "hrv_supply": "HRV supply temp (optional)",
           "hrv_intake": "HRV fresh-air intake temp (optional)",
           "hrv_extract": "HRV extract (stale air) temp (optional)",
-          "voc": "VOC sensor (optional)"
+          "voc": "VOC sensor (optional)",
+          "hood_v1": "Hood relay V1 (switch)",
+          "hood_v2": "Hood relay V2 (switch)",
+          "hood_v3": "Hood relay V3 (switch)"
         }
       },
       "shutter": {
@@ -116,7 +119,8 @@
           "mirrors": "Hardware mirrors",
           "cat_dawn": "Gradual sunrise",
           "cat_night": "Night insulation",
-          "cat_alert": "Weather alerts"
+          "cat_alert": "Weather alerts",
+          "cat_hood": "Extractor hood"
         }
       },
       "cat_iaq": {
@@ -668,6 +672,21 @@
           "alert_hail_pct": "Protection position for a hail/storm alert (fully closed protects best).",
           "alert_wind_pct": "Protection position for a wind alert (a mid position can protect the slats).",
           "alert_hold_min": "Minutes the protection is held after the alert clears."
+        }
+      },
+      "cat_hood": {
+        "title": "Extractor hood",
+        "data": {
+          "hood_pm_v1": "PM2.5 → V1 (µg/m³)",
+          "hood_pm_v2": "PM2.5 → V2 (µg/m³)",
+          "hood_pm_v3": "PM2.5 → V3 (µg/m³)",
+          "hood_hys": "PM2.5 hysteresis (µg/m³)"
+        },
+        "data_description": {
+          "hood_pm_v1": "Indoor PM2.5 at/above which the hood runs at V1.",
+          "hood_pm_v2": "Indoor PM2.5 at/above which the hood runs at V2.",
+          "hood_pm_v3": "Indoor PM2.5 at/above which the hood runs at V3.",
+          "hood_hys": "Margin the PM must fall below before the hood steps down a level."
         }
       }
     },

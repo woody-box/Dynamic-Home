@@ -18,6 +18,7 @@ from dv_engine import (  # noqa: E402
     base_target,
     compute_freecool,
     decide,
+    hood_speed,
     hrv_efficiency,
     hrv_state,
     in_quiet_window,
@@ -35,6 +36,25 @@ def _cfg(**kw):
     for k, v in kw.items():
         setattr(c, k, v)
     return c
+
+
+# --- F35: extractor hood speed from indoor PM (thresholds + hysteresis) ---
+def test_hood_speed_thresholds():
+    cfg = _cfg(hood_pm_v1=35, hood_pm_v2=55, hood_pm_v3=90, hood_hys=10)
+    assert hood_speed(10, 0, cfg) == 0
+    assert hood_speed(40, 0, cfg) == 1
+    assert hood_speed(60, 0, cfg) == 2
+    assert hood_speed(120, 0, cfg) == 3
+
+
+def test_hood_speed_hysteresis_holds_then_drops():
+    cfg = _cfg(hood_pm_v1=35, hood_pm_v2=55, hood_pm_v3=90, hood_hys=10)
+    # At V2, a small dip stays within the band (55-10=45) -> hold V2.
+    assert hood_speed(48, 2, cfg) == 2
+    # Below the band -> step down (to V1 since 40 >= 35).
+    assert hood_speed(40, 2, cfg) == 1
+    # PM unavailable -> hold the previous level.
+    assert hood_speed(None, 3, cfg) == 3
 
 
 def _bt(co2, pm, v_actual, cfg=None, co2_hys=100, pm_hys=5):
