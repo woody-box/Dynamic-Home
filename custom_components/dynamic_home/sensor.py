@@ -11,6 +11,7 @@ from dataclasses import dataclass
 
 from homeassistant.components.sensor import (
     RestoreSensor,
+    SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
@@ -64,6 +65,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         ents += [DcLearnSensor(coordinator, entry, d) for d in _DC_LEARN]
         if coordinator.has_mold():
             ents.append(MoldIndexSensor(coordinator, entry))
+        if coordinator.has_adjacent():
+            ents.append(AdjacentAdviceSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
         async_add_entities(ents)
         return
@@ -438,6 +441,27 @@ class MoldIndexSensor(_Base, RestoreSensor):
     @property
     def extra_state_attributes(self) -> dict:
         return {"active": self.coordinator._mold_active}
+
+
+class AdjacentAdviceSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
+    """Adjacent warm-space advisory (F31): open_gain / close_alarm / none."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Aviso espacio adyacente"
+    _attr_icon = "mdi:door-sliding"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["none", "open_gain", "close_alarm"]
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_adjacent_advice"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.adjacent_advice
 
 
 class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):

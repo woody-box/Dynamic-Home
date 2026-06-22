@@ -62,7 +62,9 @@
           "dc_valve": "Real valve/relay or power (optional)",
           "dc_demand_heat": "Heat-demand helper (optional)",
           "dc_demand_cool": "Cool-demand helper (optional)",
-          "dc_dehumidifier": "Dehumidifier (optional)"
+          "dc_dehumidifier": "Dehumidifier (optional)",
+          "dc_adj_temp": "Adjacent space temperature (optional)",
+          "dc_adj_door": "Door to adjacent space (optional)"
         }
       }
     },
@@ -106,7 +108,8 @@
           "cat_recuperator": "Heat recovery",
           "cat_demand": "Real demand signal",
           "cat_mold": "Mold risk",
-          "cat_window": "Open-window detection"
+          "cat_window": "Open-window detection",
+          "cat_adjacent": "Adjacent space"
         }
       },
       "cat_iaq": {
@@ -597,6 +600,17 @@
           "window_confirm_min": "Minutes the anomaly must persist before the zone is switched off.",
           "window_release_min": "Minutes of stable temperature before normal control resumes.",
           "window_max_lockout_min": "Safety timeout that resumes control even if the temperature has not stabilised."
+        }
+      },
+      "cat_adjacent": {
+        "title": "Adjacent space",
+        "data": {
+          "adj_open_dt": "Open ΔT (°C)",
+          "adj_alarm_dt": "Alarm ΔT (°C)"
+        },
+        "data_description": {
+          "adj_open_dt": "In heat, advise opening the door when the adjacent space is at least this much warmer than indoors (free solar gain).",
+          "adj_alarm_dt": "In cool, warn when the door is open and the adjacent space is at least this much warmer than indoors."
         }
       }
     },

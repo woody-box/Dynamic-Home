@@ -62,7 +62,9 @@
           "dc_valve": "Válvula/relé real o potencia (opcional)",
           "dc_demand_heat": "Helper de demanda de calor (opcional)",
           "dc_demand_cool": "Helper de demanda de frío (opcional)",
-          "dc_dehumidifier": "Deshumidificador (opcional)"
+          "dc_dehumidifier": "Deshumidificador (opcional)",
+          "dc_adj_temp": "Temperatura del espacio adyacente (opcional)",
+          "dc_adj_door": "Puerta al espacio adyacente (opcional)"
         }
       }
     },
@@ -106,7 +108,8 @@
           "cat_recuperator": "Recuperador",
           "cat_demand": "Señal de demanda real",
           "cat_mold": "Riesgo de moho",
-          "cat_window": "Detección de ventana"
+          "cat_window": "Detección de ventana",
+          "cat_adjacent": "Espacio adyacente"
         }
       },
       "cat_iaq": {
@@ -597,6 +600,17 @@
           "window_confirm_min": "Minutos que la anomalía debe persistir antes de apagar la zona.",
           "window_release_min": "Minutos con temperatura estable antes de reanudar el control normal.",
           "window_max_lockout_min": "Tiempo de seguridad que reanuda el control aunque la temperatura no se haya estabilizado."
+        }
+      },
+      "cat_adjacent": {
+        "title": "Espacio adyacente",
+        "data": {
+          "adj_open_dt": "ΔT abrir (°C)",
+          "adj_alarm_dt": "ΔT alarma (°C)"
+        },
+        "data_description": {
+          "adj_open_dt": "En calefacción, avisa para abrir la puerta cuando el espacio adyacente está al menos esto más caliente que el interior (ganancia solar gratuita).",
+          "adj_alarm_dt": "En refrigeración, avisa cuando la puerta está abierta y el espacio adyacente está al menos esto más caliente que el interior."
         }
       }
     },

@@ -12,6 +12,7 @@ from dc_engine import (  # noqa: E402
     DcConfig,
     DcInputs,
     adaptive_lead_target,
+    adjacent_advice,
     assemble_target,
     base_active,
     bias_exterior,
@@ -88,6 +89,29 @@ def test_window_anomaly_needs_active_demand_and_mode():
     cfg = _cfg(window_drop_cph=2.5)
     assert window_anomaly("heat", False, -5.0, cfg) is False   # valve closed
     assert window_anomaly("off", True, -5.0, cfg) is False
+
+
+# --- F31: adjacent warm-space advisory ---
+def test_adjacent_heat_advises_open_when_warmer():
+    cfg = _cfg(adj_open_dt=6.0)
+    assert adjacent_advice("heat", 20.0, 50.0, None, cfg) == "open_gain"
+    assert adjacent_advice("heat", 20.0, 24.0, None, cfg) == "none"  # below ΔT
+    # Already open -> nothing to advise.
+    assert adjacent_advice("heat", 20.0, 50.0, True, cfg) == "none"
+
+
+def test_adjacent_cool_alarms_only_when_door_open():
+    cfg = _cfg(adj_alarm_dt=4.0)
+    assert adjacent_advice("cool", 26.0, 50.0, True, cfg) == "close_alarm"
+    assert adjacent_advice("cool", 26.0, 50.0, False, cfg) == "none"
+    assert adjacent_advice("cool", 26.0, 50.0, None, cfg) == "none"  # no door sensor
+
+
+def test_adjacent_none_when_off_or_missing():
+    cfg = _cfg()
+    assert adjacent_advice("off", 20.0, 50.0, None, cfg) == "none"
+    assert adjacent_advice("heat", None, 50.0, None, cfg) == "none"
+    assert adjacent_advice("heat", 20.0, None, None, cfg) == "none"
 
 
 def test_decide_window_inferred_turns_off():

@@ -132,6 +132,12 @@ class DcConfig:
     mold_off_h: float = 6.0           # index (h) that disarms it (hysteresis)
     mold_cap_h: float = 48.0          # clamp the index here
 
+    # Adjacent warm space / terrace (F31): advisory ΔT thresholds (adjacent minus
+    # indoor, °C). open_dt: in heat, advise opening the door for free gain;
+    # alarm_dt: in cool, warn if the door is open and the adjacent space is hot.
+    adj_open_dt: float = 6.0
+    adj_alarm_dt: float = 4.0
+
     # Facade solar-gain bias: max °C correction at full openness on sunlit facades.
     facade_gain_heat: float = 0.3
     facade_gain_cool: float = 0.3
@@ -253,6 +259,25 @@ def window_anomaly(hvac: str, valve_open: bool, trend_cph: float,
     if hvac == "heat":
         return trend_cph <= -cfg.window_drop_cph
     return trend_cph >= cfg.window_drop_cph
+
+
+def adjacent_advice(hvac: str, t_int: float | None, t_adj: float | None,
+                    door_open: bool | None, cfg: DcConfig) -> str:
+    """Advisory for an adjacent warm space / terrace (F31).
+
+    Returns ``"open_gain"`` (heat: adjacent much warmer and the door is closed →
+    open it for free solar gain), ``"close_alarm"`` (cool: adjacent much warmer
+    *and* the door is open → that heat is leaking in) or ``"none"``. Advisory
+    only — it never actuates the door. ``door_open`` None means no door sensor.
+    """
+    if t_int is None or t_adj is None or hvac not in ("heat", "cool"):
+        return "none"
+    dt = t_adj - t_int
+    if hvac == "heat" and dt >= cfg.adj_open_dt and not door_open:
+        return "open_gain"
+    if hvac == "cool" and dt >= cfg.adj_alarm_dt and door_open:
+        return "close_alarm"
+    return "none"
 
 
 def dew_point(t_c: float | None, rh: float | None) -> float | None:

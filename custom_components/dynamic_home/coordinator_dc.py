@@ -24,6 +24,7 @@ from .dc_engine import (
     DcDecision,
     DcInputs,
     adaptive_lead_target,
+    adjacent_advice,
     dew_point,
     dew_risk,
     ema,
@@ -89,6 +90,8 @@ class DcCoordinator(DataUpdateCoordinator):
         self._mold_active = False
         self._mold_issue_id = f"mold_{entry.entry_id}"
         self._mold_source = f"dc_{entry.entry_id}__mold_dry"
+        # Adjacent warm-space advisory (F31).
+        self.adjacent_advice = "none"
         # Open-window inference (F20): latch + debounce/recovery timers.
         self._window_inferred = False
         self._window_anom_since: float | None = None
@@ -354,6 +357,23 @@ class DcCoordinator(DataUpdateCoordinator):
             self.hub.clear(self._mold_source)
             self._drive_dehumidifier(False)
 
+    # --- adjacent warm-space advisory (F31) ---
+    def has_adjacent(self) -> bool:
+        """Whether the adjacent-space advisory applies (needs its temp sensor)."""
+        return bool(self._hw(const.CONF_DC_ADJ_TEMP))
+
+    def _adjacent_step(self, cfg: DcConfig, t_int: float | None) -> None:
+        """Evaluate the advisory and fire an event on each transition."""
+        t_adj = self._num(const.CONF_DC_ADJ_TEMP)
+        door = (self._is_on(const.CONF_DC_ADJ_DOOR)
+                if self._hw(const.CONF_DC_ADJ_DOOR) else None)
+        advice = adjacent_advice(self.hvac_mode, t_int, t_adj, door, cfg)
+        if advice != self.adjacent_advice:
+            self.adjacent_advice = advice
+            dt = (t_adj - t_int) if (t_adj is not None and t_int is not None) else 0.0
+            events.fire_adjacent(self.hass, self.entry, const.MODULE_CLIMATE,
+                                 advice, dt)
+
     # --- open-window inference (F20) ---
     def has_window_infer(self) -> bool:
         """Whether temperature-based window inference applies (no window sensor)."""
@@ -565,6 +585,10 @@ class DcCoordinator(DataUpdateCoordinator):
         # Mold-risk index (F22): integrate, alert and drive drying when armed.
         if self.has_mold():
             self._mold_step(cfg, rh, now_ts)
+
+        # Adjacent warm-space advisory (F31): event-only, no actuation.
+        if self.has_adjacent():
+            self._adjacent_step(cfg, t_int)
 
         # Open-window inference (F20): only when no window sensor is configured.
         trend = self._update_trend(cfg, t_int, now_ts)

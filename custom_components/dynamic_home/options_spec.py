@@ -61,6 +61,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "demand": ("Real demand signal", "Señal de demanda real"),
     "mold": ("Mold risk", "Riesgo de moho"),
     "window": ("Open-window detection", "Detección de ventana"),
+    "adjacent": ("Adjacent space", "Espacio adyacente"),
 }
 
 
@@ -282,6 +283,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("window_confirm_min", "Confirm (min)", "Confirmación (min)"),
             _v("window_release_min", "Recovery (min)", "Recuperación (min)"),
             _v("window_max_lockout_min", "Max lockout (min)", "Bloqueo máx. (min)"),
+        ],
+        "adjacent": [
+            _v("adj_open_dt", "Open ΔT (°C)", "ΔT abrir (°C)"),
+            _v("adj_alarm_dt", "Alarm ΔT (°C)", "ΔT alarma (°C)"),
         ],
     },
 }

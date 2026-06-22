@@ -493,8 +493,8 @@ galería) comunicado por una puerta, para **avisar/aprovechar** (advisory).
 
 **Dependencias:** DC, F24, F33 (orientación/sol opcional).
 **Criterios de aceptación:**
-- ☐ En `heat` con terraza al sol muy por encima del salón, llega un aviso para abrir.
-- ☐ En `cool`, abrir la puerta con la terraza caliente dispara la alarma configurada.
+- ☑ En `heat` con terraza al sol muy por encima del salón, llega un aviso para abrir.
+- ☑ En `cool`, abrir la puerta con la terraza caliente dispara la alarma configurada.
 
 ---
 
@@ -1286,3 +1286,28 @@ Con sensor (`CONF_DC_WINDOW`) el comportamiento previo se mantiene
 **Notas:** decisión usuario = solo sin sensor; con sensor, sin inferencia. La
 lógica de latch se testea inyectando `now_ts`/`trend_cph` en `_infer_window`
 (el derivado real usa reloj de pared).
+
+### 12.15 · F31 — Espacio adyacente / terraza (DC)
+
+Advisory por entrada DC, **sin actuar la puerta**. Requiere sensor de Tª del
+adyacente (`CONF_DC_ADJ_TEMP`); puerta opcional (`CONF_DC_ADJ_DOOR`).
+
+- Señal pura `adjacent_advice(hvac, t_int, t_adj, door_open, cfg)` →
+  `"open_gain"` / `"close_alarm"` / `"none"`:
+  - **heat**: `t_adj − t_int ≥ adj_open_dt` y puerta cerrada (o sin sensor) →
+    `open_gain` (avisar para abrir y aprovechar ganancia solar gratuita).
+  - **cool**: `t_adj − t_int ≥ adj_alarm_dt` y **puerta abierta** → `close_alarm`
+    (entra calor mientras enfrías). Sin sensor de puerta no hay alarma.
+- Coordinator `_adjacent_step`: evalúa cada ciclo y emite evento
+  `dynamic_home_adjacent` en cada transición; expone `AdjacentAdviceSensor`
+  (enum diagnóstico) solo si `has_adjacent()`.
+- Opciones: categoría `adjacent` (`adj_open_dt`, `adj_alarm_dt`), por zona.
+
+**Aceptación:**
+
+- ☐ heat + adyacente muy por encima + puerta cerrada → `open_gain` + evento.
+- ☐ cool + adyacente caliente + puerta abierta → `close_alarm` + evento.
+- ☐ Sin `CONF_DC_ADJ_TEMP` no se expone el sensor de aviso.
+
+**Diferido (REQ-ADY-4, S):** sesgar decisiones vía bus además del aviso; el primer
+corte es solo advisory (evento + sensor).

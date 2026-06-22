@@ -327,6 +327,17 @@
   - **En `cool`:** si el adyacente está mucho más caliente (interior 26 °C, terraza 50 °C) → **avisar/alarma si se abre la puerta** (no meter ese calor mientras enfrías).
   - Por defecto **advisory** (notificación/evento); actuación automática no aplica (no se puede abrir/cerrar una puerta), aunque podría sesgar decisiones vía bus.
   - Umbrales de ΔT configurables; por zona.
+  - **Implementado:** advisory (evento `dynamic_home_adjacent` + sensor enum `open_gain`/`close_alarm`); heat→abrir (puerta cerrada), cool→alarma (puerta abierta). Umbrales ΔT por entrada DC. Sesgo por bus (REQ-ADY-4) diferido.
+
+### F36 · Espejos de hardware para dashboards (HAL de salida)
+- **Estado:** ☑ revisada · **Módulos:** transversal (DC/DV/DS) · **Valor:** Media · **Esfuerzo:** S-M
+- **Idea:** la integración ya es el **mapa de hardware** para la lógica (el config entry mapea rol→`entity_id`; el motor nunca usa `entity_id` crudos — ver `SPEC_DV.md §2`). El hueco son los **dashboards/automatizaciones que apuntan al `entity_id` del sensor físico**, que se rompen al reemplazar hardware.
+- **Solución elegida (opción 3):** que la integración **exponga sensores "espejo" estables por rol** (p.ej. `sensor.salon_temperatura_interior` que republica lo que apunte `CONF_DC_T_INT`). Los dashboards apuntan **siempre** a las entidades de la integración (`unique_id` por `(entry_id, rol)`, estables para siempre); **reemplazar un sensor = solo reconfigurar la entrada**, sin tocar dashboards ni código. Así los dashboards quedan auto-configurados.
+- **Perfilado:**
+  - **Solo entradas crudas** (t_int, t_ext, RH, viento, CO₂, PM2.5, potencia…); las **salidas** ya son estables (target, biases, etc.).
+  - **Fidelidad:** el espejo copia `unit`/`device_class`/`state_class` por rol (historial y tarjetas se comportan igual que el original).
+  - **Anti-bloat:** detrás de un toggle ("Exponer espejos de entrada", *off* por defecto).
+  - **Apaño inmediato sin código:** al sustituir un sensor, reasignar al nuevo el mismo `entity_id` del viejo en el registro de entidades.
 
 ---
 
@@ -425,3 +436,4 @@
 | **F33** | ☑ revisada | Weather agnóstico multi-fuente con fallback (AEMET poco fiable); meteo_sources.yaml compartido; forecast→DC/free-cooling, alertas→DS; sin FV (eso es F34). |
 | **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
 | **F35** | ☑ revisada | Campana coordinada (PM interior → encender campana; opt-in; reusa F11). |
+| **F36** | ☑ revisada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle anti-bloat. |

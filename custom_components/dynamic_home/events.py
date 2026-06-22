@@ -51,6 +51,15 @@ def fire_mold(hass: HomeAssistant, entry: ConfigEntry, module: str,
     hass.bus.async_fire(const.EVENT_MOLD, data)
 
 
+def fire_adjacent(hass: HomeAssistant, entry: ConfigEntry, module: str,
+                  advice: str, dt: float) -> None:
+    """Adjacent warm-space advisory changed (F31): open_gain / close_alarm / none."""
+    data = _base(entry, module)
+    data["advice"] = advice
+    data["dt"] = round(dt, 1)
+    hass.bus.async_fire(const.EVENT_ADJACENT, data)
+
+
 def fire_window(hass: HomeAssistant, entry: ConfigEntry, module: str,
                 inferred: bool, trend_cph: float) -> None:
     """An open window was inferred from temperature (or cleared) — F20."""

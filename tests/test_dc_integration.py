@@ -219,6 +219,55 @@ async def test_mold_index_absent_without_rh(hass: HomeAssistant) -> None:
         "sensor", const.DOMAIN, f"{entry.entry_id}_mold_index") is None
 
 
+# --- F31: adjacent warm-space advisory ---
+async def test_adjacent_advisory_heat_and_cool(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    events = []
+    hass.bus.async_listen(const.EVENT_ADJACENT, lambda e: events.append(e.data))
+    _seed(hass)
+    hass.states.async_set("sensor.terraza", "50")
+    hass.states.async_set("binary_sensor.puerta", "off")
+    entry = await _add(hass, {
+        **CLIMATE,
+        const.CONF_DC_ADJ_TEMP: "sensor.terraza",
+        const.CONF_DC_ADJ_DOOR: "binary_sensor.puerta",
+    }, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_adjacent() is True
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_adjacent_advice") is not None
+
+    # Heat + terrace much warmer + door closed -> advise opening for free gain.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.adjacent_advice == "open_gain"
+    assert events and events[-1]["advice"] == "open_gain"
+
+    # Cool + terrace hot + door OPEN -> alarm (heat leaking in).
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.COOL}, blocking=True)
+    hass.states.async_set("binary_sensor.puerta", "on")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.adjacent_advice == "close_alarm"
+    assert events[-1]["advice"] == "close_alarm"
+
+
+async def test_adjacent_absent_without_sensor(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_ADJ_TEMP
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_adjacent() is False
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_adjacent_advice") is None
+
+
 # --- F20: open-window inference (latch / recovery), driven with injected time ---
 async def test_window_inference_arm_and_stabilise(hass: HomeAssistant) -> None:
     _seed(hass)
