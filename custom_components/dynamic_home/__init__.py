@@ -22,6 +22,7 @@ from .coordinator import (
     WxCoordinator,
     ZonesCoordinator,
 )
+from .peak import PeakLoadHub
 from .repairs import DegradedTracker
 
 
@@ -44,6 +45,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "_hub", SdhbHub())
     # F09: one shared compressor anti-cycling hub for all climate zones.
     hass.data[const.DOMAIN].setdefault("_anticycle", AntiCycleHub())
+    # F03: house-level electrical-peak arbiters — separate channels for sustained
+    # heating loads (DC) and transient shutter-motor inrush (DS).
+    hass.data[const.DOMAIN].setdefault("_peak_dc", PeakLoadHub())
+    hass.data[const.DOMAIN].setdefault("_peak_ds", PeakLoadHub())
 
     facades: dict = hass.data[const.DOMAIN].setdefault("_facades", {})
 
@@ -92,10 +97,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if isinstance(coordinator, DcCoordinator):
             coordinator.clear_published()
             coordinator.clear_mold()
-            # Drop this zone from the shared compressor aggregate (F09).
-            ac = hass.data[const.DOMAIN].get("_anticycle")
-            if ac is not None:
-                ac.clear(entry.entry_id)
+            # Drop this zone from the shared compressor aggregate (F09) and the
+            # electrical-peak arbiter (F03).
+            for key in ("_anticycle", "_peak_dc"):
+                hub = hass.data[const.DOMAIN].get(key)
+                if hub is not None:
+                    hub.clear(entry.entry_id)
+        if isinstance(coordinator, DsCoordinator):
+            ph = hass.data[const.DOMAIN].get("_peak_ds")
+            if ph is not None:
+                ph.clear(entry.entry_id)
         # A VMC must not leave a filter-due repair issue for a removed entry (F08).
         if isinstance(coordinator, DvCoordinator):
             coordinator.clear_filter_issue()

@@ -55,6 +55,9 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.night_iso_enabled = False
         # Geometric shading (F15): opt-in real solar-penetration model.
         self.geo_shade_enabled = False
+        # Electrical-peak staging (F03): opt-in; stagger mass shutter starts.
+        self.peak_enabled = False
+        self.peak_reason = "off"
         # Energy (F06): cumulative kWh of (marginal) motor movements.
         self.energy_kwh = 0.0
         self._energy_last_pos: int | None = None
@@ -231,6 +234,34 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         above = st.state == "above_horizon"
         return az, el, above
 
+    def _peak_gate(self, cfg: DsConfig, decision: DsDecision,
+                   current_pos: int | None, now_ts: float) -> DsDecision:
+        """F03: stagger mass shutter starts under the house motor-inrush budget.
+
+        A move is a transient pulse (the travel time); when the budget/stagger
+        defers it, hold the current position this cycle and retry next cycle. The
+        slew limiter still shapes the move once it is allowed.
+        """
+        ph = self.hass.data.get(const.DOMAIN, {}).get("_peak_ds")
+        if ph is None or not self.peak_enabled or current_pos is None:
+            if ph is not None and not self.peak_enabled:
+                ph.clear(self.entry.entry_id)
+            self.peak_reason = "off"
+            return decision
+        wants_move = decision.pos != current_pos
+        power_mode = cfg.peak_max_power_w > 0
+        units = cfg.est_w_motor if power_mode else 1.0
+        max_units = cfg.peak_max_power_w if power_mode else float(cfg.peak_max_zones)
+        allowed, self.peak_reason = ph.evaluate(
+            self.entry.entry_id, demand=wants_move, units=units, sustained=False,
+            hold_s=cfg.full_travel_s, now_ts=now_ts, max_units=max_units,
+            stagger_s=cfg.peak_stagger_s)
+        if wants_move and not allowed:
+            return DsDecision(pos=current_pos, reason="peak_stagger",
+                              details={**decision.details,
+                                       "peak_deferred_pos": decision.pos})
+        return decision
+
     async def _async_update_data(self) -> DsDecision:
         cfg = self._cfg()
         cfg.privacy_pos_pct = int(self.privacy_pct)
@@ -270,6 +301,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             sun_effective=sun_above,
         )
         decision = decide_cover(cfg, self.ds_state, ins)
+        decision = self._peak_gate(cfg, decision, current_pos, now_ts)
 
         # Energy (F06): a shutter move lasts seconds (missed by 60 s sampling), so
         # estimate the marginal motor energy per commanded position change.

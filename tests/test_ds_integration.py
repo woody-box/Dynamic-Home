@@ -315,3 +315,44 @@ async def test_geo_shade_switch_refines_solar_branch(hass: HomeAssistant) -> Non
     await hass.async_block_till_done()
     assert co.data.reason == "summer_solar_geo"
     assert "penetration_m" in co.data.details
+
+
+# --- F03: electrical-peak staging of mass shutter starts ---
+async def _two_shutters(hass: HomeAssistant):
+    _seed(hass)
+    hass.states.async_set("cover.b_real", "open",
+                          {"supported_features": 15, "current_position": 100})
+    ea = MockConfigEntry(domain=const.DOMAIN, data={**SHUTTER}, title="A")
+    eb = MockConfigEntry(domain=const.DOMAIN,
+                         data={**SHUTTER, const.CONF_NAME: "B",
+                               const.CONF_COVER: "cover.b_real"}, title="B")
+    for e in (ea, eb):
+        e.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(e.entry_id)
+    await hass.async_block_till_done()
+    return (hass.data[const.DOMAIN][ea.entry_id],
+            hass.data[const.DOMAIN][eb.entry_id])
+
+
+async def test_peak_staggers_shutter_starts(hass: HomeAssistant) -> None:
+    from custom_components.dynamic_home.ds_engine import DsConfig, DsDecision
+    ca, cb = await _two_shutters(hass)
+    ca.peak_enabled = cb.peak_enabled = True
+    cfg = DsConfig(peak_max_zones=1, peak_stagger_s=0)
+    move = DsDecision(pos=0, reason="x")        # both at 100, both want to close
+    da = ca._peak_gate(cfg, move, 100, 1000.0)
+    db = cb._peak_gate(cfg, move, 100, 1000.0)
+    assert da.pos == 0                          # first start granted
+    assert db.pos == 100                        # second deferred (held in place)
+    assert db.reason == "peak_stagger"
+    assert db.details["peak_deferred_pos"] == 0
+
+
+async def test_peak_disabled_does_not_defer_shutters(hass: HomeAssistant) -> None:
+    from custom_components.dynamic_home.ds_engine import DsConfig, DsDecision
+    ca, cb = await _two_shutters(hass)        # peak_enabled stays False
+    cfg = DsConfig(peak_max_zones=1, peak_stagger_s=0)
+    move = DsDecision(pos=0, reason="x")
+    assert ca._peak_gate(cfg, move, 100, 1000.0).pos == 0
+    assert cb._peak_gate(cfg, move, 100, 1000.0).pos == 0   # no budget gating
+    assert cb.peak_reason == "off"

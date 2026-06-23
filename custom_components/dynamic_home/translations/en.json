@@ -149,6 +149,7 @@
           "cat_wx": "Sources & alerts",
           "cat_energy": "Energy estimate",
           "cat_cycle": "Short-cycle protection",
+          "cat_peak": "Electrical-peak staging",
           "schedule": "Weekly schedule",
           "install": "Installation type",
           "zone_add": "Add zone",
@@ -756,6 +757,19 @@
           "anticycle_min_on_s": "Minimum time the shared compressor stays on before a stop is registered (protects against short cycling). Safety stops override it.",
           "anticycle_min_off_s": "Minimum time the compressor stays off before it may restart.",
           "anticycle_max_starts_per_h": "Maximum compressor starts allowed per rolling hour (default 6)."
+        }
+      },
+      "cat_peak": {
+        "title": "Electrical-peak staging",
+        "data": {
+          "peak_max_zones": "Max simultaneous starts",
+          "peak_max_power_w": "Power budget (W, 0 = count)",
+          "peak_stagger_s": "Stagger between starts (s)"
+        },
+        "data_description": {
+          "peak_max_zones": "How many electric loads (heating zones or covers) may be running/moving at once before new starts are deferred. Used when no power budget is set.",
+          "peak_max_power_w": "If above 0, limit by total watts instead of a count (uses the real power meter when present, otherwise the estimate). 0 = count mode.",
+          "peak_stagger_s": "Minimum gap between fresh starts, so a burst of demands ramps up one at a time instead of together."
         }
       },
       "cat_energy": {

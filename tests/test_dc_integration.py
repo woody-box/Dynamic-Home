@@ -669,3 +669,90 @@ async def test_install_wizard_skips_distribution_for_forced_individual(
     assert entry.options[const.CONF_DISTRIBUTION] == "individual"
     assert co.install_profile["peak"] is True
     assert co.install_profile["compressor"] is False
+
+
+# --- F09 gating by the F26 install profile ---
+async def _compressor_held(hass, install_opts):
+    """Seed the shared compressor within min-OFF and return the refreshed zone."""
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.dynamic_home.anticycle import CompressorState
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", install_opts)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.anticycle_enabled = True
+    ac = hass.data[const.DOMAIN]["_anticycle"]
+    ac.state = CompressorState(on=False, last_off_ts=dt_util.utcnow().timestamp())
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    return entry, co, ac
+
+
+async def test_anticycle_gated_off_for_non_compressor_install(
+        hass: HomeAssistant) -> None:
+    # Gas boiler: no compressor -> F09 does not engage despite the switch.
+    entry, co, ac = await _compressor_held(hass, {
+        const.CONF_GENERATOR: "gas_boiler",
+        const.CONF_DISTRIBUTION: "individual",
+        const.CONF_EMISSION: "radiators"})
+    assert co.anticycle_hold is False
+    assert entry.entry_id not in ac._zones
+
+
+async def test_anticycle_gated_off_for_community(hass: HomeAssistant) -> None:
+    # Communal heat pump: the building owns the compressor -> F09 off.
+    entry, co, ac = await _compressor_held(hass, {
+        const.CONF_GENERATOR: "heatpump_air_water",
+        const.CONF_DISTRIBUTION: "central_shared",
+        const.CONF_EMISSION: "underfloor"})
+    assert co.anticycle_hold is False
+    assert entry.entry_id not in ac._zones
+
+
+async def test_anticycle_active_for_individual_compressor(
+        hass: HomeAssistant) -> None:
+    # Individual heat pump: compressor under the occupant's control -> F09 holds.
+    entry, co, ac = await _compressor_held(hass, {
+        const.CONF_GENERATOR: "heatpump_air_water",
+        const.CONF_DISTRIBUTION: "individual",
+        const.CONF_EMISSION: "underfloor"})
+    assert co.anticycle_hold is True
+    assert entry.entry_id in ac._zones
+
+
+# --- F03 electrical-peak staging (DC) ---
+async def test_peak_staggers_electric_zones(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.b_temp", "18")
+    opts = {const.CONF_GENERATOR: "electric_direct",
+            const.CONF_EMISSION: "convectors",
+            "peak_max_zones": 1, "peak_stagger_s": 0}
+    a = await _add_opts(hass, CLIMATE, "A", opts)
+    b = await _add_opts(hass, {**CLIMATE, const.CONF_NAME: "B",
+                               const.CONF_DC_T_INT: "sensor.b_temp"}, "B", opts)
+    ca = hass.data[const.DOMAIN][a.entry_id]
+    cb = hass.data[const.DOMAIN][b.entry_id]
+    ca.hvac_mode = cb.hvac_mode = "heat"
+    ca.peak_enabled = cb.peak_enabled = True
+    await ca.async_refresh()
+    await hass.async_block_till_done()
+    await cb.async_refresh()
+    await hass.async_block_till_done()
+    assert ca.peak_hold is False           # first electric zone granted
+    assert cb.peak_hold is True            # over the 1-zone budget -> deferred
+    assert cb.peak_reason == "peak_over_budget"
+
+
+async def test_peak_gated_off_for_non_electric(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "gas_boiler", const.CONF_EMISSION: "radiators",
+        "peak_max_zones": 1})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.peak_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.peak_hold is False           # gas is not an electrical peak load
+    assert entry.entry_id not in hass.data[const.DOMAIN]["_peak_dc"].state.active

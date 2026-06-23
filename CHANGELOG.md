@@ -4,6 +4,35 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.17.0] — 2026-06-23
+
+### Added
+- **Anti-pico / reparto de cargas eléctricas (F03)**: árbitro de casa **opt-in**
+  (switch "Peak limiting") que evita disparar el ICP limitando los **arranques
+  simultáneos** y **escalonándolos** (~10 s). Modelo puro `peak.py` (`PeakLoadHub`),
+  espejo del agregado de anti-ciclado, con **dos canales** independientes: cargas
+  **sostenidas** de calefacción eléctrica (el slot vive mientras la zona demanda) e
+  **inrush transitorio** de motores de persiana (pulso que expira tras el recorrido).
+  Presupuesto por **nº de cargas** (`peak_max_zones`) o por **vatios**
+  (`peak_max_power_w`, medidor real o estimación). En clima se engancha solo cuando
+  el **perfil F26** dice que la carga es eléctrica (`peak`) y **no** comunitaria; en
+  persianas escalona los arranques masivos (la persiana mantiene su posición y
+  reintenta al ciclo siguiente; el slew sigue dando forma al movimiento). Observable
+  vía `peak_hold`/`peak_reason` (clima) y `peak_reason`/`peak_deferred_pos` (persiana).
+
+### Changed
+- **Anti-ciclado corto (F09) cableado al perfil F26**: la protección de compresor
+  solo participa en el agregado cuando la instalación declara **compresor**
+  (aerotermia/geotérmica/aire-aire **individual**); en gas, eléctrica directa o
+  **fuente comunitaria** queda OFF aunque el switch esté activo. Sin instalación
+  declarada se mantiene el opt-in previo (compatibilidad). Con esto se cierra el
+  criterio de aceptación de F26 «con fuente comunitaria, F03/F09 no actúan».
+
+### Internal
+- Nuevo módulo puro `peak.py` con tests (`test_peak.py`) e integración (gating de F09
+  por generador/comunitaria; escalonado de N zonas eléctricas; escalonado de persianas).
+  Suite 357→371.
+
 ## [0.16.0] — 2026-06-23
 
 ### Added

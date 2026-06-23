@@ -79,6 +79,12 @@ class DsConfig:
     # used to estimate the (marginal) energy of each movement.
     est_w_motor: float = 150.0
     full_travel_s: float = 20.0
+    # Electrical-peak staging (F03): house-level limit on simultaneous shutter
+    # starts (motor inrush). Opt-in. peak_max_power_w > 0 uses a watt budget
+    # (est_w_motor per move) instead of a max-covers count.
+    peak_max_zones: int = 2
+    peak_max_power_w: float = 0.0
+    peak_stagger_s: float = 10.0
 
 
 @dataclass

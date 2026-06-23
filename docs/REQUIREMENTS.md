@@ -130,9 +130,8 @@ zonas → casa** para aplicar modo/perfil/avisos por ámbito.
 **Criterios de aceptación:**
 - ☑ Al elegir generador+distribución+emisión se precargan defaults coherentes
   (editables luego). *(v0.16.0)*
-- ☐ Con fuente comunitaria, F03/F09 no aparecen ni actúan. *(El **perfil** ya
-  expone `community`/`compressor`/`peak`; cablear el gating real de F09/F03 al
-  perfil es el ciclo siguiente.)*
+- ☑ Con fuente comunitaria, F03/F09 no aparecen ni actúan. *(v0.17.0: F09 cableado
+  al `compressor` del perfil; F03 al `peak`; ambos OFF en comunitaria.)*
 - ☑ La inercia elegida cambia los defaults de lead/freno (y de anti-ciclado).
   *(v0.16.0)*
 
@@ -425,8 +424,13 @@ demanda. Solo donde el pico es un problema real.
 
 **Dependencias:** F26, F24, bus (el árbitro vive en el hub).
 **Criterios de aceptación:**
-- ☐ Con fuente comunitaria, el anti-pico ni aparece ni actúa.
-- ☐ Pedir 3 zonas eléctricas a la vez las arranca escalonadas, no simultáneas.
+- ☑ Con fuente comunitaria, el anti-pico ni aparece ni actúa (gateado por
+  `peak`/`community` del perfil F26). *(v0.17.0)*
+- ☑ Pedir N zonas eléctricas a la vez las arranca escalonadas, no simultáneas
+  (presupuesto por nº de zonas o kW + ventana de escalonado). *(v0.17.0)*
+- *(REQ-PIC-4 cubierto: el escalonado aplica también a los arranques masivos de
+  persianas. **Diferido**: prioridad de cola por desviación y bypass de confort —
+  REQ-PIC-5; ver §12.31.)*
 
 ### 5.8 · Señal de demanda real (F27)
 
@@ -467,8 +471,9 @@ aprendizaje ya mide.
   **agregado** del compresor compartido; el flap de una zona no cuenta si otra lo
   mantiene encendido).
 - ☑ Una orden anticondensación/ventana apaga aunque el min ON no se haya cumplido
-  (seguridad cede). *(Implementado en v0.15.0, opt-in; gating F26 y agrupación por
-  compresor F25 diferidos. Ver §12.29.)*
+  (seguridad cede). *(Implementado en v0.15.0, opt-in; **gating F26 cableado en
+  v0.17.0**: solo participa con `compressor` del perfil, OFF en gas/eléctrico/
+  comunitaria. Agrupación por compresor F25 diferida. Ver §12.29 y §12.31.)*
 
 ### 5.10 · Detección de ventana abierta (F20)
 
@@ -1775,7 +1780,46 @@ expone `has_install()` + `install_profile`. **No** se cablea aún F09/F03 al per
   compresor/pico; aerotermia individual con ambos; combustión sin ninguno; eléctrica
   con pico y sin compresor).
 
-**Diferido (anotado, orden del usuario):** **cablear F09** al perfil (ocultar/forzar
-OFF si `not compressor`/`community`); **F03** (consume `peak`/`community`); **F25**
-emisores (primario/stage2/ámbito) dentro del asistente; opción **"personalizado"**
-(REQ-INS-7).
+**Diferido (anotado, orden del usuario):** **cablear F09** al perfil ✅ (v0.17.0);
+**F03** ✅ (v0.17.0); **F25** emisores (primario/stage2/ámbito) dentro del asistente;
+opción **"personalizado"** (REQ-INS-7).
+
+### 12.31 · F09 (gating) + F03 — Anti-pico / reparto de cargas eléctricas
+
+**F09 cableado al perfil F26** (`coordinator_dc._anticycle_step`): la protección de
+compresor solo participa en el agregado cuando el perfil declara `compressor`
+(aerotermia/geotérmica/aire-aire **individual**); en gas/eléctrica directa/comunitaria
+queda **OFF** aunque el switch esté activo. Sin instalación declarada se mantiene el
+opt-in legacy (compatibilidad).
+
+**F03 (anti-pico / load staging)** — árbitro puro `peak.py` (`PeakLoadHub`) a nivel
+casa, espejo del `AntiCycleHub`. Limita los **arranques simultáneos** y los **escalona**
+para no disparar el ICP. Dos canales independientes en `hass.data`:
+`_peak_dc` (cargas **sostenidas** de calefacción eléctrica: el slot vive mientras la
+zona demanda) y `_peak_ds` (inrush **transitorio** de motores de persiana: pulso que
+expira tras el recorrido). Cada participante reporta su demanda por ciclo y el hub
+decide si puede **arrancar** ahora; lo ya en marcha nunca se interrumpe.
+
+- **Presupuesto**: por **nº de cargas** simultáneas (`peak_max_zones`) o por **vatios**
+  (`peak_max_power_w > 0`, medidor real o estimación `est_w_on`/`est_w_motor`).
+- **Escalonado** (`peak_stagger_s`, ~10 s): un arranque nuevo se difiere hasta esa
+  ventana tras el anterior, de modo que una ráfaga sube de uno en uno.
+- **Gating F26 (clima)**: solo se engancha con `peak` del perfil (eléctrica directa o
+  bomba de calor individual) y **no** comunitaria; opt-in (switch "Peak limiting").
+  Una zona ya retenida por F09 no consume slot de pico.
+- **DS (REQ-PIC-4)**: opt-in por persiana; cuando el presupuesto/escalonado difiere un
+  movimiento, la persiana **mantiene su posición** ese ciclo y reintenta al siguiente
+  (el slew sigue dando forma al movimiento cuando se permite).
+- Observabilidad: `peak_hold`/`peak_reason` en los atributos del `climate`;
+  `peak_reason`/`peak_deferred_pos` en los del `cover`.
+
+**Aceptación:**
+
+- ☑ Con fuente comunitaria, ni F09 ni F03 actúan (gateados por el perfil).
+- ☑ N zonas eléctricas pidiendo a la vez arrancan escalonadas (la 2ª se difiere por
+  presupuesto/escalonado).
+- ☑ El escalonado aplica también a persianas (arranques masivos diferidos).
+
+**Diferido (anotado):** **prioridad de cola** por desviación de temperatura y **bypass
+de confort** ante frío severo (REQ-PIC-5, Should); **presupuesto único de casa** en la
+entrada de Zonas (hoy por entrada, como F09); agrupación fina por compresor (F25).
