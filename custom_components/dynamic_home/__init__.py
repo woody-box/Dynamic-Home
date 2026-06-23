@@ -18,6 +18,7 @@ from .coordinator import (
     DcCoordinator,
     DsCoordinator,
     DvCoordinator,
+    EnergyCoordinator,
     SdhbHub,
     WxCoordinator,
     ZonesCoordinator,
@@ -37,6 +38,8 @@ def _platforms(entry: ConfigEntry) -> list[str]:
         return const.PLATFORMS_WEATHER
     if module == const.MODULE_ZONES:
         return const.PLATFORMS_ZONES
+    if module == const.MODULE_ENERGY:
+        return const.PLATFORMS_ENERGY
     return const.PLATFORMS_VMC
 
 
@@ -71,6 +74,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     elif module == const.MODULE_ZONES:
         coordinator = ZonesCoordinator(hass, entry)  # hierarchy + modes + presence
         coordinator.async_setup_presence_listeners()  # F32
+    elif module == const.MODULE_ENERGY:
+        coordinator = EnergyCoordinator(hass, entry)  # F34 house energy context
+        coordinator.async_setup_listeners()
     else:
         coordinator = DvCoordinator(hass, entry, hub)
         coordinator.async_setup_listeners()
@@ -121,6 +127,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
             hass.data[const.DOMAIN].pop(const.DATA_ZONES, None)
             hass.data[const.DOMAIN].pop(const.DATA_MODE, None)
+        if entry.data.get(const.CONF_MODULE) == const.MODULE_ENERGY:
+            hass.data[const.DOMAIN].pop(const.DATA_ENERGY, None)
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
         # Tear the services down with the last entry so they don't linger as

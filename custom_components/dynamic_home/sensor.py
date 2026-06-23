@@ -116,6 +116,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         async_add_entities([ZonesSensor(coordinator, entry),
                             ChangeoverSensor(coordinator, entry)])
         return
+    if module == const.MODULE_ENERGY:
+        ents: list[SensorEntity] = [HeadroomSensor(coordinator, entry),
+                                    TariffSensor(coordinator, entry)]
+        if coordinator.has_pv():                    # F34 gating (⚠️ PV)
+            ents.append(SurplusSensor(coordinator, entry))
+        async_add_entities(ents)
+        return
     if module == const.MODULE_CLIMATE:
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
                                     for d in _DC_SENSORS]
@@ -181,6 +188,80 @@ class ChangeoverSensor(CoordinatorEntity, SensorEntity):
         data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_CHANGEOVER) or {}
         return {"manual": self.coordinator.changeover_manual,
                 "water_temp": data.get("water_temp")}
+
+
+class HeadroomSensor(CoordinatorEntity, SensorEntity):
+    """Import headroom (F34): watts left under the contracted power (ICP)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Margen de red"
+    _attr_icon = "mdi:transmission-tower"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_native_unit_of_measurement = "W"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_headroom"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.context.get("import_headroom_w")
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        ctx = self.coordinator.context
+        return {"contracted_w": ctx.get("contracted_w"),
+                # No grid meter -> peak falls back to an N-loads count budget.
+                "mode": "watts" if ctx.get("import_headroom_w") is not None
+                else "n_loads"}
+
+
+class TariffSensor(CoordinatorEntity, SensorEntity):
+    """Tariff state (F34): cheap / normal / peak."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Tarifa"
+    _attr_icon = "mdi:cash-clock"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["cheap", "normal", "peak"]
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_tariff"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str | None:
+        return self.coordinator.context.get("tariff_state")
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"scarcity": self.coordinator.context.get("scarcity")}
+
+
+class SurplusSensor(CoordinatorEntity, SensorEntity):
+    """PV surplus (F34, ⚠️ gated on PV): production − consumption."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Excedente FV"
+    _attr_icon = "mdi:solar-power"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_native_unit_of_measurement = "W"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_surplus"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.context.get("surplus_w")
 
 
 class ZonesSensor(CoordinatorEntity, SensorEntity):

@@ -958,6 +958,31 @@ async def test_no_changeover_is_back_compat(hass: HomeAssistant) -> None:
     assert co.data.action == "cool"
 
 
+# --- F34: grid import headroom tightens the F03 peak budget ---
+async def test_headroom_tightens_peak_budget(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "electric_direct",
+        const.CONF_EMISSION: "convectors"})       # electrical -> profile.peak
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.peak_enabled = True
+
+    # Plenty of grid headroom (4750 W) vs the zone's ~1000 W -> it runs.
+    hass.data[const.DOMAIN][const.DATA_ENERGY] = {"import_headroom_w": 4750.0}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.peak_hold is False
+
+    # Near the ICP: only 200 W of headroom -> the zone can't start (held off).
+    hass.data[const.DOMAIN][const.DATA_ENERGY] = {"import_headroom_w": 200.0}
+    hass.data[const.DOMAIN]["_peak_dc"].clear(entry.entry_id)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.peak_hold is True
+    assert co.peak_reason == "peak_over_budget"
+
+
 async def test_emitter_editor_adds_and_deletes(hass: HomeAssistant) -> None:
     _seed(hass)
     entry = await _add(hass, CLIMATE, "Salon")

@@ -26,6 +26,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if module == const.MODULE_WEATHER:
         async_add_entities([WeatherAlertBinarySensor(coordinator, entry)])
         return
+    if module == const.MODULE_ENERGY:
+        async_add_entities([ScarcityBinarySensor(coordinator, entry)])
+        return
     if module == const.MODULE_ZONES:
         # F32: a per-zone occupancy sensor for each zone with sources + a
         # house-level presence sensor (only when presence is configured).
@@ -50,6 +53,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if coordinator.has_window_infer():
         entities.append(WindowInferredBinarySensor(coordinator, entry))
     async_add_entities(entities)
+
+
+class ScarcityBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Energy scarcity (F34): on when expensive with no PV surplus."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Escasez de energía"
+    _attr_icon = "mdi:flash-alert"
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_scarcity"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return bool(self.coordinator.context.get("scarcity"))
 
 
 class ZoneOccupancyBinarySensor(CoordinatorEntity[ZonesCoordinator],

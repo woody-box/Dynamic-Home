@@ -11,6 +11,7 @@ MODULE_SHUTTER = "shutter"
 MODULE_CLIMATE = "climate_zone"
 MODULE_WEATHER = "weather"
 MODULE_ZONES = "zones"
+MODULE_ENERGY = "energy"
 
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch",
@@ -20,6 +21,7 @@ PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor",
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
 PLATFORMS_ZONES: list[str] = ["sensor", "select", "binary_sensor"]
+PLATFORMS_ENERGY: list[str] = ["sensor", "binary_sensor"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
 # whole bus is observable from one place in the HA UI, not scattered per entry).
@@ -133,6 +135,16 @@ CONF_CHANGEOVER_SENSOR = "changeover_sensor"  # supply-water temperature sensor
 CONF_CHANGEOVER_TUNE = "changeover_tune"      # threshold overrides (dict)
 DATA_CHANGEOVER = "_changeover"               # resolved changeover published in hass.data
 EVENT_CHANGEOVER_CHANGED = f"{DOMAIN}_changeover_changed"
+
+# --- F34 Dynamic Energy (singleton module; publishes house energy context) ---
+CONF_ENERGY_GRID = "energy_grid"          # grid import power (W)
+CONF_ENERGY_PRICE = "energy_price"        # electricity price sensor (€/kWh)
+CONF_ENERGY_CONTRACTED = "energy_contracted_w"  # contracted power / ICP (W)
+CONF_ENERGY_TOTAL = "energy_total"        # optional whole-house consumption (W)
+CONF_ENERGY_PV = "energy_pv"              # optional PV production (W) — gated (⚠️)
+CONF_ENERGY_BATT_SOC = "energy_batt_soc"  # optional battery SoC (%) — gated (⚠️)
+DATA_ENERGY = "_energy"                   # resolved energy context published in hass.data
+EVENT_ENERGY_CHANGED = f"{DOMAIN}_energy_changed"
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;

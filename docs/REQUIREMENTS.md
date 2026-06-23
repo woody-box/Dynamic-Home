@@ -867,8 +867,8 @@ cada consumidor (DC/DV/AC/DS) decide cómo reaccionar.
 
 **Dependencias:** bus (RNF-4), F06 (entradas de consumo), F26 (patrón de gating).
 **Criterios de aceptación:**
-- ☐ Con solo medidor de red + precio, el módulo arranca y publica `import_headroom_w` y `tariff_state`.
-- ☐ Sin entidades FV, los campos de excedente no se exponen ni rompen el arranque.
+- ☑ Con solo medidor de red + precio, el módulo arranca y publica `import_headroom_w` y `tariff_state`. *(v0.21.0; contexto en `DATA_ENERGY`)*
+- ☑ Sin entidades FV, los campos de excedente no se exponen ni rompen el arranque. *(v0.21.0; `surplus_w` ausente)*
 
 ### 8.2 · Agregación de consumo y coste (consolida F06)
 
@@ -903,8 +903,8 @@ tarifa que el resto usa para desplazar cargas flexibles. (F04, descongelada aqu�
 
 **Dependencias:** F34 núcleo. **Habilita:** desplazamiento de cargas, F04.
 **Criterios de aceptación:**
-- ☐ Con un sensor de precio, `tariff_state` cambia según los umbrales definidos.
-- ☐ Sin sensor, los tramos fijos producen el mismo estado de forma determinista.
+- ☑ Con un sensor de precio, `tariff_state` cambia según los umbrales definidos. *(v0.21.0)*
+- ☑ Sin sensor, los tramos fijos producen el mismo estado de forma determinista. *(v0.21.0)*
 
 ### 8.4 · Anti-pico de red (consolida F03)
 
@@ -922,8 +922,8 @@ escalonando/recortando cargas. Es la cara de red de F03, ahora dentro de Energy.
 
 **Dependencias:** F03/REQ-PIC (misma lógica de escalonado), F26.
 **Criterios de aceptación:**
-- ☐ Al acercarse al ICP, `import_headroom_w` baja y las cargas no superan el límite.
-- ☐ Con fuente comunitaria, el anti-pico no actúa.
+- ☑ Al acercarse al ICP, `import_headroom_w` baja y las cargas no superan el límite. *(v0.21.0; el headroom aprieta el presupuesto de `PeakLoadHub`)*
+- ☑ Con fuente comunitaria, el anti-pico no actúa. *(gateado por F26 en `_peak_step`)*
 
 ### 8.5 · Autoconsumo / excedente FV (⚠️ validación externa)
 
@@ -1973,3 +1973,42 @@ integración (zona community sigue el agua: cool/heat/off; individual ignora; si
 **Diferido (anotado):** **changeover por zona/grupo** (sistemas mixtos con varios
 colectores); **histéresis de temporada** (anti-flapping del agua); exponer el changeover
 a **DS/DV**; `HVACMode.HEAT_COOL` como modo "seguir al edificio".
+
+### 12.35 · F34 — Módulo Dynamic Energy (núcleo + tarifa + anti-pico)
+
+Módulo **singleton** nuevo (`MODULE_ENERGY`, como Zonas/Meteo) que **publica contexto
+energético de casa** y **no comanda** (RNF-3/4). Vive con su coordinator + motor puro,
+patrón DC/DV/DS. **§8.5 FV** y **§8.6 VE** diferidos (⚠️ sin validación del autor); los
+campos PV quedan *present-but-gated*.
+
+Modelo puro `energy_engine.py` (sin HA): `tariff_state(price|None, cfg)` (umbrales
+€/kWh; precio None → tarifa fija determinista, REQ-TAR-1/2); `import_headroom(grid_w|None,
+cfg)` = `max(floor, contratada-grid)` (None sin medidor → degrada); `surplus(pv,cons)`
+(None sin FV → gated); `scarcity(tariff,surplus)` (pico **y** sin excedente);
+`resolve_context(inputs,cfg)` ensambla el blob (omite `surplus_w` sin FV). `EnergyConfig`
+con `contracted_w`/`cheap_below`/`peak_above` (defaults RNF-1).
+
+`coordinator_energy.py` (patrón `coordinator_weather`/listeners de F32): lee las entidades
+del usuario (red import, precio, opc. FV/consumo), resuelve y **publica `DATA_ENERGY`**
+`{tariff_state, import_headroom_w, contracted_w, [surplus_w], scarcity}` + evento, avisa a
+los consumidores en cambios materiales. Entrada **singleton** en el menú de alta; opciones
+por categoría `tariff` (umbrales) vía `options_spec`. Sensores: **Margen de red** (W,
+power; sin medidor → atributo "n_loads"), **Tarifa** (ENUM), **Excedente FV** (gated por
+FV) + binary **Escasez**.
+
+**Consumidor (§8.4, consolida F03):** en `coordinator_dc._peak_step`, si hay
+`import_headroom_w` (medidor de red) el **presupuesto de pico** pasa a vatios =
+headroom (apretado por el cap estático, nunca aflojado); sin medidor → vatios estáticos
+o **N cargas** (REQ-EPK-1). Sigue gateado por `peak_enabled` + `profile["peak"]` (OFF en
+comunitaria, REQ-EPK-3); **solo baja un presupuesto** que el `PeakLoadHub` ya arbitra → ni
+comando ni mecanismo nuevo, la seguridad manda.
+
+**Aceptación:** §8.1/§8.3/§8.4 ☑. **Tests:** puro `test_energy_engine.py` (tarifa fija/
+sensor, headroom +/clamp/None, escasez, subconjuntos) + integración (publica `DATA_ENERGY`
+con solo red+precio; sin FV → `surplus_w` ausente y sin sensor; tarifa fija determinista;
+headroom pequeño aprieta el pico de una zona DC eléctrica). Suite 420→431.
+
+**Diferido (anotado):** **§8.5 FV/excedente** y **§8.6 carga VE** (⚠️ validación externa);
+**§8.2** totales de casa kWh/€ en el panel de Energía; **sesgo de tarifa en DC**
+(pico→menos lead, barato→preacondicionar; REQ-TAR-4) y **DS** respetando headroom;
+afinar la contabilidad del headroom (incremental vs absoluto).
