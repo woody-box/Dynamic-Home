@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.26.0] — 2026-06-23
+
+### Added
+- **Energía (F06 §REQ-ENE-5) · potencia instantánea**: cada módulo (VMC/DC) expone su
+  **potencia instantánea** (`Power`, W, medidor real o estimación — la misma que alimenta
+  el kWh), y el módulo Energy agrega la **potencia total de casa** (`Potencia de casa`, W,
+  suma de todos los módulos), también publicada en `DATA_ENERGY` (`house_power_w`).
+
+### Removed
+- **F07 · botón fixable de Repairs descartado**: el issue de fuente requerida ya se
+  **borra solo** al recuperarse la entidad y tiene `learn_more_url`; un `ConfirmRepairFlow`
+  no aportaba valor. Se mantiene el issue no-fixable + enlace.
+
+### Internal
+- `power_w` en los coordinators DV/DC/DS (DS≈0 en reposo); `EnergyCoordinator._aggregate`
+  suma `house_power_w`; sensores `PowerSensor` (por módulo) y `HousePowerSensor` (casa).
+  Tests de integración (agregación de potencia + sensor por módulo). Suite 449→451.
+
 ## [0.25.0] — 2026-06-23
 
 ### Added

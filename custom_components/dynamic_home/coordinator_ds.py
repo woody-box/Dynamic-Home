@@ -60,6 +60,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.peak_reason = "off"
         # Energy (F06): cumulative kWh of (marginal) motor movements.
         self.energy_kwh = 0.0
+        self.power_w = 0.0             # F06/REQ-ENE-5: ~0 steady (motor moves briefly)
         self._energy_last_pos: int | None = None
         # Gradual sunrise (F19): opt-in ramp state.
         self.dawn_enabled = False
