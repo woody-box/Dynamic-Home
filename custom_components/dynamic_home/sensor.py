@@ -118,9 +118,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         return
     if module == const.MODULE_ENERGY:
         ents: list[SensorEntity] = [HeadroomSensor(coordinator, entry),
-                                    TariffSensor(coordinator, entry)]
+                                    TariffSensor(coordinator, entry),
+                                    HouseEnergySensor(coordinator, entry)]
         if coordinator.has_pv():                    # F34 gating (⚠️ PV)
             ents.append(SurplusSensor(coordinator, entry))
+        if coordinator._hw(const.CONF_ENERGY_PRICE):   # cost needs a price sensor
+            ents.append(HouseCostSensor(coordinator, entry))
         async_add_entities(ents)
         return
     if module == const.MODULE_CLIMATE:
@@ -262,6 +265,60 @@ class SurplusSensor(CoordinatorEntity, SensorEntity):
     @property
     def native_value(self) -> float | None:
         return self.coordinator.context.get("surplus_w")
+
+
+class HouseEnergySensor(CoordinatorEntity, SensorEntity):
+    """House energy total (F34 §8.2): sum of every module's kWh; Energy dashboard."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Consumo de casa"
+    _attr_icon = "mdi:home-lightning-bolt"
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_state_class = SensorStateClass.TOTAL_INCREASING
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_suggested_display_precision = 3
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_house_kwh"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.house_kwh, 3)
+
+
+class HouseCostSensor(CoordinatorEntity, RestoreSensor):
+    """House gross cost (F34 §8.2, gated on a price sensor): accumulated €.
+
+    Restored across restarts so the running cost keeps climbing.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Coste de casa"
+    _attr_icon = "mdi:cash"
+    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.TOTAL
+    _attr_suggested_display_precision = 2
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_house_cost"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+        self._attr_native_unit_of_measurement = (
+            coordinator.hass.config.currency or "EUR")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_sensor_data()
+        if last is not None and last.native_value is not None:
+            self.coordinator.house_cost = float(last.native_value)
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.house_cost, 2)
 
 
 class ZonesSensor(CoordinatorEntity, SensorEntity):

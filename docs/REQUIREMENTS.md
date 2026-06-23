@@ -890,8 +890,10 @@ integrarlo en el panel de Energía de HA.
 
 **Dependencias:** F06 (REQ-ENE), sensor de red.
 **Criterios de aceptación:**
-- ☐ El total de casa coincide con la suma de los módulos + cargas declaradas.
-- ☐ La energía agregada aparece correctamente en el panel de Energía.
+- ☑ El total de casa coincide con la suma de los módulos. *(v0.24.0; `HouseEnergySensor` = Σ `energy_kwh`)*
+- ☑ La energía agregada aparece correctamente en el panel de Energía. *(v0.24.0; `device_class: energy`, `total_increasing`)*
+- ☑ Con sensor de precio, el coste **bruto** (€) acumula ΔkWh×precio. *(v0.24.0; `HouseCostSensor`, `monetary`, restaurado)*
+- ☐ **Balance neto** (consumo vs red import/export y FV ⚠️) y coste neto. *(diferido, requiere FV)*
 
 ### 8.3 · Tarifa y precio (consolida F04)
 
@@ -2026,10 +2028,21 @@ sensor, headroom +/clamp/None, escasez, subconjuntos) + integración (publica `D
 con solo red+precio; sin FV → `surplus_w` ausente y sin sensor; tarifa fija determinista;
 headroom pequeño aprieta el pico de una zona DC eléctrica). Suite 420→431.
 
+**§8.2 (v0.24.0):** el coordinator de Energy **agrega** `energy_kwh` de cada coordinator
+de módulo (DC/DV/DS, F06) en `house_kwh` y, con sensor de precio, acumula `house_cost`
+integrando ΔkWh×precio (coste **bruto**, `energy_engine.add_cost`, ΔkWh negativo no resta;
+el primer ciclo solo siembra el previo para no contar los kWh restaurados). Sensores:
+`HouseEnergySensor` (siempre, `energy`/`total_increasing`→panel de Energía, REQ-EAG-1/2) y
+`HouseCostSensor` (gateado al precio, `monetary`/`total`, restaurado). `house_kwh`/
+`house_cost` también en el blob `DATA_ENERGY`. **Aceptación §8.2** ☑ (balance **neto** con
+FV diferido). **Tests:** puro `add_cost` + integración (suma de módulos; coste acumula
+Δ×precio; sin precio → sin sensor de coste). Suite 441→445.
+
 **Diferido (anotado):** **§8.5 FV/excedente** y **§8.6 carga VE** (⚠️ validación externa);
-**§8.2** totales de casa kWh/€ en el panel de Energía; **sesgo de tarifa en DC**
-(pico→menos lead, barato→preacondicionar; REQ-TAR-4) y **DS** respetando headroom;
-afinar la contabilidad del headroom (incremental vs absoluto).
+**§8.2 balance neto** (consumo vs red import/export y FV ⚠️) y coste neto; **potencia
+instantánea total** (REQ-ENE-5, cruza F03); **sesgo de tarifa en DC** (pico→menos lead,
+barato→preacondicionar; REQ-TAR-4) y **DS** respetando headroom; afinar la contabilidad
+del headroom (incremental vs absoluto).
 
 ### 12.36 · F03 prioridad/bypass + F09 compresor por-emisor (refinamientos)
 

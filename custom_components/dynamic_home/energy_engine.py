@@ -65,6 +65,16 @@ def scarcity(tariff: str, surplus_w: float | None) -> bool:
     return tariff == "peak" and not (surplus_w is not None and surplus_w > 0)
 
 
+def add_cost(cost: float, delta_kwh: float, price: float | None) -> float:
+    """Accumulate gross cost (€): ``cost + max(0, ΔkWh) * price`` (F34 §8.2).
+
+    A negative ΔkWh (e.g. a meter reset) never *subtracts*, and a missing price
+    contributes nothing — so the running cost is monotonic and degrades cleanly
+    when no price sensor is configured (REQ-EAG-3, gross cost).
+    """
+    return cost + max(0.0, delta_kwh) * (price or 0.0)
+
+
 def resolve_context(inputs: dict, cfg: EnergyConfig) -> dict:
     """Assemble the published ``DATA_ENERGY`` blob from the available inputs.
 

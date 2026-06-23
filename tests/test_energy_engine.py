@@ -45,6 +45,16 @@ def test_scarcity_truth_table():
     assert e.scarcity("cheap", None) is False
 
 
+def test_add_cost():
+    # Gross cost accumulates ΔkWh × price.
+    assert e.add_cost(0.0, 2.0, 0.25) == 0.5
+    assert e.add_cost(0.5, 4.0, 0.10) == 0.9
+    # A negative delta (meter reset) does not subtract.
+    assert e.add_cost(1.0, -3.0, 0.25) == 1.0
+    # A missing price contributes nothing.
+    assert e.add_cost(1.0, 5.0, None) == 1.0
+
+
 def test_resolve_context_without_pv():
     blob = e.resolve_context({"grid_w": 2000.0, "price": 0.30}, CFG)
     assert blob["tariff_state"] == "peak"
