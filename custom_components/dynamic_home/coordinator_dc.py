@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import comfort, const, energy, events, modes, repairs, schedule
+from . import comfort, const, energy, events, install, modes, repairs, schedule
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -196,6 +196,22 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     def real_demand_open(self) -> bool | None:
         """Real demand for the current mode (None if no real source configured)."""
         return self._real_valve_open(self._cfg(), self.hvac_mode)
+
+    # --- F26 installation profile (declared catalogue; F09/F03 will consume it) ---
+    def has_install(self) -> bool:
+        """Whether the installation type has been declared (generator + emitter)."""
+        o = self.entry.options
+        return bool(o.get(const.CONF_GENERATOR) and o.get(const.CONF_EMISSION))
+
+    @property
+    def install_profile(self) -> dict | None:
+        """Derived install profile (inertia + compressor/peak/community), or None."""
+        o = self.entry.options
+        gen = o.get(const.CONF_GENERATOR)
+        emission = o.get(const.CONF_EMISSION)
+        if not gen or not emission:
+            return None
+        return install.profile(gen, o.get(const.CONF_DISTRIBUTION), emission)
 
     def _finalize_cycle(self, cfg: DcConfig) -> None:
         """Settling window elapsed: learn overshoot, lag and step the lead gain."""

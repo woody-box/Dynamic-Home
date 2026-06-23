@@ -17,7 +17,7 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const, modes, options_spec, presets, schedule, zones
+from . import const, install, modes, options_spec, presets, schedule, zones
 
 # Weekday labels for the scheduler editor (Mon..Sun = 0..6, datetime.weekday()).
 _WEEKDAYS = {
@@ -205,6 +205,11 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         self.entry = entry
         self._module = entry.data.get(const.CONF_MODULE)
         self._sched_day = 0             # weekday being edited (F21)
+        self._install_gen = ""          # generator being declared (F26)
+        self._install_dist = "individual"
+
+    def _lang(self) -> str:
+        return getattr(self.hass.config, "language", "en") if self.hass else "en"
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         cats = options_spec.categories(self._module, self.show_advanced_options)
@@ -216,8 +221,69 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         # Weekly scheduler (F21): VMC (speed) and climate (base setpoint) only.
         if self._module in (const.MODULE_VMC, const.MODULE_CLIMATE):
             menu.append("schedule")
+        # Installation type (F26): climate zones only.
+        if self._module == const.MODULE_CLIMATE:
+            menu.append("install")
         menu.append("mirrors")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    # --- F26 installation wizard: generator -> [distribution] -> emission ---
+    def _catalog_select(self, key: str, catalog: dict, default: str):
+        opts = [selector.SelectOptionDict(
+                    value=k, label=install.label(catalog, k, self._lang()))
+                for k in catalog]
+        return vol.Schema({vol.Required(key, default=default):
+                           selector.SelectSelector(selector.SelectSelectorConfig(
+                               options=opts,
+                               mode=selector.SelectSelectorMode.LIST))})
+
+    async def async_step_install(self, user_input: dict[str, Any] | None = None):
+        """Pick the heat generator (step 1: generator -> distribution -> emitter)."""
+        if user_input is not None:
+            self._install_gen = user_input["generator"]
+            if install.forced_individual(self._install_gen):
+                self._install_dist = "individual"   # electric/air-air: no choice
+                return await self.async_step_install_emission()
+            return await self.async_step_install_dist()
+        cur = (self.entry.options.get(const.CONF_GENERATOR)
+               or next(iter(install.GENERATORS)))
+        return self.async_show_form(
+            step_id="install",
+            data_schema=self._catalog_select(
+                "generator", install.GENERATORS, cur))
+
+    async def async_step_install_dist(self,
+                                      user_input: dict[str, Any] | None = None):
+        """Pick the distribution (only when not forced individual)."""
+        if user_input is not None:
+            self._install_dist = user_input["distribution"]
+            return await self.async_step_install_emission()
+        cur = self.entry.options.get(const.CONF_DISTRIBUTION) or "individual"
+        return self.async_show_form(
+            step_id="install_dist",
+            data_schema=self._catalog_select(
+                "distribution", install.DISTRIBUTIONS, cur))
+
+    async def async_step_install_emission(self,
+                                          user_input: dict[str, Any] | None = None):
+        """Pick the emitter, then store the triple + pre-load inertia defaults."""
+        if user_input is not None:
+            gen, dist = self._install_gen, self._install_dist
+            emission = user_input["emission"]
+            merged = {
+                **self.entry.options,
+                const.CONF_GENERATOR: gen,
+                const.CONF_DISTRIBUTION: dist,
+                const.CONF_EMISSION: emission,
+                **install.defaults(gen, dist, emission),
+            }
+            return self.async_create_entry(title="", data=merged)
+        cur = (self.entry.options.get(const.CONF_EMISSION)
+               or next(iter(install.EMISSIONS)))
+        return self.async_show_form(
+            step_id="install_emission",
+            data_schema=self._catalog_select(
+                "emission", install.EMISSIONS, cur))
 
     # --- F21 weekly scheduler editor (shared format; one profile per entry) ---
     def _weekday_names(self) -> list[str]:

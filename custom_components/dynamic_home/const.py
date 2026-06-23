@@ -84,6 +84,13 @@ CONF_DC_ADJ_TEMP = "dc_adj_temp"   # F31: adjacent space (terrace/sunroom) temp
 CONF_DC_ADJ_DOOR = "dc_adj_door"   # F31: optional door binary_sensor to it
 CONF_EXPOSE_MIRRORS = "expose_mirrors"  # F36: expose stable per-role mirror sensors
 
+# --- F26 Installation profile (declared per DC entry, stored in entry.options) ---
+# Three independent dimensions; a (generator, distribution, emission) triple
+# derives the inertia class + the compressor/peak/community flags F09/F03 consume.
+CONF_GENERATOR = "dc_generator"          # heat source (heat pump / boiler / electric)
+CONF_DISTRIBUTION = "dc_distribution"    # individual vs central (shared/communal)
+CONF_EMISSION = "dc_emission"            # emitter -> thermal inertia class
+
 # --- F06 Energy: optional real power meter (shared key across VMC/DC/DS) ---
 # When set, the module integrates this sensor's power instead of the estimate.
 CONF_POWER_METER = "power_meter"

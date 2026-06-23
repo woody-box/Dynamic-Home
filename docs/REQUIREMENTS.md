@@ -103,13 +103,20 @@ zonas → casa** para aplicar modo/perfil/avisos por ámbito.
 **Objetivo:** declarar la instalación (**fuente** + **sistema de emisión**) para
 **precargar defaults** y **mostrar/ocultar** comportamientos según apliquen.
 
-- **REQ-INS-1 (M):** asistente con flujo **Fuente → Emisión → (evaluar) → cargar
-  presets + gating**.
-- **REQ-INS-2 (M):** **Fuente** (catálogo cerrado): aerotermia central compartida,
-  aerotermia individual, radiante eléctrico, caldera de gas, AC.
-- **REQ-INS-3 (M):** **Emisión** (catálogo cerrado): suelo radiante, radiadores,
-  convectores, conductos (calor); radiante refrescante, fancoil, conductos/split
-  (frío). Determina la **inercia** (afecta lead/freno/anti-ciclado).
+- **REQ-INS-1 (M):** asistente con flujo **Generador → Distribución → Emisión →
+  (evaluar) → cargar presets + gating**. *(Implementado v0.16.0: 3 pasos; el de
+  distribución se omite cuando el generador es siempre individual.)*
+- **REQ-INS-2 (M):** modelo de **3 dimensiones** (catálogo cerrado), separando el
+  generador del carácter central/individual:
+  - **Generador:** aerotermia aire-agua, geotérmica, aire-aire (AC/split), caldera
+    de gas, caldera de gasoil, caldera de biomasa/pellets, caldera de leña,
+    eléctrica directa.
+  - **Distribución:** **individual** vs **central compartida (comunitaria)**. La
+    eléctrica directa y el aire-aire son **siempre individuales** (no se preguntan).
+- **REQ-INS-3 (M):** **Emisión** (catálogo cerrado): suelo radiante, techo radiante,
+  radiadores, toallero/zócalo, convectores, conductos (calor); radiante refrescante,
+  fancoil, split, conductos (frío). Determina la **inercia** (afecta
+  lead/freno/anti-ciclado).
 - **REQ-INS-4 (M):** **gating duro** — oculta comportamientos no aplicables
   (no solo precarga valores).
 - **REQ-INS-5 (M):** **fuente comunitaria** ⇒ **anti-ciclado (F09) y anti-pico
@@ -121,9 +128,13 @@ zonas → casa** para aplicar modo/perfil/avisos por ámbito.
 
 **Dependencias:** F24 (ámbito). **Habilita:** F03, F09, F25, defaults de DC.
 **Criterios de aceptación:**
-- ☐ Al elegir fuente+emisión se precargan defaults coherentes (editables luego).
-- ☐ Con fuente comunitaria, F03/F09 no aparecen ni actúan.
-- ☐ La inercia elegida cambia los defaults de lead/freno.
+- ☑ Al elegir generador+distribución+emisión se precargan defaults coherentes
+  (editables luego). *(v0.16.0)*
+- ☐ Con fuente comunitaria, F03/F09 no aparecen ni actúan. *(El **perfil** ya
+  expone `community`/`compressor`/`peak`; cablear el gating real de F09/F03 al
+  perfil es el ciclo siguiente.)*
+- ☑ La inercia elegida cambia los defaults de lead/freno (y de anti-ciclado).
+  *(v0.16.0)*
 
 ### 4.3 · Emisores y staging (F25)
 
@@ -1726,3 +1737,45 @@ ventana/override fuerzan OFF aunque no se cumpla el min ON. Observabilidad:
 **Diferido (anotado):** **gating por instalación** (F26: oculto en gas/eléctrico/
 comunitaria, activo con compresor); **agrupación fina por compresor** (F25, hoy un
 grupo único de casa); usar la **tasa aprendida** para autodimensionar min ON/OFF.
+
+### 12.30 · F26 — Tipo de instalación (capa de declaración)
+
+Declaración **por zona DC** de la instalación en **3 dimensiones independientes**
+(modelo puro `install.py`, sin imports de HA): **Generador** (aerotermia aire-agua,
+geotérmica, aire-aire/AC, calderas de gas/gasoil/biomasa/leña, eléctrica directa) ×
+**Distribución** (individual / central compartida) × **Emisión** (suelo/techo
+radiante, radiadores, toallero, convectores, conductos calor/frío, radiante
+refrescante, fancoil, split). El central/individual es una **dimensión aparte** del
+generador: gas, pellets, gasoil y aerotermia pueden ser centrales o individuales; la
+eléctrica directa y el aire-aire son **siempre individuales** (el asistente omite el
+paso de distribución, `install.forced_individual`).
+
+De la terna se deriva un **perfil** (`install.profile`):
+`community` = distribución central compartida (solo se abre válvula); `compressor` =
+generador con compresor (aerotermia/geotérmica/aire-aire) **e individual** (F09);
+`peak` = carga eléctrica individual —eléctrica directa o bomba de calor— (F03). Las
+**combustiones** (gas/gasoil/pellets/leña) nunca activan `compressor`/`peak`.
+
+Elegir la terna **precarga defaults** coherentes por **inercia**
+(`install.defaults`): alta inercia → más lead (`lead_base_h`/`trend_lead_h`↑) y
+anti-ciclado más largo (`anticycle_min_on_s`/`_min_off_s`↑); baja inercia → al revés.
+Solo emite claves válidas de `options_spec` (test guarda) y se mergea en
+`entry.options` (editable luego). El asistente vive en el options-flow de clima
+(`async_step_install` → `install_dist` → `install_emission`), guarda
+`CONF_GENERATOR`/`CONF_DISTRIBUTION`/`CONF_EMISSION`, y un **sensor diagnóstico**
+"Instalación" expone la terna (estado) y los flags (atributos). El coordinator
+expone `has_install()` + `install_profile`. **No** se cablea aún F09/F03 al perfil.
+
+**Aceptación:**
+
+- ☑ Al elegir generador+distribución+emisión se precargan defaults coherentes por
+  inercia (editables luego) y solo con claves válidas de `options_spec`.
+- ☑ La inercia elegida cambia los defaults de lead/freno/anti-ciclado.
+- ☑ El perfil expone `community`/`compressor`/`peak` correctos (comunitaria sin
+  compresor/pico; aerotermia individual con ambos; combustión sin ninguno; eléctrica
+  con pico y sin compresor).
+
+**Diferido (anotado, orden del usuario):** **cablear F09** al perfil (ocultar/forzar
+OFF si `not compressor`/`community`); **F03** (consume `peak`/`community`); **F25**
+emisores (primario/stage2/ámbito) dentro del asistente; opción **"personalizado"**
+(REQ-INS-7).

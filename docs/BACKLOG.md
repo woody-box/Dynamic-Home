@@ -286,8 +286,9 @@
   - Reutiliza todo el pipeline DC (consigna/biases/lead/anti-ciclado); el AC aporta lo suyo (dry nativo, fan, swing).
 
 ### F26 · Tipo de instalación / fuente de calor (config)
-- **Estado:** ☑ revisada · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M-L
+- **Estado:** 🟡 parcial (v0.16.0: declaración + defaults + flags; gating F09/F03 y F25 pendientes) · **Módulos:** DC (config) · **Valor:** Alta · **Esfuerzo:** M-L
 - **Idea:** declarar la instalación (fuente + emisión) para activar/ocultar comportamientos y cargar presets. Base de F03, F09, F25.
+- **Implementado (v0.16.0):** modelo de **3 dimensiones** `install.py` — **Generador** (aerotermia aire-agua, geotérmica, aire-aire/AC, calderas gas/gasoil/biomasa/leña, eléctrica directa) × **Distribución** (individual / central compartida; eléctrica y aire-aire siempre individuales) × **Emisión** (inercia). El central/individual es **dimensión aparte** del generador (gas/pellets/gasoil/aerotermia pueden ser centrales o individuales; la eléctrica siempre individual). Asistente de 3 pasos en el options-flow de clima (omite distribución si el generador es forzado individual), precarga **defaults por inercia** (lead/anti-ciclado, solo claves válidas de `options_spec`), expone un **perfil** (`community`/`compressor`/`peak`) vía `coordinator.install_profile` + sensor diagnóstico "Instalación". **Diferido (orden del usuario):** cablear F09 al perfil → F03 → F25 (emisores) → "personalizado".
 - **Perfilado:**
   - **Asistente de instalación**, flujo: **Fuente → Sistema de emisión → evaluar características → mostrar/ocultar features + cargar presets** (defaults sensatos, editables luego en las opciones por categoría).
   - **Defaults + gating duro:** además de precargar valores, **oculta de verdad** lo que no aplica.
@@ -443,7 +444,7 @@
 | **F23** | ✅ implementada | Confort↔economía por presets (Eco/Equilibrado/Confort, deltas integrados); mueve bandas/atenuación/lead/umbrales; select global + override zona; ligado a F01. |
 | **F24** | ✅ implementada | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo por ámbito ya lo aplica F01. |
 | **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
-| **F26** | ☑ revisada | Asistente fuente→emisión: defaults + gating; incluye primario/stage2 (F25); por zona o global; catálogo cerrado validado; comunitaria desactiva F03/F09. |
+| **F26** | 🟡 parcial | Capa de declaración (v0.16.0): asistente 3D **generador×distribución×emisión**, defaults por inercia y perfil `community`/`compressor`/`peak`. Gating real F09/F03, emisores F25 y "personalizado" diferidos. |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |
 | **F29** | ☑ fusionada | Programación por día → fusionada en F21. |

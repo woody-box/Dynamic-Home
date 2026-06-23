@@ -123,6 +123,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ents.append(MoldIndexSensor(coordinator, entry))
         if coordinator.has_adjacent():
             ents.append(AdjacentAdviceSensor(coordinator, entry))
+        if coordinator.has_install():
+            ents.append(InstallSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
         ents.append(EnergySensor(coordinator, entry))
         ents.append(ScheduleSensor(coordinator, entry, is_vmc=False))
@@ -741,6 +743,38 @@ class AdjacentAdviceSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
     @property
     def native_value(self) -> str:
         return self.coordinator.adjacent_advice
+
+
+class InstallSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
+    """Installation profile (F26): generator/distribution/emitter + derived flags.
+
+    Diagnostic only: the state is the declared triple and the attributes carry the
+    inertia class and the ``compressor``/``peak``/``community`` flags that F09/F03
+    consume.
+    """
+
+    _attr_has_entity_name = True
+    _attr_name = "Instalación"
+    _attr_icon = "mdi:radiator"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DcCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._entry = entry
+        self._attr_unique_id = f"{entry.entry_id}_install"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str:
+        o = self._entry.options
+        return "/".join((o.get(const.CONF_GENERATOR, ""),
+                         o.get(const.CONF_DISTRIBUTION, ""),
+                         o.get(const.CONF_EMISSION, "")))
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return self.coordinator.install_profile or {}
 
 
 class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
