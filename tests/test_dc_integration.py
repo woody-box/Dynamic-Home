@@ -1101,3 +1101,30 @@ async def test_emitter_editor_adds_and_deletes(hass: HomeAssistant) -> None:
          "scope": "zone", "policy": "weighted", "delete": True})
     await hass.async_block_till_done()
     assert entry.options["emitters"] == []
+
+
+# --- F34/REQ-TAR-4: tariff bias feeds the Adaptive Lead ---
+async def test_dc_follows_tariff_lead(hass: HomeAssistant) -> None:
+    """Cheap tariff widens the anticipation lead, peak trims it; no Energy = neutral."""
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+
+    hass.data[const.DOMAIN][const.DATA_ENERGY] = {"tariff_state": "peak"}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    peak_lead = co.data.details["lead_h"]
+
+    hass.data[const.DOMAIN][const.DATA_ENERGY] = {"tariff_state": "cheap"}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    cheap_lead = co.data.details["lead_h"]
+
+    # No Energy module published -> neutral lead, between the two (back-compat).
+    hass.data[const.DOMAIN].pop(const.DATA_ENERGY)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    neutral_lead = co.data.details["lead_h"]
+
+    assert peak_lead < neutral_lead < cheap_lead

@@ -33,6 +33,8 @@ from dc_engine import (  # noqa: E402
     sdhb_self_bias,
     step_toward,
     sunlit_facades,
+    tariff_bias,
+    tariff_lead_mult,
     trend_bias,
     window_anomaly,
 )
@@ -197,6 +199,40 @@ def test_trend_bias_anticipates_and_clamps():
     assert trend_bias(cfg, 0.2) == -0.2
     # rising fast -> clamped to -0.25
     assert trend_bias(cfg, 5.0) == -0.25
+
+
+def test_tariff_lead_mult():
+    cfg = _cfg(tariff_lead_cheap_mult=1.5, tariff_lead_peak_mult=0.6)
+    assert tariff_lead_mult(cfg, "cheap") == 1.5
+    assert tariff_lead_mult(cfg, "peak") == 0.6
+    assert tariff_lead_mult(cfg, "normal") == 1.0
+    assert tariff_lead_mult(cfg, None) == 1.0          # no Energy module
+
+
+def test_tariff_bias_preconditions_cheap_coasts_peak():
+    cfg = _cfg(tariff_bias_c=0.3)
+    # cheap -> load mass: heat warmer (+), cool cooler (-)
+    assert tariff_bias(cfg, "heat", "cheap") == 0.3
+    assert tariff_bias(cfg, "cool", "cheap") == -0.3
+    # peak -> coast the other way
+    assert tariff_bias(cfg, "heat", "peak") == -0.3
+    assert tariff_bias(cfg, "cool", "peak") == 0.3
+    # off by default (c=0) and for normal/None
+    assert tariff_bias(_cfg(), "heat", "cheap") == 0.0
+    assert tariff_bias(cfg, "heat", "normal") == 0.0
+
+
+def test_decide_applies_tariff_lead_and_bias():
+    # A rising-temp heat zone: cheap tariff amplifies the (negative) trend bias
+    # via a larger lead; peak dampens it. A base nudge shows up in bias_tariff.
+    base = _cfg(trend_max_shift=1.0, tariff_bias_c=0.4)
+    ins = dict(hvac_mode="heat", t_int=20.0, t_ext=20.0, trend_cph=0.3)
+    cheap = decide(base, DcInputs(tariff_state="cheap", **ins))
+    peak = decide(base, DcInputs(tariff_state="peak", **ins))
+    assert cheap.details["lead_h"] > peak.details["lead_h"]
+    assert abs(cheap.details["bias_trend"]) > abs(peak.details["bias_trend"])
+    assert cheap.details["bias_tariff"] == 0.4         # cheap heat -> +nudge
+    assert peak.details["bias_tariff"] == -0.4
 
 
 def test_brake_bias_only_when_trend_helps_mode():

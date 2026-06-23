@@ -678,6 +678,11 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE),
             self.entry.entry_id)
 
+    def _tariff_state(self) -> str | None:
+        """Published tariff state from the Energy module (F34), or None."""
+        energy = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ENERGY)
+        return energy.get("tariff_state") if energy else None
+
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
 
@@ -881,6 +886,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             extra_bias=facade_b,
             adaptive_lead_h=adaptive_lead,
             scheduled_base=self._scheduled_base(),
+            tariff_state=self._tariff_state(),
         )
         decision = decide_climate(cfg, ins)
         self._anticycle_step(cfg, decision, now_ts)
