@@ -167,6 +167,7 @@
           "cat_peak": "Escalonado de pico eléctrico",
           "cat_staging": "Staging de emisores",
           "cat_shared": "Emisor compartido",
+          "cat_tariff_bias": "Sesgo de tarifa",
           "schedule": "Programador semanal",
           "install": "Tipo de instalación",
           "emitters": "Emisores",
@@ -993,6 +994,19 @@
         "data_description": {
           "zone_demand_weight": "Peso relativo de esta zona cuando un conducto compartido sin zonificar agrega la demanda de sus zonas (mayor = sesgo hacia esta zona).",
           "shared_undershoot_margin": "Para un conducto compartido sin rejillas motorizadas, la unidad corta cuando la zona más satisfecha llega a su consigna ∓ este margen, para no sobre-acondicionar estancias pequeñas."
+        }
+      },
+      "cat_tariff_bias": {
+        "title": "Sesgo de tarifa",
+        "data": {
+          "tariff_lead_cheap_mult": "× lead barato",
+          "tariff_lead_peak_mult": "× lead pico",
+          "tariff_bias_c": "Sesgo de base (°C, 0 = off)"
+        },
+        "data_description": {
+          "tariff_lead_cheap_mult": "Cuando el módulo de Energía indica tarifa «barata», multiplica el lead de anticipación por este valor (>1 preacondiciona antes mientras la energía es barata).",
+          "tariff_lead_peak_mult": "Cuando la tarifa es «pico», multiplica el lead por este valor (<1 recorta la anticipación para evitar rampas caras).",
+          "tariff_bias_c": "Sesgo opcional de la consigna base (°C): en barato, carga la masa térmica (calor más alto / frío más bajo); en pico, se deja llevar al revés. 0 lo desactiva."
         }
       },
       "zone_add": {

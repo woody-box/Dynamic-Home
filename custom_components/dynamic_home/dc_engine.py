@@ -81,6 +81,13 @@ class DcConfig:
     lead_wind_h_per_kmh: float = 0.02   # wind increases losses -> more lead
     lead_min_h: float = 0.5
     lead_max_h: float = 3.0
+    # Tariff bias (F34 / REQ-TAR-4): with the Energy module publishing a tariff
+    # state, modulate the anticipation lead and (optionally) nudge the base so the
+    # zone pre-conditions when energy is cheap and coasts when it is at peak. Only
+    # active when tariff_state is cheap/peak; defaults keep the base nudge off.
+    tariff_lead_cheap_mult: float = 1.5   # cheap -> more anticipation (preheat/cool)
+    tariff_lead_peak_mult: float = 0.6    # peak  -> less anticipation (avoid ramp)
+    tariff_bias_c: float = 0.0            # °C base nudge (0 = off; cheap loads mass)
     trend_deadband_cph: float = 0.1          # °C/h below which trend is ignored
     trend_ema_alpha: float = 0.3
     brake_thresholds: tuple = (0.3, 0.6, 1.0)  # th1, th2, th3 (°C/h)
@@ -196,6 +203,9 @@ class DcInputs:
     wind: float | None = None
     # Learned adaptive lead (hours); when set, overrides the physical lead model.
     adaptive_lead_h: float | None = None
+    # Tariff state from the Energy module (cheap|normal|peak); None disables the
+    # tariff bias (F34 / REQ-TAR-4).
+    tariff_state: str | None = None
 
     # Bus intent targeted at DC (consumed -> self bias).
     sdhb_intent: str = "none"
@@ -437,6 +447,26 @@ def trend_bias(cfg: DcConfig, cph: float,
     return max(-cfg.trend_max_shift, min(cfg.trend_max_shift, shift))
 
 
+def tariff_lead_mult(cfg: DcConfig, tariff: str | None) -> float:
+    """Lead multiplier by tariff (F34 / REQ-TAR-4): cheap amplifies anticipation,
+    peak dampens it; any other state (incl. None/normal) is neutral (×1)."""
+    if tariff == "cheap":
+        return cfg.tariff_lead_cheap_mult
+    if tariff == "peak":
+        return cfg.tariff_lead_peak_mult
+    return 1.0
+
+
+def tariff_bias(cfg: DcConfig, hvac: str, tariff: str | None) -> float:
+    """Base nudge by tariff (°C, F34 / REQ-TAR-4): when cheap, pre-condition by
+    loading thermal mass (heat warmer / cool cooler); when peak, coast the other
+    way. Off when ``tariff_bias_c`` is 0 or the tariff is neither cheap nor peak."""
+    if cfg.tariff_bias_c <= 0 or tariff not in ("cheap", "peak"):
+        return 0.0
+    mag = cfg.tariff_bias_c if tariff == "cheap" else -cfg.tariff_bias_c
+    return mag if hvac == "heat" else -mag
+
+
 def brake_bias(cfg: DcConfig, hvac: str, cph: float) -> float:
     """Trend brake (°C). Port of ``freno_tendencia``: only brakes when the trend
     already helps the active mode, by graduated thresholds."""
@@ -577,12 +607,18 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
     else:
         lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
         lead_source = "physical"
+    # Tariff bias (F34 / REQ-TAR-4): cheap energy buys more anticipation, peak
+    # energy trims it; clamped to the lead bounds so it stays physical.
+    lead = max(cfg.lead_min_h,
+               min(cfg.lead_max_h, lead * tariff_lead_mult(cfg, ins.tariff_state)))
     b_ext = bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
     b_vmc = bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
     b_trend = trend_bias(cfg, ins.trend_cph, lead)
     b_brake = brake_bias(cfg, ins.hvac_mode, ins.trend_cph)
     b_forecast = forecast_bias(cfg, ins.hvac_mode, ins.t_ext, ins.forecast_temp)
-    mods = b_ext + b_vmc + b_trend + b_brake + b_forecast + ins.extra_bias
+    b_tariff = tariff_bias(cfg, ins.hvac_mode, ins.tariff_state)
+    mods = (b_ext + b_vmc + b_trend + b_brake + b_forecast + b_tariff
+            + ins.extra_bias)
     self_bias = sdhb_self_bias(cfg, ins.sdhb_intent, ins.hvac_mode)
     target = assemble_target(cfg, ins.hvac_mode, base, mods, self_bias,
                              ins.vacation)
@@ -600,6 +636,7 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
         "bias_trend": round(b_trend, 2),
         "bias_brake": round(b_brake, 2),
         "bias_forecast": round(b_forecast, 2),
+        "bias_tariff": round(b_tariff, 2),
         "bias_facade": round(ins.extra_bias, 2),
         "sdhb_bias": round(self_bias, 2),
     }

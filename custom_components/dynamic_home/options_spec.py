@@ -75,6 +75,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "staging": ("Emitter staging", "Staging de emisores"),
     "shared": ("Shared emitter", "Emisor compartido"),
     "tariff": ("Tariff thresholds", "Umbrales de tarifa"),
+    "tariff_bias": ("Tariff bias", "Sesgo de tarifa"),
 }
 
 
@@ -374,6 +375,12 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("zone_demand_weight", "Zone demand weight", "Peso de demanda de zona"),
             _v("shared_undershoot_margin", "Undershoot margin (°C)",
                "Margen de undershoot (°C)"),
+        ],
+        "tariff_bias": [
+            _v("tariff_lead_cheap_mult", "Cheap lead ×", "× lead barato"),
+            _v("tariff_lead_peak_mult", "Peak lead ×", "× lead pico"),
+            _v("tariff_bias_c", "Base nudge (°C, 0=off)",
+               "Sesgo de base (°C, 0=off)"),
         ],
     },
     const.MODULE_ENERGY: {

@@ -906,13 +906,14 @@ tarifa que el resto usa para desplazar cargas flexibles. (F04, descongelada aqu�
   configurables y lo publica al bus.
 - **REQ-TAR-3 (S):** expone **horas baratas próximas** (ventana) para que DC/VE
   planifiquen pre-acondicionamiento/carga.
-- **REQ-TAR-4 (C):** *(futuro)* alimentar el Adaptive Lead de DC para precalentar en
-  horas baratas (era la idea de F04; queda como mejora, no Must).
+- **REQ-TAR-4 (C):** alimentar el Adaptive Lead de DC para precalentar en horas
+  baratas y recortar la rampa en pico (era la idea de F04). *(v0.25.0)*
 
 **Dependencias:** F34 núcleo. **Habilita:** desplazamiento de cargas, F04.
 **Criterios de aceptación:**
 - ☑ Con un sensor de precio, `tariff_state` cambia según los umbrales definidos. *(v0.21.0)*
 - ☑ Sin sensor, los tramos fijos producen el mismo estado de forma determinista. *(v0.21.0)*
+- ☑ DC ensancha el lead (preacondiciona) en tarifa barata y lo recorta en pico; sin módulo Energy, idéntico. *(v0.25.0; `tariff_lead_mult` + `tariff_bias`)*
 
 ### 8.4 · Anti-pico de red (consolida F03)
 
@@ -2040,9 +2041,17 @@ FV diferido). **Tests:** puro `add_cost` + integración (suma de módulos; coste
 
 **Diferido (anotado):** **§8.5 FV/excedente** y **§8.6 carga VE** (⚠️ validación externa);
 **§8.2 balance neto** (consumo vs red import/export y FV ⚠️) y coste neto; **potencia
-instantánea total** (REQ-ENE-5, cruza F03); **sesgo de tarifa en DC** (pico→menos lead,
-barato→preacondicionar; REQ-TAR-4) y **DS** respetando headroom; afinar la contabilidad
-del headroom (incremental vs absoluto).
+instantánea total** (REQ-ENE-5, cruza F03); **DS** respetando headroom; afinar la
+contabilidad del headroom (incremental vs absoluto).
+
+**§8.3 sesgo de tarifa en DC (v0.25.0, REQ-TAR-4):** DC lee `tariff_state` de
+`DATA_ENERGY` (helper `_tariff_state`, como ya lee el headroom) y lo pasa a `DcInputs`.
+En el motor puro: `tariff_lead_mult` multiplica el lead de anticipación (barato ×1.5 →
+preacondiciona antes; pico ×0.6 → recorta la rampa cara; acotado a `[lead_min_h,
+lead_max_h]`), y `tariff_bias` añade un sesgo de base opcional (`tariff_bias_c`, 0=off;
+barato carga masa, pico se deja llevar). Solo actúa con `tariff_state` ∈ {cheap, peak};
+sin módulo Energy = idéntico (back-compat). Tunables en la categoría `tariff_bias`.
+Tests puros + integración (lead barato > neutro > pico). Suite 445→449.
 
 ### 12.36 · F03 prioridad/bypass + F09 compresor por-emisor (refinamientos)
 

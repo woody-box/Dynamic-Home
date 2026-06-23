@@ -167,6 +167,7 @@
           "cat_peak": "Electrical-peak staging",
           "cat_staging": "Emitter staging",
           "cat_shared": "Shared emitter",
+          "cat_tariff_bias": "Tariff bias",
           "schedule": "Weekly schedule",
           "install": "Installation type",
           "emitters": "Emitters",
@@ -993,6 +994,19 @@
         "data_description": {
           "zone_demand_weight": "Relative weight of this zone when a shared un-zoned duct aggregates the demand of its zones (higher = biased toward this zone).",
           "shared_undershoot_margin": "For a shared duct without motorized grilles, the unit cuts when the most-satisfied zone reaches its setpoint ∓ this margin, to avoid over-conditioning small rooms."
+        }
+      },
+      "cat_tariff_bias": {
+        "title": "Tariff bias",
+        "data": {
+          "tariff_lead_cheap_mult": "Cheap lead ×",
+          "tariff_lead_peak_mult": "Peak lead ×",
+          "tariff_bias_c": "Base nudge (°C, 0 = off)"
+        },
+        "data_description": {
+          "tariff_lead_cheap_mult": "When the Energy module reports a «cheap» tariff, multiply the anticipation lead by this (>1 pre-conditions earlier while energy is cheap).",
+          "tariff_lead_peak_mult": "When the tariff is «peak», multiply the lead by this (<1 trims anticipation to avoid expensive ramps).",
+          "tariff_bias_c": "Optional base setpoint nudge (°C): when cheap, load thermal mass (heat warmer / cool cooler); when peak, coast the other way. 0 disables it."
         }
       },
       "zone_add": {

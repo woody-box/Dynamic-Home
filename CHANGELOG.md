@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.25.0] — 2026-06-23
+
+### Added
+- **Energía (F34 §8.3) · sesgo de tarifa en DC** (REQ-TAR-4): cuando el módulo Energy
+  publica el estado de tarifa, cada zona de clima **modula su anticipación** (Adaptive
+  Lead). En tarifa **barata** ensancha el lead (`× lead barato`, 1.5) para
+  **preacondicionar** mientras la energía es barata; en **pico** lo recorta (`× lead
+  pico`, 0.6) para evitar rampas caras. Opcionalmente, un **sesgo de base** (`Sesgo de
+  base °C`, por defecto 0 = off) carga la masa térmica en barato y se deja llevar en pico.
+  Sin módulo Energy, el comportamiento es idéntico al actual.
+
+### Internal
+- `dc_engine.tariff_lead_mult` / `tariff_bias` (puros); `DcInputs.tariff_state` +
+  `DcConfig` (`tariff_lead_cheap_mult`/`tariff_lead_peak_mult`/`tariff_bias_c`);
+  `coordinator_dc._tariff_state()` lee `DATA_ENERGY` (como el headroom). Nueva categoría
+  de opciones `tariff_bias` + traducciones (paridad). Tests puros + integración (lead
+  barato > neutro > pico). Suite 445→449.
+
 ## [0.24.0] — 2026-06-23
 
 ### Added
