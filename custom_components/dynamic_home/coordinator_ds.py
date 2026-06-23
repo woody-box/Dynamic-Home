@@ -15,7 +15,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, repairs
+from . import const, energy, events, repairs, zones
 from .bus import SdhbHub
 from .ds_engine import DsConfig, DsDecision, DsInputs, DsState, decide_cover
 from .options_spec import apply_options
@@ -133,12 +133,41 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         """Targets this shutter consumes: broadcast ``ds`` plus its facade."""
         return {"ds", self.facade_key}
 
+    def _house_changeover(self) -> str | None:
+        """F37: the seasonal direction for this shutter — per-zone override else house.
+
+        Mirrors ``coordinator_dc._house_changeover``: reads ``DATA_CHANGEOVER`` and,
+        if the changeover is split per zone, the shutter's own zone wins. ``None``
+        when no changeover is configured (back-compat: DS keeps its own mode).
+        """
+        data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_CHANGEOVER)
+        if not data:
+            return None
+        zmap = data.get("zones") or {}
+        if zmap:
+            tree = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ZONES)
+            zid = (zones.scope_for_module(tree, self.entry.entry_id)["zone"]
+                   if tree else None)
+            if zid and zid in zmap:
+                return zmap[zid]
+        return data.get("state")
+
     def _hvac_mode(self) -> str:
+        """The heat/cool season driving the seasonal branches (F16/free-cool/shield).
+
+        A real per-room thermostat (linked ``climate``) wins when it actively calls
+        heat/cool; otherwise the shutter follows the **house changeover** (F37), so a
+        communal install with no per-shutter thermostat still gets solar protection in
+        cooling season and solar gain in heating. No changeover configured -> "off"
+        (identical to the legacy behaviour, where the engine idles to ``default``).
+        """
         ent = self._hw(const.CONF_CLIMATE)
-        if not ent:
-            return "off"
-        st = self.hass.states.get(ent)
-        return st.state if st else "off"
+        if ent:
+            st = self.hass.states.get(ent)
+            if st and st.state in ("heat", "cool"):
+                return st.state
+        co = self._house_changeover()
+        return co if co in ("heat", "cool") else "off"
 
     def _current_pos(self) -> int | None:
         ent = self._hw(const.CONF_COVER)

@@ -1995,9 +1995,17 @@ mantiene la dirección hasta que el agua cruza el umbral menos `hysteresis_c` (a
 del override de modo F01), publicado en `DATA_CHANGEOVER["zones"]`; DC resuelve su zid vía
 `zones.scope_for_module` y usa el override o el estado de casa.
 
+**Exponer a DS (v0.28.0):** `coordinator_ds._hvac_mode` cae al **changeover de casa**
+(`_house_changeover`, espejo del de DC: override por zona vía `zones.scope_for_module`,
+si no el estado de casa) cuando la persiana no tiene termostato propio activo. Así una
+instalación comunitaria sin `climate` por persiana hace **escudo solar / free-cooling en
+verano** y **ganancia solar / aislamiento nocturno en invierno** siguiendo la temporada
+del edificio. Sin changeover configurado → `off` (back-compat exacto). Un termostato por
+persiana que pide heat/cool gana; idle/off cae al changeover.
+
 **Diferido (anotado):** **changeover por zona/grupo con sensor de agua propio** (varios
-colectores con resolución auto independiente); exponer el changeover a **DS/DV**;
-`HVACMode.HEAT_COOL` como modo "seguir al edificio".
+colectores con resolución auto independiente); exponer el changeover a **DV** (free-cooling
+por temporada); `HVACMode.HEAT_COOL` como modo "seguir al edificio".
 
 ### 12.35 · F34 — Módulo Dynamic Energy (núcleo + tarifa + anti-pico)
 
