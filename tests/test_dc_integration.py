@@ -577,7 +577,7 @@ async def test_anticycle_disabled_does_not_hold(hass: HomeAssistant) -> None:
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.anticycle_hold is False          # opt-in: off by default
-    assert co.entry.entry_id not in ac._zones   # not part of the aggregate
+    assert not ac.participates(co.entry.entry_id)  # not part of the aggregate
 
 
 # --- F26: installation type (generator × distribution × emission) ---
@@ -697,7 +697,7 @@ async def test_anticycle_gated_off_for_non_compressor_install(
         const.CONF_DISTRIBUTION: "individual",
         const.CONF_EMISSION: "radiators"})
     assert co.anticycle_hold is False
-    assert entry.entry_id not in ac._zones
+    assert not ac.participates(entry.entry_id)
 
 
 async def test_anticycle_gated_off_for_community(hass: HomeAssistant) -> None:
@@ -707,7 +707,7 @@ async def test_anticycle_gated_off_for_community(hass: HomeAssistant) -> None:
         const.CONF_DISTRIBUTION: "central_shared",
         const.CONF_EMISSION: "underfloor"})
     assert co.anticycle_hold is False
-    assert entry.entry_id not in ac._zones
+    assert not ac.participates(entry.entry_id)
 
 
 async def test_anticycle_active_for_individual_compressor(
@@ -718,7 +718,7 @@ async def test_anticycle_active_for_individual_compressor(
         const.CONF_DISTRIBUTION: "individual",
         const.CONF_EMISSION: "underfloor"})
     assert co.anticycle_hold is True
-    assert entry.entry_id in ac._zones
+    assert ac.participates(entry.entry_id)
 
 
 # --- F03 electrical-peak staging (DC) ---
@@ -1148,3 +1148,42 @@ async def test_dc_power_sensor_reflects_estimate(hass: HomeAssistant) -> None:
         "sensor", const.DOMAIN, f"{entry.entry_id}_power")
     assert eid is not None
     assert float(hass.states.get(eid).state) == 1000.0
+
+
+async def test_anticycle_per_emitter_compressor_channels(
+        hass: HomeAssistant) -> None:
+    """F09 full: two heat pumps on distinct compressor_ids are anti-cycled apart."""
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.dynamic_home.anticycle import CompressorState
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")       # demand heat
+    hass.states.async_set("switch.hp_a", "off")
+    hass.states.async_set("switch.hp_b", "off")
+    emitters = [
+        {"id": "ea", "name": "Bomba A", "generator": "heatpump_air_water",
+         "distribution": "individual", "emission": "underfloor",
+         "switch": "switch.hp_a", "primary_heat": True, "compressor_id": "hp_a"},
+        {"id": "eb", "name": "Bomba B", "generator": "heatpump_air_water",
+         "distribution": "individual", "emission": "fancoil",
+         "switch": "switch.hp_b", "compressor_id": "hp_b"},
+    ]
+    entry = await _add_opts(hass, CLIMATE, "Salon", {"emitters": emitters})
+    async_mock_service(hass, "homeassistant", "turn_on")
+    async_mock_service(hass, "homeassistant", "turn_off")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.anticycle_enabled = True
+    ac = hass.data[const.DOMAIN]["_anticycle"]
+    # Channel hp_b just stopped (within min OFF); hp_a is free.
+    ac.channels["hp_b"] = CompressorState(
+        on=False, last_off_ts=dt_util.utcnow().timestamp())
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    # Each compressor is judged on its own channel.
+    assert co._channel_holds["hp_a"] is False
+    assert co._channel_holds["hp_b"] is True
+    # The primary on the free channel runs; the one on the blocked channel is held.
+    assert co.emitter_commands["ea"]["on"] is True
+    assert co.emitter_commands["eb"]["on"] is False

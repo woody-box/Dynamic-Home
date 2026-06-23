@@ -89,6 +89,28 @@ def test_hub_holds_zone_off_when_compressor_blocked():
     assert gated is False and reason == "anticycle_min_off_hold"
 
 
+# --- F09 full: independent compressor channels ---
+def test_hub_channels_are_independent():
+    cfg = _cfg(anticycle_min_off_s=600, anticycle_max_starts_per_h=6)
+    hub = AntiCycleHub()
+    # Channel "hp_a" was just stopped -> a fresh demand on it is held off.
+    hub.channels["hp_a"] = CompressorState(on=False, last_off_ts=1000.0)
+    held, reason = hub.evaluate("z1", True, False, 1000.0 + 60, cfg, channel="hp_a")
+    assert held is False and reason == "anticycle_min_off_hold"
+    # A different compressor "hp_b" is unaffected and starts normally.
+    on, reason = hub.evaluate("z2", True, False, 1000.0 + 60, cfg, channel="hp_b")
+    assert on is True and reason == "start"
+
+
+def test_hub_participates_and_clear_across_channels():
+    cfg = _cfg()
+    hub = AntiCycleHub()
+    hub.evaluate("z1", True, False, 1000.0, cfg, channel="hp_a")
+    assert hub.participates("z1") is True
+    hub.clear("z1")
+    assert hub.participates("z1") is False
+
+
 if __name__ == "__main__":
     failed = 0
     for name, fn in sorted(globals().items()):

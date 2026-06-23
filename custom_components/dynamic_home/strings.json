@@ -943,7 +943,8 @@
           "scope": "Scope",
           "shared_emitter_id": "Shared-duct id (for shared scopes)",
           "owner": "This zone drives the shared unit",
-          "policy": "Reconciliation policy"
+          "policy": "Reconciliation policy",
+          "compressor_id": "Compressor id (group heat pumps)"
         }
       },
       "emitter_edit": {
@@ -967,6 +968,7 @@
           "shared_emitter_id": "Shared-duct id (for shared scopes)",
           "owner": "This zone drives the shared unit",
           "policy": "Reconciliation policy",
+          "compressor_id": "Compressor id (group heat pumps)",
           "delete": "Delete this emitter"
         }
       },

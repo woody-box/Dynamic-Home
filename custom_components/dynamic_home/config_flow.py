@@ -402,13 +402,15 @@ class DynamicHomeOptionsFlow(OptionsFlow):
             vol.Optional("owner", default=cur.get("owner", False)): bool,
             vol.Required("policy", default=cur.get("policy", "weighted")):
                 listsel(emitters_mod.POLICIES, policy_labels, None),
+            vol.Optional("compressor_id", description={
+                "suggested_value": cur.get("compressor_id")}): str,
         })
 
     def _form_to_emitter(self, ui: dict[str, Any]) -> dict:
         return {k: ui.get(k) for k in (
             "name", "generator", "distribution", "emission", "climate", "switch",
             "primary_heat", "primary_cool", "scope", "shared_emitter_id",
-            "owner", "policy")}
+            "owner", "policy", "compressor_id")}
 
     async def async_step_emitters(self, user_input: dict[str, Any] | None = None):
         menu = ["emitter_add"]

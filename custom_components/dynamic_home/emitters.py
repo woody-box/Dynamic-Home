@@ -55,6 +55,10 @@ def normalize(raw) -> list[dict]:
             "switch": e.get("switch") or None,
             "primary_heat": bool(e.get("primary_heat", False)),
             "primary_cool": bool(e.get("primary_cool", False)),
+            # F09 full: which physical compressor this emitter shares. Heat-pump
+            # emitters with the same id are anti-cycled together; "default" keeps
+            # the legacy single house compressor (back-compat).
+            "compressor_id": str(e.get("compressor_id") or "default"),
             "scope": scope,
             "shared_emitter_id": e.get("shared_emitter_id") or None,
             "owner": bool(e.get("owner", False)),
