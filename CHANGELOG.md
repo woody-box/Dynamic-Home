@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.29.0] — 2026-06-23
+
+### Added
+- **Ventilación (F37) · la temporada de calor suprime el free-cooling**: cuando el
+  changeover de casa está en **calor**, DV deja de hacer free-cooling. Antes, un día
+  templado de invierno (más caliente dentro que fuera) activaba el free-cooling por la
+  histéresis de temperatura y **ventilaba el calor que estás pagando**. Sin changeover
+  configurado, comportamiento idéntico (free-cooling solo por temperatura).
+
+### Internal
+- `DvInputs.heating_season` + guarda en `compute_freecool`; `coordinator_dv._house_changeover`
+  (espejo del de DC/DS) alimenta `heating_season = changeover == "heat"`. Tests puro
+  (suprime free-cooling) + integración (changeover de calor lo apaga). Suite 456→458.
+
 ## [0.28.0] — 2026-06-23
 
 ### Added

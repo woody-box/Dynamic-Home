@@ -241,6 +241,9 @@ class DvInputs:
     t_in: float | None = None
     t_ext: float | None = None
     aqi: float | None = None
+    # F37: the house heating season suppresses free-cooling (don't vent away
+    # the heat you're paying for). False unless a changeover says "heat".
+    heating_season: bool = False
 
     current_speed: int = 1
 
@@ -323,8 +326,15 @@ def update_ema(prev: float, x: float, alpha: float) -> float:
 
 
 def compute_freecool(cfg: DvConfig, ins: DvInputs, prev_active: bool) -> bool:
-    """Free-cooling with its own hysteresis (SPEC §4.2.1)."""
+    """Free-cooling with its own hysteresis (SPEC §4.2.1).
+
+    Suppressed in the house heating season (F37): on a mild winter day the inside
+    is warmer than outside, so the temperature hysteresis alone would vent away
+    heat the system is paying for. No changeover configured -> not heating season.
+    """
     if not cfg.freecool_enabled or ins.t_in is None or ins.t_ext is None:
+        return False
+    if ins.heating_season:
         return False
     if ins.t_ext < cfg.freecool_t_ext_min:
         return False

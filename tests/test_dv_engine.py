@@ -108,6 +108,17 @@ def test_freecool_hysteresis():
     assert compute_freecool(cfg, ins3, prev_active=False) is False
 
 
+def test_freecool_suppressed_in_heating_season():
+    # F37: a mild winter day (warm inside, cool outside) would otherwise free-cool
+    # and vent away heat. The house heating season blocks it.
+    cfg = _cfg(freecool_enabled=True, freecool_t_ext_min=5,
+               freecool_delta_on=2, freecool_delta_off=1)
+    warm = DvInputs(t_in=21, t_ext=12)                 # delta 9 >= on
+    assert compute_freecool(cfg, warm, prev_active=False) is True
+    heating = DvInputs(t_in=21, t_ext=12, heating_season=True)
+    assert compute_freecool(cfg, heating, prev_active=False) is False
+
+
 # --------------------------------------------------------------------------- #
 # Full pipeline
 # --------------------------------------------------------------------------- #
