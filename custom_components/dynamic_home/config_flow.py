@@ -17,7 +17,18 @@ from homeassistant.config_entries import (
 from homeassistant.core import callback
 from homeassistant.helpers import selector
 
-from . import const, install, modes, options_spec, presets, schedule, zones
+from . import (
+    const,
+    install,
+    modes,
+    options_spec,
+    presets,
+    schedule,
+    zones,
+)
+from . import (
+    emitters as emitters_mod,
+)
 
 # Weekday labels for the scheduler editor (Mon..Sun = 0..6, datetime.weekday()).
 _WEEKDAYS = {
@@ -207,6 +218,7 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         self._sched_day = 0             # weekday being edited (F21)
         self._install_gen = ""          # generator being declared (F26)
         self._install_dist = "individual"
+        self._emitter_sel: str | None = None   # emitter being edited (F25)
 
     def _lang(self) -> str:
         return getattr(self.hass.config, "language", "en") if self.hass else "en"
@@ -221,9 +233,10 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         # Weekly scheduler (F21): VMC (speed) and climate (base setpoint) only.
         if self._module in (const.MODULE_VMC, const.MODULE_CLIMATE):
             menu.append("schedule")
-        # Installation type (F26): climate zones only.
+        # Installation type (F26) + emitters editor (F25): climate zones only.
         if self._module == const.MODULE_CLIMATE:
             menu.append("install")
+            menu.append("emitters")
         menu.append("mirrors")
         return self.async_show_menu(step_id="init", menu_options=menu)
 
@@ -284,6 +297,125 @@ class DynamicHomeOptionsFlow(OptionsFlow):
             step_id="install_emission",
             data_schema=self._catalog_select(
                 "emission", install.EMISSIONS, cur))
+
+    # --- F25 emitters editor (1..N emitters per zone; mirrors the zones editor) ---
+    def _emitters(self) -> list[dict]:
+        return emitters_mod.normalize(self.entry.options.get("emitters"))
+
+    def _save_emitters(self, lst: list[dict]):
+        return self.async_create_entry(
+            title="", data={**self.entry.options,
+                            "emitters": emitters_mod.normalize(lst)})
+
+    def _emitter_schema(self, cur: dict) -> vol.Schema:
+        lang = self._lang()
+        es = lang.startswith("es")
+
+        def cat(catalog, default):
+            opts = [selector.SelectOptionDict(
+                        value=k, label=install.label(catalog, k, lang))
+                    for k in catalog]
+            return (vol.Required(default[0], default=default[1]),
+                    selector.SelectSelector(selector.SelectSelectorConfig(
+                        options=opts)))
+
+        def listsel(values, labels, default):
+            opts = [selector.SelectOptionDict(value=v, label=labels[v])
+                    for v in values]
+            return selector.SelectSelector(selector.SelectSelectorConfig(
+                options=opts, mode=selector.SelectSelectorMode.LIST))
+
+        scope_labels = {
+            "zone": "Zona (split)" if es else "Zone (split)",
+            "group_unzoned": ("Conductos compartidos" if es
+                              else "Shared ducts (un-zoned)"),
+            "group_grilles": ("Conductos + rejillas" if es
+                              else "Ducts + motorized grilles")}
+        policy_labels = {
+            "weighted": "Ponderada" if es else "Weighted",
+            "mean": "Media" if es else "Mean",
+            "priority": "Prioridad" if es else "Priority",
+            "worst_stuck": "Peor parada" if es else "Worst-stuck"}
+        gk, gsel = cat(install.GENERATORS,
+                       ("generator", cur.get("generator")
+                        or next(iter(install.GENERATORS))))
+        dk, dsel = cat(install.DISTRIBUTIONS,
+                       ("distribution", cur.get("distribution") or "individual"))
+        ek, esel = cat(install.EMISSIONS,
+                       ("emission", cur.get("emission")
+                        or next(iter(install.EMISSIONS))))
+        return vol.Schema({
+            vol.Required("name", default=cur.get("name", "")): str,
+            gk: gsel, dk: dsel, ek: esel,
+            vol.Optional("climate", description={
+                "suggested_value": cur.get("climate")}): _entity("climate"),
+            vol.Optional("switch", description={
+                "suggested_value": cur.get("switch")}): _entity(
+                    ["switch", "input_boolean"]),
+            vol.Optional("primary_heat",
+                         default=cur.get("primary_heat", False)): bool,
+            vol.Optional("primary_cool",
+                         default=cur.get("primary_cool", False)): bool,
+            vol.Required("scope", default=cur.get("scope", "zone")):
+                listsel(emitters_mod._SCOPES, scope_labels, None),
+            vol.Optional("shared_emitter_id", description={
+                "suggested_value": cur.get("shared_emitter_id")}): str,
+            vol.Optional("owner", default=cur.get("owner", False)): bool,
+            vol.Required("policy", default=cur.get("policy", "weighted")):
+                listsel(emitters_mod.POLICIES, policy_labels, None),
+        })
+
+    def _form_to_emitter(self, ui: dict[str, Any]) -> dict:
+        return {k: ui.get(k) for k in (
+            "name", "generator", "distribution", "emission", "climate", "switch",
+            "primary_heat", "primary_cool", "scope", "shared_emitter_id",
+            "owner", "policy")}
+
+    async def async_step_emitters(self, user_input: dict[str, Any] | None = None):
+        menu = ["emitter_add"]
+        if self._emitters():
+            menu.append("emitter_edit")
+        return self.async_show_menu(step_id="emitters", menu_options=menu)
+
+    async def async_step_emitter_add(self,
+                                     user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            lst = self._emitters()
+            lst.append(self._form_to_emitter(user_input))
+            return self._save_emitters(lst)
+        return self.async_show_form(
+            step_id="emitter_add", data_schema=self._emitter_schema({}))
+
+    async def async_step_emitter_edit(self,
+                                      user_input: dict[str, Any] | None = None):
+        lst = self._emitters()
+        if user_input is not None:
+            self._emitter_sel = user_input["emitter"]
+            return await self.async_step_emitter_detail()
+        opts = [selector.SelectOptionDict(value=e["id"], label=e["name"])
+                for e in lst]
+        schema = vol.Schema({vol.Required("emitter"): selector.SelectSelector(
+            selector.SelectSelectorConfig(
+                options=opts, mode=selector.SelectSelectorMode.LIST))})
+        return self.async_show_form(step_id="emitter_edit", data_schema=schema)
+
+    async def async_step_emitter_detail(self,
+                                        user_input: dict[str, Any] | None = None):
+        lst = self._emitters()
+        cur = next((e for e in lst if e["id"] == self._emitter_sel), None)
+        if cur is None:
+            return await self.async_step_emitters()
+        if user_input is not None:
+            if user_input.get("delete"):
+                lst = [e for e in lst if e["id"] != self._emitter_sel]
+            else:
+                new = self._form_to_emitter(user_input)
+                new["id"] = cur["id"]                     # keep the stable id
+                lst = [new if e["id"] == self._emitter_sel else e for e in lst]
+            return self._save_emitters(lst)
+        schema = self._emitter_schema(cur).extend(
+            {vol.Optional("delete", default=False): bool})
+        return self.async_show_form(step_id="emitter_detail", data_schema=schema)
 
     # --- F21 weekly scheduler editor (shared format; one profile per entry) ---
     def _weekday_names(self) -> list[str]:

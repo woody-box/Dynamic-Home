@@ -158,6 +158,17 @@ class DcConfig:
     peak_max_zones: int = 2
     peak_max_power_w: float = 0.0
     peak_stagger_s: float = 10.0
+    # Emitter staging (F25): a support emitter arms when the primary lags by more
+    # than support_dev_on (°C) for support_confirm_min, and retires when the room
+    # recovers under support_dev_off for support_release_min (hysteresis).
+    support_dev_on: float = 0.6
+    support_confirm_min: float = 15.0
+    support_dev_off: float = 0.2
+    support_release_min: float = 10.0
+    # Shared un-zoned emitter reconciliation (F25 Phase B): per-zone demand weight
+    # and the undershoot guard margin (°C) for a duct without motorized grilles.
+    zone_demand_weight: float = 1.0
+    shared_undershoot_margin: float = 0.5
 
 
 @dataclass

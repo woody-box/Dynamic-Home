@@ -175,16 +175,16 @@ módulo aparte.
   rejillas.
 
 **Dependencias:** F24, F26. **Habilita:** módulo AC, F13 (dry nativo).
-**Criterios de aceptación:**
-- ☐ Con radiante+AC, el apoyo arranca solo cuando el primario no llega y se retira al recuperar.
-- ☐ Conductos sin zonificar: una sola orden coherente para todas las zonas del ámbito.
-- ☐ Conductos con rejillas: control por zona vía rejilla, unidad con consigna única.
-- ☐ Conductos sin zonificar con Salón muy caliente y Dormitorio casi en consigna:
+**Criterios de aceptación:** *(todos ☑ en v0.18.0; ver §12.32)*
+- ☑ Con radiante+AC, el apoyo arranca solo cuando el primario no llega y se retira al recuperar.
+- ☑ Conductos sin zonificar: una sola orden coherente para todas las zonas del ámbito.
+- ☑ Conductos con rejillas: control por zona vía rejilla, unidad con consigna única.
+- ☑ Conductos sin zonificar con Salón muy caliente y Dormitorio casi en consigna:
   la unidad **no** sobre-enfría el Dormitorio (la guarda corta al llegar a
   `consigna − margen`), aunque el Salón quede un poco corto.
-- ☐ Subir el `zone_demand_weight` del Salón sesga la consigna agregada hacia él
+- ☑ Subir el `zone_demand_weight` del Salón sesga la consigna agregada hacia él
   **sin** anular la guarda de undershoot del Dormitorio.
-- ☐ Con rejillas motorizadas, ni la ponderación ni la guarda aplican (control por
+- ☑ Con rejillas motorizadas, ni la ponderación ni la guarda aplican (control por
   zona vía rejilla).
 
 ### 4.4 · Presencia (F32)
@@ -1823,3 +1823,50 @@ decide si puede **arrancar** ahora; lo ya en marcha nunca se interrumpe.
 **Diferido (anotado):** **prioridad de cola** por desviación de temperatura y **bypass
 de confort** ante frío severo (REQ-PIC-5, Should); **presupuesto único de casa** en la
 entrada de Zonas (hoy por entrada, como F09); agrupación fina por compresor (F25).
+
+### 12.32 · F25 — Emisores y staging (multi-emisor + conductos compartidos)
+
+Una zona DC mantiene **un solo cerebro** (`dc_engine.decide` intacto) pero puede
+conducir **1..N emisores**. El staging y la reconciliación son **post-decisión**
+(consumen `decision.target` + `indoor_temperature()`); **sin** lista `emitters` la zona
+se comporta **idéntica a antes** (single-device, REQ-EMI-7).
+
+**Modelo (`emitters.py`, puro):** lista en `entry.options["emitters"]`; cada emisor
+declara su terna F26 (reusa `install.py`), el dispositivo real que conduce —
+**`climate` y/o `switch`/válvula** — su rol por modo (`primary_heat/cool`), y para
+conductos su `scope` (`zone`/`group_unzoned`/`group_grilles`), `shared_emitter_id`,
+`owner` y `policy`. `primary_for(hvac)` con fallback al único emisor con dispositivo.
+
+**Fase A — staging primario/apoyo (`staging.py`, puro):** el primario lleva la consigna;
+cada apoyo arma cuando la desviación en la dirección activa supera `support_dev_on`
+durante `support_confirm_min` y se retira con histéresis (`support_dev_off` /
+`support_release_min`) — calca el debounce de `_infer_window`. `coordinator_dc.
+_build_emitter_commands` mapea la decisión a `emitter_commands` (id→{mode,target,on});
+un hold de F09/F03 o modo off apaga todos; un emisor **switch sin termostato** sigue la
+demanda real (`_valve_demand`). `climate.py._apply_emitters` conduce cada dispositivo
+(`climate.*` o `homeassistant.turn_on/off`), con el mismo anti-jitter por emisor; el
+camino legacy single-device queda **intacto**.
+
+**Fase B — conductos compartidos (`shared_emitter.py`, puro + `SharedEmitterHub`):**
+hub de casa en `hass.data["_shared_emit"]` (espejo de `PeakLoadHub`), canal por
+`shared_emitter_id`. Cada zona hermana publica su `ZoneDemand`; el **dueño** (declarado,
+o fallback determinista = menor entry_id) reconcilia y conduce la unidad, los demás se
+apartan. `aggregate_setpoint` por política (**ponderada** default = media de consignas
+ponderada por `weight × max(desviación,ε)`; `mean`/`priority`/`worst_stuck`),
+`undershoot_cut` (REQ-EMI-8: corta cuando la zona **más satisfecha** llega a
+`consigna ∓ shared_undershoot_margin`); con **rejillas** la unidad va al setpoint
+más exigente y la guarda no aplica (cada rejilla regula su caudal). Hermanas vía
+`zones.scope_for_module` + `DATA_ZONES` (canal por defecto = id del grupo).
+
+**Opciones:** categorías `staging` (`support_*`) y `shared` (`zone_demand_weight`,
+`shared_undershoot_margin`) en `options_spec`; editor de emisores en el options-flow
+(espejo del editor de Zonas). Observabilidad: `emitter_commands` (con `shared`/`reason`).
+
+**Aceptación:** las 6 casillas de §4.3 ☑. **Tests:** puros `test_emitters` /
+`test_staging` / `test_shared_emitter` + integración (apoyo arma/retira; legacy intacto;
+conducto compartido reconcilia una orden y la guarda corta; editor añade/borra). Suite
+371→398.
+
+**Diferido (anotado):** **canal de compresor por-emisor** en F09 (hoy el hold de zona
+gatea todos los emisores); **bypass de confort/prioridad de cola** (cruza REQ-PIC-5);
+reordenar/duplicar emisores avanzado.

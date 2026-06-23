@@ -150,8 +150,11 @@
           "cat_energy": "Energy estimate",
           "cat_cycle": "Short-cycle protection",
           "cat_peak": "Electrical-peak staging",
+          "cat_staging": "Emitter staging",
+          "cat_shared": "Shared emitter",
           "schedule": "Weekly schedule",
           "install": "Installation type",
+          "emitters": "Emitters",
           "zone_add": "Add zone",
           "zone_edit": "Edit zone",
           "group_add": "Add group",
@@ -833,6 +836,82 @@
         "description": "Step 3 of 3: the emitter, which sets the thermal inertia (underfloor is slow, fan-coil is fast). This pre-loads matching lead and anti-cycle defaults.",
         "data": {
           "emission": "Emitter"
+        }
+      },
+      "emitters": {
+        "title": "Emitters",
+        "description": "Declare one or more emitters for this zone (e.g. underfloor radiant as the heating primary and an AC split as the cooling primary / heating support). With no emitters declared the zone keeps driving its single configured thermostat.",
+        "menu_options": {
+          "emitter_add": "Add emitter",
+          "emitter_edit": "Edit emitter"
+        }
+      },
+      "emitter_add": {
+        "title": "Add emitter",
+        "description": "An emitter drives a real climate entity and/or a switch/valve. Mark which mode(s) it is the primary for; supports kick in when the primary lags.",
+        "data": {
+          "name": "Name",
+          "generator": "Heat generator",
+          "distribution": "Distribution",
+          "emission": "Emitter type",
+          "climate": "Climate entity (optional)",
+          "switch": "Switch / valve (optional)",
+          "primary_heat": "Primary in heating",
+          "primary_cool": "Primary in cooling",
+          "scope": "Scope",
+          "shared_emitter_id": "Shared-duct id (for shared scopes)",
+          "owner": "This zone drives the shared unit",
+          "policy": "Reconciliation policy"
+        }
+      },
+      "emitter_edit": {
+        "title": "Edit emitter",
+        "data": {
+          "emitter": "Emitter"
+        }
+      },
+      "emitter_detail": {
+        "title": "Emitter",
+        "data": {
+          "name": "Name",
+          "generator": "Heat generator",
+          "distribution": "Distribution",
+          "emission": "Emitter type",
+          "climate": "Climate entity (optional)",
+          "switch": "Switch / valve (optional)",
+          "primary_heat": "Primary in heating",
+          "primary_cool": "Primary in cooling",
+          "scope": "Scope",
+          "shared_emitter_id": "Shared-duct id (for shared scopes)",
+          "owner": "This zone drives the shared unit",
+          "policy": "Reconciliation policy",
+          "delete": "Delete this emitter"
+        }
+      },
+      "cat_staging": {
+        "title": "Emitter staging",
+        "data": {
+          "support_dev_on": "Support arm Δ (°C)",
+          "support_confirm_min": "Support confirm (min)",
+          "support_dev_off": "Support retire Δ (°C)",
+          "support_release_min": "Support release (min)"
+        },
+        "data_description": {
+          "support_dev_on": "How far the room may fall behind the setpoint (in the active direction) before a support emitter is armed.",
+          "support_confirm_min": "How long that lag must persist before the support actually turns on.",
+          "support_dev_off": "Once the room recovers to within this band of the setpoint, the support begins to retire.",
+          "support_release_min": "How long the recovery must hold before the support turns off (hysteresis)."
+        }
+      },
+      "cat_shared": {
+        "title": "Shared emitter",
+        "data": {
+          "zone_demand_weight": "Zone demand weight",
+          "shared_undershoot_margin": "Undershoot margin (°C)"
+        },
+        "data_description": {
+          "zone_demand_weight": "Relative weight of this zone when a shared un-zoned duct aggregates the demand of its zones (higher = biased toward this zone).",
+          "shared_undershoot_margin": "For a shared duct without motorized grilles, the unit cuts when the most-satisfied zone reaches its setpoint ∓ this margin, to avoid over-conditioning small rooms."
         }
       },
       "zone_add": {

@@ -71,6 +71,8 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "energy": ("Energy estimate", "Estimación de energía"),
     "cycle": ("Short-cycle protection", "Protección anti-ciclado"),
     "peak": ("Electrical-peak staging", "Escalonado de pico eléctrico"),
+    "staging": ("Emitter staging", "Staging de emisores"),
+    "shared": ("Shared emitter", "Emisor compartido"),
 }
 
 
@@ -356,6 +358,19 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("peak_stagger_s", "Stagger between starts (s)",
                "Escalonado entre arranques (s)"),
         ],
+        "staging": [
+            _v("support_dev_on", "Support arm Δ (°C)", "Δ activación apoyo (°C)"),
+            _v("support_confirm_min", "Support confirm (min)",
+               "Confirmación apoyo (min)"),
+            _v("support_dev_off", "Support retire Δ (°C)", "Δ retirada apoyo (°C)"),
+            _v("support_release_min", "Support release (min)",
+               "Retirada apoyo (min)"),
+        ],
+        "shared": [
+            _v("zone_demand_weight", "Zone demand weight", "Peso de demanda de zona"),
+            _v("shared_undershoot_margin", "Undershoot margin (°C)",
+               "Margen de undershoot (°C)"),
+        ],
     },
     const.MODULE_WEATHER: {
         "wx": [
@@ -405,6 +420,7 @@ _ADVANCED: dict[str, set[str]] = {
         "mold_decay_h", "mold_cap_h",
         "window_confirm_min", "window_release_min", "window_max_lockout_min",
         "peak_stagger_s",
+        "support_confirm_min", "support_release_min",
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",
