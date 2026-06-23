@@ -150,6 +150,7 @@
           "cat_energy": "Energy estimate",
           "cat_cycle": "Short-cycle protection",
           "schedule": "Weekly schedule",
+          "install": "Installation type",
           "zone_add": "Add zone",
           "zone_edit": "Edit zone",
           "group_add": "Add group",
@@ -797,6 +798,27 @@
           "value_4": "Slot 4 value",
           "copy_to": "Also copy this day to",
           "clear": "Clear this day"
+        }
+      },
+      "install": {
+        "title": "Installation type · generator",
+        "description": "Declare your heating/cooling install. Step 1 of 3: the heat generator. Choosing the type pre-loads coherent defaults (lead time, anti-cycle) you can fine-tune afterwards.",
+        "data": {
+          "generator": "Heat generator"
+        }
+      },
+      "install_dist": {
+        "title": "Installation type · distribution",
+        "description": "Step 2 of 3: is the generator individual or central/communal (shared)? A shared central system only lets you open a valve, so per-zone compressor and electrical-peak management do not apply.",
+        "data": {
+          "distribution": "Distribution"
+        }
+      },
+      "install_emission": {
+        "title": "Installation type · emitter",
+        "description": "Step 3 of 3: the emitter, which sets the thermal inertia (underfloor is slow, fan-coil is fast). This pre-loads matching lead and anti-cycle defaults.",
+        "data": {
+          "emission": "Emitter"
         }
       },
       "zone_add": {

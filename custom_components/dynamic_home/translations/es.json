@@ -150,6 +150,7 @@
           "cat_energy": "Estimación de energía",
           "cat_cycle": "Protección anti-ciclado",
           "schedule": "Programador semanal",
+          "install": "Tipo de instalación",
           "zone_add": "Añadir zona",
           "zone_edit": "Editar zona",
           "group_add": "Añadir grupo",
@@ -797,6 +798,27 @@
           "value_4": "Valor tramo 4",
           "copy_to": "Copiar este día también a",
           "clear": "Vaciar este día"
+        }
+      },
+      "install": {
+        "title": "Tipo de instalación · generador",
+        "description": "Declara tu instalación de clima. Paso 1 de 3: el generador de calor. Elegir el tipo precarga valores por defecto coherentes (lead, anti-ciclado) que podrás ajustar después.",
+        "data": {
+          "generator": "Generador de calor"
+        }
+      },
+      "install_dist": {
+        "title": "Tipo de instalación · distribución",
+        "description": "Paso 2 de 3: ¿el generador es individual o central/comunitario (compartido)? Un sistema central compartido solo te deja abrir una válvula, así que la gestión por zona del compresor y del pico eléctrico no aplica.",
+        "data": {
+          "distribution": "Distribución"
+        }
+      },
+      "install_emission": {
+        "title": "Tipo de instalación · emisor",
+        "description": "Paso 3 de 3: el emisor, que fija la inercia térmica (el suelo radiante es lento, el fancoil rápido). Esto precarga los valores de lead y anti-ciclado acordes.",
+        "data": {
+          "emission": "Emisor"
         }
       },
       "zone_add": {

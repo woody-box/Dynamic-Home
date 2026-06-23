@@ -4,6 +4,33 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.16.0] — 2026-06-23
+
+### Added
+- **Tipo de instalación (F26) · capa de declaración**: cada zona de clima declara
+  su instalación en **3 dimensiones independientes** — **Generador** (aerotermia
+  aire-agua, geotérmica, aire-aire/AC, calderas de gas/gasoil/biomasa/leña,
+  eléctrica directa) × **Distribución** (individual / central compartida) ×
+  **Emisión** (suelo/techo radiante, radiadores, toallero, convectores, conductos
+  calor/frío, radiante refrescante, fancoil, split). El carácter **central vs
+  individual** es una **dimensión aparte** del generador: gas, pellets, gasoil y
+  aerotermia pueden ser centrales o individuales; la **eléctrica directa** y el
+  **aire-aire** son **siempre individuales** (el asistente omite ese paso).
+  De la terna se deriva un **perfil** (`community`/`compressor`/`peak`) que F09/F03
+  consumirán: *comunitaria* solo abre válvula (sin compresor ni pico), una **bomba
+  de calor individual** activa compresor y pico, las **combustiones** ninguno, y la
+  **eléctrica** solo pico. Elegir la terna **precarga defaults** coherentes por
+  **inercia** (más lead y anti-ciclado más largo en suelo radiante; al revés en
+  fancoil), editables luego. Asistente de 3 pasos en las opciones de clima, sensor
+  diagnóstico **"Instalación"** (estado = la terna; atributos = los flags) y modelo
+  puro `install.py`. *(El **gating real** de F09/F03, los emisores —F25— y la opción
+  "personalizado" quedan para los siguientes ciclos.)*
+
+### Internal
+- Nuevo módulo puro `install.py` (catálogo + `profile` + `defaults` por inercia) con
+  tests (`test_install.py`) e integración (asistente, perfil, sensor; el generador
+  forzado individual salta el paso de distribución). Suite 343→357.
+
 ## [0.15.0] — 2026-06-22
 
 ### Added

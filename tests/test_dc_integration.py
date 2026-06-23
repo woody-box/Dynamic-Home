@@ -578,3 +578,94 @@ async def test_anticycle_disabled_does_not_hold(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert co.anticycle_hold is False          # opt-in: off by default
     assert co.entry.entry_id not in ac._zones   # not part of the aggregate
+
+
+# --- F26: installation type (generator × distribution × emission) ---
+async def test_install_sensor_absent_until_declared(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_install() is False
+    assert co.install_profile is None
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_install") is None
+
+
+async def test_install_profile_and_sensor_individual_heatpump(
+        hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "heatpump_air_water",
+        const.CONF_DISTRIBUTION: "individual",
+        const.CONF_EMISSION: "underfloor"})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_install()
+    assert co.install_profile == {"inertia": "high", "compressor": True,
+                                  "peak": True, "community": False}
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_install")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state == "heatpump_air_water/individual/underfloor"
+    assert st.attributes["compressor"] is True
+    assert st.attributes["community"] is False
+
+
+async def test_install_central_shared_is_community(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "gas_boiler",
+        const.CONF_DISTRIBUTION: "central_shared",
+        const.CONF_EMISSION: "radiators"})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.install_profile == {"inertia": "medium", "compressor": False,
+                                  "peak": False, "community": True}
+
+
+async def test_install_wizard_stores_triple_and_preloads_defaults(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "install"})
+    assert flow["step_id"] == "install"
+    # Pick an individual heat pump -> distribution step is shown.
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"generator": "heatpump_air_water"})
+    assert flow["step_id"] == "install_dist"
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"distribution": "individual"})
+    assert flow["step_id"] == "install_emission"
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"emission": "underfloor"})
+    await hass.async_block_till_done()
+    o = entry.options
+    assert o[const.CONF_GENERATOR] == "heatpump_air_water"
+    assert o[const.CONF_DISTRIBUTION] == "individual"
+    assert o[const.CONF_EMISSION] == "underfloor"
+    # High-inertia defaults were pre-loaded (and are valid option keys).
+    assert o["lead_base_h"] == 2.0
+    assert o["anticycle_min_on_s"] == 900.0
+
+
+async def test_install_wizard_skips_distribution_for_forced_individual(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "install"})
+    # Direct electric is always individual -> the distribution step is skipped.
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"generator": "electric_direct"})
+    assert flow["step_id"] == "install_emission"
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"emission": "convectors"})
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert entry.options[const.CONF_DISTRIBUTION] == "individual"
+    assert co.install_profile["peak"] is True
+    assert co.install_profile["compressor"] is False
