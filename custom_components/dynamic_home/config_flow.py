@@ -29,6 +29,9 @@ from . import (
 from . import (
     emitters as emitters_mod,
 )
+from . import (
+    presence as presence_mod,
+)
 
 # Weekday labels for the scheduler editor (Mon..Sun = 0..6, datetime.weekday()).
 _WEEKDAYS = {
@@ -40,13 +43,25 @@ _WEEKDAYS = {
 
 
 def _entity(domain: str | list[str] | None = None,
-            device_class: str | None = None) -> selector.EntitySelector:
+            device_class: str | None = None,
+            multiple: bool = False) -> selector.EntitySelector:
     cfg: dict[str, Any] = {}
     if domain:
         cfg["domain"] = domain
     if device_class:
         cfg["device_class"] = device_class
+    if multiple:
+        cfg["multiple"] = True
     return selector.EntitySelector(selector.EntitySelectorConfig(**cfg))
+
+
+def _hhmm_to_min(value, default: int) -> int:
+    """Parse a 'HH:MM[:SS]' time string into minutes from midnight."""
+    try:
+        h, m = str(value).split(":")[:2]
+        return int(h) * 60 + int(m)
+    except (TypeError, ValueError, AttributeError):
+        return default
 
 
 STEP_USER_SCHEMA = vol.Schema(
@@ -576,10 +591,12 @@ class ZonesOptionsFlow(OptionsFlow):
         self.entry = entry
         self._tree = zones.normalize(entry.options.get(const.CONF_ZONES_TREE))
         self._sel: str | None = None   # zone/group being edited
+        self._presence_zid: str | None = None   # zone whose sources are edited (F32)
 
     def _save(self):
+        # Preserve the other options (modes caps, presence) — only the tree changed.
         return self.async_create_entry(
-            title="", data={const.CONF_ZONES_TREE: self._tree})
+            title="", data={**self.entry.options, const.CONF_ZONES_TREE: self._tree})
 
     def _module_options(self) -> list[selector.SelectOptionDict]:
         out = []
@@ -600,7 +617,79 @@ class ZonesOptionsFlow(OptionsFlow):
         if self._tree["groups"]:
             menu.append("group_edit")
         menu.append("mode_caps")
+        menu.append("presence")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    # --- F32 presence editor (house settings + per-zone sources) ---
+    async def async_step_presence(self, user_input=None):
+        menu = ["presence_house"]
+        if self._tree["zones"]:
+            menu.append("presence_zone")
+        return self.async_show_menu(step_id="presence", menu_options=menu)
+
+    async def async_step_presence_house(self, user_input=None):
+        o = self.entry.options
+        if user_input is not None:
+            tune = dict(o.get(const.CONF_PRESENCE_TUNE) or {})
+            tune["sleep_start_min"] = _hhmm_to_min(
+                user_input.get("sleep_start"), 23 * 60)
+            tune["sleep_end_min"] = _hhmm_to_min(
+                user_input.get("sleep_end"), 7 * 60)
+            return self.async_create_entry(title="", data={
+                **o,
+                const.CONF_PRESENCE_PHONES: user_input.get("phones") or [],
+                const.CONF_PRESENCE_AUTO: user_input.get("auto", False),
+                const.CONF_PRESENCE_TUNE: tune})
+        tune = o.get(const.CONF_PRESENCE_TUNE) or {}
+
+        def _min_to_hhmm(minutes: int) -> str:
+            return f"{minutes // 60:02d}:{minutes % 60:02d}:00"
+        schema = vol.Schema({
+            vol.Optional("phones",
+                         default=o.get(const.CONF_PRESENCE_PHONES) or []):
+                _entity(["device_tracker", "person"], multiple=True),
+            vol.Optional("auto", default=o.get(const.CONF_PRESENCE_AUTO, False)): bool,
+            vol.Optional("sleep_start", description={"suggested_value":
+                         _min_to_hhmm(tune.get("sleep_start_min", 23 * 60))}):
+                selector.TimeSelector(),
+            vol.Optional("sleep_end", description={"suggested_value":
+                         _min_to_hhmm(tune.get("sleep_end_min", 7 * 60))}):
+                selector.TimeSelector(),
+        })
+        return self.async_show_form(step_id="presence_house", data_schema=schema)
+
+    async def async_step_presence_zone(self, user_input=None):
+        if user_input is not None:
+            self._presence_zid = user_input["zone"]
+            return await self.async_step_presence_zone_detail()
+        opts = [selector.SelectOptionDict(value=z, label=v["name"])
+                for z, v in self._tree["zones"].items()]
+        return self.async_show_form(
+            step_id="presence_zone",
+            data_schema=vol.Schema({vol.Required("zone"): self._select(opts)}))
+
+    async def async_step_presence_zone_detail(self, user_input=None):
+        zid = self._presence_zid
+        sources = dict(self.entry.options.get(const.CONF_PRESENCE_SOURCES) or {})
+        cur = sources.get(zid, {})
+        if user_input is not None:
+            sources[zid] = {k: user_input.get(k) or []
+                            for k in (presence_mod.PIR, presence_mod.MMWAVE,
+                                      presence_mod.DOOR)}
+            return self.async_create_entry(
+                title="", data={**self.entry.options,
+                                const.CONF_PRESENCE_SOURCES: sources})
+        schema = vol.Schema({
+            vol.Optional(presence_mod.PIR, default=cur.get("pir", [])):
+                _entity(["binary_sensor"], multiple=True),
+            vol.Optional(presence_mod.MMWAVE, default=cur.get("mmwave", [])):
+                _entity(["binary_sensor"], multiple=True),
+            vol.Optional(presence_mod.DOOR, default=cur.get("door", [])):
+                _entity(["binary_sensor"], multiple=True),
+        })
+        return self.async_show_form(
+            step_id="presence_zone_detail", data_schema=schema,
+            description_placeholders={"zone": self._tree["zones"][zid]["name"]})
 
     async def async_step_mode_caps(self, user_input=None):
         """F01: per-mode VMC speed cap (0..3; for eco/sleep/away)."""

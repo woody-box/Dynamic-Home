@@ -363,8 +363,9 @@
 > Unraid, Network, TV, Office) quedan fuera; Suite = el paraguas (= Dynamic Home).
 
 ### F32 · Dynamic Presence (enabler transversal)
-- **Estado:** ☑ revisada · **Módulos:** núcleo/bus · **Valor:** Alta · **Esfuerzo:** L
+- **Estado:** 🟡 parcial (v0.19.0: fusión PIR+mmWave+móvil+puerta + Durmiendo; BLE/identidad y puerta direccional diferidos) · **Módulos:** núcleo/zonas · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** detección de presencia (away/home/sleep, por zona) que alimenta modos (F01), perfiles (F21), setback de DC/DV y coordinación con luces/persianas. Transversal, como las zonas (F24).
+- **Implementado (v0.19.0):** vive en la entrada de Zonas; modelo puro `presence.py` (fusión por zona PIR/mmWave/puerta con timeouts por fuente + anti-flapping; casa `occupied`/`away`/`sleeping`); `ZonesCoordinator` con listeners+sondeo publica `DATA_PRESENCE` + evento, y **auto-pilota el modo de la casa** (opt-in, sin pisar Boost/Eco); binary_sensor de ocupación por zona + presencia de casa; editor en opciones; funciona con subconjuntos. **Diferido:** identidad BLE/Bermuda ("quién"), puerta direccional por orden de eventos, publicación por bus / setback directo por zona.
 - **Perfilado:**
   - **Fusión de fuentes** (el valor real, no consumir un solo sensor): **PIR** (reacción rápida) + **mmWave** (presencia sostenida/quieto) + **BLE tipo Bermuda con beacons dedicados** (identidad + habitación, sin gastar batería del móvil) + **móvil GPS/WiFi** (Casa/Fuera).
   - **Estados:** por zona `Ocupada/Vacía`; global `Casa/Fuera/Durmiendo`. Anti-flapping (no marcar vacía por estar quieto).

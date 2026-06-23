@@ -19,7 +19,7 @@ PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor",
                                 "binary_sensor"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
-PLATFORMS_ZONES: list[str] = ["sensor", "select"]
+PLATFORMS_ZONES: list[str] = ["sensor", "select", "binary_sensor"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
 # whole bus is observable from one place in the HA UI, not scattered per entry).
@@ -117,6 +117,14 @@ DATA_ZONES = "_zones_tree"         # published in hass.data[DOMAIN] for consumer
 CONF_MODE_CAPS = "mode_caps"       # per-mode VMC speed cap (options dict)
 DATA_MODE = "_mode"                # resolved modes published in hass.data[DOMAIN]
 EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
+
+# --- F32 Presence (lives on the zones entry; fuses sources -> per-zone + house) ---
+CONF_PRESENCE_SOURCES = "presence_sources"  # {zid: {pir:[], mmwave:[], door:[]}}
+CONF_PRESENCE_PHONES = "presence_phones"    # house-global device_tracker/person ids
+CONF_PRESENCE_AUTO = "presence_auto"        # auto-drive the house mode (home/away/sleep)
+CONF_PRESENCE_TUNE = "presence_tune"        # optional PresenceConfig overrides (dict)
+DATA_PRESENCE = "_presence"                 # resolved presence published in hass.data
+EVENT_PRESENCE_CHANGED = f"{DOMAIN}_presence_changed"
 
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;

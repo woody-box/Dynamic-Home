@@ -16,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import const
 from .coordinator import DcCoordinator
 from .coordinator_weather import WxCoordinator
+from .coordinator_zones import ZonesCoordinator
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
@@ -24,6 +25,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     module = entry.data.get(const.CONF_MODULE)
     if module == const.MODULE_WEATHER:
         async_add_entities([WeatherAlertBinarySensor(coordinator, entry)])
+        return
+    if module == const.MODULE_ZONES:
+        # F32: a per-zone occupancy sensor for each zone with sources + a
+        # house-level presence sensor (only when presence is configured).
+        sources = entry.options.get(const.CONF_PRESENCE_SOURCES) or {}
+        phones = entry.options.get(const.CONF_PRESENCE_PHONES) or []
+        ents: list[BinarySensorEntity] = [
+            ZoneOccupancyBinarySensor(coordinator, entry, zid, z["name"])
+            for zid, z in coordinator.tree["zones"].items() if sources.get(zid)]
+        if sources or phones:
+            ents.append(HousePresenceBinarySensor(coordinator, entry))
+        async_add_entities(ents)
         return
     # DV/DS only expose the transversal "Degradado" health sensor (F07); the
     # rest below are DC-specific (dew risk, real demand, inferred window).
@@ -37,6 +50,56 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if coordinator.has_window_infer():
         entities.append(WindowInferredBinarySensor(coordinator, entry))
     async_add_entities(entities)
+
+
+class ZoneOccupancyBinarySensor(CoordinatorEntity[ZonesCoordinator],
+                                BinarySensorEntity):
+    """Per-zone fused occupancy (F32)."""
+
+    _attr_has_entity_name = True
+    _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
+    _attr_icon = "mdi:account-eye"
+
+    def __init__(self, coordinator: ZonesCoordinator, entry: ConfigEntry,
+                 zid: str, name: str) -> None:
+        super().__init__(coordinator)
+        self._zid = zid
+        self._attr_name = f"Presencia {name}"
+        self._attr_unique_id = f"{entry.entry_id}_occupancy_{zid}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return bool(self.coordinator.presence_occupied.get(self._zid))
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"reason": self.coordinator.presence_reasons.get(self._zid, "empty")}
+
+
+class HousePresenceBinarySensor(CoordinatorEntity[ZonesCoordinator],
+                                BinarySensorEntity):
+    """House presence (F32): on while occupied/sleeping, off when away."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Presencia casa"
+    _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
+    _attr_icon = "mdi:home-account"
+
+    def __init__(self, coordinator: ZonesCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_house_presence"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.house_presence != "away"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"state": self.coordinator.house_presence}
 
 
 class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):

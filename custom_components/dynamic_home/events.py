@@ -60,6 +60,15 @@ def fire_mode_changed(hass: HomeAssistant, entry: ConfigEntry,
     hass.bus.async_fire(const.EVENT_MODE_CHANGED, data)
 
 
+def fire_presence_changed(hass: HomeAssistant, entry: ConfigEntry,
+                          house: str, zones_occupied: dict) -> None:
+    """The house presence state or a zone's occupancy changed (F32)."""
+    data = _base(entry, "zones")
+    data["house"] = house
+    data["zones"] = dict(zones_occupied)
+    hass.bus.async_fire(const.EVENT_PRESENCE_CHANGED, data)
+
+
 def fire_adjacent(hass: HomeAssistant, entry: ConfigEntry, module: str,
                   advice: str, dt: float) -> None:
     """Adjacent warm-space advisory changed (F31): open_gain / close_alarm / none."""
