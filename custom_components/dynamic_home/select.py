@@ -14,7 +14,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from . import comfort, const, modes
+from . import changeover, comfort, const, modes
 from .coordinator_zones import ZonesCoordinator
 
 
@@ -24,11 +24,44 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         return
     coordinator: ZonesCoordinator = hass.data[const.DOMAIN][entry.entry_id]
     ents: list[SelectEntity] = [HouseModeSelect(coordinator, entry),
-                                GlobalComfortSelect(coordinator, entry)]
+                                GlobalComfortSelect(coordinator, entry),
+                                ChangeoverSelect(coordinator, entry)]
     for zid, z in coordinator.tree["zones"].items():
         ents.append(ZoneModeSelect(coordinator, entry, zid, z["name"]))
         ents.append(ZoneComfortSelect(coordinator, entry, zid, z["name"]))
     async_add_entities(ents)
+
+
+class ChangeoverSelect(RestoreEntity, SelectEntity):
+    """F37: the community changeover direction (auto follows the supply water)."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Changeover (agua)"
+    _attr_icon = "mdi:sun-snowflake-variant"
+    _attr_translation_key = "changeover"
+    _attr_options = list(changeover.MANUAL_OPTIONS)
+
+    def __init__(self, coordinator: ZonesCoordinator, entry: ConfigEntry) -> None:
+        self._co = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_changeover"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last and last.state in changeover.MANUAL_OPTIONS:
+            self._co.changeover_manual = last.state
+        self._co.publish_changeover(notify=False)
+
+    @property
+    def current_option(self) -> str:
+        return self._co.changeover_manual
+
+    async def async_select_option(self, option: str) -> None:
+        self._co.changeover_manual = option
+        self.async_write_ha_state()
+        self._co.publish_changeover()
 
 
 class HouseModeSelect(RestoreEntity, SelectEntity):

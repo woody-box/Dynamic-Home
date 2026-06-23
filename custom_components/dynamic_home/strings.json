@@ -162,7 +162,22 @@
           "mode_caps": "Mode speed caps",
           "presence": "Presence",
           "presence_house": "Presence · house settings",
-          "presence_zone": "Presence · zone sources"
+          "presence_zone": "Presence · zone sources",
+          "changeover": "Community changeover"
+        }
+      },
+      "changeover": {
+        "title": "Community changeover",
+        "description": "For a 2-pipe community radiant system the building sends hot OR cold water to everyone by season. Point this at the supply-water temperature sensor; community zones then heat or cool in the direction the building currently allows. Use the «Changeover (water)» selector to force a direction (auto reads the sensor).",
+        "data": {
+          "changeover_sensor": "Supply-water temperature sensor",
+          "heat_above_c": "Heating when water ≥ (°C)",
+          "cool_below_c": "Cooling when water ≤ (°C)"
+        },
+        "data_description": {
+          "changeover_sensor": "A temperature sensor on the manifold / supply pipe. Leave empty to drive the changeover only manually.",
+          "heat_above_c": "In auto, supply water at or above this means the building is heating.",
+          "cool_below_c": "In auto, supply water at or below this means the building is cooling. In between is treated as idle (shoulder season)."
         }
       },
       "presence": {
@@ -1090,6 +1105,14 @@
           "eco": "Eco",
           "balanced": "Balanced",
           "comfort": "Comfort"
+        }
+      },
+      "changeover": {
+        "state": {
+          "auto": "Auto (follow water)",
+          "heat": "Heating",
+          "cool": "Cooling",
+          "off": "Off"
         }
       }
     }

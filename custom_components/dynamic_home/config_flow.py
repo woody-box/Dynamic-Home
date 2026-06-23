@@ -618,7 +618,34 @@ class ZonesOptionsFlow(OptionsFlow):
             menu.append("group_edit")
         menu.append("mode_caps")
         menu.append("presence")
+        menu.append("changeover")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    # --- F37 community changeover (supply-water sensor + thresholds) ---
+    async def async_step_changeover(self, user_input=None):
+        o = self.entry.options
+        if user_input is not None:
+            tune = {"heat_above_c": float(user_input["heat_above_c"]),
+                    "cool_below_c": float(user_input["cool_below_c"])}
+            data = {**o, const.CONF_CHANGEOVER_TUNE: tune}
+            sensor = user_input.get("changeover_sensor")
+            if sensor:
+                data[const.CONF_CHANGEOVER_SENSOR] = sensor
+            else:
+                data.pop(const.CONF_CHANGEOVER_SENSOR, None)
+            return self.async_create_entry(title="", data=data)
+        tune = o.get(const.CONF_CHANGEOVER_TUNE) or {}
+        num = vol.All(vol.Coerce(float), vol.Range(min=-10, max=90))
+        schema = vol.Schema({
+            vol.Optional("changeover_sensor", description={
+                "suggested_value": o.get(const.CONF_CHANGEOVER_SENSOR)}):
+                _entity("sensor", "temperature"),
+            vol.Required("heat_above_c",
+                         default=tune.get("heat_above_c", 28.0)): num,
+            vol.Required("cool_below_c",
+                         default=tune.get("cool_below_c", 20.0)): num,
+        })
+        return self.async_show_form(step_id="changeover", data_schema=schema)
 
     # --- F32 presence editor (house settings + per-zone sources) ---
     async def async_step_presence(self, user_input=None):

@@ -126,6 +126,14 @@ CONF_PRESENCE_TUNE = "presence_tune"        # optional PresenceConfig overrides 
 DATA_PRESENCE = "_presence"                 # resolved presence published in hass.data
 EVENT_PRESENCE_CHANGED = f"{DOMAIN}_presence_changed"
 
+# --- F37 Community changeover (seasonal water mode; lives on the zones entry) ---
+# A 2-pipe community radiant system sends hot OR cold water to the whole building;
+# the house changeover direction gates the community (central_shared) zones.
+CONF_CHANGEOVER_SENSOR = "changeover_sensor"  # supply-water temperature sensor
+CONF_CHANGEOVER_TUNE = "changeover_tune"      # threshold overrides (dict)
+DATA_CHANGEOVER = "_changeover"               # resolved changeover published in hass.data
+EVENT_CHANGEOVER_CHANGED = f"{DOMAIN}_changeover_changed"
+
 # --- Options keys (VMC IAQ thresholds; mirror DvConfig field names) ---
 # The full catalogue of UI-tunable parameters lives in ``options_spec.py``;
 # these aliases are kept because the number platform references them directly.

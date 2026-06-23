@@ -162,7 +162,22 @@
           "mode_caps": "Cap de velocidad por modo",
           "presence": "Presencia",
           "presence_house": "Presencia · ajustes de casa",
-          "presence_zone": "Presencia · fuentes por zona"
+          "presence_zone": "Presencia · fuentes por zona",
+          "changeover": "Changeover comunitario"
+        }
+      },
+      "changeover": {
+        "title": "Changeover comunitario",
+        "description": "En un suelo radiante comunitario a 2 tubos, el edificio manda agua caliente O fría a todos según la temporada. Apunta aquí al sensor de temperatura del agua de impulsión; las zonas comunitarias calentarán o refrescarán en la dirección que permita el edificio. Usa el selector «Changeover (agua)» para forzar una dirección (auto lee el sensor).",
+        "data": {
+          "changeover_sensor": "Sensor de temperatura del agua de impulsión",
+          "heat_above_c": "Calor cuando el agua ≥ (°C)",
+          "cool_below_c": "Frío cuando el agua ≤ (°C)"
+        },
+        "data_description": {
+          "changeover_sensor": "Un sensor de temperatura en el colector / tubería de impulsión. Déjalo vacío para gobernar el changeover solo a mano.",
+          "heat_above_c": "En auto, agua de impulsión a esta temperatura o más significa que el edificio está calentando.",
+          "cool_below_c": "En auto, agua a esta temperatura o menos significa que el edificio está refrescando. En medio se trata como reposo (entretiempo)."
         }
       },
       "presence": {
@@ -1090,6 +1105,14 @@
           "eco": "Eco",
           "balanced": "Equilibrado",
           "comfort": "Confort"
+        }
+      },
+      "changeover": {
+        "state": {
+          "auto": "Auto (sigue el agua)",
+          "heat": "Calor",
+          "cool": "Frío",
+          "off": "Apagado"
         }
       }
     }
