@@ -9,7 +9,8 @@
           "shutter": "Shutter",
           "climate": "Climate (zone)",
           "weather": "Dynamic Weather",
-          "zones": "Dynamic Home · Zones"
+          "zones": "Dynamic Home · Zones",
+          "energy": "Dynamic Home · Energy"
         }
       },
       "vmc": {
@@ -97,6 +98,19 @@
         "data": {
           "name": "Name"
         }
+      },
+      "energy": {
+        "title": "Dynamic Home · Energy",
+        "description": "House energy brain (one entry). Publishes context — import headroom under the contracted power, tariff state, scarcity — that other modules read to modulate their aggressiveness; it never commands. Plug in your own entities; it works with any subset (PV/battery are optional).",
+        "data": {
+          "name": "Name",
+          "energy_contracted_w": "Contracted power (W)",
+          "energy_grid": "Grid import power (sensor, W)",
+          "energy_price": "Electricity price (sensor, €/kWh)",
+          "energy_total": "Whole-house consumption (sensor, W)",
+          "energy_pv": "PV production (sensor, W)",
+          "energy_batt_soc": "Battery SoC (sensor, %)"
+        }
       }
     },
     "abort": {
@@ -147,6 +161,7 @@
           "cat_alert": "Weather alerts",
           "cat_hood": "Extractor hood",
           "cat_wx": "Sources & alerts",
+          "cat_tariff": "Tariff thresholds",
           "cat_energy": "Energy estimate",
           "cat_cycle": "Short-cycle protection",
           "cat_peak": "Electrical-peak staging",
@@ -798,6 +813,17 @@
           "stale_after_h": "A source whose data is older than this counts as down (fall back to the next).",
           "alert_wind_kmh": "Wind at/above this raises the weather alert.",
           "alert_precip_mm": "Precipitation at/above this raises the weather alert."
+        }
+      },
+      "cat_tariff": {
+        "title": "Tariff thresholds",
+        "data": {
+          "cheap_below": "Cheap below (€/kWh)",
+          "peak_above": "Peak above (€/kWh)"
+        },
+        "data_description": {
+          "cheap_below": "At or below this price the tariff state is «cheap». With no price sensor a fixed tariff is used.",
+          "peak_above": "At or above this price the tariff state is «peak»."
         }
       },
       "cat_cycle": {

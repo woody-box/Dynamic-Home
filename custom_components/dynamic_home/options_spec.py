@@ -17,6 +17,7 @@ from . import const
 from .dc_engine import DcConfig
 from .ds_engine import DsConfig
 from .dv_engine import DvConfig
+from .energy_engine import EnergyConfig
 from .weather_engine import WxConfig
 
 
@@ -73,6 +74,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "peak": ("Electrical-peak staging", "Escalonado de pico eléctrico"),
     "staging": ("Emitter staging", "Staging de emisores"),
     "shared": ("Shared emitter", "Emisor compartido"),
+    "tariff": ("Tariff thresholds", "Umbrales de tarifa"),
 }
 
 
@@ -372,6 +374,12 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
                "Margen de undershoot (°C)"),
         ],
     },
+    const.MODULE_ENERGY: {
+        "tariff": [
+            _v("cheap_below", "Cheap below (€/kWh)", "Barato por debajo (€/kWh)"),
+            _v("peak_above", "Peak above (€/kWh)", "Pico por encima (€/kWh)"),
+        ],
+    },
     const.MODULE_WEATHER: {
         "wx": [
             _v("stale_after_h", "Stale after (h)", "Caduca tras (h)"),
@@ -386,6 +394,7 @@ _FRESH = {
     const.MODULE_SHUTTER: DsConfig,
     const.MODULE_CLIMATE: DcConfig,
     const.MODULE_WEATHER: WxConfig,
+    const.MODULE_ENERGY: EnergyConfig,
 }
 
 

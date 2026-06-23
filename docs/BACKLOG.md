@@ -389,8 +389,9 @@
   - **Implementado:** módulo `weather` (entidad `weather` proxy con fallback + reenvío de `get_forecasts`; `binary_sensor` de alerta derivada para F17; sensor de fuente activa). Fuentes: hasta 3 `weather.*` priorizadas + sensores crudos de respaldo; caducidad/umbral de alerta configurables. Forecast solo si la activa es `weather`. Sin APIs en la integración.
 
 ### F34 · Dynamic Energy (módulo)
-- **Estado:** ☑ revisada · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
+- **Estado:** 🟡 parcial (v0.21.0: núcleo + tarifa + anti-pico de red; FV/VE/agregación diferidos) · **Módulos:** nuevo (Energy) · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** cerebro de energía: FV/batería/red/autoconsumo + **carga inteligente del VE** (garaje). Consolida F03 (anti-pico), F04 (precio), F06 (coste). Coordina a los grandes consumidores (DC/DV/AC) vía bus.
+- **Implementado (v0.21.0):** módulo **singleton** `MODULE_ENERGY`; motor puro `energy_engine.py` (`tariff_state` sensor+tramos fijos, `import_headroom`, `surplus` gated, `scarcity`, `resolve_context`); `coordinator_energy.py` publica `DATA_ENERGY` (patrón F32/F37) y avisa a consumidores; sensores Margen de red/Tarifa/Escasez + Excedente FV (gated); **consumidor**: el `import_headroom_w` aprieta el presupuesto de F03 en `_peak_step` (degrada a N cargas sin medidor; OFF en comunitaria). **Diferido:** §8.5 FV/excedente, §8.6 carga VE (⚠️ validación externa), §8.2 totales de casa, sesgo de tarifa en DC.
 - **⚠️ Testabilidad:** el autor **no tiene placas solares** (probablemente tampoco batería/wallbox) → la parte **FV/batería/excedente/VE no es testable por el autor**: queda **pendiente de validación externa**. Sí testable por el autor: **anti-pico de red, coste/consumo, precio/tarifa** y la **mecánica del bus** con entradas simuladas.
 - **Perfilado:**
   - **Es un MÓDULO** (cerebro de energía) al nivel de DC/DV/DS: coordinator propio + publica al bus. **No actúa directamente** sobre otros módulos; publica **contexto energético** y cada módulo decide (RNF-3 seguridad/autoridad, RNF-4 bus). Nada de "comandar" DC/DV.
@@ -453,7 +454,7 @@
 | **F28** | ☑ revisada | Eficiencia recuperador (3 sondas, sin expulsión) + inferencia bypass (aviso solo si desplome inesperado). |
 | **F30** | ☑ revisada | IAQ extendido: actúan solo CO₂/PM2.5; VOC informativo; NOx descartado; exteriores observación + hostil. |
 | **F33** | ✅ implementada | Weather agnóstico multi-fuente con fallback; entidad weather proxy (reenvía get_forecasts) + alerta derivada (F17) + fuente activa; weather.* + sensores crudos; sin FV (eso es F34). |
-| **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
+| **F34** | 🟡 parcial | Módulo Energy (v0.21.0): singleton que publica `DATA_ENERGY` (headroom/tarifa/escasez; surplus gated por FV), no comanda; motor puro `energy_engine.py`; sensores + escasez; el headroom aprieta el presupuesto de F03. **FV (§8.5)/VE (§8.6) y agregación §8.2 diferidos** (⚠️ FV no testable por el autor). |
 | **F35** | ✅ implementada | Campana coordinada (PM interior → subir campana; 3 relés break-before-make + interlock; entidad fan auto+manual). |
 | **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |
 | **F37** | ✅ implementada | Changeover comunitario (v0.20.0): dirección de casa heat/cool/off que las zonas `community` (F26) siguen; detección manual + auto por sensor de agua de impulsión con umbrales; modelo puro `changeover.py`; select + sensor en Zonas; `hvac_action` en la tarjeta; opt-in/back-compat. Por zona/grupo e histéresis diferidos. |

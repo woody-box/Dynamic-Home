@@ -146,6 +146,19 @@ STEP_WEATHER_SCHEMA = vol.Schema(
 
 STEP_ZONES_SCHEMA = vol.Schema({vol.Required(const.CONF_NAME, default="Zonas"): str})
 
+STEP_ENERGY_SCHEMA = vol.Schema(
+    {
+        vol.Required(const.CONF_NAME, default="Energía"): str,
+        vol.Required(const.CONF_ENERGY_CONTRACTED, default=5750): vol.All(
+            vol.Coerce(float), vol.Range(min=1000, max=43600)),
+        vol.Optional(const.CONF_ENERGY_GRID): _entity("sensor", "power"),
+        vol.Optional(const.CONF_ENERGY_PRICE): _entity("sensor"),
+        vol.Optional(const.CONF_ENERGY_TOTAL): _entity("sensor", "power"),
+        vol.Optional(const.CONF_ENERGY_PV): _entity("sensor", "power"),
+        vol.Optional(const.CONF_ENERGY_BATT_SOC): _entity("sensor", "battery"),
+    }
+)
+
 # Module entries that can be assigned to a zone (everything but the Zones entry).
 _ASSIGNABLE = (const.MODULE_VMC, const.MODULE_SHUTTER, const.MODULE_CLIMATE,
                const.MODULE_WEATHER)
@@ -160,7 +173,18 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
         """Entry point: choose which module to add."""
         return self.async_show_menu(
             step_id="user",
-            menu_options=["vmc", "shutter", "climate", "weather", "zones"])
+            menu_options=["vmc", "shutter", "climate", "weather", "zones",
+                          "energy"])
+
+    async def async_step_energy(self, user_input: dict[str, Any] | None = None):
+        if user_input is not None:
+            await self.async_set_unique_id("energy_singleton")
+            self._abort_if_unique_id_configured()       # one energy entry only
+            data = {**user_input, const.CONF_MODULE: const.MODULE_ENERGY}
+            return self.async_create_entry(
+                title=user_input[const.CONF_NAME], data=data)
+        return self.async_show_form(
+            step_id="energy", data_schema=STEP_ENERGY_SCHEMA)
 
     async def async_step_zones(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:

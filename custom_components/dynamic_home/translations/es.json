@@ -9,7 +9,8 @@
           "shutter": "Persiana",
           "climate": "Clima (zona)",
           "weather": "Dynamic Weather",
-          "zones": "Dynamic Home · Zonas"
+          "zones": "Dynamic Home · Zonas",
+          "energy": "Dynamic Home · Energía"
         }
       },
       "vmc": {
@@ -97,6 +98,19 @@
         "data": {
           "name": "Nombre"
         }
+      },
+      "energy": {
+        "title": "Dynamic Home · Energía",
+        "description": "Cerebro de energía de la casa (una sola entrada). Publica contexto — margen de import bajo la potencia contratada, estado de tarifa, escasez — que el resto de módulos leen para modular su agresividad; no comanda. Enchufa tus propias entidades; funciona con cualquier subconjunto (FV/batería son opcionales).",
+        "data": {
+          "name": "Nombre",
+          "energy_contracted_w": "Potencia contratada (W)",
+          "energy_grid": "Potencia importada de red (sensor, W)",
+          "energy_price": "Precio de la luz (sensor, €/kWh)",
+          "energy_total": "Consumo total de la casa (sensor, W)",
+          "energy_pv": "Producción FV (sensor, W)",
+          "energy_batt_soc": "SoC de batería (sensor, %)"
+        }
       }
     },
     "abort": {
@@ -147,6 +161,7 @@
           "cat_alert": "Avisos meteo",
           "cat_hood": "Campana extractora",
           "cat_wx": "Fuentes y alertas",
+          "cat_tariff": "Umbrales de tarifa",
           "cat_energy": "Estimación de energía",
           "cat_cycle": "Protección anti-ciclado",
           "cat_peak": "Escalonado de pico eléctrico",
@@ -798,6 +813,17 @@
           "stale_after_h": "Una fuente con datos más viejos que esto se considera caída (pasa a la siguiente).",
           "alert_wind_kmh": "Viento a partir del cual se activa la alerta meteo.",
           "alert_precip_mm": "Precipitación a partir de la cual se activa la alerta meteo."
+        }
+      },
+      "cat_tariff": {
+        "title": "Umbrales de tarifa",
+        "data": {
+          "cheap_below": "Barato por debajo de (€/kWh)",
+          "peak_above": "Pico por encima de (€/kWh)"
+        },
+        "data_description": {
+          "cheap_below": "A este precio o menos, la tarifa es «barato». Sin sensor de precio se usa una tarifa fija.",
+          "peak_above": "A este precio o más, la tarifa es «pico»."
         }
       },
       "cat_cycle": {

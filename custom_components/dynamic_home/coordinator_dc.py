@@ -485,10 +485,21 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.peak_reason = "off"
             return
         demand = decision.action in ("heat", "cool") and not self.anticycle_hold
-        power_mode = cfg.peak_max_power_w > 0
+        # F34: a live grid meter (Energy module) gives a watt budget = headroom;
+        # it tightens any static cap and never loosens it. No meter -> static watt
+        # budget if set, else degrade to an N-zones count (REQ-EPK-1).
+        energy = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ENERGY)
+        headroom = energy.get("import_headroom_w") if energy else None
+        power_mode = headroom is not None or cfg.peak_max_power_w > 0
         units = ((self._num(const.CONF_POWER_METER) or cfg.est_w_on)
                  if power_mode else 1.0)
-        max_units = cfg.peak_max_power_w if power_mode else float(cfg.peak_max_zones)
+        if headroom is not None:
+            max_units = (min(headroom, cfg.peak_max_power_w)
+                         if cfg.peak_max_power_w > 0 else headroom)
+        elif power_mode:
+            max_units = cfg.peak_max_power_w
+        else:
+            max_units = float(cfg.peak_max_zones)
         allowed, self.peak_reason = ph.evaluate(
             self.entry.entry_id, demand=demand, units=units, sustained=True,
             hold_s=0.0, now_ts=now_ts, max_units=max_units,

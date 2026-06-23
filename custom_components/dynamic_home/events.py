@@ -77,6 +77,14 @@ def fire_changeover_changed(hass: HomeAssistant, entry: ConfigEntry,
     hass.bus.async_fire(const.EVENT_CHANGEOVER_CHANGED, data)
 
 
+def fire_energy_changed(hass: HomeAssistant, entry: ConfigEntry,
+                        context: dict) -> None:
+    """The published house energy context changed (F34)."""
+    data = _base(entry, "energy")
+    data.update(context)
+    hass.bus.async_fire(const.EVENT_ENERGY_CHANGED, data)
+
+
 def fire_adjacent(hass: HomeAssistant, entry: ConfigEntry, module: str,
                   advice: str, dt: float) -> None:
     """Adjacent warm-space advisory changed (F31): open_gain / close_alarm / none."""

@@ -4,6 +4,31 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.21.0] — 2026-06-23
+
+### Added
+- **Módulo Dynamic Energy (F34) · núcleo + tarifa + anti-pico de red**: un módulo
+  nuevo (entrada única por casa, como Zonas) que **publica el contexto energético de la
+  casa** y **no comanda** a nadie — cada módulo sigue mandando sobre sí mismo y la
+  seguridad prevalece. **Agnóstico**: enchufas tus propias entidades (potencia de red,
+  precio, y opcionalmente FV/consumo) y funciona con **cualquier subconjunto**.
+  - Publica `import_headroom_w` (margen hasta la potencia contratada/ICP), `tariff_state`
+    (**barato/normal/pico** por sensor de precio **o tramos fijos**), `scarcity` (caro y
+    sin excedente) y, **solo si declaras FV**, `surplus_w`.
+  - **Anti-pico de red (consolida F03):** el margen de red **aprieta dinámicamente** el
+    presupuesto de pico de las zonas eléctricas (sin medidor → degrada a «N cargas»;
+    desactivado en instalaciones comunitarias). Solo **baja** un presupuesto que el árbitro
+    de pico ya aplicaba; ningún mecanismo nuevo.
+  - Entidades: **Margen de red**, **Tarifa**, **Escasez** (+ **Excedente FV** si hay FV).
+  - **FV/batería y carga del VE quedan diferidos** (validación externa); los campos de FV
+    están preparados (present-but-gated) para añadirlos sin romper nada.
+
+### Internal
+- Nuevo módulo puro `energy_engine.py` + `coordinator_energy.py` con tests
+  (`test_energy_engine.py` + `test_energy_integration.py`: publica `DATA_ENERGY` con solo
+  red+precio; sin FV no expone excedente ni rompe; tarifa fija determinista; el headroom
+  aprieta el pico de una zona DC eléctrica). Suite 420→431.
+
 ## [0.20.0] — 2026-06-23
 
 ### Added
