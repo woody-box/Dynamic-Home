@@ -650,7 +650,8 @@ class ZonesOptionsFlow(OptionsFlow):
         o = self.entry.options
         if user_input is not None:
             tune = {"heat_above_c": float(user_input["heat_above_c"]),
-                    "cool_below_c": float(user_input["cool_below_c"])}
+                    "cool_below_c": float(user_input["cool_below_c"]),
+                    "hysteresis_c": float(user_input["hysteresis_c"])}
             data = {**o, const.CONF_CHANGEOVER_TUNE: tune}
             sensor = user_input.get("changeover_sensor")
             if sensor:
@@ -668,6 +669,9 @@ class ZonesOptionsFlow(OptionsFlow):
                          default=tune.get("heat_above_c", 28.0)): num,
             vol.Required("cool_below_c",
                          default=tune.get("cool_below_c", 20.0)): num,
+            vol.Required("hysteresis_c",
+                         default=tune.get("hysteresis_c", 2.0)): vol.All(
+                vol.Coerce(float), vol.Range(min=0, max=15)),
         })
         return self.async_show_form(step_id="changeover", data_schema=schema)
 

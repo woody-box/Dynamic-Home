@@ -457,7 +457,7 @@
 | **F34** | 🟡 parcial | Módulo Energy (v0.21.0): singleton que publica `DATA_ENERGY` (headroom/tarifa/escasez; surplus gated por FV), no comanda; motor puro `energy_engine.py`; sensores + escasez; el headroom aprieta el presupuesto de F03. **FV (§8.5)/VE (§8.6) y agregación §8.2 diferidos** (⚠️ FV no testable por el autor). |
 | **F35** | ✅ implementada | Campana coordinada (PM interior → subir campana; 3 relés break-before-make + interlock; entidad fan auto+manual). |
 | **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |
-| **F37** | ✅ implementada | Changeover comunitario (v0.20.0): dirección de casa heat/cool/off que las zonas `community` (F26) siguen; detección manual + auto por sensor de agua de impulsión con umbrales; modelo puro `changeover.py`; select + sensor en Zonas; `hvac_action` en la tarjeta; opt-in/back-compat. Por zona/grupo e histéresis diferidos. |
+| **F37** | ✅ implementada | Changeover comunitario (v0.20.0): dirección de casa heat/cool/off que las zonas `community` (F26) siguen; detección manual + auto por sensor de agua con umbrales; `changeover.py`; select + sensor en Zonas; `hvac_action`; opt-in/back-compat. **Refinado v0.22.0: histéresis de temporada (anti-flap) + override de changeover por zona (auto hereda la casa).** Per-zona con sensor de agua propio diferido. |
 
 ### F37 · Changeover comunitario (modo estacional de agua)
 - **Estado:** ✅ implementada (v0.20.0) · **Módulos:** Zonas + DC · **Valor:** Alta (instalaciones comunitarias) · **Esfuerzo:** S-M

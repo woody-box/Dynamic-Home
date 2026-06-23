@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.22.0] — 2026-06-23
+
+### Added
+- **Changeover (F37) · histéresis + override por zona**:
+  - **Histéresis de temporada**: cuando el agua de impulsión ronda los umbrales, el
+    changeover ya **no parpadea** — una vez en calor/frío, el agua debe alejarse
+    `hysteresis_c` (°C, configurable, por defecto 2) del umbral antes de cambiar de
+    dirección.
+  - **Override de changeover por zona**: cada zona tiene un selector
+    **«Changeover {zona}»** (`auto/calor/frío/apagado`); en `auto` hereda la dirección
+    de la casa, y con un valor fijo **fuerza** su propia dirección (para colectores
+    independientes). El selector de casa sigue gobernando el resto.
+
+### Internal
+- `changeover.resolve(...)` ahora acepta el estado previo (histéresis) y se añade
+  `changeover.effective(house, override)`; `ZonesCoordinator` publica los overrides en
+  `DATA_CHANGEOVER["zones"]` y DC resuelve el changeover de su zona por `scope_for_module`.
+  Tests puros (histéresis, effective) + integración (override por zona gana a la casa;
+  histéresis no parpadea; publicación de overrides). Suite 431→436.
+
 ## [0.21.0] — 2026-06-23
 
 ### Added

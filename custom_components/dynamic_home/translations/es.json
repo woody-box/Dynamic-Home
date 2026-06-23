@@ -187,12 +187,14 @@
         "data": {
           "changeover_sensor": "Sensor de temperatura del agua de impulsión",
           "heat_above_c": "Calor cuando el agua ≥ (°C)",
-          "cool_below_c": "Frío cuando el agua ≤ (°C)"
+          "cool_below_c": "Frío cuando el agua ≤ (°C)",
+          "hysteresis_c": "Histéresis (°C)"
         },
         "data_description": {
           "changeover_sensor": "Un sensor de temperatura en el colector / tubería de impulsión. Déjalo vacío para gobernar el changeover solo a mano.",
           "heat_above_c": "En auto, agua de impulsión a esta temperatura o más significa que el edificio está calentando.",
-          "cool_below_c": "En auto, agua a esta temperatura o menos significa que el edificio está refrescando. En medio se trata como reposo (entretiempo)."
+          "cool_below_c": "En auto, agua a esta temperatura o menos significa que el edificio está refrescando. En medio se trata como reposo (entretiempo).",
+          "hysteresis_c": "Banda anti-flapping: una vez en calor/frío, el agua debe alejarse esto del umbral antes de cambiar de dirección."
         }
       },
       "presence": {
@@ -1136,6 +1138,14 @@
       "changeover": {
         "state": {
           "auto": "Auto (sigue el agua)",
+          "heat": "Calor",
+          "cool": "Frío",
+          "off": "Apagado"
+        }
+      },
+      "zone_changeover": {
+        "state": {
+          "auto": "Auto (sigue la casa)",
           "heat": "Calor",
           "cool": "Frío",
           "off": "Apagado"

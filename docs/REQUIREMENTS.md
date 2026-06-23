@@ -222,6 +222,10 @@ modos, perfiles y setback. **Fusiona** fuentes; no depende de un solo sensor.
 de Durmiendo. **Diferido**: REQ-PRE-4 puerta direccional, identidad BLE/Bermuda, y la
 publicación por bus / disparos directos por zona — ver §12.33.)*
 
+*(F37 refinado v0.22.0: **histéresis de temporada** (anti-flapping del agua) +
+**override de changeover por zona** (auto/heat/cool/off, auto hereda la casa) — ver
+§12.34. Pendiente: per-zona con **sensor de agua propio** por colector.)*
+
 ### 4.5 · Weather (F33)
 
 **Objetivo:** capa meteo **resiliente y agnóstica** que provee forecast/alertas al
@@ -1970,9 +1974,16 @@ integración (zona community sigue el agua: cool/heat/off; individual ignora; si
 = back-compat; `DATA_CHANGEOVER` desde sensor + override manual; entidades). Suite
 411→420.
 
-**Diferido (anotado):** **changeover por zona/grupo** (sistemas mixtos con varios
-colectores); **histéresis de temporada** (anti-flapping del agua); exponer el changeover
-a **DS/DV**; `HVACMode.HEAT_COOL` como modo "seguir al edificio".
+**Refinamiento v0.22.0:** **histéresis de temporada** — `changeover.resolve(...,prev)`
+mantiene la dirección hasta que el agua cruza el umbral menos `hysteresis_c` (anti-flap);
+`ZonesCoordinator` pasa `prev=self.changeover`. **Override de changeover por zona** —
+`changeover.effective(house, override)`; selector por zona `auto/heat/cool/off` (espejo
+del override de modo F01), publicado en `DATA_CHANGEOVER["zones"]`; DC resuelve su zid vía
+`zones.scope_for_module` y usa el override o el estado de casa.
+
+**Diferido (anotado):** **changeover por zona/grupo con sensor de agua propio** (varios
+colectores con resolución auto independiente); exponer el changeover a **DS/DV**;
+`HVACMode.HEAT_COOL` como modo "seguir al edificio".
 
 ### 12.35 · F34 — Módulo Dynamic Energy (núcleo + tarifa + anti-pico)
 
