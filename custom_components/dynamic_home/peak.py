@@ -34,6 +34,7 @@ class PeakState:
 
     active: dict = field(default_factory=dict)   # entry_id -> (units, expiry_ts)
     last_start_ts: float = -INF                   # last fresh grant (for stagger)
+    waiters: dict = field(default_factory=dict)   # entry_id -> (priority, last_seen_ts)
 
 
 class PeakLoadHub:
@@ -44,6 +45,7 @@ class PeakLoadHub:
 
     def clear(self, entry_id: str) -> None:
         self.state.active.pop(entry_id, None)
+        self.state.waiters.pop(entry_id, None)
 
     def used(self, now_ts: float) -> float:
         """Units currently in use (prunes expired transient slots)."""
@@ -56,28 +58,43 @@ class PeakLoadHub:
 
     def evaluate(self, entry_id: str, *, demand: bool, units: float,
                  sustained: bool, hold_s: float, now_ts: float,
-                 max_units: float, stagger_s: float) -> tuple[bool, str]:
+                 max_units: float, stagger_s: float, priority: float = 0.0,
+                 wait_window_s: float = 120.0) -> tuple[bool, str]:
         """Report a participant's demand; return ``(allowed, reason)``.
 
         ``demand`` — the participant wants to be on / to start a move this cycle.
         ``units`` — its contribution (1 in count mode, watts in power mode).
         ``sustained`` — True keeps the slot while demanded (heating); False makes it
         a transient pulse of ``hold_s`` seconds (a shutter move's inrush).
+        ``priority`` — higher wins a tight budget (F03: temperature deviation). A
+        candidate that fits the budget still **yields** to a higher-priority waiter
+        seen within ``wait_window_s`` so the furthest-behind zone starts first.
         """
         st = self.state
         self._prune(now_ts)
+        st.waiters = {k: pv for k, pv in st.waiters.items()
+                      if now_ts - pv[1] <= wait_window_s}
         if entry_id in st.active:
             if sustained and not demand:
                 del st.active[entry_id]
                 return False, "idle"
             return True, "on"                      # already running -> never interrupt
         if not demand:
+            st.waiters.pop(entry_id, None)
             return False, "idle"
         used = sum(u for u, _ in st.active.values())
         if used + units > max_units:
+            st.waiters[entry_id] = (priority, now_ts)
             return False, "peak_over_budget"
         if now_ts - st.last_start_ts < stagger_s:
+            st.waiters[entry_id] = (priority, now_ts)
             return False, "peak_stagger"
+        best = max((p for k, (p, _) in st.waiters.items() if k != entry_id),
+                   default=-INF)
+        if priority < best:                        # a hungrier zone is waiting
+            st.waiters[entry_id] = (priority, now_ts)
+            return False, "peak_yield"
         st.active[entry_id] = (units, INF if sustained else now_ts + hold_s)
         st.last_start_ts = now_ts
+        st.waiters.pop(entry_id, None)
         return True, "granted"

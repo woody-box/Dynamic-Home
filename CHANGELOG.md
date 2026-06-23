@@ -4,6 +4,31 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.23.0] — 2026-06-23
+
+### Added
+- **Anti-pico (F03) · prioridad de cola + bypass de confort** (REQ-PIC-5): cuando el
+  presupuesto de pico está ajustado, arranca primero la zona **más alejada de su
+  consigna** (prioridad por desviación); y una zona con una **desviación severa**
+  (`peak_comfort_bypass_c`, °C, por defecto **2.5**; 0 lo desactiva) **se salta el
+  límite** de pico — el confort gana al recorte (la seguridad sigue ganando por encima).
+- **Anti-ciclado (F09) · por emisor**: en una zona con varios emisores, el guard de
+  compresor ahora retiene **solo los emisores de bomba de calor**; un emisor de gas o
+  eléctrico de la misma zona **sigue funcionando**. (El recorte de pico y las paradas de
+  seguridad siguen afectando a todos.)
+
+### Changed / Removed
+- **F32 (presencia)**: se **descartan** del proyecto la **puerta direccional** (entrar
+  vs salir por orden de eventos) y la **identidad BLE dedicada**. La presencia se queda
+  con sensores de presencia/movimiento/móvil/puerta. Bermuda sigue siendo usable
+  enchufando su `binary_sensor` de ocupación por zona en las fuentes existentes.
+
+### Internal
+- `peak.py` lleva un libro de waiters + `priority` en `evaluate`; `_peak_step` calcula la
+  desviación (bypass + prioridad) y `_build_emitter_commands` aplica el hold de
+  anti-ciclado por emisor (bomba de calor). Tests puros (`test_peak.py`) + integración.
+  Suite 436→441.
+
 ## [0.22.0] — 2026-06-23
 
 ### Added

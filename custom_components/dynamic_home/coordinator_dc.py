@@ -292,15 +292,19 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             return
         hvac = self._effective_hvac()       # F37: community zones follow the building
         primary = emitters_mod.primary_for(self._emitters, hvac)
-        held = (self.anticycle_hold or self.peak_hold
-                or decision.action not in ("heat", "cool"))
-        # A bare switch/valve emitter has no self-regulating thermostat, so it must
-        # follow real demand (t_int vs target / F27); a climate emitter regulates
-        # itself once it has the mode + target.
-        demand_open = not held and self._valve_demand(cfg, hvac, t_int,
-                                                      decision.target)
+        # F03/F25: OFF/safety and the electrical-peak hold gate ALL emitters; the
+        # F09 compressor hold gates only heat-pump emitters (per-emitter, below).
+        base_off = (self.peak_hold
+                    or decision.action not in ("heat", "cool"))
+        zone_compressor = bool(self.install_profile
+                               and self.install_profile.get("compressor"))
         cmds: dict[str, dict] = {}
         for em in self._emitters:
+            # An emitter is compressor-driven if its own generator is a heat pump;
+            # a blank generator falls back to the zone profile (legacy/single-emitter).
+            em_compressor = (em["generator"] in install.HEATPUMPS
+                             if em["generator"] else zone_compressor)
+            held = base_off or (self.anticycle_hold and em_compressor)
             if em is primary:
                 on, reason = not held, "primary"
             else:
@@ -308,8 +312,11 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 sup_on, reason = staging.step(st, hvac, t_int, decision.target,
                                               now_ts, cfg)
                 on = sup_on and not held
+            # A bare switch/valve emitter has no self-regulating thermostat, so it
+            # follows real demand (t_int vs target / F27) once it is not held.
             if on and not em.get("climate") and em.get("switch"):
-                on = demand_open                          # relay follows demand
+                on = not held and self._valve_demand(cfg, hvac, t_int,
+                                                     decision.target)
             cmds[em["id"]] = {
                 "mode": decision.action if on else "off",
                 "target": decision.target if on else None,
@@ -478,7 +485,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.entry.entry_id, desired_on, safety_off, now_ts, cfg)
         self.anticycle_hold = desired_on and not gated_on
 
-    def _peak_step(self, cfg: DcConfig, decision, now_ts: float) -> None:
+    def _peak_step(self, cfg: DcConfig, decision, t_int, now_ts: float) -> None:
         """F03: stage electric-heating starts under the house peak budget.
 
         Only engaged when opted in AND the F26 profile says the load is electrical
@@ -495,6 +502,14 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.peak_reason = "off"
             return
         demand = decision.action in ("heat", "cool") and not self.anticycle_hold
+        # F03 comfort bypass: a severe deviation from setpoint skips the peak gate
+        # entirely (comfort wins over peak-shaving; safety still wins above).
+        dev = staging.deviation(decision.action, t_int, decision.target)
+        if demand and cfg.peak_comfort_bypass_c > 0 and dev >= cfg.peak_comfort_bypass_c:
+            ph.clear(self.entry.entry_id)
+            self.peak_hold = False
+            self.peak_reason = "peak_comfort_bypass"
+            return
         # F34: a live grid meter (Energy module) gives a watt budget = headroom;
         # it tightens any static cap and never loosens it. No meter -> static watt
         # budget if set, else degrade to an N-zones count (REQ-EPK-1).
@@ -513,7 +528,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         allowed, self.peak_reason = ph.evaluate(
             self.entry.entry_id, demand=demand, units=units, sustained=True,
             hold_s=0.0, now_ts=now_ts, max_units=max_units,
-            stagger_s=cfg.peak_stagger_s)
+            stagger_s=cfg.peak_stagger_s, priority=max(dev, 0.0))
         self.peak_hold = demand and not allowed
 
     def _accumulate_energy(self, cfg: DcConfig, now_ts: float) -> None:
@@ -869,7 +884,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         )
         decision = decide_climate(cfg, ins)
         self._anticycle_step(cfg, decision, now_ts)
-        self._peak_step(cfg, decision, now_ts)
+        self._peak_step(cfg, decision, t_int, now_ts)
         self._build_emitter_commands(cfg, decision, t_int, now_ts)
         self._shared_emitter_step(cfg, decision, t_int, now_ts)
 

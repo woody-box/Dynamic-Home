@@ -846,12 +846,14 @@
         "data": {
           "peak_max_zones": "Máx arranques simultáneos",
           "peak_max_power_w": "Presupuesto de potencia (W, 0 = conteo)",
-          "peak_stagger_s": "Escalonado entre arranques (s)"
+          "peak_stagger_s": "Escalonado entre arranques (s)",
+          "peak_comfort_bypass_c": "Δ bypass de confort (°C)"
         },
         "data_description": {
           "peak_max_zones": "Cuántas cargas eléctricas (zonas de calor o persianas) pueden estar en marcha/movimiento a la vez antes de diferir nuevos arranques. Se usa cuando no hay presupuesto de potencia.",
           "peak_max_power_w": "Si es mayor que 0, limita por vatios totales en vez de por número (usa el medidor real si existe, si no la estimación). 0 = modo conteo.",
-          "peak_stagger_s": "Hueco mínimo entre arranques nuevos, para que una ráfaga de demandas arranque de uno en uno en vez de a la vez."
+          "peak_stagger_s": "Hueco mínimo entre arranques nuevos, para que una ráfaga de demandas arranque de uno en uno en vez de a la vez.",
+          "peak_comfort_bypass_c": "Una zona tan desviada de su consigna se salta el límite de pico — el confort gana al recorte (la seguridad sigue ganando por encima). 0 lo desactiva."
         }
       },
       "cat_energy": {
