@@ -248,8 +248,18 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
     # --- F37 community changeover (seasonal water direction) ---
     def _house_changeover(self) -> str | None:
+        """The changeover for this zone: its per-zone override, else the house state."""
         data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_CHANGEOVER)
-        return data.get("state") if data else None
+        if not data:
+            return None
+        zmap = data.get("zones") or {}
+        if zmap:
+            tree = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ZONES)
+            zid = (zones.scope_for_module(tree, self.entry.entry_id)["zone"]
+                   if tree else None)
+            if zid and zid in zmap:
+                return zmap[zid]
+        return data.get("state")
 
     def _effective_hvac(self) -> str:
         """The direction the zone may actually run this cycle.

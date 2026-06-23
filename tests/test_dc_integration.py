@@ -15,7 +15,7 @@ from pytest_homeassistant_custom_component.common import (
     async_mock_service,
 )
 
-from custom_components.dynamic_home import const
+from custom_components.dynamic_home import const, zones
 
 CLIMATE = {
     const.CONF_NAME: "Salon",
@@ -945,6 +945,30 @@ async def test_individual_zone_ignores_changeover(hass: HomeAssistant) -> None:
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.action == "heat"               # its own mode wins
+
+
+async def test_zone_changeover_override_beats_house(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", _COMMUNITY)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    # Assign the zone in the tree so the coordinator can resolve its zid.
+    tree = zones.assign_modules(zones.add_zone({}, "Salon"), "salon",
+                                [entry.entry_id])
+    hass.data[const.DOMAIN][const.DATA_ZONES] = tree
+    # The house is cooling, but this zone is overridden to heat.
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {
+        "state": "cool", "zones": {"salon": "heat"}}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"                   # per-zone override wins
+
+    # An off override idles the zone even though the house is cooling.
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {
+        "state": "cool", "zones": {"salon": "off"}}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "off"
 
 
 async def test_no_changeover_is_back_compat(hass: HomeAssistant) -> None:

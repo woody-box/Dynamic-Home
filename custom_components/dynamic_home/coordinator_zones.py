@@ -51,8 +51,9 @@ class ZonesCoordinator(DataUpdateCoordinator):
         self.presence_reasons: dict[str, str] = {}
         self.house_presence = "occupied"
         # F37: community changeover (seasonal water direction).
-        self.changeover_manual = "auto"     # set/restored by the select entity
+        self.changeover_manual = "auto"     # set/restored by the house select
         self.changeover: str | None = None  # resolved heat/cool/off/None
+        self.changeover_zones: dict[str, str] = {}   # per-zone manual overrides
 
     @property
     def tree(self) -> dict:
@@ -186,18 +187,26 @@ class ZonesCoordinator(DataUpdateCoordinator):
 
     def _changeover_configured(self) -> bool:
         return bool(self.entry.options.get(const.CONF_CHANGEOVER_SENSOR)
-                    or self.changeover_manual != "auto")
+                    or self.changeover_manual != "auto"
+                    or any(v != "auto" for v in self.changeover_zones.values()))
 
     def _recompute_changeover(self) -> None:
         water = self._num(self.entry.options.get(const.CONF_CHANGEOVER_SENSOR))
+        # prev = self.changeover gives the hysteresis its memory across cycles.
         self.changeover = changeover.resolve(
-            self.changeover_manual, water, self.changeover_cfg())
+            self.changeover_manual, water, self.changeover_cfg(),
+            prev=self.changeover)
 
     def publish_changeover(self, notify: bool = True) -> None:
         self._recompute_changeover()
         data = self.hass.data.setdefault(const.DOMAIN, {})
+        # Per-zone overrides: only zones forcing a direction (non-auto) are listed;
+        # the rest inherit the house state.
+        zmap = {zid: ov for zid, ov in self.changeover_zones.items()
+                if ov in ("heat", "cool", "off")}
         data[const.DATA_CHANGEOVER] = {
             "state": self.changeover, "manual": self.changeover_manual,
+            "zones": zmap,
             "water_temp": self._num(
                 self.entry.options.get(const.CONF_CHANGEOVER_SENSOR))}
         events.fire_changeover_changed(self.hass, self.entry, self.changeover)

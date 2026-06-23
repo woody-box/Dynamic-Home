@@ -108,6 +108,41 @@ async def test_changeover_auto_from_supply_water(hass: HomeAssistant) -> None:
     assert hass.data[const.DOMAIN][const.DATA_CHANGEOVER]["state"] == "heat"
 
 
+async def test_changeover_hysteresis_holds_direction(hass: HomeAssistant) -> None:
+    hass.states.async_set("sensor.supply", "35")        # hot -> heating
+    entry = _zones_entry(hass, {const.CONF_CHANGEOVER_SENSOR: "sensor.supply"})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert hass.data[const.DOMAIN][const.DATA_CHANGEOVER]["state"] == "heat"
+
+    # Water dips to 27 (within 28 - 2 hysteresis) -> still heating, no flap.
+    hass.states.async_set("sensor.supply", "27")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.changeover == "heat"
+    # Drops below the band (25) -> finally idle.
+    hass.states.async_set("sensor.supply", "25")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.changeover == "off"
+
+
+async def test_changeover_per_zone_override_published(hass: HomeAssistant) -> None:
+    entry = _zones_entry(hass, {const.CONF_ZONES_TREE: zones.add_zone({}, "Salon")})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.changeover_zones["salon"] = "cool"
+    co.publish_changeover(notify=False)
+    pub = hass.data[const.DOMAIN][const.DATA_CHANGEOVER]
+    assert pub["zones"] == {"salon": "cool"}            # only non-auto overrides
+    # Back to auto -> dropped from the published map.
+    co.changeover_zones["salon"] = "auto"
+    co.publish_changeover(notify=False)
+    assert hass.data[const.DOMAIN][const.DATA_CHANGEOVER]["zones"] == {}
+
+
 async def test_changeover_manual_override(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.supply", "12")        # would be cooling in auto
     entry = _zones_entry(hass, {const.CONF_CHANGEOVER_SENSOR: "sensor.supply"})

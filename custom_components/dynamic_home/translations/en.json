@@ -187,12 +187,14 @@
         "data": {
           "changeover_sensor": "Supply-water temperature sensor",
           "heat_above_c": "Heating when water ≥ (°C)",
-          "cool_below_c": "Cooling when water ≤ (°C)"
+          "cool_below_c": "Cooling when water ≤ (°C)",
+          "hysteresis_c": "Hysteresis (°C)"
         },
         "data_description": {
           "changeover_sensor": "A temperature sensor on the manifold / supply pipe. Leave empty to drive the changeover only manually.",
           "heat_above_c": "In auto, supply water at or above this means the building is heating.",
-          "cool_below_c": "In auto, supply water at or below this means the building is cooling. In between is treated as idle (shoulder season)."
+          "cool_below_c": "In auto, supply water at or below this means the building is cooling. In between is treated as idle (shoulder season).",
+          "hysteresis_c": "Anti-flap band: once heating/cooling, the water must move this far past the threshold before the direction changes."
         }
       },
       "presence": {
@@ -1136,6 +1138,14 @@
       "changeover": {
         "state": {
           "auto": "Auto (follow water)",
+          "heat": "Heating",
+          "cool": "Cooling",
+          "off": "Off"
+        }
+      },
+      "zone_changeover": {
+        "state": {
+          "auto": "Auto (follow house)",
           "heat": "Heating",
           "cool": "Cooling",
           "off": "Off"

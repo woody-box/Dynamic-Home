@@ -29,7 +29,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     for zid, z in coordinator.tree["zones"].items():
         ents.append(ZoneModeSelect(coordinator, entry, zid, z["name"]))
         ents.append(ZoneComfortSelect(coordinator, entry, zid, z["name"]))
+        ents.append(ZoneChangeoverSelect(coordinator, entry, zid, z["name"]))
     async_add_entities(ents)
+
+
+class ZoneChangeoverSelect(RestoreEntity, SelectEntity):
+    """F37: per-zone changeover override (``auto`` inherits the house direction)."""
+
+    _attr_has_entity_name = True
+    _attr_icon = "mdi:sun-snowflake-variant"
+    _attr_translation_key = "zone_changeover"
+    _attr_options = list(changeover.MANUAL_OPTIONS)
+
+    def __init__(self, coordinator: ZonesCoordinator, entry: ConfigEntry,
+                 zid: str, name: str) -> None:
+        self._co = coordinator
+        self._zid = zid
+        self._attr_name = f"Changeover {name}"
+        self._attr_unique_id = f"{entry.entry_id}_changeover_{zid}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        state = last.state if last else "auto"
+        self._co.changeover_zones[self._zid] = (
+            state if state in self._attr_options else "auto")
+        self._co.publish_changeover(notify=False)
+
+    @property
+    def current_option(self) -> str:
+        return self._co.changeover_zones.get(self._zid, "auto")
+
+    async def async_select_option(self, option: str) -> None:
+        self._co.changeover_zones[self._zid] = option
+        self.async_write_ha_state()
+        self._co.publish_changeover()
 
 
 class ChangeoverSelect(RestoreEntity, SelectEntity):
