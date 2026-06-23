@@ -756,3 +756,182 @@ async def test_peak_gated_off_for_non_electric(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert co.peak_hold is False           # gas is not an electrical peak load
     assert entry.entry_id not in hass.data[const.DOMAIN]["_peak_dc"].state.active
+
+
+# --- F25 Phase A: multiple emitters + primary/support staging ---
+_EMITTERS = [
+    {"name": "Radiant", "generator": "heatpump_air_water", "emission": "underfloor",
+     "switch": "switch.radiant", "primary_heat": True},
+    {"name": "AC", "generator": "heatpump_air_air", "emission": "split",
+     "climate": "climate.ac", "primary_cool": True},
+]
+_EMIT_OPTS = {"emitters": _EMITTERS, "support_confirm_min": 0,
+              "support_release_min": 0}
+
+
+async def test_multi_emitter_primary_and_staged_support(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "17")     # big heating lag
+    hass.states.async_set("switch.radiant", "off")
+    hass.states.async_set("climate.ac", "off")
+    entry = await _add_opts(hass, CLIMATE, "Salon", _EMIT_OPTS)
+    hvac_calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    on_calls = async_mock_service(hass, "homeassistant", "turn_on")
+    async_mock_service(hass, "homeassistant", "turn_off")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    cmds = co.emitter_commands
+    assert cmds["radiant"]["primary"] is True and cmds["radiant"]["on"] is True
+    assert cmds["ac"]["on"] is True                       # support armed (lag, confirm 0)
+    # Radiant relay was turned on; the AC support was driven to heat.
+    assert any(c.data["entity_id"] == "switch.radiant" for c in on_calls)
+    assert any(c.data["entity_id"] == "climate.ac" for c in hvac_calls)
+    # The profile is derived from the heating primary (aerothermal heat pump).
+    assert co.install_profile["compressor"] is True
+
+
+async def test_multi_emitter_support_retires_on_recovery(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "17")
+    hass.states.async_set("switch.radiant", "off")
+    hass.states.async_set("climate.ac", "off")
+    entry = await _add_opts(hass, CLIMATE, "Salon", _EMIT_OPTS)
+    async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    async_mock_service(hass, "homeassistant", "turn_on")
+    async_mock_service(hass, "homeassistant", "turn_off")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.emitter_commands["ac"]["on"] is True        # support engaged
+
+    # Room recovers above target -> support retires (release 0).
+    hass.states.async_set("sensor.salon_temp", "24")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.emitter_commands["ac"]["on"] is False
+    assert co.emitter_commands["radiant"]["on"] is False  # relay follows demand
+
+
+async def test_single_emitter_zone_keeps_legacy_path(hass: HomeAssistant) -> None:
+    # No emitters list -> legacy single-device path, emitter_commands stays empty.
+    _seed(hass)
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_CLIMATE: "climate.real"},
+                       "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.emitter_commands == {}
+
+
+# --- F25 Phase B: shared un-zoned duct reconciliation ---
+def _duct(owner: bool) -> list[dict]:
+    return [{"name": "Duct", "emission": "ducts", "climate": "climate.duct",
+             "scope": "group_unzoned", "shared_emitter_id": "duct",
+             "owner": owner, "primary_heat": True}]
+
+
+async def test_shared_duct_owner_reconciles_with_undershoot_guard(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")     # owner, still short
+    hass.states.async_set("sensor.dorm_temp", "20.7")    # sibling, satisfied
+    hass.states.async_set("climate.duct", "off")
+    base = {"base_heat_day": 21.0}                        # pin the target at 21°C
+    owner = await _add_opts(hass, CLIMATE, "Salon",
+                            {"emitters": _duct(True), **base})
+    sib = await _add_opts(hass, {**CLIMATE, const.CONF_NAME: "Dorm",
+                                 const.CONF_DC_T_INT: "sensor.dorm_temp"}, "Dorm",
+                          {"emitters": _duct(False), **base})
+    async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co_o = hass.data[const.DOMAIN][owner.entry_id]
+    co_s = hass.data[const.DOMAIN][sib.entry_id]
+    co_o.hvac_mode = co_s.hvac_mode = "heat"
+    await co_s.async_refresh()                            # sibling reports demand
+    await hass.async_block_till_done()
+    await co_o.async_refresh()                            # owner reconciles both
+    await hass.async_block_till_done()
+
+    eid = co_o._emitters[0]["id"]
+    cmd = co_o.emitter_commands[eid]
+    assert cmd["shared"] is True
+    # Dormitorio is satisfied -> the guard cuts the whole unit even though Salón
+    # is still short (REQ-EMI-8), instead of over-heating Dormitorio.
+    assert cmd["reason"] == "undershoot_cut" and cmd["on"] is False
+    # The non-owner never drives the shared unit.
+    await co_s.async_refresh()
+    await hass.async_block_till_done()
+    assert co_s._emitters[0]["id"] not in co_s.emitter_commands
+
+
+async def test_shared_duct_reconciles_when_all_zones_short(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")
+    hass.states.async_set("sensor.dorm_temp", "18.5")    # both clearly short
+    hass.states.async_set("climate.duct", "off")
+    base = {"base_heat_day": 21.0}
+    owner = await _add_opts(hass, CLIMATE, "Salon",
+                            {"emitters": _duct(True), **base})
+    sib = await _add_opts(hass, {**CLIMATE, const.CONF_NAME: "Dorm",
+                                 const.CONF_DC_T_INT: "sensor.dorm_temp"}, "Dorm",
+                          {"emitters": _duct(False), **base})
+    async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co_o = hass.data[const.DOMAIN][owner.entry_id]
+    co_s = hass.data[const.DOMAIN][sib.entry_id]
+    co_o.hvac_mode = co_s.hvac_mode = "heat"
+    await co_s.async_refresh()
+    await hass.async_block_till_done()
+    await co_o.async_refresh()
+    await hass.async_block_till_done()
+    cmd = co_o.emitter_commands[co_o._emitters[0]["id"]]
+    assert cmd["on"] is True and cmd["reason"] == "reconciled"
+    assert cmd["target"] is not None
+
+
+async def test_emitter_editor_adds_and_deletes(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "emitters"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "emitter_add"})
+    assert flow["step_id"] == "emitter_add"
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {"name": "AC", "generator": "heatpump_air_air",
+         "distribution": "individual", "emission": "split",
+         "climate": "climate.ac", "primary_cool": True,
+         "scope": "zone", "policy": "weighted"})
+    await hass.async_block_till_done()
+    ems = entry.options["emitters"]
+    assert len(ems) == 1 and ems[0]["name"] == "AC"
+    assert ems[0]["climate"] == "climate.ac" and ems[0]["primary_cool"] is True
+
+    # Edit -> delete it.
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "emitters"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "emitter_edit"})
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"emitter": "ac"})
+    assert flow["step_id"] == "emitter_detail"
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"],
+        {"name": "AC", "generator": "heatpump_air_air",
+         "distribution": "individual", "emission": "split",
+         "scope": "zone", "policy": "weighted", "delete": True})
+    await hass.async_block_till_done()
+    assert entry.options["emitters"] == []

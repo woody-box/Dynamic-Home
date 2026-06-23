@@ -150,8 +150,11 @@
           "cat_energy": "Estimación de energía",
           "cat_cycle": "Protección anti-ciclado",
           "cat_peak": "Escalonado de pico eléctrico",
+          "cat_staging": "Staging de emisores",
+          "cat_shared": "Emisor compartido",
           "schedule": "Programador semanal",
           "install": "Tipo de instalación",
+          "emitters": "Emisores",
           "zone_add": "Añadir zona",
           "zone_edit": "Editar zona",
           "group_add": "Añadir grupo",
@@ -833,6 +836,82 @@
         "description": "Paso 3 de 3: el emisor, que fija la inercia térmica (el suelo radiante es lento, el fancoil rápido). Esto precarga los valores de lead y anti-ciclado acordes.",
         "data": {
           "emission": "Emisor"
+        }
+      },
+      "emitters": {
+        "title": "Emisores",
+        "description": "Declara uno o varios emisores para esta zona (p.ej. suelo radiante como primario de calor y un split de AC como primario de frío / apoyo de calor). Sin emisores declarados, la zona sigue conduciendo su único termostato configurado.",
+        "menu_options": {
+          "emitter_add": "Añadir emisor",
+          "emitter_edit": "Editar emisor"
+        }
+      },
+      "emitter_add": {
+        "title": "Añadir emisor",
+        "description": "Un emisor conduce una entidad climate y/o un switch/válvula. Marca de qué modo(s) es el primario; los apoyos entran cuando el primario se queda corto.",
+        "data": {
+          "name": "Nombre",
+          "generator": "Generador de calor",
+          "distribution": "Distribución",
+          "emission": "Tipo de emisor",
+          "climate": "Entidad climate (opcional)",
+          "switch": "Switch / válvula (opcional)",
+          "primary_heat": "Primario en calor",
+          "primary_cool": "Primario en frío",
+          "scope": "Ámbito",
+          "shared_emitter_id": "Id del conducto compartido (para ámbitos compartidos)",
+          "owner": "Esta zona conduce la unidad compartida",
+          "policy": "Política de reconciliación"
+        }
+      },
+      "emitter_edit": {
+        "title": "Editar emisor",
+        "data": {
+          "emitter": "Emisor"
+        }
+      },
+      "emitter_detail": {
+        "title": "Emisor",
+        "data": {
+          "name": "Nombre",
+          "generator": "Generador de calor",
+          "distribution": "Distribución",
+          "emission": "Tipo de emisor",
+          "climate": "Entidad climate (opcional)",
+          "switch": "Switch / válvula (opcional)",
+          "primary_heat": "Primario en calor",
+          "primary_cool": "Primario en frío",
+          "scope": "Ámbito",
+          "shared_emitter_id": "Id del conducto compartido (para ámbitos compartidos)",
+          "owner": "Esta zona conduce la unidad compartida",
+          "policy": "Política de reconciliación",
+          "delete": "Eliminar este emisor"
+        }
+      },
+      "cat_staging": {
+        "title": "Staging de emisores",
+        "data": {
+          "support_dev_on": "Δ activación apoyo (°C)",
+          "support_confirm_min": "Confirmación apoyo (min)",
+          "support_dev_off": "Δ retirada apoyo (°C)",
+          "support_release_min": "Retirada apoyo (min)"
+        },
+        "data_description": {
+          "support_dev_on": "Cuánto puede quedarse la estancia por detrás de la consigna (en la dirección activa) antes de armar un emisor de apoyo.",
+          "support_confirm_min": "Cuánto debe persistir ese retraso antes de que el apoyo encienda de verdad.",
+          "support_dev_off": "Cuando la estancia se recupera dentro de esta banda de la consigna, el apoyo empieza a retirarse.",
+          "support_release_min": "Cuánto debe mantenerse la recuperación antes de que el apoyo se apague (histéresis)."
+        }
+      },
+      "cat_shared": {
+        "title": "Emisor compartido",
+        "data": {
+          "zone_demand_weight": "Peso de demanda de zona",
+          "shared_undershoot_margin": "Margen de undershoot (°C)"
+        },
+        "data_description": {
+          "zone_demand_weight": "Peso relativo de esta zona cuando un conducto compartido sin zonificar agrega la demanda de sus zonas (mayor = sesgo hacia esta zona).",
+          "shared_undershoot_margin": "Para un conducto compartido sin rejillas motorizadas, la unidad corta cuando la zona más satisfecha llega a su consigna ∓ este margen, para no sobre-acondicionar estancias pequeñas."
         }
       },
       "zone_add": {

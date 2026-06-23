@@ -4,6 +4,37 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.18.0] — 2026-06-23
+
+### Added
+- **Emisores y staging (F25)**: una zona de clima mantiene **un solo cerebro** pero
+  puede conducir **varios emisores** (p.ej. suelo radiante como primario de calor y un
+  split de AC como primario de frío / **apoyo** de calor). Cada emisor declara su terna
+  F26 y el dispositivo real que conduce —una entidad **`climate` y/o un `switch`/
+  válvula**— y su rol por modo.
+  - **Staging primario/apoyo** (`staging.py`): el apoyo arranca cuando el primario se
+    queda corto (desviación sostenida) y se retira con histéresis al recuperar.
+  - **Conductos compartidos** entre zonas de un grupo (`shared_emitter.py` +
+    `SharedEmitterHub`): las zonas hermanas publican su demanda y una zona **dueña**
+    reconcilia **una sola consigna** (agregación **ponderada** por defecto; `mean`/
+    `priority`/`worst_stuck` disponibles) y conduce la unidad. **Guarda de undershoot**:
+    sin rejillas, la unidad **corta** cuando la zona más satisfecha llega a su
+    `consigna ∓ margen`, para no sobre-acondicionar estancias pequeñas; **con rejillas
+    motorizadas** cada zona regula su caudal y la guarda no aplica.
+  - **Editor de emisores** en las opciones de la zona (añadir/editar/borrar), además de
+    categorías de ajuste *Staging de emisores* y *Emisor compartido*
+    (`zone_demand_weight`, `shared_undershoot_margin`).
+  - **Compatibilidad:** una zona sin lista de emisores declarada se comporta **idéntica
+    a antes** (un solo termostato), REQ-EMI-7.
+
+### Internal
+- Nuevos módulos puros `emitters.py`, `staging.py`, `shared_emitter.py` con tests
+  (`test_emitters`/`test_staging`/`test_shared_emitter`) e integración (staging
+  arma/retira, conducto compartido reconcilia + guarda, editor). El motor
+  `dc_engine.decide` no se toca; el staging/reconciliación son post-decisión. Suite
+  371→398. *(Diferido: canal de compresor por-emisor en F09; prioridad de cola/bypass
+  de confort.)*
+
 ## [0.17.0] — 2026-06-23
 
 ### Added

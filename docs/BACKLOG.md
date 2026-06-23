@@ -267,8 +267,9 @@
   - **Implementado (estructura):** entrada singleton "Dynamic Home · Zonas" con editor de árbol (options flow); modelo `zones.py` (zona→grupo, 1 módulo→1 zona, 1 zona→1 grupo, `scope_for_module`); árbol publicado en `hass.data[DATA_ZONES]` + sensor diagnóstico. **Modo/perfil por ámbito → F01** (consumirá esta estructura).
 
 ### F25 · Dynamic AC = emisor (no módulo aparte) + multi-emisor por zona
-- **Estado:** ☑ revisada · **Módulos:** DC (+ F26) · **Valor:** Alta · **Esfuerzo:** L
+- **Estado:** ✅ implementada (v0.18.0) · **Módulos:** DC (+ F26) · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** integrar AC sin crear un cerebro competidor; resolver zonas con varios emisores (radiante + AC).
+- **Implementado (v0.18.0):** modelo puro `emitters.py` (lista 1..N por zona; cada emisor con su terna F26, dispositivo `climate` y/o `switch`, rol por modo, ámbito/owner/política); **Fase A** staging primario/apoyo `staging.py` (arma con lag sostenido, retira con histéresis) + dispatch multi-emisor en `coordinator_dc`/`climate.py` (legacy single-device intacto, REQ-EMI-7); **Fase B** `shared_emitter.py` + `SharedEmitterHub` (agregación ponderada default, guarda de undershoot, caso rejillas; dueño por declaración o fallback determinista). Editor de emisores en el options-flow. **Diferido:** canal de compresor por-emisor en F09; prioridad de cola/bypass de confort.
 - **Perfilado:**
   - **AC = un *tipo de emisor*** de la zona (encaja en F26 "emisión"), **no un módulo/clon que compite**. Un solo cerebro DC por zona evita "dos cerebros peleando".
   - **Multi-emisor por zona con primario + apoyo (staging):** el primario lleva la consigna; el apoyo (p.ej. AC) entra cuando el primario **va por detrás** (desviación > umbral durante X tiempo) y se retira con histéresis.
@@ -443,7 +444,7 @@
 | **F22** | ☑ revisada | Índice de moho simple (horas sobre HR con decaimiento); aviso + secado si efectivo (dp_diff); por zona, configurable. |
 | **F23** | ✅ implementada | Confort↔economía por presets (Eco/Equilibrado/Confort, deltas integrados); mueve bandas/atenuación/lead/umbrales; select global + override zona; ligado a F01. |
 | **F24** | ✅ implementada | Tres niveles zona→grupo→casa; entrada singleton + editor de árbol; zonas propias (no Areas HA). Modo por ámbito ya lo aplica F01. |
-| **F25** | ☑ revisada | AC = emisor de DC; multi-emisor primario/apoyo; ámbito zona/grupo/casa; conductos sin/​con zonificar (rejillas = válvula de aire); reconciliación del compartido. |
+| **F25** | ✅ implementada | Multi-emisor por zona (1..N, `climate` y/o `switch`) con **staging primario/apoyo** (`staging.py`) y **conductos compartidos** (`shared_emitter.py` + `SharedEmitterHub`: agregación ponderada + guarda de undershoot + rejillas). Editor de emisores en opciones; un solo cerebro por zona; legacy single-device intacto. Canal de compresor por-emisor diferido. |
 | **F26** | 🟡 parcial | Capa de declaración (v0.16.0): asistente 3D **generador×distribución×emisión**, defaults por inercia y perfil `community`/`compressor`/`peak`. **Gating F09/F03 cableado al perfil (v0.17.0).** Emisores F25 y "personalizado" diferidos. |
 | **F27** | ☑ revisada | Señal de demanda real opcional para DC (hvac_action/helpers/relé Shelly); convive con backup hardware. |
 | **F31** | ☑ revisada | Aviso/aprovechamiento de espacio adyacente (terraza): heat→abrir gratis, cool→avisar. Advisory. |

@@ -53,7 +53,8 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_climate"
-        self._applied: tuple | None = None  # last (mode, target) sent to hardware
+        self._applied: tuple | None = None  # last (mode, target) — legacy single device
+        self._applied_per: dict[str, tuple] = {}   # F25: per-emitter last (mode, target)
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -113,12 +114,19 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         await self.coordinator.async_refresh()
         self.async_write_ha_state()
 
-    # --- drive the real thermostat (if configured) ---
+    # --- drive the real thermostat(s) ---
     async def _apply(self) -> None:
+        # Observe (dry-run): compute + publish to the bus, but never drive hardware.
+        if self.coordinator.observe_enabled:
+            return
+        # F25: multi-emitter zone -> drive each emitter by its command. An empty map
+        # keeps the legacy single-device path below (back-compat, REQ-EMI-7).
+        cmds = self.coordinator.emitter_commands
+        if cmds:
+            await self._apply_emitters(cmds)
+            return
         real = self._entry.data.get(const.CONF_DC_CLIMATE)
-        # Observe (dry-run): compute + publish to the bus, but never drive the
-        # real thermostat.
-        if not real or self.coordinator.observe_enabled:
+        if not real:
             return
         data = self.coordinator.data
         # F09/F03: while the anti-cycling guard (compressor) or the peak-staging
@@ -147,6 +155,41 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
             await self.hass.services.async_call(
                 "climate", "set_temperature",
                 {"entity_id": real, ATTR_TEMPERATURE: target}, blocking=True)
+
+    async def _apply_emitters(self, cmds: dict) -> None:
+        """F25: drive each emitter's device (climate and/or switch) by its command."""
+        min_delta = getattr(self.coordinator, "apply_min_delta", 0.0)
+        for em in self.coordinator._emitters:
+            cmd = cmds.get(em["id"])
+            if cmd is None:
+                continue
+            mode = HVACMode(cmd["mode"]) if cmd["mode"] in (
+                "heat", "cool", "off") else HVACMode.OFF
+            target = cmd["target"]
+            prev = self._applied_per.get(em["id"])
+            if prev is not None:
+                prev_mode, prev_target = prev
+                if (mode == prev_mode and target is not None
+                        and prev_target is not None
+                        and abs(target - prev_target) < min_delta):
+                    continue
+            if (mode, target) == prev:
+                continue
+            self._applied_per[em["id"]] = (mode, target)
+            if em.get("climate"):
+                await self.hass.services.async_call(
+                    "climate", "set_hvac_mode",
+                    {"entity_id": em["climate"], ATTR_HVAC_MODE: mode}, blocking=True)
+                if mode != HVACMode.OFF and target is not None:
+                    await self.hass.services.async_call(
+                        "climate", "set_temperature",
+                        {"entity_id": em["climate"], ATTR_TEMPERATURE: target},
+                        blocking=True)
+            if em.get("switch"):
+                service = "turn_off" if mode == HVACMode.OFF else "turn_on"
+                await self.hass.services.async_call(
+                    "homeassistant", service,
+                    {"entity_id": em["switch"]}, blocking=True)
 
     @callback
     def _handle_coordinator_update(self) -> None:

@@ -17,7 +17,22 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import comfort, const, energy, events, install, modes, repairs, schedule
+from . import (
+    comfort,
+    const,
+    energy,
+    events,
+    install,
+    modes,
+    repairs,
+    schedule,
+    shared_emitter,
+    staging,
+    zones,
+)
+from . import (
+    emitters as emitters_mod,
+)
 from .bus import SdhbHub
 from .dc_engine import (
     DcConfig,
@@ -74,6 +89,11 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.peak_enabled = False
         self.peak_hold = False          # holding this zone off to stay under the peak budget
         self.peak_reason = "off"
+        # F25: multiple emitters per zone (primary + staged support). Empty list
+        # keeps the legacy single-device path. emitter_commands: id -> command dict.
+        self._emitters: list[dict] = []
+        self._staging: dict[str, staging.StagingState] = {}
+        self.emitter_commands: dict[str, dict] = {}
         self.observe_enabled = False    # dry-run: compute but do not act on hw
         self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
@@ -209,13 +229,100 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
     @property
     def install_profile(self) -> dict | None:
-        """Derived install profile (inertia + compressor/peak/community), or None."""
+        """Derived install profile (inertia + compressor/peak/community), or None.
+
+        With a multi-emitter zone (F25) the profile comes from the primary
+        emitter's triple; otherwise from the single declared F26 triple.
+        """
         o = self.entry.options
+        src = emitters_mod.profile_source(
+            emitters_mod.normalize(o.get("emitters")))
+        if src is not None:
+            gen, dist, emission = src
+            return install.profile(gen, dist, emission)
         gen = o.get(const.CONF_GENERATOR)
         emission = o.get(const.CONF_EMISSION)
         if not gen or not emission:
             return None
         return install.profile(gen, o.get(const.CONF_DISTRIBUTION), emission)
+
+    def _build_emitter_commands(self, cfg: DcConfig, decision, t_int, now_ts):
+        """F25: map the single decision onto each emitter (primary + staged support).
+
+        The primary carries the engine target; each support emitter is gated by its
+        staging machine. A zone-level hold (anticycle/peak) or an OFF decision drives
+        every emitter OFF, matching today's single-device semantics. Empty emitter
+        list -> legacy single-device path (the climate entity handles it).
+        """
+        self._emitters = emitters_mod.normalize(self.entry.options.get("emitters"))
+        if not self._emitters:
+            self.emitter_commands = {}
+            return
+        hvac = self.hvac_mode
+        primary = emitters_mod.primary_for(self._emitters, hvac)
+        held = (self.anticycle_hold or self.peak_hold
+                or decision.action not in ("heat", "cool"))
+        # A bare switch/valve emitter has no self-regulating thermostat, so it must
+        # follow real demand (t_int vs target / F27); a climate emitter regulates
+        # itself once it has the mode + target.
+        demand_open = not held and self._valve_demand(cfg, hvac, t_int,
+                                                      decision.target)
+        cmds: dict[str, dict] = {}
+        for em in self._emitters:
+            if em is primary:
+                on, reason = not held, "primary"
+            else:
+                st = self._staging.setdefault(em["id"], staging.StagingState())
+                sup_on, reason = staging.step(st, hvac, t_int, decision.target,
+                                              now_ts, cfg)
+                on = sup_on and not held
+            if on and not em.get("climate") and em.get("switch"):
+                on = demand_open                          # relay follows demand
+            cmds[em["id"]] = {
+                "mode": decision.action if on else "off",
+                "target": decision.target if on else None,
+                "on": on, "primary": em is primary, "reason": reason,
+            }
+        self.emitter_commands = cmds
+
+    def _default_channel(self) -> str | None:
+        """The shared-duct channel a blank emitter falls back to (its group id)."""
+        tree = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ZONES)
+        if not tree:
+            return None
+        return zones.scope_for_module(tree, self.entry.entry_id).get("group")
+
+    def _shared_emitter_step(self, cfg: DcConfig, decision, t_int, now_ts) -> None:
+        """F25 Phase B: reconcile a duct shared across the group's zones.
+
+        Each group-sibling reports its demand to the house-level hub; the owner zone
+        drives the physical unit from the single reconciled command, others release
+        it (a non-owner never touches the shared unit).
+        """
+        hub = self.hass.data.get(const.DOMAIN, {}).get("_shared_emit")
+        if hub is None or not self._emitters:
+            return
+        for em in self._emitters:
+            if em["scope"] == "zone":
+                continue
+            chan = em["shared_emitter_id"] or self._default_channel()
+            if not chan:
+                continue
+            hub.report(chan, shared_emitter.ZoneDemand(
+                entry_id=self.entry.entry_id, hvac=self.hvac_mode, current=t_int,
+                target=decision.target, weight=cfg.zone_demand_weight,
+                undershoot_margin=cfg.shared_undershoot_margin,
+                owner=em.get("owner", False)))
+            if hub.is_owner(chan, self.entry.entry_id):
+                cmd = hub.reconcile(chan, self.hvac_mode,
+                                    em.get("policy", "weighted"),
+                                    em["scope"] == "group_grilles")
+                self.emitter_commands[em["id"]] = {
+                    "mode": cmd["mode"], "target": cmd["target"],
+                    "on": cmd["mode"] != "off", "primary": False,
+                    "shared": True, "reason": cmd["reason"]}
+            else:
+                self.emitter_commands.pop(em["id"], None)   # non-owner: hands off
 
     def _finalize_cycle(self, cfg: DcConfig) -> None:
         """Settling window elapsed: learn overshoot, lag and step the lead gain."""
@@ -720,6 +827,8 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         decision = decide_climate(cfg, ins)
         self._anticycle_step(cfg, decision, now_ts)
         self._peak_step(cfg, decision, now_ts)
+        self._build_emitter_commands(cfg, decision, t_int, now_ts)
+        self._shared_emitter_step(cfg, decision, t_int, now_ts)
 
         # Learn from real cycles (paused while disabled or degraded). An inferred
         # open window also disturbs the cycle, so it aborts learning like the sensor.

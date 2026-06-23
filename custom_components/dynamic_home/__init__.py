@@ -24,6 +24,7 @@ from .coordinator import (
 )
 from .peak import PeakLoadHub
 from .repairs import DegradedTracker
+from .shared_emitter import SharedEmitterHub
 
 
 def _platforms(entry: ConfigEntry) -> list[str]:
@@ -49,6 +50,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # heating loads (DC) and transient shutter-motor inrush (DS).
     hass.data[const.DOMAIN].setdefault("_peak_dc", PeakLoadHub())
     hass.data[const.DOMAIN].setdefault("_peak_ds", PeakLoadHub())
+    # F25: house-level reconciler for ducted units shared across a group's zones.
+    hass.data[const.DOMAIN].setdefault("_shared_emit", SharedEmitterHub())
 
     facades: dict = hass.data[const.DOMAIN].setdefault("_facades", {})
 
@@ -103,6 +106,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 hub = hass.data[const.DOMAIN].get(key)
                 if hub is not None:
                     hub.clear(entry.entry_id)
+            # Drop it from every shared-emitter channel (F25).
+            se = hass.data[const.DOMAIN].get("_shared_emit")
+            if se is not None:
+                se.clear_entry(entry.entry_id)
         if isinstance(coordinator, DsCoordinator):
             ph = hass.data[const.DOMAIN].get("_peak_ds")
             if ph is not None:
