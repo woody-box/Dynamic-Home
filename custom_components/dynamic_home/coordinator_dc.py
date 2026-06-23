@@ -70,6 +70,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.anticycle_enabled = False
         self.anticycle_hold = False     # holding this zone off to protect the compressor
         self.anticycle_reason = "off"
+        # F03: electrical-peak staging (opt-in) over the house heating budget.
+        self.peak_enabled = False
+        self.peak_hold = False          # holding this zone off to stay under the peak budget
+        self.peak_reason = "off"
         self.observe_enabled = False    # dry-run: compute but do not act on hw
         self.apply_min_delta = 0.0      # anti-jitter gate read by the climate entity
         self._source = f"dc_{entry.entry_id}"
@@ -319,7 +323,12 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         if ac is None:
             self.anticycle_hold = False
             return
-        if not self.anticycle_enabled:
+        # F26 gating: short-cycle protection only applies to a compressor under
+        # the occupant's control. A communal source (just a valve) or a
+        # non-compressor generator (gas/electric) never participates.
+        profile = self.install_profile
+        gated = profile is not None and not profile.get("compressor")
+        if not self.anticycle_enabled or gated:
             ac.clear(self.entry.entry_id)     # not participating in the aggregate
             self.anticycle_hold = False
             self.anticycle_reason = "off"
@@ -329,6 +338,33 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         gated_on, self.anticycle_reason = ac.evaluate(
             self.entry.entry_id, desired_on, safety_off, now_ts, cfg)
         self.anticycle_hold = desired_on and not gated_on
+
+    def _peak_step(self, cfg: DcConfig, decision, now_ts: float) -> None:
+        """F03: stage electric-heating starts under the house peak budget.
+
+        Only engaged when opted in AND the F26 profile says the load is electrical
+        (electric direct or an individual heat pump) and not communal. A zone the
+        compressor guard (F09) already holds off does not consume a peak slot.
+        """
+        ph = self.hass.data.get(const.DOMAIN, {}).get("_peak_dc")
+        profile = self.install_profile
+        eligible = profile is not None and profile.get("peak")
+        if ph is None or not self.peak_enabled or not eligible:
+            if ph is not None:
+                ph.clear(self.entry.entry_id)
+            self.peak_hold = False
+            self.peak_reason = "off"
+            return
+        demand = decision.action in ("heat", "cool") and not self.anticycle_hold
+        power_mode = cfg.peak_max_power_w > 0
+        units = ((self._num(const.CONF_POWER_METER) or cfg.est_w_on)
+                 if power_mode else 1.0)
+        max_units = cfg.peak_max_power_w if power_mode else float(cfg.peak_max_zones)
+        allowed, self.peak_reason = ph.evaluate(
+            self.entry.entry_id, demand=demand, units=units, sustained=True,
+            hold_s=0.0, now_ts=now_ts, max_units=max_units,
+            stagger_s=cfg.peak_stagger_s)
+        self.peak_hold = demand and not allowed
 
     def _accumulate_energy(self, cfg: DcConfig, now_ts: float) -> None:
         """Integrate energy (F06): real meter if configured, else est. while ON."""
@@ -683,6 +719,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         )
         decision = decide_climate(cfg, ins)
         self._anticycle_step(cfg, decision, now_ts)
+        self._peak_step(cfg, decision, now_ts)
 
         # Learn from real cycles (paused while disabled or degraded). An inferred
         # open window also disturbs the cycle, so it aborts learning like the sensor.

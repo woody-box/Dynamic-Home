@@ -70,6 +70,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "wx": ("Sources & alerts", "Fuentes y alertas"),
     "energy": ("Energy estimate", "Estimación de energía"),
     "cycle": ("Short-cycle protection", "Protección anti-ciclado"),
+    "peak": ("Electrical-peak staging", "Escalonado de pico eléctrico"),
 }
 
 
@@ -227,6 +228,13 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("est_w_motor", "Motor power (W)", "Potencia motor (W)"),
             _v("full_travel_s", "Full travel (s)", "Recorrido completo (s)"),
         ],
+        "peak": [
+            _v("peak_max_zones", "Max simultaneous covers", "Máx persianas simultáneas"),
+            _v("peak_max_power_w", "Power budget (W, 0=count)",
+               "Presupuesto de potencia (W, 0=conteo)"),
+            _v("peak_stagger_s", "Stagger between starts (s)",
+               "Escalonado entre arranques (s)"),
+        ],
     },
     const.MODULE_CLIMATE: {
         "setpoints": [
@@ -341,6 +349,13 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("anticycle_min_off_s", "Min OFF (s)", "Min OFF (s)"),
             _v("anticycle_max_starts_per_h", "Max starts/hour", "Máx arranques/hora"),
         ],
+        "peak": [
+            _v("peak_max_zones", "Max simultaneous zones", "Máx zonas simultáneas"),
+            _v("peak_max_power_w", "Power budget (W, 0=count)",
+               "Presupuesto de potencia (W, 0=conteo)"),
+            _v("peak_stagger_s", "Stagger between starts (s)",
+               "Escalonado entre arranques (s)"),
+        ],
     },
     const.MODULE_WEATHER: {
         "wx": [
@@ -389,6 +404,7 @@ _ADVANCED: dict[str, set[str]] = {
         "valve_power_min",
         "mold_decay_h", "mold_cap_h",
         "window_confirm_min", "window_release_min", "window_max_lockout_min",
+        "peak_stagger_s",
     },
     const.MODULE_VMC: {
         "co2_ema_alpha", "pm_ema_alpha",
@@ -401,6 +417,7 @@ _ADVANCED: dict[str, set[str]] = {
     const.MODULE_SHUTTER: {
         "wind_cap_span_kmh", "wind_cap_hyst_kmh",
         "dawn_target_pct", "dawn_trigger_elevation",
+        "peak_stagger_s",
     },
 }
 

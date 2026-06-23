@@ -90,7 +90,9 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         return {"reason": data.reason,
                 "published_intent": data.published_intent,
                 "anticycle_hold": self.coordinator.anticycle_hold,
-                "anticycle_reason": self.coordinator.anticycle_reason}
+                "anticycle_reason": self.coordinator.anticycle_reason,
+                "peak_hold": self.coordinator.peak_hold,
+                "peak_reason": self.coordinator.peak_reason}
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         self.coordinator.hvac_mode = str(hvac_mode)
@@ -119,9 +121,11 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         if not real or self.coordinator.observe_enabled:
             return
         data = self.coordinator.data
-        # F09: while the anti-cycling guard holds this zone off, command the
-        # thermostat OFF (protect the shared compressor) instead of heat/cool.
-        if getattr(self.coordinator, "anticycle_hold", False):
+        # F09/F03: while the anti-cycling guard (compressor) or the peak-staging
+        # guard (house electrical budget) holds this zone off, command the
+        # thermostat OFF instead of heat/cool.
+        if (getattr(self.coordinator, "anticycle_hold", False)
+                or getattr(self.coordinator, "peak_hold", False)):
             mode, target = HVACMode.OFF, None
         else:
             mode = self.coordinator.hvac_mode

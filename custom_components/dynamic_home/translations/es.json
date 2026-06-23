@@ -149,6 +149,7 @@
           "cat_wx": "Fuentes y alertas",
           "cat_energy": "Estimación de energía",
           "cat_cycle": "Protección anti-ciclado",
+          "cat_peak": "Escalonado de pico eléctrico",
           "schedule": "Programador semanal",
           "install": "Tipo de instalación",
           "zone_add": "Añadir zona",
@@ -756,6 +757,19 @@
           "anticycle_min_on_s": "Tiempo mínimo que el compresor compartido permanece encendido antes de registrar una parada (evita el ciclado corto). Las paradas de seguridad lo anulan.",
           "anticycle_min_off_s": "Tiempo mínimo que el compresor permanece apagado antes de poder arrancar de nuevo.",
           "anticycle_max_starts_per_h": "Máximo de arranques del compresor por hora móvil (por defecto 6)."
+        }
+      },
+      "cat_peak": {
+        "title": "Escalonado de pico eléctrico",
+        "data": {
+          "peak_max_zones": "Máx arranques simultáneos",
+          "peak_max_power_w": "Presupuesto de potencia (W, 0 = conteo)",
+          "peak_stagger_s": "Escalonado entre arranques (s)"
+        },
+        "data_description": {
+          "peak_max_zones": "Cuántas cargas eléctricas (zonas de calor o persianas) pueden estar en marcha/movimiento a la vez antes de diferir nuevos arranques. Se usa cuando no hay presupuesto de potencia.",
+          "peak_max_power_w": "Si es mayor que 0, limita por vatios totales en vez de por número (usa el medidor real si existe, si no la estimación). 0 = modo conteo.",
+          "peak_stagger_s": "Hueco mínimo entre arranques nuevos, para que una ráfaga de demandas arranque de uno en uno en vez de a la vez."
         }
       },
       "cat_energy": {

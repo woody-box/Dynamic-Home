@@ -151,6 +151,13 @@ class DcConfig:
     anticycle_min_on_s: float = 600.0
     anticycle_min_off_s: float = 600.0
     anticycle_max_starts_per_h: int = 6
+    # Electrical-peak staging (F03): house-level limit on simultaneous electric
+    # heating starts. Opt-in; only engaged when the F26 profile is electrical and
+    # not communal. peak_max_power_w > 0 switches from count mode (max zones) to
+    # power mode (watt budget, real meter or est_w_on).
+    peak_max_zones: int = 2
+    peak_max_power_w: float = 0.0
+    peak_stagger_s: float = 10.0
 
 
 @dataclass

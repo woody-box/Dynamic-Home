@@ -96,7 +96,8 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     @property
     def extra_state_attributes(self) -> dict:
         attrs = {"facade": self.coordinator.facade_key,
-                 "target_position": self._target_position}
+                 "target_position": self._target_position,
+                 "peak_reason": self.coordinator.peak_reason}
         data = self.coordinator.data
         if data:
             attrs["reason"] = data.reason
