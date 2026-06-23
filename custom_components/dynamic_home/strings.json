@@ -159,7 +159,43 @@
           "zone_edit": "Edit zone",
           "group_add": "Add group",
           "group_edit": "Edit group",
-          "mode_caps": "Mode speed caps"
+          "mode_caps": "Mode speed caps",
+          "presence": "Presence",
+          "presence_house": "Presence · house settings",
+          "presence_zone": "Presence · zone sources"
+        }
+      },
+      "presence": {
+        "title": "Presence",
+        "description": "Fuse your own presence sources per zone (PIR, mmWave, door) into Occupied/Empty, and the house into Home/Away/Sleeping. Works with any subset of sources.",
+        "menu_options": {
+          "presence_house": "House settings (phones, auto, sleep window)",
+          "presence_zone": "Zone sources"
+        }
+      },
+      "presence_house": {
+        "title": "Presence · house",
+        "description": "Phones (device_tracker / person) decide Home/Away at house level. Auto-drive sets the house mode (Home/Away/Sleeping) from presence — it never overrides a manual Boost/Eco. The sleep window bounds Sleeping detection.",
+        "data": {
+          "phones": "Phones (Home/Away)",
+          "auto": "Auto-drive the house mode",
+          "sleep_start": "Sleep window start",
+          "sleep_end": "Sleep window end"
+        }
+      },
+      "presence_zone": {
+        "title": "Presence · pick zone",
+        "data": {
+          "zone": "Zone"
+        }
+      },
+      "presence_zone_detail": {
+        "title": "Presence · {zone}",
+        "description": "Pick this zone's sources. mmWave holds presence through stillness (sitting still won't read Empty); a door contact lets the house go Away when the last zone empties.",
+        "data": {
+          "pir": "PIR / motion sensors",
+          "mmwave": "mmWave presence sensors",
+          "door": "Door contacts"
         }
       },
       "cat_iaq": {

@@ -4,6 +4,31 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.19.0] — 2026-06-23
+
+### Added
+- **Presencia (F32)**: detección de presencia **robusta por zona** que vive en la
+  entrada de **Zonas** (junto a modos y confort). Fusiona **tus propias entidades**
+  (RNF-6) — **PIR** (rápido), **mmWave** (presencia sostenida: mantiene «Ocupada»
+  durante la inmovilidad, no marca «Vacía» por estar quieto en el sofá) y **contacto
+  de puerta** — en **Ocupada/Vacía** por zona, y la casa en **Casa/Fuera/Durmiendo**:
+  - la casa pasa a **Fuera** solo cuando no queda nadie **y** hubo apertura de puerta
+    reciente o los móviles están fuera (nunca por mera inmovilidad);
+  - **Durmiendo** dentro de la ventana nocturna sin movimiento (PIR) reciente;
+  - publica el estado (`DATA_PRESENCE` + evento) y, con **auto-pilotaje opcional**,
+    fija el **modo de la casa** (Casa/Fuera/Durmiendo) — **sin pisar un Boost/Eco
+    manual**.
+  - Entidades: **binary_sensor de ocupación por zona** + **presencia de casa**.
+  - **Editor** en las opciones de Zonas (ajustes de casa: móviles, auto, ventana de
+    sueño; y fuentes por zona). Funciona con **cualquier subconjunto** de fuentes.
+
+### Internal
+- Nuevo módulo puro `presence.py` con tests (`test_presence.py`) e integración
+  (`test_presence_integration.py`: publica estado, entidades, auto-Fuera conduce el
+  modo, no pisa Boost). El `ZonesCoordinator` ahora sondea + escucha cuando hay
+  presencia. Suite 398→411. *(Diferido: identidad BLE/Bermuda «quién», puerta
+  direccional por orden de eventos, publicación por bus / setback directo por zona.)*
+
 ## [0.18.0] — 2026-06-23
 
 ### Added

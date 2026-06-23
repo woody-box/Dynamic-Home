@@ -159,7 +159,43 @@
           "zone_edit": "Editar zona",
           "group_add": "Añadir grupo",
           "group_edit": "Editar grupo",
-          "mode_caps": "Cap de velocidad por modo"
+          "mode_caps": "Cap de velocidad por modo",
+          "presence": "Presencia",
+          "presence_house": "Presencia · ajustes de casa",
+          "presence_zone": "Presencia · fuentes por zona"
+        }
+      },
+      "presence": {
+        "title": "Presencia",
+        "description": "Fusiona tus propias fuentes de presencia por zona (PIR, mmWave, puerta) en Ocupada/Vacía, y la casa en Casa/Fuera/Durmiendo. Funciona con cualquier subconjunto de fuentes.",
+        "menu_options": {
+          "presence_house": "Ajustes de casa (móviles, auto, ventana de sueño)",
+          "presence_zone": "Fuentes por zona"
+        }
+      },
+      "presence_house": {
+        "title": "Presencia · casa",
+        "description": "Los móviles (device_tracker / person) deciden Casa/Fuera a nivel de casa. El auto-pilotaje fija el modo de la casa (Casa/Fuera/Durmiendo) desde la presencia — nunca pisa un Boost/Eco manual. La ventana de sueño acota la detección de Durmiendo.",
+        "data": {
+          "phones": "Móviles (Casa/Fuera)",
+          "auto": "Auto-pilotar el modo de la casa",
+          "sleep_start": "Inicio ventana de sueño",
+          "sleep_end": "Fin ventana de sueño"
+        }
+      },
+      "presence_zone": {
+        "title": "Presencia · elegir zona",
+        "data": {
+          "zone": "Zona"
+        }
+      },
+      "presence_zone_detail": {
+        "title": "Presencia · {zone}",
+        "description": "Elige las fuentes de esta zona. El mmWave mantiene la presencia durante la inmovilidad (estar quieto no marca Vacía); un contacto de puerta deja que la casa pase a Fuera cuando se vacía la última zona.",
+        "data": {
+          "pir": "Sensores PIR / movimiento",
+          "mmwave": "Sensores de presencia mmWave",
+          "door": "Contactos de puerta"
         }
       },
       "cat_iaq": {

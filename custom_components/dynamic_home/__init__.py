@@ -69,7 +69,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     elif module == const.MODULE_WEATHER:
         coordinator = WxCoordinator(hass, entry)   # read-only; no bus
     elif module == const.MODULE_ZONES:
-        coordinator = ZonesCoordinator(hass, entry)  # config-time hierarchy
+        coordinator = ZonesCoordinator(hass, entry)  # hierarchy + modes + presence
+        coordinator.async_setup_presence_listeners()  # F32
     else:
         coordinator = DvCoordinator(hass, entry, hub)
         coordinator.async_setup_listeners()

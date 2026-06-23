@@ -211,9 +211,16 @@ modos, perfiles y setback. **Fusiona** fuentes; no depende de un solo sensor.
 
 **Dependencias:** F24 (zonas), bus. **Habilita:** F01 (away/home/sleep), F21, setback DC/DV.
 **Criterios de aceptación:**
-- ☐ Estar quieto en el sofá NO marca la zona como vacía.
-- ☐ Salir de casa (con la última zona vaciándose + puerta) pasa la casa a `Fuera`.
-- ☐ Con beacons BLE, el estado distingue **quién** está y en qué zona.
+- ☑ Estar quieto en el sofá NO marca la zona como vacía. *(v0.19.0: mmWave mantiene
+  presencia; PIR no cuenta como movimiento para Vacía.)*
+- ☑ Salir de casa (con la última zona vaciándose + puerta) pasa la casa a `Fuera`.
+  *(v0.19.0: `away` necesita puerta reciente o móviles fuera, no inmovilidad.)*
+- ☐ Con beacons BLE, el estado distingue **quién** está y en qué zona. *(BLE/identidad
+  diferido al siguiente ciclo; ver §12.33.)*
+
+*(Implementado v0.19.0: REQ-PRE-1/2/3/5/6/7/8 con PIR+mmWave+móvil+puerta y detección
+de Durmiendo. **Diferido**: REQ-PRE-4 puerta direccional, identidad BLE/Bermuda, y la
+publicación por bus / disparos directos por zona — ver §12.33.)*
 
 ### 4.5 · Weather (F33)
 
@@ -1870,3 +1877,41 @@ conducto compartido reconcilia una orden y la guarda corta; editor añade/borra)
 **Diferido (anotado):** **canal de compresor por-emisor** en F09 (hoy el hold de zona
 gatea todos los emisores); **bypass de confort/prioridad de cola** (cruza REQ-PIC-5);
 reordenar/duplicar emisores avanzado.
+
+### 12.33 · F32 — Presencia (fusión por zona + estado de casa)
+
+La presencia vive en la **entrada singleton de Zonas** (junto a modos F01 y confort
+F23). Modelo puro `presence.py`: cada zona fusiona las **entidades del usuario**
+(RNF-6) — **PIR** (rápido, hold corto), **mmWave** (sostenido, hold largo: mantiene
+presencia durante la inmovilidad) y **contacto de puerta** — en **Ocupada/Vacía**, y
+la casa en **`occupied`/`away`/`sleeping`**.
+
+- `zone_occupied(state,cfg,now)`: Ocupada mientras alguna fuente de movimiento esté
+  **fresca** dentro de su timeout por tipo; pasa a Vacía solo tras un **debounce**
+  (`empty_confirm_s`) con todo obsoleto → estar quieto bajo mmWave **no** marca Vacía
+  (REQ-PRE-3). Calca el latch de `staging.py`.
+- `house_state(...)`: **`away`** solo si **ninguna** zona ocupada **y** (puerta
+  reciente dentro de `away_door_window_s` **o** móviles fuera) — nunca por mera
+  inmovilidad (REQ-PRE-5). **`sleeping`** si ocupada, dentro de la **ventana nocturna**
+  y **sin movimiento PIR** reciente (REQ-PRE-6; el mmWave da ocupación, el PIR da
+  movimiento). Si no, **`occupied`**.
+
+El `ZonesCoordinator` registra **listeners** sobre las fuentes y **sondea**
+(`UPDATE_INTERVAL_S`) cuando hay presencia configurada, recomputa y **publica
+`DATA_PRESENCE`** (`{house, zones, reasons}`) + evento `EVENT_PRESENCE_CHANGED`. Con
+**auto-pilotaje** (`CONF_PRESENCE_AUTO`) mapea el estado al **modo F01 de la casa**
+(`occupied→home`/`away→away`/`sleeping→sleep`) por el eje home/away/sleep — **nunca
+pisa un Boost/Eco manual** (manual > auto, RNF-3). Entidades: **binary_sensor de
+ocupación por zona** (con fuentes) + **presencia de casa** (`device_class=occupancy`),
+acuñadas iterando el árbol como los selects F01. Editor en `ZonesOptionsFlow`
+(`presence` → `presence_house`/`presence_zone` → `presence_zone_detail`), funciona con
+**subconjuntos** de fuentes (REQ-PRE-8). Defaults en `PresenceConfig` (RNF-1).
+
+**Aceptación:** §4.4 — sofá-quieto ☑, salida→Fuera ☑; identidad BLE ☐ (diferida).
+**Tests:** puro `test_presence.py` (mmWave hold, debounce, away requiere señal,
+sleeping en ventana sin PIR, subconjuntos) + integración (publica DATA_PRESENCE,
+entidades, auto-away conduce DATA_MODE, no pisa Boost). Suite 398→411.
+
+**Diferido (anotado):** **puerta direccional** por orden de eventos (REQ-PRE-4),
+**identidad BLE/Bermuda** ("quién"), **publicación por bus** (hoy `DATA_PRESENCE`) y
+**disparos directos de setback por zona** (REQ-PRE-7, hoy vía auto-modo).
