@@ -1911,10 +1911,12 @@ más exigente y la guarda no aplica (cada rejilla regula su caudal). Hermanas v�
 conducto compartido reconcilia una orden y la guarda corta; editor añade/borra). Suite
 371→398.
 
-**Gating de compresor por-emisor (F09):** hecho **acotado** en v0.23.0 — el hold de
-anti-ciclado se aplica solo a los emisores de bomba de calor (ver §12.36).
-**Diferido (anotado):** **canal de compresor completo** (id por emisor + `AntiCycleHub`
-por canal); reordenar/duplicar emisores avanzado.
+**Gating de compresor por-emisor (F09):** hecho **acotado** en v0.23.0 (hold solo a
+emisores de bomba de calor) y **completo** en v0.27.0 — cada emisor declara su
+`compressor_id` y el `AntiCycleHub` corre **un `CompressorState` por canal**, de modo
+que dos bombas de calor independientes no se interfieren (default `"default"` = un solo
+compresor de casa, back-compat). Ver §12.36. **Diferido (anotado):** reordenar/duplicar
+emisores avanzado.
 
 ### 12.33 · F32 — Presencia (fusión por zona + estado de casa)
 
@@ -2080,5 +2082,15 @@ el guard de compresor retiene el emisor de bomba pero el de gas sigue calentando
 salta el presupuesto; F09 por-emisor: bomba off / gas on con anti-ciclado). Suite 436→441.
 
 **Nota F32:** la **puerta direccional** y la **identidad BLE dedicada** quedan
-**descartadas** (ver §12.33). **Diferido:** **canal de compresor completo** (F09 opción b:
-`compressor_id` por emisor + `AntiCycleHub` por canal).
+**descartadas** (ver §12.33).
+
+**§12.37 · F09 canal de compresor completo (v0.27.0):** cada emisor declara su
+`compressor_id` (`emitters.normalize`, default `"default"`). El `AntiCycleHub` pasa a ser
+**multi-canal** (`evaluate(..., channel=...)`, `participates`, `clear` en todos los
+canales) con un `CompressorState` por canal. `coordinator_dc._anticycle_step` reporta la
+demanda de la zona a cada canal de sus emisores de bomba de calor y guarda
+`_channel_holds`; `_build_emitter_commands` retiene cada emisor por **su** canal. Dos
+bombas de calor independientes ya no se interfieren; `"default"` preserva el compresor
+único de casa (back-compat, single-device intacto). Editor: campo `compressor_id` por
+emisor. Tests puros (canales independientes; `participates`/`clear`) + integración (dos
+bombas en `hp_a`/`hp_b`, una bloqueada retiene solo su emisor). Suite 451→454.

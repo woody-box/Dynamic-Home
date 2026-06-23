@@ -943,7 +943,8 @@
           "scope": "Ámbito",
           "shared_emitter_id": "Id del conducto compartido (para ámbitos compartidos)",
           "owner": "Esta zona conduce la unidad compartida",
-          "policy": "Política de reconciliación"
+          "policy": "Política de reconciliación",
+          "compressor_id": "Id de compresor (agrupar bombas de calor)"
         }
       },
       "emitter_edit": {
@@ -967,6 +968,7 @@
           "shared_emitter_id": "Id del conducto compartido (para ámbitos compartidos)",
           "owner": "Esta zona conduce la unidad compartida",
           "policy": "Política de reconciliación",
+          "compressor_id": "Id de compresor (agrupar bombas de calor)",
           "delete": "Eliminar este emisor"
         }
       },

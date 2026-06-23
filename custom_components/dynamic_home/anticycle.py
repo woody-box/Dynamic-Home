@@ -66,25 +66,42 @@ def step(state: CompressorState, any_demand: bool, force_off: bool,
 
 
 class AntiCycleHub:
-    """House-wide shared compressor (MVP). Per-compressor grouping → F25/F26.
+    """Shared compressors keyed by **channel** (F09 full, ``compressor_id``).
 
-    Each DC zone reports its commanded demand; the hub aggregates them and runs a
-    single :class:`CompressorState`, returning whether *this* zone may run.
+    Each DC zone reports its commanded demand to one or more **compressor channels**;
+    the hub runs an independent :class:`CompressorState` per channel, so two separate
+    heat pumps in a house never throttle each other. A zone that declares no channel
+    uses ``"default"`` — a single house-wide compressor, identical to the legacy MVP.
     """
 
     def __init__(self) -> None:
-        self.state = CompressorState()
-        self._zones: dict[str, tuple[bool, bool]] = {}   # entry_id -> (demand, safety)
+        self.state = CompressorState()                  # the "default" channel
+        self.channels: dict[str, CompressorState] = {}  # extra named channels
+        # channel -> {entry_id: (demand, safety)}
+        self._reports: dict[str, dict[str, tuple[bool, bool]]] = {}
+
+    def _chan_state(self, channel: str) -> CompressorState:
+        if channel == "default":
+            return self.state
+        return self.channels.setdefault(channel, CompressorState())
 
     def clear(self, entry_id: str) -> None:
-        self._zones.pop(entry_id, None)
+        """Drop this zone's demand from every channel (called when it stops/yields)."""
+        for reps in self._reports.values():
+            reps.pop(entry_id, None)
+
+    def participates(self, entry_id: str) -> bool:
+        """Whether this zone is currently part of any compressor aggregate."""
+        return any(entry_id in reps for reps in self._reports.values())
 
     def evaluate(self, entry_id: str, desired_on: bool, safety_off: bool,
-                 now_ts: float, cfg) -> tuple[bool, str]:
-        """Report this zone's demand, step the aggregate, return (gated_on, reason)."""
-        self._zones[entry_id] = (desired_on, safety_off)
-        any_demand = any(d and not s for d, s in self._zones.values())
-        force_off = any(s for _, s in self._zones.values()) and not any_demand
-        on, reason = step(self.state, any_demand, force_off, now_ts, cfg)
+                 now_ts: float, cfg, channel: str = "default") -> tuple[bool, str]:
+        """Report this zone's demand on ``channel``, step it, return (gated_on, reason)."""
+        st = self._chan_state(channel)
+        reps = self._reports.setdefault(channel, {})
+        reps[entry_id] = (desired_on, safety_off)
+        any_demand = any(d and not s for d, s in reps.values())
+        force_off = any(s for _, s in reps.values()) and not any_demand
+        on, reason = step(st, any_demand, force_off, now_ts, cfg)
         gated_on = on and desired_on and not safety_off
         return gated_on, reason

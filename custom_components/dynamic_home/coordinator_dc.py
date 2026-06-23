@@ -85,6 +85,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.anticycle_enabled = False
         self.anticycle_hold = False     # holding this zone off to protect the compressor
         self.anticycle_reason = "off"
+        self._channel_holds: dict[str, bool] = {}   # F09 full: hold per compressor
         # F03: electrical-peak staging (opt-in) over the house heating budget.
         self.peak_enabled = False
         self.peak_hold = False          # holding this zone off to stay under the peak budget
@@ -305,7 +306,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             # a blank generator falls back to the zone profile (legacy/single-emitter).
             em_compressor = (em["generator"] in install.HEATPUMPS
                              if em["generator"] else zone_compressor)
-            held = base_off or (self.anticycle_hold and em_compressor)
+            # F09 full: hold by this emitter's own compressor channel.
+            anti_off = self._channel_holds.get(em["compressor_id"],
+                                                self.anticycle_hold)
+            held = base_off or (anti_off and em_compressor)
             if em is primary:
                 on, reason = not held, "primary"
             else:
@@ -467,6 +471,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         entity drives the thermostat OFF instead of heat/cool.
         """
         ac = self.hass.data.get(const.DOMAIN, {}).get("_anticycle")
+        self._channel_holds = {}
         if ac is None:
             self.anticycle_hold = False
             return
@@ -482,9 +487,32 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             return
         desired_on = decision.action in ("heat", "cool")
         safety_off = self.hvac_mode in ("heat", "cool") and decision.action == "off"
-        gated_on, self.anticycle_reason = ac.evaluate(
-            self.entry.entry_id, desired_on, safety_off, now_ts, cfg)
-        self.anticycle_hold = desired_on and not gated_on
+        # F09 full: a zone drives one compressor channel per distinct heat-pump
+        # emitter (compressor_id); legacy/single-device falls to "default" (one
+        # house compressor). Reset first so dropped channels stop being reported.
+        ac.clear(self.entry.entry_id)
+        ems = emitters_mod.normalize(self.entry.options.get("emitters"))
+        if ems:
+            channels = {e["compressor_id"] for e in ems
+                        if e["generator"] in install.HEATPUMPS}
+            p = emitters_mod.primary_for(ems, self._effective_hvac())
+            primary_ch = (p["compressor_id"] if p
+                          and p["generator"] in install.HEATPUMPS else "default")
+        else:
+            channels, primary_ch = {"default"}, "default"
+        if not channels:                  # multi-emitter zone with no heat-pump emitter
+            self.anticycle_hold = False
+            self.anticycle_reason = "off"
+            return
+        reason = "off"
+        for ch in channels:
+            gated_on, ch_reason = ac.evaluate(
+                self.entry.entry_id, desired_on, safety_off, now_ts, cfg, channel=ch)
+            self._channel_holds[ch] = desired_on and not gated_on
+            if ch == primary_ch:
+                reason = ch_reason
+        self.anticycle_reason = reason
+        self.anticycle_hold = self._channel_holds.get(primary_ch, False)
 
     def _peak_step(self, cfg: DcConfig, decision, t_int, now_ts: float) -> None:
         """F03: stage electric-heating starts under the house peak budget.

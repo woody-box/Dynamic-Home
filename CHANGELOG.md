@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.27.0] — 2026-06-23
+
+### Added
+- **Anti-ciclado (F09) · canal de compresor por-emisor**: cada emisor puede declarar su
+  **`Id de compresor`** en el editor de emisores. Dos bombas de calor con id distinto se
+  **protegen por separado** (cada una con su propio mínimo ON/OFF y arranques/hora), así
+  una no retiene a la otra. Por defecto todos comparten `"default"` — un único compresor
+  de casa, idéntico al comportamiento anterior.
+
+### Internal
+- `AntiCycleHub` pasa a **multi-canal** (`evaluate(..., channel=...)`, `participates`,
+  `clear` en todos los canales; un `CompressorState` por canal). `coordinator_dc` calcula
+  el hold **por canal** (`_channel_holds`) y `_build_emitter_commands` retiene cada emisor
+  por su propio compresor. `compressor_id` en `emitters.normalize` + editor + traducciones.
+  Tests puros (canales independientes) + integración. Suite 451→454.
+
 ## [0.26.0] — 2026-06-23
 
 ### Added
