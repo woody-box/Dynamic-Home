@@ -12,6 +12,7 @@ from homeassistant.components.climate import (
     ATTR_HVAC_MODE,
     ClimateEntity,
     ClimateEntityFeature,
+    HVACAction,
     HVACMode,
 )
 from homeassistant.config_entries import ConfigEntry
@@ -82,6 +83,17 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
     def target_temperature(self) -> float | None:
         data = self.coordinator.data
         return data.target if data else None
+
+    @property
+    def hvac_action(self) -> HVACAction:
+        """What the zone is really doing (F37: reflects the community changeover)."""
+        data = self.coordinator.data
+        if not data or data.action not in ("heat", "cool"):
+            return HVACAction.OFF
+        demanding = getattr(self.coordinator, "_valve_open", False)
+        if data.action == "heat":
+            return HVACAction.HEATING if demanding else HVACAction.IDLE
+        return HVACAction.COOLING if demanding else HVACAction.IDLE
 
     @property
     def extra_state_attributes(self) -> dict:

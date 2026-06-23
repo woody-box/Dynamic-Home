@@ -242,6 +242,32 @@ resto, sin depender de integraciones inestables.
 - ☑ Si la fuente primaria no responde, el forecast sigue disponible por la secundaria.
 - ☑ DC recibe forecast y DS recibe alertas sin configurar una integración meteo concreta.
 
+### 4.7 · Changeover comunitario (F37)
+
+**Objetivo:** en sistemas **comunitarios a 2 tubos** (suelo radiante con cambio
+estacional), la **comunidad** envía agua caliente o fría a todo el edificio; el usuario
+solo abre/cierra válvula y **no** controla la temperatura ni puede mezclar direcciones.
+Una **dirección de casa (changeover)** debe gatear las zonas comunitarias.
+
+- **REQ-CHG-1 (M):** **dirección de casa** `heat`/`cool`/`off` que las zonas
+  **`community`** (F26 central_shared) **siguen**; las individuales mantienen su propia
+  dirección.
+- **REQ-CHG-2 (M):** detección **manual + auto**: selector `auto/heat/cool/off`; en
+  `auto`, inferida de un **sensor de temperatura del agua de impulsión** con umbrales
+  (≥ → calor, ≤ → frío, intermedio → reposo).
+- **REQ-CHG-3 (M):** **opt-in / back-compat** — sin changeover configurado (sin sensor
+  y manual `auto`), las zonas se comportan **igual que antes**.
+- **REQ-CHG-4 (S):** observabilidad — selector + sensor de estado de casa; la zona
+  refleja la dirección real (`hvac_action`).
+
+**Dependencias:** F26 (community), F24 (entrada de Zonas). **Habilita:** control correcto
+en instalaciones comunitarias de cambio estacional.
+**Criterios de aceptación:**
+- ☑ Una zona comunitaria "encendida" calienta o refresca según el agua del edificio,
+  no según el modo que dejó el usuario. *(v0.20.0)*
+- ☑ En entretiempo (agua templada) la zona reposa aunque esté "on". *(v0.20.0)*
+- ☑ Sin changeover configurado, el comportamiento no cambia. *(v0.20.0; ver §12.34)*
+
 ### 4.6 · Explicador de conflictos del bus (F02)
 
 **Objetivo:** hacer **observable el arbitraje del bus** — para cada consumidor,
@@ -1915,3 +1941,35 @@ entidades, auto-away conduce DATA_MODE, no pisa Boost). Suite 398→411.
 **Diferido (anotado):** **puerta direccional** por orden de eventos (REQ-PRE-4),
 **identidad BLE/Bermuda** ("quién"), **publicación por bus** (hoy `DATA_PRESENCE`) y
 **disparos directos de setback por zona** (REQ-PRE-7, hoy vía auto-modo).
+
+### 12.34 · F37 — Changeover comunitario (modo estacional de agua)
+
+Sistemas **comunitarios a 2 tubos**: el edificio manda agua caliente o fría a todos por
+temporada; el usuario solo abre válvula. Una **dirección de casa** gatea las zonas
+`community`. Vive en la entrada de **Zonas** (como F01/F32) y **reusa el poll/listeners
+de F32**.
+
+Modelo puro `changeover.py`: `resolve(manual, water_temp, cfg)` → `heat`/`cool`/`off`/
+`None`. `manual` ∈ {heat,cool,off} **fuerza**; `auto` infiere del **sensor de agua de
+impulsión** (`≥ heat_above_c` → heat; `≤ cool_below_c` → cool; intermedio → off);
+**sin sensor en auto → `None`** (sin gating, back-compat). El `ZonesCoordinator` resuelve
+y **publica `DATA_CHANGEOVER`** `{state,manual,water_temp}` + evento, y avisa a los
+módulos DC. Entidades en Zonas: **select** `auto/heat/cool/off` (`ChangeoverSelect`,
+restaurado) + **sensor** de estado (`ChangeoverSensor`, ENUM).
+
+Consumo en DC (`coordinator_dc._effective_hvac`): si la zona es **`community`** y hay
+changeover (`state` ≠ None), su dirección efectiva la fija el edificio — `off` si la
+zona está off, si no `state` (heat/cool) o `off` en entretiempo. Esa dirección efectiva
+entra en `DcInputs.hvac_mode` (decisión) y en `_build_emitter_commands` (rol del emisor
+por modo). El **motor `decide` no se toca**. La tarjeta muestra `hvac_action`
+(heating/cooling/idle/off) real. Zonas individuales o sin changeover → comportamiento
+idéntico.
+
+**Aceptación:** §4.7 — las 3 casillas ☑. **Tests:** puro `test_changeover.py` +
+integración (zona community sigue el agua: cool/heat/off; individual ignora; sin config
+= back-compat; `DATA_CHANGEOVER` desde sensor + override manual; entidades). Suite
+411→420.
+
+**Diferido (anotado):** **changeover por zona/grupo** (sistemas mixtos con varios
+colectores); **histéresis de temporada** (anti-flapping del agua); exponer el changeover
+a **DS/DV**; `HVACMode.HEAT_COOL` como modo "seguir al edificio".

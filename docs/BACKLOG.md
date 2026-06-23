@@ -456,3 +456,9 @@
 | **F34** | ☑ revisada | Módulo Energy: publica contexto al bus (surplus/headroom/tarifa/escasez), no comanda; agnóstico + gating; consolida F03/F04/F06; VE opt-in. ⚠️ Parte FV/batería/VE no testable por el autor (validación externa). |
 | **F35** | ✅ implementada | Campana coordinada (PM interior → subir campana; 3 relés break-before-make + interlock; entidad fan auto+manual). |
 | **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |
+| **F37** | ✅ implementada | Changeover comunitario (v0.20.0): dirección de casa heat/cool/off que las zonas `community` (F26) siguen; detección manual + auto por sensor de agua de impulsión con umbrales; modelo puro `changeover.py`; select + sensor en Zonas; `hvac_action` en la tarjeta; opt-in/back-compat. Por zona/grupo e histéresis diferidos. |
+
+### F37 · Changeover comunitario (modo estacional de agua)
+- **Estado:** ✅ implementada (v0.20.0) · **Módulos:** Zonas + DC · **Valor:** Alta (instalaciones comunitarias) · **Esfuerzo:** S-M
+- **Idea:** en suelo radiante comunitario a 2 tubos, el edificio decide calor/frío de temporada; el usuario solo abre válvula. Una dirección de casa (changeover) que las zonas comunitarias respetan, para que DC no pida calor con agua fría.
+- **Implementado (v0.20.0):** `changeover.py` puro (`resolve` manual/auto por temperatura del agua de impulsión + umbrales); `ZonesCoordinator` publica `DATA_CHANGEOVER` (reusa poll/listeners de F32) y avisa a DC; `ChangeoverSelect` (auto/heat/cool/off) + `ChangeoverSensor`; `coordinator_dc._effective_hvac` gatea solo las zonas `community`; `hvac_action` real en la tarjeta; opt-in (sin configurar = idéntico). **Diferido:** changeover por zona/grupo (colectores mixtos), histéresis de temporada, exponer a DS/DV.

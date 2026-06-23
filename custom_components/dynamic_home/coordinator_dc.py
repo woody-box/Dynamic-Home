@@ -246,6 +246,28 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             return None
         return install.profile(gen, o.get(const.CONF_DISTRIBUTION), emission)
 
+    # --- F37 community changeover (seasonal water direction) ---
+    def _house_changeover(self) -> str | None:
+        data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_CHANGEOVER)
+        return data.get("state") if data else None
+
+    def _effective_hvac(self) -> str:
+        """The direction the zone may actually run this cycle.
+
+        A community (central_shared) zone follows the house changeover: the building
+        decides heat vs cool, so the zone's own mode only enables/disables it. Off
+        season (changeover ``off``) or zone off -> idle. Non-community zones, or no
+        changeover configured (``None``), keep their own mode (back-compat).
+        """
+        base = self.hvac_mode
+        profile = self.install_profile
+        co = self._house_changeover()
+        if profile and profile.get("community") and co is not None:
+            if base == "off":
+                return "off"
+            return co if co in ("heat", "cool") else "off"
+        return base
+
     def _build_emitter_commands(self, cfg: DcConfig, decision, t_int, now_ts):
         """F25: map the single decision onto each emitter (primary + staged support).
 
@@ -258,7 +280,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         if not self._emitters:
             self.emitter_commands = {}
             return
-        hvac = self.hvac_mode
+        hvac = self._effective_hvac()       # F37: community zones follow the building
         primary = emitters_mod.primary_for(self._emitters, hvac)
         held = (self.anticycle_hold or self.peak_hold
                 or decision.action not in ("heat", "cool"))
@@ -805,7 +827,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                          else None)
 
         ins = DcInputs(
-            hvac_mode=self.hvac_mode,
+            hvac_mode=self._effective_hvac(),
             t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,

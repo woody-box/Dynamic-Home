@@ -84,6 +84,41 @@ async def test_presence_auto_does_not_stomp_manual_boost(
     assert co.house_mode == "boost"
 
 
+async def test_changeover_auto_from_supply_water(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    hass.states.async_set("sensor.supply", "12")        # cold water -> cooling
+    entry = _zones_entry(hass, {const.CONF_CHANGEOVER_SENSOR: "sensor.supply"})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.data[const.DOMAIN][const.DATA_CHANGEOVER]["state"] == "cool"
+    reg = er.async_get(hass)
+    sensor = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_changeover_state")
+    select = reg.async_get_entity_id(
+        "select", const.DOMAIN, f"{entry.entry_id}_changeover")
+    assert sensor is not None and hass.states.get(sensor).state == "cool"
+    assert select is not None and hass.states.get(select).state == "auto"
+
+    # Hot water -> heating.
+    hass.states.async_set("sensor.supply", "33")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.data[const.DOMAIN][const.DATA_CHANGEOVER]["state"] == "heat"
+
+
+async def test_changeover_manual_override(hass: HomeAssistant) -> None:
+    hass.states.async_set("sensor.supply", "12")        # would be cooling in auto
+    entry = _zones_entry(hass, {const.CONF_CHANGEOVER_SENSOR: "sensor.supply"})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.changeover_manual = "heat"                        # force heating
+    co.publish_changeover(notify=False)
+    assert hass.data[const.DOMAIN][const.DATA_CHANGEOVER]["state"] == "heat"
+
+
 async def test_presence_absent_keeps_zones_config_time(
         hass: HomeAssistant) -> None:
     # No presence configured -> no presence entities, no DATA_PRESENCE.

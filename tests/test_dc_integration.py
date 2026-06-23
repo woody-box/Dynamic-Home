@@ -899,6 +899,65 @@ async def test_shared_duct_reconciles_when_all_zones_short(
     assert cmd["target"] is not None
 
 
+# --- F37 community changeover (seasonal water direction) ---
+_COMMUNITY = {const.CONF_GENERATOR: "heatpump_air_water",
+              const.CONF_DISTRIBUTION: "central_shared",
+              const.CONF_EMISSION: "underfloor"}
+
+
+def _set_changeover(hass, state):
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": state}
+
+
+async def test_community_zone_follows_changeover(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", _COMMUNITY)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"                       # user left it on "heat"
+
+    # Building supplies cold water -> the zone cools, not heats.
+    _set_changeover(hass, "cool")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "cool"
+
+    # Hot water -> heats.
+    _set_changeover(hass, "heat")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"
+
+    # Shoulder season (off) -> idle even though the zone is "on".
+    _set_changeover(hass, "off")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "off"
+
+
+async def test_individual_zone_ignores_changeover(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "electric_direct",
+        const.CONF_EMISSION: "convectors"})       # individual install
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    _set_changeover(hass, "cool")                 # building cooling
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "heat"               # its own mode wins
+
+
+async def test_no_changeover_is_back_compat(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", _COMMUNITY)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "cool"
+    # No DATA_CHANGEOVER published -> unchanged behaviour.
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "cool"
+
+
 async def test_emitter_editor_adds_and_deletes(hass: HomeAssistant) -> None:
     _seed(hass)
     entry = await _add(hass, CLIMATE, "Salon")

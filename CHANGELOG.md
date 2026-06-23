@@ -4,6 +4,30 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.20.0] — 2026-06-23
+
+### Added
+- **Changeover comunitario (F37)**: soporte para **suelo radiante comunitario a 2 tubos**
+  con **cambio estacional**, donde la comunidad envía agua caliente o fría a todo el
+  edificio y tú solo abres válvula. Una **dirección de casa** (calor/frío/apagado) que
+  las **zonas comunitarias** (las declaradas `central_shared` en F26) **siguen**: ya no
+  pides calor cuando llega agua fría.
+  - **Detección manual + automática**: un selector **«Changeover (agua)»**
+    (`auto/calor/frío/apagado`); en `auto` se deduce de un **sensor de temperatura del
+    agua de impulsión** con umbrales (caliente → calor, fría → frío, templada → reposo).
+  - **Observabilidad**: sensor de estado de la casa + la tarjeta de cada zona muestra lo
+    que **realmente** hace (`hvac_action`: calentando/enfriando/en reposo).
+  - **Opt-in / compatible**: sin changeover configurado, las zonas se comportan **igual
+    que antes**; las zonas **individuales** ignoran el changeover.
+  - Configuración en las opciones de **Zonas** (sensor de agua + umbrales).
+
+### Internal
+- Nuevo módulo puro `changeover.py` con tests (`test_changeover.py`) e integración (zona
+  community sigue el agua; individual la ignora; sin configurar = back-compat; resolución
+  desde sensor + override manual). El `ZonesCoordinator` resuelve y publica
+  `DATA_CHANGEOVER` reusando el poll/listeners de F32; DC lo consume en un único punto
+  (`_effective_hvac`), sin tocar el motor `decide`. Suite 411→420.
+
 ## [0.19.0] — 2026-06-23
 
 ### Added

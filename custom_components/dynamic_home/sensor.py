@@ -113,7 +113,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         async_add_entities([WeatherSourceSensor(coordinator, entry)])
         return
     if module == const.MODULE_ZONES:
-        async_add_entities([ZonesSensor(coordinator, entry)])
+        async_add_entities([ZonesSensor(coordinator, entry),
+                            ChangeoverSensor(coordinator, entry)])
         return
     if module == const.MODULE_CLIMATE:
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
@@ -153,6 +154,33 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(ScheduleSensor(coordinator, entry, is_vmc=True))
     entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
+
+
+class ChangeoverSensor(CoordinatorEntity, SensorEntity):
+    """Community changeover (F37): resolved water direction + manual/water_temp."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Changeover"
+    _attr_icon = "mdi:sun-snowflake-variant"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["heat", "cool", "off", "unknown"]
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_changeover_state"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str:
+        return self.coordinator.changeover or "unknown"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_CHANGEOVER) or {}
+        return {"manual": self.coordinator.changeover_manual,
+                "water_temp": data.get("water_temp")}
 
 
 class ZonesSensor(CoordinatorEntity, SensorEntity):

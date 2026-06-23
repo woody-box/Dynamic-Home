@@ -19,7 +19,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import comfort, const, events, modes, presence, zones
+from . import changeover, comfort, const, events, modes, presence, zones
 
 _LOGGER = logging.getLogger(__name__)
 _SOURCE_KINDS = (presence.PIR, presence.MMWAVE, presence.DOOR)
@@ -29,10 +29,11 @@ class ZonesCoordinator(DataUpdateCoordinator):
     """Holds the zone/group hierarchy + house modes + presence, and publishes them."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
-        # Poll only when presence is configured (for per-source timeouts);
-        # otherwise the tree/modes are config-time only.
+        # Poll only when presence or a changeover sensor is configured (for
+        # per-source timeouts / water-temp tracking); otherwise config-time only.
         configured = bool(entry.options.get(const.CONF_PRESENCE_SOURCES)
-                          or entry.options.get(const.CONF_PRESENCE_PHONES))
+                          or entry.options.get(const.CONF_PRESENCE_PHONES)
+                          or entry.options.get(const.CONF_CHANGEOVER_SENSOR))
         super().__init__(
             hass, _LOGGER, name=f"{const.DOMAIN}_zones",
             update_interval=(timedelta(seconds=const.UPDATE_INTERVAL_S)
@@ -49,6 +50,9 @@ class ZonesCoordinator(DataUpdateCoordinator):
         self.presence_occupied: dict[str, bool] = {}
         self.presence_reasons: dict[str, str] = {}
         self.house_presence = "occupied"
+        # F37: community changeover (seasonal water direction).
+        self.changeover_manual = "auto"     # set/restored by the select entity
+        self.changeover: str | None = None  # resolved heat/cool/off/None
 
     @property
     def tree(self) -> dict:
@@ -102,12 +106,24 @@ class ZonesCoordinator(DataUpdateCoordinator):
         st = self.hass.states.get(eid)
         return bool(st and st.state == "home")
 
+    def _num(self, eid: str | None) -> float | None:
+        if not eid:
+            return None
+        st = self.hass.states.get(eid)
+        try:
+            return float(st.state) if st else None
+        except (TypeError, ValueError):
+            return None
+
     def _all_source_eids(self) -> list[str]:
         out: list[str] = []
         for zsrc in (self.entry.options.get(const.CONF_PRESENCE_SOURCES) or {}).values():
             for kind in _SOURCE_KINDS:
                 out += zsrc.get(kind, [])
         out += self.entry.options.get(const.CONF_PRESENCE_PHONES) or []
+        sensor = self.entry.options.get(const.CONF_CHANGEOVER_SENSOR)
+        if sensor:                                     # F37 supply-water sensor
+            out.append(sensor)
         return out
 
     def async_setup_presence_listeners(self) -> None:
@@ -160,6 +176,38 @@ class ZonesCoordinator(DataUpdateCoordinator):
                 self.house_mode = target
                 self.publish_modes(notify=notify)
 
+    # --- F37 community changeover ---
+    def changeover_cfg(self) -> changeover.ChangeoverConfig:
+        cfg = changeover.ChangeoverConfig()
+        for k, v in (self.entry.options.get(const.CONF_CHANGEOVER_TUNE) or {}).items():
+            if hasattr(cfg, k):
+                setattr(cfg, k, type(getattr(cfg, k))(v))
+        return cfg
+
+    def _changeover_configured(self) -> bool:
+        return bool(self.entry.options.get(const.CONF_CHANGEOVER_SENSOR)
+                    or self.changeover_manual != "auto")
+
+    def _recompute_changeover(self) -> None:
+        water = self._num(self.entry.options.get(const.CONF_CHANGEOVER_SENSOR))
+        self.changeover = changeover.resolve(
+            self.changeover_manual, water, self.changeover_cfg())
+
+    def publish_changeover(self, notify: bool = True) -> None:
+        self._recompute_changeover()
+        data = self.hass.data.setdefault(const.DOMAIN, {})
+        data[const.DATA_CHANGEOVER] = {
+            "state": self.changeover, "manual": self.changeover_manual,
+            "water_temp": self._num(
+                self.entry.options.get(const.CONF_CHANGEOVER_SENSOR))}
+        events.fire_changeover_changed(self.hass, self.entry, self.changeover)
+        self.async_update_listeners()
+        if notify:                          # community zones must re-evaluate
+            for key, co in list(data.items()):
+                if not key.startswith("_") and co is not self \
+                        and hasattr(co, "async_request_refresh"):
+                    self.hass.async_create_task(co.async_request_refresh())
+
     async def _async_update_data(self) -> dict:
         tree = self.tree
         self.hass.data.setdefault(const.DOMAIN, {})[const.DATA_ZONES] = tree
@@ -168,4 +216,6 @@ class ZonesCoordinator(DataUpdateCoordinator):
                 or self.entry.options.get(const.CONF_PRESENCE_PHONES)):
             self._recompute_presence(dt_util.utcnow().timestamp())
             self.publish_presence(notify=False)
+        if self._changeover_configured():
+            self.publish_changeover(notify=False)
         return tree
