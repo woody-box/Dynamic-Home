@@ -19,7 +19,7 @@ from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import comfort, const, energy, events, modes, repairs, schedule
+from . import comfort, const, energy, events, modes, repairs, schedule, zones
 from .bus import SdhbHub
 from .dc_engine import dew_point
 from .dv_engine import (
@@ -244,6 +244,25 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             self.entry.entry_id))
         return cfg
 
+    def _house_changeover(self) -> str | None:
+        """F37: the house heating/cooling season — per-zone override else house.
+
+        Mirrors the DC/DS readers: ``DATA_CHANGEOVER`` with a per-zone split resolved
+        via ``zones.scope_for_module``. ``None`` when no changeover is configured, so
+        DV keeps its plain temperature-driven free-cooling (back-compat).
+        """
+        data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_CHANGEOVER)
+        if not data:
+            return None
+        zmap = data.get("zones") or {}
+        if zmap:
+            tree = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ZONES)
+            zid = (zones.scope_for_module(tree, self.entry.entry_id)["zone"]
+                   if tree else None)
+            if zid and zid in zmap:
+                return zmap[zid]
+        return data.get("state")
+
     def _update_adaptive(self, cfg: DvConfig, co2: float | None,
                          pm: float | None) -> tuple:
         """Append readings and derive adaptive thresholds from percentiles.
@@ -376,6 +395,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             t_in=self._num(const.CONF_T_IN),
             t_ext=self._num(const.CONF_T_EXT),
             aqi=self._num(const.CONF_AQI),
+            heating_season=self._house_changeover() == "heat",
             current_speed=self.current_speed,
             boost_active=boost_active,
             permitida=None,  # computed by the engine (schedule + failsafe gate)

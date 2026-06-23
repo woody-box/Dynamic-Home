@@ -2003,9 +2003,15 @@ verano** y **ganancia solar / aislamiento nocturno en invierno** siguiendo la te
 del edificio. Sin changeover configurado → `off` (back-compat exacto). Un termostato por
 persiana que pide heat/cool gana; idle/off cae al changeover.
 
+**Exponer a DV (v0.29.0):** `coordinator_dv` lee el mismo `_house_changeover` y pasa
+`heating_season` al motor; `compute_freecool` **suprime el free-cooling en temporada de
+calor** (un día templado de invierno —dentro 21°, fuera 12°— activaría free-cooling por
+la histéresis de temperatura y tiraría el calor que pagas). Sin changeover → no es
+temporada de calor (back-compat: free-cooling solo por temperatura).
+
 **Diferido (anotado):** **changeover por zona/grupo con sensor de agua propio** (varios
-colectores con resolución auto independiente); exponer el changeover a **DV** (free-cooling
-por temporada); `HVACMode.HEAT_COOL` como modo "seguir al edificio".
+colectores con resolución auto independiente); `HVACMode.HEAT_COOL` como modo "seguir al
+edificio".
 
 ### 12.35 · F34 — Módulo Dynamic Energy (núcleo + tarifa + anti-pico)
 
