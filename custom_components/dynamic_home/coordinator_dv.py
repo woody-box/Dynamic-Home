@@ -70,6 +70,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.machine_hours = 0.0
         self.filter_hours = 0.0
         self.energy_kwh = 0.0           # F06: cumulative energy (real or estimated)
+        self.power_w = 0.0              # F06/REQ-ENE-5: instantaneous power (W)
         self._accum_ts: float | None = None
         # "Filter due" event arming (hysteresis so it fires once per crossing)
         # and the matching Repairs issue id (F08).
@@ -133,6 +134,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                 power = energy.vmc_power_w(
                     spd, (cfg.est_w_v1, cfg.est_w_v2, cfg.est_w_v3))
             self.energy_kwh = energy.add_kwh(self.energy_kwh, power, dt_s)
+            self.power_w = float(power or 0.0)
         self._accum_ts = now_ts
 
     def reset_filter_hours(self) -> None:

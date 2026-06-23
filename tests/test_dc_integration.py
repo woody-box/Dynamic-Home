@@ -1128,3 +1128,23 @@ async def test_dc_follows_tariff_lead(hass: HomeAssistant) -> None:
     neutral_lead = co.data.details["lead_h"]
 
     assert peak_lead < neutral_lead < cheap_lead
+
+
+# --- F06/REQ-ENE-5: instantaneous power per module ---
+async def test_dc_power_sensor_reflects_estimate(hass: HomeAssistant) -> None:
+    """A heating zone without a meter exposes its estimated instantaneous power."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    # Two cycles so the energy integrator sees dt > 0 and latches power_w.
+    await co.async_refresh()
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    assert co.power_w == 1000.0                            # est_w_on while ON
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_power")
+    assert eid is not None
+    assert float(hass.states.get(eid).state) == 1000.0

@@ -432,14 +432,15 @@ si no, integrado en el panel de Energía de HA.
   no aporta; en eléctrico/AC con medidor sí. Portar el cálculo de horas frío/calor
   del usuario (mejor con F27).
 - **REQ-ENE-5 (S):** exponer **potencia instantánea total**; cruza con F03 (el
-  pico de arranque de DS importa, ~2000 W con 12 persianas).
+  pico de arranque de DS importa, ~2000 W con 12 persianas). *(v0.26.0)*
 
 **Dependencias:** F26 (gating DC), F27 (horas exactas), F03 (pico).
 **Criterios de aceptación:**
 - ☑ Con Shelly (`power_meter`), el kWh del módulo aparece en el panel de Energía.
 - ☑ Sin medidor, la estimación por estado produce un kWh creciente coherente.
-- *(REQ-ENE-1/2/4 cubiertos en v0.12.0 para VMC/DC/DS; **coste (€)** REQ-ENE-3 y
-  **potencia instantánea/pico** REQ-ENE-5 quedan diferidos; ver §12.x.)*
+- ☑ Cada módulo expone su **potencia instantánea** (W) y Energy agrega la **potencia total de casa**. *(v0.26.0; `power_w` + `PowerSensor`/`HousePowerSensor`)*
+- *(REQ-ENE-1/2/4 cubiertos en v0.12.0 para VMC/DC/DS; **coste (€)** REQ-ENE-3 en
+  v0.24.0; **potencia instantánea** REQ-ENE-5 en v0.26.0.)*
 
 ### 5.7 · Anti-pico / reparto de cargas (F03)
 
@@ -1670,8 +1671,9 @@ estima la energía **marginal por movimiento** del motor (`est_w_motor` × `full
 - ☑ Sin medidor, la estimación por estado/velocidad produce un kWh creciente coherente.
 - ☑ El total sobrevive a reinicios (`RestoreSensor`) en los tres módulos.
 
-**Diferido (anotado):** **coste (€)** (sensor de precio / tarifa fija, REQ-ENE-3);
-**potencia instantánea / pico** (REQ-ENE-5, cruza F03); **medidor real en DS**.
+**Implementado después:** **coste (€)** en v0.24.0 (REQ-ENE-3, agregación de casa);
+**potencia instantánea** en v0.26.0 (REQ-ENE-5: `power_w` por módulo + total de casa).
+**Diferido:** **medidor real en DS** (muestreo 60 s vs movimiento de segundos).
 
 ### 12.26 · F15 — Sombreado geométrico real (DS)
 
@@ -2040,9 +2042,9 @@ FV diferido). **Tests:** puro `add_cost` + integración (suma de módulos; coste
 Δ×precio; sin precio → sin sensor de coste). Suite 441→445.
 
 **Diferido (anotado):** **§8.5 FV/excedente** y **§8.6 carga VE** (⚠️ validación externa);
-**§8.2 balance neto** (consumo vs red import/export y FV ⚠️) y coste neto; **potencia
-instantánea total** (REQ-ENE-5, cruza F03); **DS** respetando headroom; afinar la
-contabilidad del headroom (incremental vs absoluto).
+**§8.2 balance neto** (consumo vs red import/export y FV ⚠️) y coste neto; **DS** respetando headroom; afinar la
+contabilidad del headroom (incremental vs absoluto). *(La potencia instantánea total
+REQ-ENE-5 se entregó en v0.26.0: `house_power_w` en `DATA_ENERGY` + `HousePowerSensor`.)*
 
 **§8.3 sesgo de tarifa en DC (v0.25.0, REQ-TAR-4):** DC lee `tariff_state` de
 `DATA_ENERGY` (helper `_tariff_state`, como ya lee el headroom) y lo pasa a `DcInputs`.

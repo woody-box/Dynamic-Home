@@ -105,6 +105,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.dew_risk_active = False
         # Energy (F06): cumulative kWh while calling for heat/cool (real or est.).
         self.energy_kwh = 0.0
+        self.power_w = 0.0              # F06/REQ-ENE-5: instantaneous power (W)
         self._energy_ts: float | None = None
         # Trend (indoor temp derivative) state.
         self._prev_tint: float | None = None
@@ -541,6 +542,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 on = valve if valve is not None else self.hvac_mode in ("heat", "cool")
                 power = energy.dc_power_w(on, cfg.est_w_on)
             self.energy_kwh = energy.add_kwh(self.energy_kwh, power, dt_s)
+            self.power_w = float(power or 0.0)
         self._energy_ts = now_ts
 
     # --- mold-risk index (F22) ---

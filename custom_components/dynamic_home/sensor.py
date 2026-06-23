@@ -119,7 +119,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if module == const.MODULE_ENERGY:
         ents: list[SensorEntity] = [HeadroomSensor(coordinator, entry),
                                     TariffSensor(coordinator, entry),
-                                    HouseEnergySensor(coordinator, entry)]
+                                    HouseEnergySensor(coordinator, entry),
+                                    HousePowerSensor(coordinator, entry)]
         if coordinator.has_pv():                    # F34 gating (⚠️ PV)
             ents.append(SurplusSensor(coordinator, entry))
         if coordinator._hw(const.CONF_ENERGY_PRICE):   # cost needs a price sensor
@@ -138,6 +139,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ents.append(InstallSensor(coordinator, entry))
         ents.append(BusSensor(coordinator, entry))
         ents.append(EnergySensor(coordinator, entry))
+        ents.append(PowerSensor(coordinator, entry))
         ents.append(ScheduleSensor(coordinator, entry, is_vmc=False))
         ents += _mirror_sensors(entry, module)
         async_add_entities(ents)
@@ -161,6 +163,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         entities.append(VocSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
     entities.append(EnergySensor(coordinator, entry))
+    entities.append(PowerSensor(coordinator, entry))
     entities.append(ScheduleSensor(coordinator, entry, is_vmc=True))
     entities += _mirror_sensors(entry, module)
     async_add_entities(entities)
@@ -319,6 +322,28 @@ class HouseCostSensor(CoordinatorEntity, RestoreSensor):
     @property
     def native_value(self) -> float:
         return round(self.coordinator.house_cost, 2)
+
+
+class HousePowerSensor(CoordinatorEntity, SensorEntity):
+    """House instantaneous power (F06/REQ-ENE-5): sum of every module's ``power_w``."""
+
+    _attr_has_entity_name = True
+    _attr_name = "Potencia de casa"
+    _attr_icon = "mdi:home-lightning-bolt-outline"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "W"
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_house_power"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.house_power_w, 1)
 
 
 class ZonesSensor(CoordinatorEntity, SensorEntity):
@@ -557,6 +582,28 @@ class EnergySensor(_Base, RestoreSensor):
     @property
     def native_value(self) -> float:
         return round(self.coordinator.energy_kwh, 3)
+
+
+class PowerSensor(_Base):
+    """Instantaneous power (F06/REQ-ENE-5), real or estimated; per module.
+
+    Shared by the VMC/DC coordinators (both expose ``power_w``: the watts feeding
+    the kWh integral — a real meter if configured, else the per-state estimate).
+    """
+
+    _attr_name = "Power"
+    _attr_icon = "mdi:flash"
+    _attr_device_class = SensorDeviceClass.POWER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_native_unit_of_measurement = "W"
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "power")
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.power_w, 1)
 
 
 class ScheduleSensor(CoordinatorEntity, SensorEntity):

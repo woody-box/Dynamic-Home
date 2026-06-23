@@ -103,6 +103,25 @@ async def test_house_cost_accumulates_with_price(hass: HomeAssistant) -> None:
     assert co.house_cost == 0.8                            # 4 kWh * 0.20 €/kWh
 
 
+async def test_house_power_aggregates_modules(hass: HomeAssistant) -> None:
+    entry = _energy_entry(hass, {})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Instantaneous W summed live across modules; a "_" hub is ignored.
+    hass.data[const.DOMAIN]["dc1"] = SimpleNamespace(energy_kwh=0.0, power_w=1000.0)
+    hass.data[const.DOMAIN]["dv1"] = SimpleNamespace(energy_kwh=0.0, power_w=30.0)
+    hass.data[const.DOMAIN]["_anticycle"] = SimpleNamespace(power_w=999.0)
+    await co.async_request_refresh()
+    await hass.async_block_till_done()
+
+    assert co.house_power_w == 1030.0                      # 1000 + 30 (hub skipped)
+    assert hass.data[const.DOMAIN][const.DATA_ENERGY]["house_power_w"] == 1030.0
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_house_power") is not None
+
+
 async def test_no_cost_sensor_without_price(hass: HomeAssistant) -> None:
     entry = _energy_entry(hass, {})                        # no price sensor
     assert await hass.config_entries.async_setup(entry.entry_id)
