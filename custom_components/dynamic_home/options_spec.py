@@ -359,6 +359,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
                "Presupuesto de potencia (W, 0=conteo)"),
             _v("peak_stagger_s", "Stagger between starts (s)",
                "Escalonado entre arranques (s)"),
+            _v("peak_comfort_bypass_c", "Comfort bypass Δ (°C)",
+               "Δ bypass de confort (°C)"),
         ],
         "staging": [
             _v("support_dev_on", "Support arm Δ (°C)", "Δ activación apoyo (°C)"),

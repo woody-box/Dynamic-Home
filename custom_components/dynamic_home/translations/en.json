@@ -846,12 +846,14 @@
         "data": {
           "peak_max_zones": "Max simultaneous starts",
           "peak_max_power_w": "Power budget (W, 0 = count)",
-          "peak_stagger_s": "Stagger between starts (s)"
+          "peak_stagger_s": "Stagger between starts (s)",
+          "peak_comfort_bypass_c": "Comfort bypass Δ (°C)"
         },
         "data_description": {
           "peak_max_zones": "How many electric loads (heating zones or covers) may be running/moving at once before new starts are deferred. Used when no power budget is set.",
           "peak_max_power_w": "If above 0, limit by total watts instead of a count (uses the real power meter when present, otherwise the estimate). 0 = count mode.",
-          "peak_stagger_s": "Minimum gap between fresh starts, so a burst of demands ramps up one at a time instead of together."
+          "peak_stagger_s": "Minimum gap between fresh starts, so a burst of demands ramps up one at a time instead of together.",
+          "peak_comfort_bypass_c": "A zone this far past its setpoint bypasses the peak limit entirely — comfort wins over peak-shaving (safety still wins above). 0 disables it."
         }
       },
       "cat_energy": {

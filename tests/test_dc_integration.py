@@ -727,7 +727,8 @@ async def test_peak_staggers_electric_zones(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.b_temp", "18")
     opts = {const.CONF_GENERATOR: "electric_direct",
             const.CONF_EMISSION: "convectors",
-            "peak_max_zones": 1, "peak_stagger_s": 0}
+            "peak_max_zones": 1, "peak_stagger_s": 0,
+            "peak_comfort_bypass_c": 0}      # isolate budget gating from F03 bypass
     a = await _add_opts(hass, CLIMATE, "A", opts)
     b = await _add_opts(hass, {**CLIMATE, const.CONF_NAME: "B",
                                const.CONF_DC_T_INT: "sensor.b_temp"}, "B", opts)
@@ -742,6 +743,63 @@ async def test_peak_staggers_electric_zones(hass: HomeAssistant) -> None:
     assert ca.peak_hold is False           # first electric zone granted
     assert cb.peak_hold is True            # over the 1-zone budget -> deferred
     assert cb.peak_reason == "peak_over_budget"
+
+
+async def test_peak_comfort_bypass_on_severe_deviation(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "17")     # ~4°C below setpoint
+    hass.states.async_set("sensor.b_temp", "20.6")       # near setpoint
+    opts = {const.CONF_GENERATOR: "electric_direct", const.CONF_EMISSION: "convectors",
+            "peak_max_zones": 1, "peak_stagger_s": 0, "base_heat_day": 21.0}
+    b = await _add_opts(hass, {**CLIMATE, const.CONF_NAME: "B",
+                               const.CONF_DC_T_INT: "sensor.b_temp"}, "B",
+                        {**opts, "peak_comfort_bypass_c": 0})
+    a = await _add_opts(hass, CLIMATE, "A", opts)         # bypass default 2.5
+    ca = hass.data[const.DOMAIN][a.entry_id]
+    cb = hass.data[const.DOMAIN][b.entry_id]
+    ca.hvac_mode = cb.hvac_mode = "heat"
+    ca.peak_enabled = cb.peak_enabled = True
+    await cb.async_refresh()                              # B takes the only slot
+    await hass.async_block_till_done()
+    await ca.async_refresh()
+    await hass.async_block_till_done()
+    assert cb.peak_hold is False
+    # A is over the 1-zone budget, but being ~4°C cold it bypasses the peak limit.
+    assert ca.peak_hold is False
+    assert ca.peak_reason == "peak_comfort_bypass"
+
+
+async def test_f09_gates_only_heat_pump_emitter(hass: HomeAssistant) -> None:
+    from homeassistant.util import dt as dt_util
+
+    from custom_components.dynamic_home.anticycle import CompressorState
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")     # below setpoint -> demand
+    hass.states.async_set("climate.hp", "off")
+    hass.states.async_set("switch.gas", "off")
+    ems = [{"name": "HP", "generator": "heatpump_air_water", "emission": "underfloor",
+            "climate": "climate.hp", "primary_heat": True},
+           {"name": "Gas", "generator": "gas_boiler", "emission": "radiators",
+            "switch": "switch.gas"}]
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        "emitters": ems, "support_confirm_min": 0, "base_heat_day": 21.0})
+    async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    async_mock_service(hass, "homeassistant", "turn_on")
+    async_mock_service(hass, "homeassistant", "turn_off")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.anticycle_enabled = True
+    ac = hass.data[const.DOMAIN]["_anticycle"]
+    ac.state = CompressorState(on=False, last_off_ts=dt_util.utcnow().timestamp())
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # The profile (heat-pump primary) is a compressor install -> the guard engages.
+    assert co.anticycle_hold is True
+    # ...but it only holds the heat-pump emitter; the gas boiler keeps heating.
+    assert co.emitter_commands["hp"]["on"] is False
+    assert co.emitter_commands["gas"]["on"] is True
 
 
 async def test_peak_gated_off_for_non_electric(hass: HomeAssistant) -> None:

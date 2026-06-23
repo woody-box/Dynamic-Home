@@ -158,6 +158,9 @@ class DcConfig:
     peak_max_zones: int = 2
     peak_max_power_w: float = 0.0
     peak_stagger_s: float = 10.0
+    # Comfort bypass: a severe deviation (°C past setpoint) skips the peak gate
+    # entirely — comfort wins over peak-shaving (safety still wins above). 0 = off.
+    peak_comfort_bypass_c: float = 2.5
     # Emitter staging (F25): a support emitter arms when the primary lags by more
     # than support_dev_on (°C) for support_confirm_min, and retires when the room
     # recovers under support_dev_off for support_release_min (hysteresis).

@@ -363,7 +363,7 @@
 > Unraid, Network, TV, Office) quedan fuera; Suite = el paraguas (= Dynamic Home).
 
 ### F32 · Dynamic Presence (enabler transversal)
-- **Estado:** 🟡 parcial (v0.19.0: fusión PIR+mmWave+móvil+puerta + Durmiendo; BLE/identidad y puerta direccional diferidos) · **Módulos:** núcleo/zonas · **Valor:** Alta · **Esfuerzo:** L
+- **Estado:** ✅ implementada (v0.19.0) · **puerta direccional + identidad BLE dedicada ❌ descartadas (v0.23.0, decisión del usuario)**; bermuda usable por las casillas de fuente existentes · **Módulos:** núcleo/zonas · **Valor:** Alta · **Esfuerzo:** L
 - **Idea:** detección de presencia (away/home/sleep, por zona) que alimenta modos (F01), perfiles (F21), setback de DC/DV y coordinación con luces/persianas. Transversal, como las zonas (F24).
 - **Implementado (v0.19.0):** vive en la entrada de Zonas; modelo puro `presence.py` (fusión por zona PIR/mmWave/puerta con timeouts por fuente + anti-flapping; casa `occupied`/`away`/`sleeping`); `ZonesCoordinator` con listeners+sondeo publica `DATA_PRESENCE` + evento, y **auto-pilota el modo de la casa** (opt-in, sin pisar Boost/Eco); binary_sensor de ocupación por zona + presencia de casa; editor en opciones; funciona con subconjuntos. **Diferido:** identidad BLE/Bermuda ("quién"), puerta direccional por orden de eventos, publicación por bus / setback directo por zona.
 - **Perfilado:**
@@ -423,13 +423,13 @@
 |----|--------|-------------------|
 | **F01** | ✅ implementada (DS/horario→futuro) | Modos Home/Away/Sleep/Boost/Eco; casa + override por zona (F24); DV cap por modo, DC vacación en Away; select + caps configurables. Horario→F21, efecto DS pendiente. |
 | **F02** | ✅ implementada | `BusSensor` por consumidor (DV/DS/DC) bajo el dispositivo central "Dynamic Home · Bus"; estado=ganador, atributos origen/prioridad/candidatos/motivo/target/TTL + aspirante (runner-up); evento `dynamic_home_conflict`; solo estado actual. |
-| **F03** | ✅ implementada | Anti-pico opt-in: árbitro de casa `peak.py` (`PeakLoadHub`), canales separados clima/persianas; límite por N cargas o kW + escalonado (~10 s); clima gateado por `peak`/`community` del perfil F26; persianas escalonan arranques masivos. Prioridad de cola/bypass de confort (REQ-PIC-5) y presupuesto único de casa diferidos. |
+| **F03** | ✅ implementada | Anti-pico opt-in: árbitro de casa `peak.py` (`PeakLoadHub`), canales separados clima/persianas; límite por N cargas o kW + escalonado (~10 s); clima gateado por `peak`/`community` del perfil F26; persianas escalonan arranques masivos. **v0.23.0: prioridad de cola por desviación + bypass de confort (REQ-PIC-5).** Presupuesto único de casa diferido. |
 | **F04** | ❄️ congelada | Precio luz → Adaptive Lead. Aparcada hasta madurar la idea. |
 | **F05** | ❄️ congelada | Outdoor reset. Se solapa con `bias_exterior` en la instalación objetivo. |
 | **F06** | ✅ implementada (energía) | Sensor de energía (kWh) en VMC/DC/DS: medidor real o estimación; panel de Energía. Coste (€) y pico instantáneo diferidos. |
 | **F07** | ✅ implementada (botón→futuro) | Repairs transversal DV/DS/DC (mixin `DegradedTracker`): issue por módulo con fuentes requeridas ausentes/obsoletas >5min + evento `dynamic_home_degraded` + binary_sensor "Degradado". No-fixable + enlace; botón que reabre config flow diferido. |
 | **F08** | ✅ implementada | Vida del filtro: número (3650 h) + sensor %, reset (botón/servicio), evento `filter_due` + **issue de Repairs `filter_due`** (creado al cruzar el umbral, borrado al resetear/descargar). |
-| **F09** | ✅ implementada | Anti-ciclado opt-in: min ON/OFF + máx 6 arranques/h sobre el agregado del compresor compartido; vigila el ON/OFF que manda DC; la seguridad cede. **Gating F26 cableado (v0.17.0): solo con `compressor`, OFF en gas/eléctrico/comunitaria.** Grupos por compresor (F25) diferidos. |
+| **F09** | ✅ implementada | Anti-ciclado opt-in: min ON/OFF + máx 6 arranques/h sobre el agregado del compresor compartido; vigila el ON/OFF que manda DC; la seguridad cede. Gating F26 (v0.17.0). **v0.23.0: hold por-emisor (solo emisores de bomba de calor; gas/eléctrico de la misma zona no).** Canal de compresor completo (id por emisor) diferido. |
 | **F10** | ✅ implementada | 5 servicios (`reset_learning`/`boost`/`set_observe`/`reset_filter`/`recalibrate`) con `services.yaml` + traducciones EN/ES, destino por entidad/dispositivo/área; 4 eventos emitiéndose (degraded/conflict/filter_due/mode_changed). |
 | **F11** | ☑ revisada | Ventilación anticipatoria por derivada CO₂/PM (patrón ducha: on/off + hold). |
 | **F12** | ☑ revisada | Horas de silencio: nivel máx OFF/V1/V2 en franja (o vía Sleep F01); excepción crítica de seguridad. |
