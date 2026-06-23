@@ -36,6 +36,9 @@ class EnergyCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(seconds=const.UPDATE_INTERVAL_S))
         self.entry = entry
         self.context: dict = {}
+        self.house_kwh: float = 0.0          # F34 §8.2: aggregated house energy
+        self.house_cost: float = 0.0         # gross cost (€), accumulated
+        self._prev_house_kwh: float | None = None
 
     def has_pv(self) -> bool:
         return bool(self._hw(const.CONF_ENERGY_PV))
@@ -77,15 +80,41 @@ class EnergyCoordinator(DataUpdateCoordinator):
     def _on_input_change(self, _event) -> None:
         self.hass.async_create_task(self.async_request_refresh())
 
+    def _aggregate(self) -> None:
+        """Sum each module's ``energy_kwh`` into a house total + gross cost (§8.2).
+
+        Reads every module coordinator (non-``_`` keys in ``hass.data``) that keeps
+        an ``energy_kwh`` counter (DC/DV/DS via F06). The cost integrates ΔkWh×price
+        each cycle; the first cycle only seeds the previous total so the modules'
+        restored kWh don't show up as a one-off cost jump.
+        """
+        data = self.hass.data.get(const.DOMAIN, {})
+        total = 0.0
+        for key, co in list(data.items()):
+            if key.startswith("_") or co is self:
+                continue
+            kwh = getattr(co, "energy_kwh", None)
+            if isinstance(kwh, (int, float)):
+                total += float(kwh)
+        self.house_kwh = total
+        if self._prev_house_kwh is not None:
+            price = self._num(const.CONF_ENERGY_PRICE)
+            self.house_cost = energy_engine.add_cost(
+                self.house_cost, total - self._prev_house_kwh, price)
+        self._prev_house_kwh = total
+
     def publish_energy(self, notify: bool = True) -> None:
         prev = self.context
         cfg = self._cfg()
+        self._aggregate()
         self.context = energy_engine.resolve_context({
             "grid_w": self._num(const.CONF_ENERGY_GRID),
             "price": self._num(const.CONF_ENERGY_PRICE),
             "pv_w": self._num(const.CONF_ENERGY_PV),
             "consumption_w": self._num(const.CONF_ENERGY_TOTAL),
         }, cfg)
+        self.context["house_kwh"] = round(self.house_kwh, 3)
+        self.context["house_cost"] = round(self.house_cost, 4)
         data = self.hass.data.setdefault(const.DOMAIN, {})
         data[const.DATA_ENERGY] = dict(self.context)
         if self.context != prev:                    # transitions only (const.py)

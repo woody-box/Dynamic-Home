@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.24.0] — 2026-06-23
+
+### Added
+- **Energía (F34 §8.2) · agregación de casa** (REQ-EAG-1/2/3): el módulo Energy ahora
+  **suma** el consumo (`energy_kwh`) que cada módulo ya mantiene (DC/DV/DS, F06) en un
+  **total de casa** (`Consumo de casa`, kWh, `total_increasing`) que entra en el **panel de
+  Energía** de HA. Con un **sensor de precio** configurado, expone además un **coste de
+  casa** (€, `Coste de casa`) que acumula ΔkWh×precio (coste **bruto**, restaurado entre
+  reinicios). Sin sensor de precio, el sensor de coste no se crea.
+
+### Internal
+- `energy_engine.add_cost` (puro, ΔkWh negativo no resta, precio None no suma);
+  `EnergyCoordinator._aggregate` (Σ de los coordinators no-`_` con `energy_kwh`; el primer
+  ciclo siembra el previo para no contar los kWh restaurados); `house_kwh`/`house_cost` en
+  el blob `DATA_ENERGY`. Sensores `HouseEnergySensor`/`HouseCostSensor`. Tests puro +
+  integración. Suite 441→445.
+
 ## [0.23.0] — 2026-06-23
 
 ### Added
