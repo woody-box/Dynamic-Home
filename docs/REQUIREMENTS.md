@@ -125,6 +125,9 @@ zonas → casa** para aplicar modo/perfil/avisos por ámbito.
 - **REQ-INS-6 (S):** configurable **por zona**; tratable **global** si la
   instalación no está zonificada.
 - **REQ-INS-7 (C):** opción "personalizado" avanzada fuera del catálogo cerrado.
+  **Descartada (orden del usuario, v0.29.0):** el catálogo 3D (generador×distribución×
+  emisión) cubre los casos reales y el perfil cerrado es lo que da las garantías de
+  validación; un "meter cualquier cosa" libre las rompería sin aportar.
 
 **Dependencias:** F24 (ámbito). **Habilita:** F03, F09, F25, defaults de DC.
 **Criterios de aceptación:**
@@ -1825,8 +1828,9 @@ expone `has_install()` + `install_profile`. **No** se cablea aún F09/F03 al per
   con pico y sin compresor).
 
 **Diferido (anotado, orden del usuario):** **cablear F09** al perfil ✅ (v0.17.0);
-**F03** ✅ (v0.17.0); **F25** emisores (primario/stage2/ámbito) dentro del asistente;
-opción **"personalizado"** (REQ-INS-7).
+**F03** ✅ (v0.17.0); **F25** emisores (primario/stage2/ámbito) ✅. La opción
+**"personalizado"** (REQ-INS-7) queda **descartada** (v0.29.0): el catálogo cerrado cubre
+los casos reales y es lo que sostiene la validación por combinación.
 
 ### 12.31 · F09 (gating) + F03 — Anti-pico / reparto de cargas eléctricas
 
@@ -2009,8 +2013,10 @@ calor** (un día templado de invierno —dentro 21°, fuera 12°— activaría f
 la histéresis de temperatura y tiraría el calor que pagas). Sin changeover → no es
 temporada de calor (back-compat: free-cooling solo por temperatura).
 
-**Diferido (anotado):** **changeover por zona/grupo con sensor de agua propio** (varios
-colectores con resolución auto independiente); `HVACMode.HEAT_COOL` como modo "seguir al
+**Descartado (orden del usuario, v0.29.0):** **changeover por zona/grupo con sensor de
+agua propio** (varios colectores con direcciones independientes) — el override de
+changeover por zona ya existe (v0.22.0); un sensor de agua por colector es un caso de
+nicho que no compensa. **Diferido (anotado):** `HVACMode.HEAT_COOL` como modo "seguir al
 edificio".
 
 ### 12.35 · F34 — Módulo Dynamic Energy (núcleo + tarifa + anti-pico)

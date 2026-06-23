@@ -18,6 +18,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
   (espejo del de DC/DS) alimenta `heating_season = changeover == "heat"`. Tests puro
   (suprime free-cooling) + integración (changeover de calor lo apaga). Suite 456→458.
 
+### Descartado (cierre de backlog, orden del usuario)
+- **F26 "personalizado"** (REQ-INS-7, tipo de instalación libre fuera del catálogo): el
+  catálogo cerrado 3D cubre los casos reales y es lo que sostiene la validación por
+  combinación; un "meter cualquier cosa" la rompería sin aportar.
+- **Changeover por zona con sensor de agua propio** (colectores mixtos con direcciones
+  independientes): el override de changeover por zona ya existe (v0.22.0); un sensor de
+  agua por colector es un caso de nicho que no compensa. Solo documentación.
+
 ## [0.28.0] — 2026-06-23
 
 ### Added
