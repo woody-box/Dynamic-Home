@@ -356,3 +356,41 @@ async def test_peak_disabled_does_not_defer_shutters(hass: HomeAssistant) -> Non
     assert ca._peak_gate(cfg, move, 100, 1000.0).pos == 0
     assert cb._peak_gate(cfg, move, 100, 1000.0).pos == 0   # no budget gating
     assert cb.peak_reason == "off"
+
+
+# --- F37: shutters follow the house changeover (season) for solar strategy ---
+async def test_hvac_mode_follows_house_changeover(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)            # plain SHUTTER, no per-shutter climate
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # No changeover configured -> off (back-compat: engine idles to default).
+    assert co._hvac_mode() == "off"
+    # House cooling season -> the shutter adopts "cool" (summer shield / free-cool).
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "cool"}
+    assert co._hvac_mode() == "cool"
+    # Heating season -> "heat" (winter solar gain / night insulate).
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "heat"}
+    assert co._hvac_mode() == "heat"
+    # Off season -> off.
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "off"}
+    assert co._hvac_mode() == "off"
+
+
+async def test_hvac_mode_climate_entity_wins_then_falls_back(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("climate.salon", "heat")
+    data = {**SHUTTER, const.CONF_CLIMATE: "climate.salon"}
+    entry = MockConfigEntry(domain=const.DOMAIN, data=data, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "cool"}
+
+    # An actively calling thermostat (heat) wins over the house changeover (cool).
+    assert co._hvac_mode() == "heat"
+    # Idle/off thermostat -> fall back to the house season.
+    hass.states.async_set("climate.salon", "off")
+    assert co._hvac_mode() == "cool"

@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.28.0] — 2026-06-23
+
+### Added
+- **Persianas (F37) · siguen la temporada del edificio**: una persiana sin termostato
+  propio adopta el **changeover de casa** (calor/frío) como temporada, de modo que en
+  **verano** hace escudo solar y free-cooling nocturno y en **invierno** ganancia solar y
+  aislamiento nocturno — antes esto solo se activaba con un `climate` enlazado por persiana
+  (imposible en instalación comunitaria). Un termostato propio que pide heat/cool sigue
+  mandando; sin changeover configurado, comportamiento idéntico al anterior.
+
+### Internal
+- `coordinator_ds._house_changeover` (espejo del de DC: override por zona vía
+  `zones.scope_for_module`, si no el estado de casa) y `_hvac_mode` cae a él cuando no hay
+  termostato activo. Tests de integración (temporada de casa + el termostato propio gana y
+  luego cede). Suite 454→456.
+
 ## [0.27.0] — 2026-06-23
 
 ### Added
