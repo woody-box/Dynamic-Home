@@ -518,3 +518,18 @@ if __name__ == "__main__":
                 print(f"  FAIL {name}: {e}")
     print(f"\n{'ALL GREEN' if not failed else str(failed) + ' FAILED'}")
     sys.exit(1 if failed else 0)
+
+
+def test_anticycle_bounds_scales_and_clamps():
+    from custom_components.dynamic_home.dc_engine import (
+        ANTICYCLE_AUTOSIZE_CEIL_S,
+        ANTICYCLE_AUTOSIZE_FLOOR_S,
+        anticycle_bounds,
+    )
+    # Mid lag scales linearly: 0.5 h * 1800 s/h = 900 s (symmetric ON/OFF).
+    assert anticycle_bounds(0.5) == (900.0, 900.0)
+    # Tiny/negative lag is floored (stays a real compressor protection).
+    assert anticycle_bounds(0.0)[0] == ANTICYCLE_AUTOSIZE_FLOOR_S
+    assert anticycle_bounds(-1.0)[0] == ANTICYCLE_AUTOSIZE_FLOOR_S
+    # Huge lag is capped (never strands comfort).
+    assert anticycle_bounds(10.0)[0] == ANTICYCLE_AUTOSIZE_CEIL_S

@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.35.0] — 2026-06-24
+
+### Added
+- **Anti-ciclado adaptativo (F09)**: switch opt-in **"Adaptive anti-cycle"**. Cuando la
+  zona ya ha **aprendido su retardo térmico** (madurez del lead adaptativo), el **min
+  ON/OFF** del compresor se **dimensiona desde ese aprendizaje** en vez de un valor fijo:
+  una estancia lenta (alta inercia) tolera ciclos más largos; una rápida, más cortos.
+  Con **clamps de seguridad** (180–1800 s) para que siga siendo una protección real del
+  compresor. Sin el switch o sin aprendizaje maduro, se usa el valor configurado.
+
+### Internal
+- `dc_engine.anticycle_bounds(learned_lag_h)` puro (≈1800 s/h de lag, clamp 180–1800,
+  simétrico) + constantes; `coordinator_dc` aplica el override en `_anticycle_step` tras la
+  madurez (`adapt_ok_count ≥ ANTICYCLE_AUTOSIZE_MIN_SAMPLES`); switch `anticycle_autosize`.
+  Tests puro (escala + clamps) + integración (override con madurez, estático sin ella).
+  Suite 467→469.
+
 ## [0.34.0] — 2026-06-24
 
 ### Added

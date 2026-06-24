@@ -1790,9 +1790,17 @@ la zona más alejada de consigna — vive en **F03/peak** (§12.31), no en F09. 
 "¿puede el compresor compartido cambiar de estado ahora?"; F03 responde "¿qué zona arranca
 cuando los arranques escasean?". No esperes orden por desviación en este módulo.
 
+**Anti-ciclado adaptativo (v0.35.0):** switch opt-in **"Adaptive anti-cycle"**. Cuando el
+aprendizaje del lead está maduro (`adapt_ok_count ≥ 5`), `anticycle_bounds(learned_lag_h)`
+dimensiona el **min ON/OFF** desde el **retardo térmico aprendido** (≈1800 s por hora de
+lag, **clamp** 180–1800 s), en vez del valor estático: una zona lenta tolera ciclos más
+largos, una rápida más cortos. Es función pura, simétrica y con suelo de seguridad (nunca
+baja del mínimo → sigue siendo protección del compresor). Sin opt-in o sin madurez, se usa
+el valor configurado (back-compat).
+
 **Diferido (anotado):** **gating por instalación** (F26: oculto en gas/eléctrico/
-comunitaria, activo con compresor); usar la **tasa aprendida** para autodimensionar min
-ON/OFF. *(La agrupación fina por compresor `compressor_id` se entregó en v0.27.0.)*
+comunitaria, activo con compresor). *(La agrupación fina por compresor `compressor_id` se
+entregó en v0.27.0.)*
 
 ### 12.30 · F26 — Tipo de instalación (capa de declaración)
 

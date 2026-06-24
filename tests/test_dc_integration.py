@@ -1237,3 +1237,31 @@ async def test_heat_cool_absent_on_individual_zone(hass: HomeAssistant) -> None:
     # An individual (non-community) zone does not offer the follow-the-building mode.
     assert HVACMode.HEAT_COOL not in hass.states.get(
         "climate.salon").attributes["hvac_modes"]
+
+
+# --- F09: adaptive anti-cycle (autosize min ON/OFF from learned lag) ---
+async def test_anticycle_autosize_overrides_min_on_off_when_mature(
+        hass: HomeAssistant) -> None:
+    from types import SimpleNamespace
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "heatpump_air_water",
+        const.CONF_DISTRIBUTION: "individual",
+        const.CONF_EMISSION: "underfloor"})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.anticycle_enabled = True
+    co.anticycle_autosize_enabled = True
+    co.learned_lag_h = 1.0                       # -> 1800 s bound
+    co.adapt_ok_count = 10                        # mature
+
+    cfg = co._cfg()
+    assert cfg.anticycle_min_on_s == 600.0        # static default before
+    co._anticycle_step(cfg, SimpleNamespace(action="heat"), 1000.0)
+    assert cfg.anticycle_min_on_s == 1800.0       # autosized from the learned lag
+    assert cfg.anticycle_min_off_s == 1800.0
+
+    # Not yet mature -> the static configured value is kept.
+    co.adapt_ok_count = 1
+    cfg2 = co._cfg()
+    co._anticycle_step(cfg2, SimpleNamespace(action="heat"), 1000.0)
+    assert cfg2.anticycle_min_on_s == 600.0

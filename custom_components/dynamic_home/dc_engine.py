@@ -414,6 +414,27 @@ def on_rate_cph(t0: float | None, t_off: float | None, dt_h: float | None,
     return round(d_t / dt_h, 3)
 
 
+# F09: autosize the compressor anti-cycle min ON/OFF from the learned thermal lag
+# instead of a static value. A slow, high-inertia zone (long lag) tolerates — and
+# benefits from — longer cycles; a fast, low-inertia one must cycle shorter. Hard
+# safety clamps keep it a *protection*: it never drops below the floor.
+ANTICYCLE_AUTOSIZE_K_S_PER_H = 1800.0   # seconds of min ON/OFF per hour of lag
+ANTICYCLE_AUTOSIZE_FLOOR_S = 180.0      # never shorter than this (compressor safety)
+ANTICYCLE_AUTOSIZE_CEIL_S = 1800.0      # never longer than this (comfort)
+ANTICYCLE_AUTOSIZE_MIN_SAMPLES = 5      # learned cycles before trusting the lag
+
+
+def anticycle_bounds(learned_lag_h: float) -> tuple[float, float]:
+    """Min ON/OFF (seconds) sized from the learned thermal lag, safely clamped.
+
+    Returns a symmetric ``(min_on_s, min_off_s)``. Proportional to the lag, floored
+    so it stays a real compressor protection and capped so it never strands comfort.
+    """
+    base = max(0.0, learned_lag_h) * ANTICYCLE_AUTOSIZE_K_S_PER_H
+    bound = max(ANTICYCLE_AUTOSIZE_FLOOR_S, min(ANTICYCLE_AUTOSIZE_CEIL_S, base))
+    return bound, bound
+
+
 def adaptive_lead_target(cfg: DcConfig, overshoot_ema: float, lag_ema: float,
                          rate_ema: float) -> float:
     """Lead (hours) that would keep overshoot under target, from learned EMAs.
