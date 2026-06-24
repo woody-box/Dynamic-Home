@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.32.0] — 2026-06-24
+
+### Added
+- **Diagnósticos · export descargable por módulo** (el "save" que faltaba): Ajustes →
+  Dispositivos y servicios → el dispositivo → ⋮ → **Descargar diagnósticos**. Genera un
+  **JSON** con las fuentes configuradas, los **valores de opciones** ajustados y una
+  instantánea del estado vivo (decisión/reason, perfil F26, energía). Solo números y
+  entidades —nunca un secreto—, así que es seguro adjuntarlo al reportar una incidencia.
+
+### Internal
+- Nueva plataforma `diagnostics.py` (`async_get_config_entry_diagnostics`, redacción
+  vía `async_redact_data`, snapshot JSON-safe con fallback `dataclasses.asdict`). Sirve a
+  DV/DC/DS/Energy/Zones por igual (atributos por `getattr`). Tests (DC con perfil; entrada
+  sin coordinator). Suite 462→464.
+
 ## [0.31.0] — 2026-06-24
 
 ### Added
