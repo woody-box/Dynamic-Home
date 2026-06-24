@@ -233,6 +233,7 @@
       },
       "cat_iaq": {
         "title": "Umbrales de calidad de aire",
+        "description": "A qué CO₂/PM sube de velocidad el ventilador. Baja los umbrales para más exigencia; la histéresis evita el flapeo.",
         "data": {
           "co2_v2": "CO₂ → V2 (ppm)",
           "co2_v3": "CO₂ → V3 (ppm)",
@@ -252,6 +253,7 @@
       },
       "cat_smoothing": {
         "title": "Suavizado de sensores",
+        "description": "Suaviza CO₂/PM con una EMA para no reaccionar al ruido. Mayor alpha = más reactivo.",
         "data": {
           "co2_ema_enabled": "Suavizar CO₂ (EMA)",
           "pm_ema_enabled": "Suavizar PM2.5 (EMA)",
@@ -267,6 +269,7 @@
       },
       "cat_freecool": {
         "title": "Free-cooling",
+        "description": "Mete aire fresco de fuera cuando dentro está más caliente. Configura el changeover para que no ventile calor en invierno.",
         "data": {
           "freecool_t_ext_min": "Temp. ext. mínima (°C)",
           "freecool_delta_on": "ΔT activación (°C)",
@@ -280,6 +283,7 @@
       },
       "cat_hostile": {
         "title": "Exterior hostil",
+        "description": "Reduce la ventilación cuando el aire exterior es hostil (frío extremo).",
         "data": {
           "hostile_t1": "Umbral AQI 1",
           "hostile_t2": "Umbral AQI 2",
@@ -293,6 +297,7 @@
       },
       "cat_dry": {
         "title": "Anticondensación",
+        "description": "Ventila a secar solo cuando el aire de fuera es de verdad más seco (punto de rocío + margen), no por humedad bruta.",
         "data": {
           "dry_v2_delta": "ΔT seco V2 (°C)",
           "dry_v3_delta": "ΔT seco V3 (°C)",
@@ -310,6 +315,7 @@
       },
       "cat_failsafe": {
         "title": "Failsafe y arranque",
+        "description": "Protege contra sensores muertos y rebotes: obsolescencia, grace de arranque, anti-trip. Tócalo con cuidado.",
         "data": {
           "co2_sanity_floor": "Piso de cordura CO₂ (ppm)",
           "stale_threshold_s": "Sensor obsoleto (s)",
@@ -329,6 +335,7 @@
       },
       "cat_shower": {
         "title": "Refuerzo de ducha",
+        "description": "Boost a V3 al detectar el salto de humedad de la ducha, con hold.",
         "data": {
           "shower_rh_delta_on": "Δ HR activación (%)",
           "shower_rh_delta_off": "Δ HR desactivación (%)",
@@ -344,6 +351,7 @@
       },
       "cat_adaptive_iaq": {
         "title": "Umbrales adaptativos",
+        "description": "Cuántas muestras antes de fiarse de los umbrales aprendidos.",
         "data": {
           "adaptive_min_samples": "Muestras mínimas"
         },
@@ -353,6 +361,7 @@
       },
       "cat_positions": {
         "title": "Posiciones de persiana",
+        "description": "Las posiciones objetivo por situación (lluvia, escudo de verano, noche, alerta…). Definen a qué % va la persiana en cada rama.",
         "data": {
           "rain_close_pct": "Cierre por lluvia (%)",
           "freecool_max_open_pct": "Free-cool máx. (%)",
@@ -372,6 +381,7 @@
       },
       "cat_thermal": {
         "title": "Deltas térmicos",
+        "description": "Deltas de temperatura que activan free-cooling / el escudo solar (cuánto más caliente fuera que dentro).",
         "data": {
           "freecool_delta": "ΔT free-cool (°C)",
           "hot_delta": "ΔT calor (°C)"
@@ -383,6 +393,7 @@
       },
       "cat_wind": {
         "title": "Protección de viento",
+        "description": "Cap por viento con histéresis para proteger las lamas. Va con Avisos meteo.",
         "data": {
           "wind_limit_kmh": "Límite de viento (km/h)",
           "wind_cap_span_kmh": "Rango cap viento (km/h)",
@@ -396,6 +407,7 @@
       },
       "cat_slew": {
         "title": "Slew rate",
+        "description": "Limita el paso de movimiento para que la persiana no vaya a tirones.",
         "data": {
           "slew_enabled": "Limitar slew rate",
           "slew_step_pct": "Paso slew (%)"
@@ -407,6 +419,7 @@
       },
       "cat_geometry": {
         "title": "Geometría de ventana",
+        "description": "Medidas de ventana/voladizo para el modelo geométrico de sombra (opt-in). Solo importa con 'Geometric shading' activo.",
         "data": {
           "window_height_cm": "Altura ventana (cm)",
           "overhang_cm": "Voladizo (cm)",
@@ -426,6 +439,7 @@
       },
       "cat_setpoints": {
         "title": "Consignas base",
+        "description": "El punto de partida del target; los biases (exterior/VMC/fachada), el lead y el freno se aplican encima. Ponlas a tu confort real y deja que el resto module.",
         "data": {
           "base_heat_day": "Base calor (°C)",
           "base_cool_day": "Base frío (°C)",
@@ -443,6 +457,7 @@
       },
       "cat_limits": {
         "title": "Límites de consigna",
+        "description": "Red de seguridad: cuánto puede moverse el target y cada cuánto se aplica. Si el target se va de rango, acótalo aquí.",
         "data": {
           "target_min_heat": "Calor mín. (°C)",
           "target_max_heat": "Calor máx. (°C)",
@@ -474,6 +489,7 @@
       },
       "cat_exterior": {
         "title": "Bias exterior",
+        "description": "Cuánto empuja la temperatura exterior al target. Sube los bias para reaccionar más al frío/calor de fuera; baja insulation_factor si la casa está bien aislada.",
         "data": {
           "ext_cold_threshold": "Umbral frío (°C)",
           "ext_hot_threshold": "Umbral calor (°C)",
@@ -495,6 +511,7 @@
       },
       "cat_bus": {
         "title": "Bias del bus",
+        "description": "Cuánto te auto-sesga el bus solar (intents de ganancia/escudo). Va de la mano de Bias de fachadas y del módulo de persianas.",
         "data": {
           "sdhb_bias_solar_gain_heat": "Ganancia solar calor (°C)",
           "sdhb_bias_solar_shield_cool": "Protección solar frío (°C)"
@@ -506,6 +523,7 @@
       },
       "cat_vmc": {
         "title": "Bias VMC",
+        "description": "Compensa el target según la velocidad de la VMC (más ventilación = más pérdida), por velocidad y modo.",
         "data": {
           "vmc_bias_heat_1": "Bias calor V 1",
           "vmc_bias_heat_2": "Bias calor V 2",
@@ -525,6 +543,7 @@
       },
       "cat_trend": {
         "title": "Tendencia y lead",
+        "description": "La anticipación (lead): cuántas horas se adelanta el target. Sube el lead para precalentar/preenfriar antes — pero si lo subes, vigila el Freno para no sobrepasar. lead_min/max acotan el resultado.",
         "data": {
           "trend_lead_h": "Lead de respaldo (h)",
           "trend_max_shift": "Desplaz. máx. tendencia (°C)",
@@ -550,6 +569,7 @@
       },
       "cat_brake": {
         "title": "Freno de tendencia",
+        "description": "Frena el target cuando la tendencia ya empuja hacia la consigna, para no sobrepasar. Pareja natural del lead: más anticipación → más freno.",
         "data": {
           "brake_thresholds_1": "Umbral freno 1",
           "brake_thresholds_2": "Umbral freno 2",
@@ -569,6 +589,7 @@
       },
       "cat_forecast": {
         "title": "Forecast",
+        "description": "Usa la previsión meteo para ajustar el target. Gain controla cuánto pesa; cap lo limita.",
         "data": {
           "forecast_gain": "Ganancia forecast",
           "forecast_cap": "Tope forecast (°C)",
@@ -582,6 +603,7 @@
       },
       "cat_adaptive_lead": {
         "title": "Lead adaptativo",
+        "description": "El modelo que APRENDE tu inercia térmica (rate/lag) y fija el lead solo. Avanzado: estos mandos afinan el aprendizaje; normalmente no hace falta tocarlos.",
         "data": {
           "adapt_alpha": "Alpha EMA",
           "adapt_gain_lr": "Tasa de aprendizaje",
@@ -609,6 +631,7 @@
       },
       "cat_condensation": {
         "title": "Condensación",
+        "description": "Margen al punto de rocío antes de cortar en frío (anti-condensación).",
         "data": {
           "dew_spread_min": "Margen punto rocío (°C)"
         },
@@ -618,6 +641,7 @@
       },
       "cat_facade": {
         "title": "Bias de fachadas",
+        "description": "Empuje por el sol que entra por cada fachada. Va con el Bias del bus y las persianas.",
         "data": {
           "facade_gain_heat": "Ganancia fachada calor (°C)",
           "facade_gain_cool": "Ganancia fachada frío (°C)"
@@ -638,6 +662,7 @@
       },
       "cat_filter": {
         "title": "Vida del filtro",
+        "description": "Horas de vida del filtro antes del aviso de cambio.",
         "data": {
           "filter_life_hours": "Vida del filtro (h)"
         },
@@ -647,6 +672,7 @@
       },
       "cat_anticipatory": {
         "title": "Refuerzo anticipatorio",
+        "description": "Se adelanta a una subida rápida de CO₂/PM por su pendiente, antes de cruzar el umbral.",
         "data": {
           "anticip_co2_rate_on": "Pendiente CO₂ act. (ppm/h)",
           "anticip_co2_rate_off": "Pendiente CO₂ desact. (ppm/h)",
@@ -668,6 +694,7 @@
       },
       "cat_quiet": {
         "title": "Horas de silencio",
+        "description": "Cap de velocidad en la ventana nocturna — pero CO₂/PM críticos lo ignoran (la salud gana al silencio).",
         "data": {
           "quiet_critical_co2": "CO₂ crítico (ppm)",
           "quiet_critical_pm": "PM2.5 crítico (µg/m³)"
@@ -679,6 +706,7 @@
       },
       "cat_recuperator": {
         "title": "Recuperador",
+        "description": "Bypass del recuperador (eficiencia/umbral) usado para free-cooling.",
         "data": {
           "hrv_bypass_eff_max": "Eficiencia máx. de bypass",
           "hrv_bypass_dt_min": "ΔT mín. de bypass (°C)"
@@ -690,6 +718,7 @@
       },
       "cat_demand": {
         "title": "Señal de demanda real",
+        "description": "Umbral para leer la demanda real (relé/potencia de válvula) en vez de inferirla.",
         "data": {
           "valve_power_min": "Umbral de potencia de válvula (W)"
         },
@@ -699,6 +728,7 @@
       },
       "cat_mold": {
         "title": "Riesgo de moho",
+        "description": "Índice de horas de humedad alta que arma secado/deshumidificador. Histéresis on/off + decaimiento.",
         "data": {
           "mold_rh_threshold": "Umbral de HR (%)",
           "mold_on_h": "Arma a (h)",
@@ -716,6 +746,7 @@
       },
       "cat_window": {
         "title": "Detección de ventana",
+        "description": "Detecta ventana abierta por una caída brusca de temperatura. Tiempos de confirmación/recuperación + tope de lockout.",
         "data": {
           "window_drop_cph": "Sensibilidad (°C/h)",
           "window_confirm_min": "Confirmación (min)",
@@ -731,6 +762,7 @@
       },
       "cat_adjacent": {
         "title": "Espacio adyacente",
+        "description": "Avisos según un espacio contiguo (puerta abierta a una zona muy distinta).",
         "data": {
           "adj_open_dt": "ΔT abrir (°C)",
           "adj_alarm_dt": "ΔT alarma (°C)"
@@ -751,6 +783,7 @@
       },
       "cat_dawn": {
         "title": "Amanecer gradual",
+        "description": "Rampa suave al amanecer: paso, intervalo, objetivo y elevación de disparo.",
         "data": {
           "dawn_step_pct": "Paso amanecer (%)",
           "dawn_step_min": "Paso amanecer (min)",
@@ -766,6 +799,7 @@
       },
       "cat_night": {
         "title": "Aislamiento nocturno",
+        "description": "Posiciones de aislamiento nocturno (cerrar para aislar / abrir para purgar la masa térmica).",
         "data": {
           "night_iso_close_pct": "Cierre noche (%)",
           "night_iso_open_pct": "Apertura purga noche (%)"
@@ -777,6 +811,7 @@
       },
       "cat_alert": {
         "title": "Avisos meteo",
+        "description": "Posición de protección por alerta (genérica/granizo/viento) + cuánto mantenerla. Cap de seguridad por encima de la lógica solar.",
         "data": {
           "alert_pct": "Protección alerta (%)",
           "alert_hail_pct": "Protección granizo (%)",
@@ -792,6 +827,7 @@
       },
       "cat_hood": {
         "title": "Campana extractora",
+        "description": "Boost por PM de cocina (campana extractora).",
         "data": {
           "hood_pm_v1": "PM2.5 → V1 (µg/m³)",
           "hood_pm_v2": "PM2.5 → V2 (µg/m³)",
@@ -807,6 +843,7 @@
       },
       "cat_wx": {
         "title": "Fuentes y alertas",
+        "description": "Fuentes meteo y alertas (viento/lluvia/etc.) que alimentan las protecciones.",
         "data": {
           "stale_after_h": "Caduca tras (h)",
           "alert_wind_kmh": "Alerta viento (km/h)",
@@ -820,6 +857,7 @@
       },
       "cat_tariff": {
         "title": "Umbrales de tarifa",
+        "description": "Tramos de tarifa (barato/normal/punta) que publica el módulo de energía para que las zonas de clima los usen.",
         "data": {
           "cheap_below": "Barato por debajo de (€/kWh)",
           "peak_above": "Pico por encima de (€/kWh)"
@@ -831,6 +869,7 @@
       },
       "cat_cycle": {
         "title": "Protección anti-ciclado",
+        "description": "Protege el compresor: mínimos ON/OFF y máx arranques/hora. Ojo: el reparto de prioridad entre zonas NO vive aquí, vive en Anti-pico. Puedes dejar que 'Adaptive anti-cycle' los dimensione desde lo aprendido.",
         "data": {
           "anticycle_min_on_s": "Min ON (s)",
           "anticycle_min_off_s": "Min OFF (s)",
@@ -844,6 +883,7 @@
       },
       "cat_peak": {
         "title": "Escalonado de pico eléctrico",
+        "description": "Evita disparar el ICP: cuántas cargas/vatios a la vez + escalonado. El bypass de confort deja saltar el límite si te alejas mucho. Solo aplica a cargas eléctricas/individuales.",
         "data": {
           "peak_max_zones": "Máx arranques simultáneos",
           "peak_max_power_w": "Presupuesto de potencia (W, 0 = conteo)",
@@ -859,6 +899,7 @@
       },
       "cat_energy": {
         "title": "Estimación de energía",
+        "description": "Vatios estimados cuando no hay medidor real, para el sensor de energía/potencia.",
         "data": {
           "est_w_v1": "Potencia V1 (W)",
           "est_w_v2": "Potencia V2 (W)",
@@ -974,6 +1015,7 @@
       },
       "cat_staging": {
         "title": "Staging de emisores",
+        "description": "Cuándo entra un emisor de apoyo si el primario no llega (zonas multi-emisor).",
         "data": {
           "support_dev_on": "Δ activación apoyo (°C)",
           "support_confirm_min": "Confirmación apoyo (min)",
@@ -989,6 +1031,7 @@
       },
       "cat_shared": {
         "title": "Emisor compartido",
+        "description": "Reparto en un conducto compartido: peso de la zona y margen anti-undershoot.",
         "data": {
           "zone_demand_weight": "Peso de demanda de zona",
           "shared_undershoot_margin": "Margen de undershoot (°C)"
@@ -1000,6 +1043,7 @@
       },
       "cat_tariff_bias": {
         "title": "Sesgo de tarifa",
+        "description": "Cómo la tarifa modula la anticipación: ensancha el lead en valle, lo recorta en punta; un sesgo de base carga masa térmica en barato. Va con Anti-pico.",
         "data": {
           "tariff_lead_cheap_mult": "× lead barato",
           "tariff_lead_peak_mult": "× lead pico",
