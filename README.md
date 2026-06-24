@@ -153,7 +153,10 @@ live in **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
 New here? Start with **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)** — stand up a dummy
 climate zone and read the decision *reason codes* in ~10 minutes, without touching any
 hardware. Then **[`docs/PROFILES.md`](docs/PROFILES.md)** has one recipe per real install
-type (communal radiant, 3-speed VMC, motorized shutters, heat pump with a tariff).
+type (communal radiant, 3-speed VMC, motorized shutters, heat pump with a tariff). To make
+sense of the many tunables, **[`docs/TUNING.md`](docs/TUNING.md)** groups them by goal
+("make it anticipate more", "stop it oscillating", "respect the main breaker") and says
+which knobs move together.
 
 ---
 
@@ -167,6 +170,7 @@ type (communal radiant, 3-speed VMC, motorized shutters, heat pump with a tariff
 - [`docs/INTEGRATION.md`](docs/INTEGRATION.md) — port architecture and how to test.
 - [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — 10-min dummy zone + reason codes (onboarding).
 - [`docs/PROFILES.md`](docs/PROFILES.md) — recipes per real install profile.
+- [`docs/TUNING.md`](docs/TUNING.md) — parameter guide by goal (what to move, what to watch together).
 - [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) · [`docs/BACKLOG.md`](docs/BACKLOG.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ---
