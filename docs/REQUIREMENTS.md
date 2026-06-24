@@ -1783,9 +1783,16 @@ ventana/override fuerzan OFF aunque no se cumpla el min ON. Observabilidad:
 - ☑ Una parada de seguridad (condensación/ventana) cede el min ON y apaga.
 - ☑ Opt-in: con el switch apagado la zona no participa en el agregado (sin efecto).
 
+**Sin fairness por zona aquí (por diseño).** F09 es un guard **agregado y mecánico**: al
+alcanzar `max_starts_per_h` todas las zonas que demandan reciben `anticycle_max_starts_hold`
+**por igual**, sin ordenar por desviación. El reparto por prioridad — que arranque primero
+la zona más alejada de consigna — vive en **F03/peak** (§12.31), no en F09. F09 responde
+"¿puede el compresor compartido cambiar de estado ahora?"; F03 responde "¿qué zona arranca
+cuando los arranques escasean?". No esperes orden por desviación en este módulo.
+
 **Diferido (anotado):** **gating por instalación** (F26: oculto en gas/eléctrico/
-comunitaria, activo con compresor); **agrupación fina por compresor** (F25, hoy un
-grupo único de casa); usar la **tasa aprendida** para autodimensionar min ON/OFF.
+comunitaria, activo con compresor); usar la **tasa aprendida** para autodimensionar min
+ON/OFF. *(La agrupación fina por compresor `compressor_id` se entregó en v0.27.0.)*
 
 ### 12.30 · F26 — Tipo de instalación (capa de declaración)
 

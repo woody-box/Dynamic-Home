@@ -19,6 +19,12 @@ grant, so a burst of demands ramps up one at a time instead of simultaneously.
 Already-running slots are never interrupted — the gate only governs *new* starts.
 Gating is opt-in and, for climate, only engaged when the F26 install profile says
 the load is electrical and not communal.
+
+**This is where start fairness lives.** When starts are scarce, the ``priority`` arg
+(F03: temperature deviation) orders them so the furthest-behind zone starts first, and
+a fitting candidate yields to a hungrier waiter. The compressor anti-cycle guard
+(F09, :mod:`anticycle`) is a separate, *aggregate* mechanical guard with no per-zone
+ordering — deviation-based fairness is owned here, not there.
 """
 
 from __future__ import annotations
