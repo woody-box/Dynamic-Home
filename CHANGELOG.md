@@ -4,6 +4,16 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.29.1] — 2026-06-24
+
+### Internal
+- **F03/peak · test de convergencia (no starvation)**: cubre el caso "waiter de
+  prioridad media bajo presión sostenida de zonas más hambrientas". Demuestra que
+  `peak_yield` solo **retrasa** —nunca starva— a la zona media: cada zona, al concederse,
+  pasa a activa y **sale del pool de waiters**, así que la media arranca en cuanto el flujo
+  finito de zonas más desviadas se agota. Documenta por qué no hace falta envejecer la
+  prioridad. Solo test, sin cambio de comportamiento.
+
 ## [0.29.0] — 2026-06-23
 
 ### Added
