@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.32.1] — 2026-06-24
+
+### Added (docs)
+- **`docs/QUICKSTART.md`** — onboarding en 10 min: montar una zona de clima **ficticia**
+  sobre helpers, activar **Observe only** y leer los **reason codes** sin tocar hardware.
+  Incluye referencia de reason codes por módulo y resolución de problemas.
+- **`docs/PROFILES.md`** — una receta por **perfil de instalación real** (radiante
+  comunitario, VMC de 3 velocidades, persianas multi-fachada, aerotermia con tarifa), cada
+  una con su perfil F26, el **preset** a aplicar y los reason codes a vigilar.
+- Enlazados desde el README (sección *Examples* + índice de documentación). Control de
+  exactitud de claves, switches, servicios y reason codes contra el código actual. Solo
+  documentación.
+
 ## [0.32.0] — 2026-06-24
 
 ### Added

@@ -150,6 +150,11 @@ Before letting Dynamic Home act on real hardware, run it in a safe mode:
 Minimal, copy-pasteable setups (3-speed VMC, a climate zone, a shutter by facade)
 live in **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
 
+New here? Start with **[`docs/QUICKSTART.md`](docs/QUICKSTART.md)** — stand up a dummy
+climate zone and read the decision *reason codes* in ~10 minutes, without touching any
+hardware. Then **[`docs/PROFILES.md`](docs/PROFILES.md)** has one recipe per real install
+type (communal radiant, 3-speed VMC, motorized shutters, heat pump with a tariff).
+
 ---
 
 ## Technical documentation
@@ -160,6 +165,8 @@ live in **[`docs/EXAMPLES.md`](docs/EXAMPLES.md)**.
 - [`docs/SPEC_DV.md`](docs/SPEC_DV.md) — ventilation algorithm (IAQ, EMA, failsafe).
 - [`docs/SPEC_DS.md`](docs/SPEC_DS.md) — shutter algorithm (cascade + caps).
 - [`docs/INTEGRATION.md`](docs/INTEGRATION.md) — port architecture and how to test.
+- [`docs/QUICKSTART.md`](docs/QUICKSTART.md) — 10-min dummy zone + reason codes (onboarding).
+- [`docs/PROFILES.md`](docs/PROFILES.md) — recipes per real install profile.
 - [`docs/REQUIREMENTS.md`](docs/REQUIREMENTS.md) · [`docs/BACKLOG.md`](docs/BACKLOG.md) · [`docs/ROADMAP.md`](docs/ROADMAP.md)
 
 ---
