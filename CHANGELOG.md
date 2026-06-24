@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.31.0] — 2026-06-24
+
+### Added
+- **Presets · uno por perfil de instalación**: el menú *Aplicar un preset* (opciones del
+  módulo) ahora ofrece un punto de partida por cada perfil real:
+  - **DS · "Persianas motorizadas · multi-fachada"** (nuevo en persianas, que no tenían
+    ninguno): avisos meteo, escudo solar de verano, aislamiento nocturno, cap de viento con
+    histéresis, rampa de amanecer y escalonado de arranque de motores.
+  - **DC · "Aerotermia individual · tarifa por tramos + anti-pico"**: consignas de bomba de
+    calor, sesgo de tarifa (lead barato 1.5 / pico 0.6 + base 0.3), anti-pico (1 zona,
+    stagger, bypass de confort 2.5) y anti-ciclado de compresor.
+  - (Se mantienen los previos: DC "Salón radiante comunitario" y DV "VMC doble flujo".)
+
+### Internal
+- Dos entradas nuevas en `presets.py` (claves validadas por el guard `options_spec`);
+  tests de aplicación de cada preset. Suite 460→462.
+
 ## [0.30.0] — 2026-06-24
 
 ### Added

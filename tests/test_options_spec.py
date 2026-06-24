@@ -83,6 +83,27 @@ def test_preset_applies_onto_config():
     assert cfg.brake_biases == (0.1, 0.2, 0.4)
 
 
+def test_heatpump_tariff_preset_applies():
+    cfg = spec.fresh_config(const.MODULE_CLIMATE)
+    spec.apply_options(
+        cfg, presets.preset_values(const.MODULE_CLIMATE,
+                                   "heatpump_individual_tariff"),
+        const.MODULE_CLIMATE)
+    assert cfg.tariff_lead_cheap_mult == 1.5 and cfg.tariff_lead_peak_mult == 0.6
+    assert cfg.peak_comfort_bypass_c == 2.5
+    assert cfg.peak_max_zones == 1 and isinstance(cfg.peak_max_zones, int)
+
+
+def test_motorized_facades_preset_applies():
+    cfg = spec.fresh_config(const.MODULE_SHUTTER)
+    spec.apply_options(
+        cfg, presets.preset_values(const.MODULE_SHUTTER, "motorized_facades"),
+        const.MODULE_SHUTTER)
+    assert cfg.alert_wind_pct == 50 and cfg.alert_hail_pct == 0
+    assert cfg.summer_min_open_pct == 20
+    assert cfg.peak_stagger_s == 3.0
+
+
 def test_int_fields_coerced_to_int():
     cfg = spec.fresh_config(const.MODULE_SHUTTER)
     spec.apply_options(cfg, {"slew_step_pct": "15"}, const.MODULE_SHUTTER)
