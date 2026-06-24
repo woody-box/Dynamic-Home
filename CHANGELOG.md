@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.30.0] — 2026-06-24
+
+### Added
+- **Ventilación (F37/F07) · aviso "free-cooling sin changeover"**: si tienes el
+  **free-cooling activo**, **alguna zona en calefacción** y **no has configurado el
+  changeover**, Dynamic Home levanta un aviso en **Reparaciones** explicando que el
+  free-cooling puede ventilar el calor que pagas en días templados de invierno, y cómo
+  arreglarlo (configurar el changeover o desactivar el free-cooling). El aviso **se borra
+  solo** en cuanto desaparece cualquiera de las tres condiciones, y **solo aparece si hay
+  evidencia de calefacción** (no molesta a climas solo-frío).
+
+### Internal
+- `coordinator_dv._freecool_changeover_advisory` (issue no-fixable `freecool_no_changeover`,
+  `ISSUE_FREECOOL_NO_CHANGEOVER`); traducciones EN/ES (paridad). Test de integración
+  (sube con calefacción + sin changeover; baja al configurar changeover o al enfriar).
+  Suite 459→460.
+
 ## [0.29.2] — 2026-06-24
 
 ### Internal

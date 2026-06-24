@@ -2016,6 +2016,14 @@ calor** (un día templado de invierno —dentro 21°, fuera 12°— activaría f
 la histéresis de temperatura y tiraría el calor que pagas). Sin changeover → no es
 temporada de calor (back-compat: free-cooling solo por temperatura).
 
+**Aviso de Repairs cuando falta el changeover (v0.30.0, F07):** como el fallback "sin
+changeover → no es temporada de calor" deja el riesgo en pie para quien no lo configure,
+`coordinator_dv._freecool_changeover_advisory` levanta un issue **no-fixable** cuando
+coinciden las tres condiciones: **free-cooling activo** + **alguna zona DC en calor** +
+**sin changeover**. Se borra solo en cuanto cae cualquiera (configuras changeover, apagas
+free-cooling, o ninguna zona calienta). Solo dispara con evidencia de calefacción → no
+molesta a climas solo-frío. Issue `freecool_no_changeover`.
+
 **Diferido (anotado):** **changeover por zona/grupo con sensor de agua propio** (varios
 colectores con resolución auto independiente); `HVACMode.HEAT_COOL` como modo "seguir al
 edificio".

@@ -1108,6 +1108,10 @@
       "title": "{name}: fuente requerida no disponible",
       "description": "El módulo de Dynamic Home \"{name}\" tiene una fuente requerida no disponible: {missing}. El módulo recurre a un estado seguro hasta que se recupere. Revisa el sensor o su entidad en Home Assistant (Ajustes → Dispositivos y servicios → Configurar)."
     },
+    "freecool_no_changeover": {
+      "title": "{name}: el free-cooling puede ventilar calor (sin changeover)",
+      "description": "La VMC \"{name}\" tiene el free-cooling activado y hay una zona en calefacción, pero no hay changeover de comunidad configurado. Sin él, el free-cooling se rige solo por temperatura, así que un día templado de invierno puede meter aire exterior más fresco y ventilar el calor que estás pagando. Configura el changeover (entrada de Zonas → sonda del agua de impulsión) para que Dynamic Home conozca la temporada, o desactiva el free-cooling si tienes calefacción central."
+    },
     "mold_risk": {
       "title": "{name}: riesgo de moho sostenido",
       "description": "La zona \"{name}\" ha tenido una humedad relativa alta de forma sostenida (índice de moho {index} h). Se solicita secado por ventilación cuando el aire exterior está más seco y se enciende un deshumidificador (si está configurado). Considera ventilar la estancia o revisar fuentes de humedad."

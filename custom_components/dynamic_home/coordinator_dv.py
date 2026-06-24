@@ -263,6 +263,32 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                 return zmap[zid]
         return data.get("state")
 
+    def _freecool_changeover_advisory(self, cfg: DvConfig) -> None:
+        """F37/F07: warn if free-cooling can vent paid heat with no changeover.
+
+        Free-cooling is purely temperature-driven unless a changeover tells DV the
+        season (F37). With free-cooling enabled, **a heating zone active**, and **no
+        changeover configured**, a mild winter day (warmer inside than outside) would
+        free-cool and vent the heat you are paying for. Raise a non-fixable advisory
+        Repairs issue; clear it as soon as any of the three conditions stops holding
+        (changeover configured, free-cooling off, or no zone heating).
+        """
+        issue_id = f"freecool_no_changeover_{self.entry.entry_id}"
+        data = self.hass.data.get(const.DOMAIN, {})
+        has_changeover = bool(data.get(const.DATA_CHANGEOVER))
+        heating = any(getattr(co, "hvac_mode", None) == "heat"
+                      for key, co in data.items()
+                      if not key.startswith("_") and co is not self)
+        if cfg.freecool_enabled and heating and not has_changeover:
+            ir.async_create_issue(
+                self.hass, const.DOMAIN, issue_id,
+                is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                translation_key=const.ISSUE_FREECOOL_NO_CHANGEOVER,
+                translation_placeholders={"name": self.entry.title},
+                learn_more_url=const.LEARN_MORE_URL)
+        else:
+            ir.async_delete_issue(self.hass, const.DOMAIN, issue_id)
+
     def _update_adaptive(self, cfg: DvConfig, co2: float | None,
                          pm: float | None) -> tuple:
         """Append readings and derive adaptive thresholds from percentiles.
@@ -353,6 +379,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self._accumulate(now_ts, cfg)
         self._check_filter_due(cfg)
         self.degraded = self._update_degraded(self._missing_required(), now_ts)
+        self._freecool_changeover_advisory(cfg)
         grace_active = (now_ts - self._setup_ts) < cfg.startup_grace_s
         self.in_grace = grace_active
 

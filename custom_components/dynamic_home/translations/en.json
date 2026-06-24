@@ -1108,6 +1108,10 @@
       "title": "{name}: required source unavailable",
       "description": "The Dynamic Home module \"{name}\" has a required source unavailable: {missing}. The module falls back to a safe state until it recovers. Check the sensor wiring or its entity in Home Assistant (Settings → Devices & Services → Configure)."
     },
+    "freecool_no_changeover": {
+      "title": "{name}: free-cooling may vent heat (no changeover)",
+      "description": "The VMC \"{name}\" has free-cooling enabled and a heating zone is active, but no community changeover is configured. Free-cooling is purely temperature-driven without it, so on a mild winter day it can pull in cooler outside air and vent the heat you are paying for. Configure the changeover (Zones entry → supply-water sensor) so Dynamic Home knows the season, or disable free-cooling if you have central heating."
+    },
     "mold_risk": {
       "title": "{name}: sustained mold risk",
       "description": "The zone \"{name}\" has had a high relative humidity for a sustained period (mold-risk index {index} h). Ventilation drying is requested when the outdoor air is drier, and a dehumidifier (if configured) is switched on. Consider airing the room or checking for moisture sources."

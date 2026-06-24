@@ -189,6 +189,8 @@ DATA_SERVICES_REGISTERED = "_services_registered"
 # is missing. Once it stays degraded longer than ISSUE_STALE_S we raise a repair
 # issue (a transient blip on restart should not nag the user).
 ISSUE_REQUIRED_SOURCE = "required_source_missing"
+# F37/F07: free-cooling can vent paid heat when no changeover is configured.
+ISSUE_FREECOOL_NO_CHANGEOVER = "freecool_no_changeover"
 ISSUE_STALE_S = 300.0
 # A DC zone whose mold-risk index stays armed raises a (health) repair issue.
 ISSUE_MOLD_RISK = "mold_risk"
