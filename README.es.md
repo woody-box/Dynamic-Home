@@ -1,7 +1,7 @@
 # Dynamic Home
 
 <p align="center">
-  <img src="docs/img/dynamic_home.png" alt="Dynamic Home" width="280">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/img/dynamic_home.png" alt="Dynamic Home" width="280">
 </p>
 
 [![tests](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml/badge.svg)](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml)
@@ -56,9 +56,9 @@ y automatizada. Encaja si tienes:
 | **Weather** · Dynamic Weather | `weather` | Opcional: proveedor meteo resiliente multi-fuente (forecast/alertas con fallback) |
 
 <p align="center">
-  <img src="docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
-  <img src="docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
-  <img src="docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
 </p>
 
 Los tres comparten el **bus SDHB** (en memoria). **DC es el cerebro**: al
