@@ -1187,3 +1187,53 @@ async def test_anticycle_per_emitter_compressor_channels(
     # The primary on the free channel runs; the one on the blocked channel is held.
     assert co.emitter_commands["ea"]["on"] is True
     assert co.emitter_commands["eb"]["on"] is False
+
+
+# --- F37: HEAT_COOL = "follow the building" (community zones) ---
+async def test_heat_cool_follows_changeover_on_community_zone(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "heatpump_air_water",
+        const.CONF_DISTRIBUTION: "central_shared",
+        const.CONF_EMISSION: "underfloor"})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Community zone offers HEAT_COOL in its mode list.
+    assert HVACMode.HEAT_COOL in hass.states.get(
+        "climate.salon").attributes["hvac_modes"]
+
+    # Pick HEAT_COOL with the house in cooling season -> resolves to cool.
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "cool"}
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT_COOL},
+        blocking=True)
+    await hass.async_block_till_done()
+    assert co.follow_changeover is True
+    assert co.hvac_mode == "cool"                       # engine sees a concrete dir
+    assert hass.states.get("climate.salon").state == HVACMode.HEAT_COOL  # honest UI
+
+    # The building flips to heating -> the zone follows, no user action.
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "heat"}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hvac_mode == "heat"
+
+    # Back to a concrete mode clears follow-the-building.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.follow_changeover is False
+
+
+async def test_heat_cool_absent_on_individual_zone(hass: HomeAssistant) -> None:
+    _seed(hass)
+    await _add_opts(hass, CLIMATE, "Salon", {
+        const.CONF_GENERATOR: "heatpump_air_water",
+        const.CONF_DISTRIBUTION: "individual",
+        const.CONF_EMISSION: "underfloor"})
+    # An individual (non-community) zone does not offer the follow-the-building mode.
+    assert HVACMode.HEAT_COOL not in hass.states.get(
+        "climate.salon").attributes["hvac_modes"]

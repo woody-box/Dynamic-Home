@@ -2024,9 +2024,16 @@ coinciden las tres condiciones: **free-cooling activo** + **alguna zona DC en ca
 free-cooling, o ninguna zona calienta). Solo dispara con evidencia de calefacción → no
 molesta a climas solo-frío. Issue `freecool_no_changeover`.
 
+**`HEAT_COOL` = "seguir al edificio" (v0.34.0):** las zonas **comunitarias** ofrecen un
+cuarto modo `HVACMode.HEAT_COOL` que significa *"sigo la dirección del changeover"*. Es UI
+honesta: antes una comunitaria en `heat` podía estar **enfriando** (porque el anillo va en
+frío) y la tarjeta mentía; ahora el usuario lo expresa explícito y `hvac_action` muestra la
+dirección real. El coordinator guarda un flag `follow_changeover` y **resuelve a heat/cool/
+off cada ciclo** desde el changeover, de modo que el motor nunca ve `"heat_cool"`. Solo se
+ofrece en zonas `community`; las individuales mantienen los 3 modos.
+
 **Diferido (anotado):** **changeover por zona/grupo con sensor de agua propio** (varios
-colectores con resolución auto independiente); `HVACMode.HEAT_COOL` como modo "seguir al
-edificio".
+colectores con resolución auto independiente).
 
 ### 12.35 · F34 — Módulo Dynamic Energy (núcleo + tarifa + anti-pico)
 

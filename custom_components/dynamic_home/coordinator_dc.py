@@ -76,7 +76,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         )
         self.entry = entry
         self.hub = hub
-        self.hvac_mode = "off"          # desired mode, set from the climate entity
+        self.hvac_mode = "off"          # effective engine mode (heat/cool/off)
+        # F37: user picked HEAT_COOL ("follow the building"); each cycle resolves
+        # hvac_mode from the house changeover so the engine never sees "heat_cool".
+        self.follow_changeover = False
         self.override_active = False
         self.override_temp: float | None = None
         self.vacation_enabled = False
@@ -858,6 +861,12 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         rh = self._num(const.CONF_DC_HUMIDITY)
         now_ts = dt_util.utcnow().timestamp()
         self._refresh_bus_explain(now_ts)
+
+        # F37: "follow the building" -> resolve to a concrete heat/cool/off from the
+        # house changeover before the engine (which only understands those) runs.
+        if self.follow_changeover:
+            co = self._house_changeover()
+            self.hvac_mode = co if co in ("heat", "cool") else "off"
 
         self.dew_point_c = dew_point(t_int, rh)
         self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
