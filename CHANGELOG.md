@@ -4,6 +4,15 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.29.2] — 2026-06-24
+
+### Internal
+- **Documentación del límite de fairness F09/F03**: aclarado en docstrings (`anticycle.py`,
+  `peak.py`) y en REQUIREMENTS que el reparto por prioridad (arrancar primero la zona más
+  desviada) vive en **F03/peak**, y que **F09/anticycle es un guard agregado y mecánico**
+  sin orden por zona (`anticycle_max_starts_hold` por igual a todas). Corregida de paso una
+  nota obsoleta (la agrupación por `compressor_id` se entregó en v0.27.0). Solo docs.
+
 ## [0.29.1] — 2026-06-24
 
 ### Internal

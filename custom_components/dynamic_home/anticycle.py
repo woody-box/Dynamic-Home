@@ -10,6 +10,14 @@ The guard enforces a minimum ON time, a minimum OFF time and a maximum number of
 starts per hour over the aggregate. Safety always wins (REQ-CYC-3): when a zone is
 forced off for condensation/window/etc. and nothing else demands, the compressor
 is allowed to stop even before the minimum ON elapsed.
+
+**No per-zone fairness here (by design).** This is a mechanical *aggregate* guard:
+when ``max_starts_per_h`` is reached every demanding zone gets ``anticycle_max_starts_hold``
+equally, regardless of how far each is from setpoint. Priority/fairness — starting the
+furthest-behind zone first — lives in the electrical-peak arbiter (F03, :mod:`peak`),
+not here. F09 only answers "may the shared compressor change state now?"; F03 answers
+"which zone gets to start when starts are scarce?". Do not expect deviation-ordering in
+this module.
 """
 
 from __future__ import annotations
