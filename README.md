@@ -1,7 +1,7 @@
 # Dynamic Home
 
 <p align="center">
-  <img src="docs/img/dynamic_home.png" alt="Dynamic Home" width="280">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/img/dynamic_home.png" alt="Dynamic Home" width="280">
 </p>
 
 [![tests](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml/badge.svg)](https://github.com/woody-box/Dynamic-Home/actions/workflows/tests.yml)
@@ -55,9 +55,9 @@ It is **not** a plug-and-forget solution. It is not a good fit if you:
 | **Weather** · Dynamic Weather | `weather` | Optional: resilient multi-source forecast/alert provider (fallback) |
 
 <p align="center">
-  <img src="docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
-  <img src="docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
-  <img src="docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
+  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
 </p>
 
 All three share the **SDHB** bus (in memory). **DC is the brain**: while heating

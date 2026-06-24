@@ -4,6 +4,16 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.35.4] — 2026-06-24
+
+### Fixed
+- **Imágenes del README en HACS**: el README usaba rutas **relativas** (`docs/img/…`) que
+  GitHub resuelve pero **HACS no** (salían rotas en el panel de información). Ahora usan
+  **URL absolutas** `raw.githubusercontent.com/.../main/…` en ambos READMEs (EN/ES), así se
+  ven dentro de HACS. *(El **icono blanco** de la lista de HACS es aparte: sale del repo
+  `home-assistant/brands`; ver `docs/brand/README.md` para publicarlo — los assets ya están
+  listos.)*
+
 ## [0.35.3] — 2026-06-24
 
 ### Added
