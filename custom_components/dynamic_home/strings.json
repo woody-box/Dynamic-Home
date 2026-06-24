@@ -1101,6 +1101,20 @@
           "description": "How long to hold V3 before reverting (default 15)."
         }
       }
+    },
+    "export_options": {
+      "name": "Export options",
+      "description": "Returns the tuned option values of the targeted module(s), to save or feed into Import options."
+    },
+    "import_options": {
+      "name": "Import options",
+      "description": "Merges a dict of option values into the targeted module(s). Only keys valid for that module are applied; changes apply live.",
+      "fields": {
+        "values": {
+          "name": "Values",
+          "description": "Option key/value pairs to merge (e.g. from Export options)."
+        }
+      }
     }
   },
   "issues": {

@@ -8,11 +8,12 @@ from __future__ import annotations
 
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import service as service_helper
 
 from . import const
+from . import options_spec as spec
 from .anticycle import AntiCycleHub
 from .coordinator import (
     DcCoordinator,
@@ -186,6 +187,34 @@ def _async_register_services(hass: HomeAssistant) -> None:
                 co.start_boost(minutes)
                 await co.async_request_refresh()
 
+    async def _export_options(call: ServiceCall) -> dict:
+        """Return the tuned option values per targeted module (round-trip 'save')."""
+        out: dict[str, dict] = {}
+        for co in await _coordinators_for_call(hass, call):
+            out[co.entry.entry_id] = dict(co.entry.options)
+        return {"options": out}
+
+    async def _import_options(call: ServiceCall) -> None:
+        """Merge a dict of option values into each targeted module's options.
+
+        Only keys valid for that module's ``options_spec`` are applied (unknown
+        keys are dropped, never injected), so a preset exported from one zone can
+        be cloned onto another without corrupting the entry. The update triggers
+        the normal options-changed path (live refresh).
+        """
+        values = call.data[const.ATTR_VALUES]
+        for co in await _coordinators_for_call(hass, call):
+            module = getattr(co, "_module", None)
+            if module is None or module not in spec.SPEC:
+                continue
+            valid = {spec.option_key(o)
+                     for cat in spec.SPEC[module].values() for o in cat}
+            clean = {k: v for k, v in values.items() if k in valid}
+            if not clean:
+                continue
+            hass.config_entries.async_update_entry(
+                co.entry, options={**co.entry.options, **clean})
+
     hass.services.async_register(
         const.DOMAIN, const.SERVICE_RESET_LEARNING, _reset_learning)
     hass.services.async_register(
@@ -202,13 +231,21 @@ def _async_register_services(hass: HomeAssistant) -> None:
             {vol.Optional(const.ATTR_MINUTES, default=const.BOOST_MIN_DEFAULT):
              vol.All(vol.Coerce(float), vol.Range(min=1, max=240))},
             extra=vol.ALLOW_EXTRA))
+    hass.services.async_register(
+        const.DOMAIN, const.SERVICE_EXPORT_OPTIONS, _export_options,
+        supports_response=SupportsResponse.ONLY)
+    hass.services.async_register(
+        const.DOMAIN, const.SERVICE_IMPORT_OPTIONS, _import_options,
+        schema=vol.Schema({vol.Required(const.ATTR_VALUES): dict},
+                          extra=vol.ALLOW_EXTRA))
     hass.data[const.DOMAIN][const.DATA_SERVICES_REGISTERED] = True
 
 
 def _async_unregister_services(hass: HomeAssistant) -> None:
     for svc in (const.SERVICE_RESET_LEARNING, const.SERVICE_SET_OBSERVE,
                 const.SERVICE_RESET_FILTER, const.SERVICE_RECALIBRATE,
-                const.SERVICE_BOOST):
+                const.SERVICE_BOOST, const.SERVICE_EXPORT_OPTIONS,
+                const.SERVICE_IMPORT_OPTIONS):
         hass.services.async_remove(const.DOMAIN, svc)
     hass.data[const.DOMAIN].pop(const.DATA_SERVICES_REGISTERED, None)
 

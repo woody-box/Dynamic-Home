@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.33.0] — 2026-06-24
+
+### Added
+- **Servicios · exportar/importar opciones** (round-trip guardar/clonar): cierra la otra
+  mitad del "save/load" (cargar ya existía por presets; exportar por diagnostics).
+  - `dynamic_home.export_options` devuelve (como **datos de respuesta**) los valores de
+    opciones ajustados de los módulos seleccionados.
+  - `dynamic_home.import_options` **fusiona** un diccionario de valores en los módulos
+    seleccionados; **solo aplica claves válidas** del `options_spec` de ese módulo (las
+    desconocidas y las de datos se descartan, nunca se inyectan). Los cambios entran en
+    vivo. Caso de uso: ajustar una zona y **clonarla** a las demás.
+
+### Internal
+- `_export_options` (`SupportsResponse.ONLY`) / `_import_options` en `__init__.py`
+  (validación de claves reusando `options_spec`); `services.yaml` + traducciones EN/ES
+  (paridad). Test de round-trip (exporta → importa, con descarte de basura). Suite 464→465.
+
 ## [0.32.1] — 2026-06-24
 
 ### Added (docs)
