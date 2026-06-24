@@ -117,6 +117,10 @@ _CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c: c.anticycle_enabled,
         lambda c, v: setattr(c, "anticycle_enabled", v)),
     _ToggleDesc(
+        "anticycle_autosize", "Adaptive anti-cycle", "mdi:sync-alert",
+        lambda c: c.anticycle_autosize_enabled,
+        lambda c, v: setattr(c, "anticycle_autosize_enabled", v)),
+    _ToggleDesc(
         "peak", "Peak limiting", "mdi:flash-alert",
         lambda c: c.peak_enabled,
         lambda c, v: setattr(c, "peak_enabled", v)),

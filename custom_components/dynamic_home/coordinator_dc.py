@@ -35,11 +35,13 @@ from . import (
 )
 from .bus import SdhbHub
 from .dc_engine import (
+    ANTICYCLE_AUTOSIZE_MIN_SAMPLES,
     DcConfig,
     DcDecision,
     DcInputs,
     adaptive_lead_target,
     adjacent_advice,
+    anticycle_bounds,
     dew_point,
     dew_risk,
     ema,
@@ -86,6 +88,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.schedule_enabled = False   # F21: weekly base-setpoint program
         # F09: short-cycle protection (opt-in) over the shared compressor.
         self.anticycle_enabled = False
+        self.anticycle_autosize_enabled = False   # F09: size min ON/OFF from learning
         self.anticycle_hold = False     # holding this zone off to protect the compressor
         self.anticycle_reason = "off"
         self._channel_holds: dict[str, bool] = {}   # F09 full: hold per compressor
@@ -488,6 +491,14 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.anticycle_hold = False
             self.anticycle_reason = "off"
             return
+        # F09 (opt-in): once the zone has learned its thermal lag, size the min
+        # ON/OFF from it instead of the static value — slow zones tolerate longer
+        # cycles, fast ones shorter. Safety-clamped; falls back to the configured
+        # value until the learning is mature.
+        if (self.anticycle_autosize_enabled
+                and self.adapt_ok_count >= ANTICYCLE_AUTOSIZE_MIN_SAMPLES):
+            cfg.anticycle_min_on_s, cfg.anticycle_min_off_s = anticycle_bounds(
+                self.learned_lag_h)
         desired_on = decision.action in ("heat", "cool")
         safety_off = self.hvac_mode in ("heat", "cool") and decision.action == "off"
         # F09 full: a zone drives one compressor channel per distinct heat-pump
