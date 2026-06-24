@@ -112,3 +112,33 @@ def test_clear_removes_a_participant():
     hub.clear("a")
     assert hub.used(0) == 0.0
     assert _ev(hub, "b", True, 0, max_units=1)[0] is True
+
+
+def test_yield_is_transient_no_permanent_starvation():
+    """F03: ``peak_yield`` delays a mid-priority zone behind hungrier ones but
+    never starves it. The instant a hungrier waiter is *granted* it moves to the
+    active set and leaves the waiter pool, so a mid-priority zone is served as
+    soon as the hotter ones clear — which is why no priority aging is needed.
+
+    Covers the "medium-priority waiter under sustained higher-priority pressure"
+    case: it yields repeatedly, then is granted once the finite stream relents.
+    """
+    hub = PeakLoadHub()
+    _ev(hub, "x", True, 0, max_units=1, priority=0.0)          # x holds the only slot
+    _ev(hub, "med", True, 0, max_units=1, priority=2.0)        # registers as a waiter
+    _ev(hub, "hot", True, 0, max_units=1, priority=5.0)        # a hungrier waiter
+    _ev(hub, "x", False, 1, max_units=1)                       # x releases the slot
+    # The freed slot fits 'med', but it yields to the hungrier waiter...
+    assert _ev(hub, "med", True, 1, max_units=1, priority=2.0) == (False, "peak_yield")
+    assert _ev(hub, "hot", True, 1, max_units=1, priority=5.0)[0] is True   # hot served
+
+    # Sustained pressure: another, still-hungrier zone keeps arriving while 'med'
+    # waits. 'med' yields again — but each served zone leaves the pool.
+    _ev(hub, "hot", False, 2, max_units=1)                     # hot reaches setpoint
+    _ev(hub, "hot2", True, 2, max_units=1, priority=4.0)       # new hungrier grabs slot
+    assert _ev(hub, "med", True, 2, max_units=1, priority=2.0)[0] is False  # waits
+    _ev(hub, "hot2", False, 3, max_units=1)                    # hot2 done, slot frees
+
+    # The stream is exhausted -> nothing hungrier remains -> 'med' is granted.
+    assert _ev(hub, "med", True, 3, max_units=1, priority=2.0)[0] is True
+
