@@ -277,8 +277,8 @@
         },
         "data_description": {
           "freecool_t_ext_min": "No hacer free-cooling por debajo de esta temp. exterior (demasiado frío).",
-          "freecool_delta_on": "ΔT interior−exterior que inicia el free-cooling.",
-          "freecool_delta_off": "ΔT que detiene el free-cooling (histéresis)."
+          "freecool_delta_on": "ΔT interior−exterior que inicia el free-cooling. (↓ = arranca con menos diferencia)",
+          "freecool_delta_off": "ΔT que detiene el free-cooling (histéresis). (↓ = se mantiene con menos diferencia)"
         }
       },
       "cat_hostile": {
@@ -290,9 +290,9 @@
           "hostile_t3": "Umbral AQI 3"
         },
         "data_description": {
-          "hostile_t1": "AQI exterior que limita la VMC a V2 (exterior empezando a ser malo).",
-          "hostile_t2": "AQI exterior que limita la VMC a V1.",
-          "hostile_t3": "AQI exterior que apaga la VMC (no meter aire muy malo)."
+          "hostile_t1": "AQI exterior que limita la VMC a V2 (exterior empezando a ser malo). (↓ = reacciona antes al aire malo)",
+          "hostile_t2": "AQI exterior que limita la VMC a V1. (↓ = reacciona antes al aire malo)",
+          "hostile_t3": "AQI exterior que apaga la VMC (no meter aire muy malo). (↓ = reacciona antes al aire malo)"
         }
       },
       "cat_dry": {
@@ -306,10 +306,10 @@
           "dry_hys": "Histéresis de secado (°C)"
         },
         "data_description": {
-          "dry_v2_delta": "Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2.",
-          "dry_v3_delta": "Ventaja de rocío para secar a V3.",
-          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación.",
-          "dry_margin": "Ventaja mínima de rocío (dp_interior − dp_exterior, °C) para que se active la ventilación de secado.",
+          "dry_v2_delta": "Ventaja de rocío (dp_interior − dp_exterior, °C) para secar a V2. (↓ = seca con menos ventaja de rocío)",
+          "dry_v3_delta": "Ventaja de rocío para secar a V3. (↓ = seca con menos ventaja de rocío)",
+          "dew_spread_min": "Temp. interior a este margen del punto de rocío marca riesgo de condensación. (↑ = corta antes, más conservador)",
+          "dry_margin": "Ventaja mínima de rocío (dp_interior − dp_exterior, °C) para que se active la ventilación de secado. (↓ = ventila a secar más fácilmente)",
           "dry_hys": "Banda de histéresis: el secado se desactiva cuando la ventaja baja de margen − histéresis."
         }
       },
@@ -328,9 +328,9 @@
           "co2_sanity_floor": "Lecturas de CO₂ por debajo de esto (ppm) se tratan como fallo de sensor y van al failsafe: una sala ocupada no puede estar por debajo de la línea base atmosférica (~410 ppm). El PM2.5 no se filtra.",
           "stale_threshold_s": "Un sensor vital más viejo que esto (s) cuenta como fallo.",
           "startup_grace_s": "Gracia tras arrancar antes de que pueda saltar el failsafe (s).",
-          "trip_window_s": "Ventana (s) en la que se cuentan los fallos repetidos.",
-          "trip_limit": "Fallos dentro de la ventana que arman un bloqueo.",
-          "lockout_s": "Cuánto dura el bloqueo del failsafe (s)."
+          "trip_window_s": "Ventana (s) en la que se cuentan los fallos repetidos. (↑ = cuenta fallos en una ventana más larga)",
+          "trip_limit": "Fallos dentro de la ventana que arman un bloqueo. (↓ = bloquea con menos fallos)",
+          "lockout_s": "Cuánto dura el bloqueo del failsafe (s). (↑ = bloqueo más largo)"
         }
       },
       "cat_shower": {
@@ -346,7 +346,7 @@
           "shower_rh_delta_on": "Subida de HR del baño (Δ%) que dispara el refuerzo de ducha. Si detecta «falsas duchas», súbelo.",
           "shower_rh_delta_off": "Δ de HR por debajo del cual termina el refuerzo. Si corta demasiado pronto, bájalo.",
           "shower_hold_s": "Tiempo mínimo de mantenimiento del refuerzo (segundos). Si corta pronto, súbelo.",
-          "shower_level": "Velocidad objetivo mientras se detecta ducha (V2/V3)."
+          "shower_level": "Velocidad objetivo mientras se detecta ducha (V2/V3). (V3 ventila más fuerte que V2)"
         }
       },
       "cat_adaptive_iaq": {
@@ -371,12 +371,12 @@
           "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)"
         },
         "data_description": {
-          "rain_close_pct": "Posición de la persiana cuando llueve (protección).",
-          "freecool_max_open_pct": "Apertura máx. permitida durante el free-cooling.",
-          "summer_min_open_pct": "Apertura mínima que se mantiene en verano.",
-          "winter_night_pct": "Posición en noches de invierno (cerrar para aislar).",
+          "rain_close_pct": "Posición de la persiana cuando llueve (protección). (↓ = más cerrada, más protección)",
+          "freecool_max_open_pct": "Apertura máx. permitida durante el free-cooling. (↑ = permite abrir más)",
+          "summer_min_open_pct": "Apertura mínima que se mantiene en verano. (↑ = no cierra tanto en verano)",
+          "winter_night_pct": "Posición en noches de invierno (cerrar para aislar). (↓ = cierra más para aislar)",
           "weather_max_open_pct": "Apertura máx. bajo una alerta meteo.",
-          "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración)."
+          "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración). (↓ = sombrea más al pedir escudo)"
         }
       },
       "cat_thermal": {
@@ -387,8 +387,8 @@
           "hot_delta": "ΔT calor (°C)"
         },
         "data_description": {
-          "freecool_delta": "ΔT interior−exterior que justifica abrir para free-cooling.",
-          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo)."
+          "freecool_delta": "ΔT interior−exterior que justifica abrir para free-cooling. (↓ = abre para purgar con menos diferencia)",
+          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo). (↓ = cuenta como caliente con menos)"
         }
       },
       "cat_wind": {
@@ -400,9 +400,9 @@
           "wind_cap_hyst_kmh": "Histéresis cap viento (km/h)"
         },
         "data_description": {
-          "wind_limit_kmh": "Velocidad de viento que fuerza el cierre protector.",
-          "wind_cap_span_kmh": "Rango por encima del límite en el que se limita progresivamente la apertura.",
-          "wind_cap_hyst_kmh": "Histéresis para soltar el cap de viento."
+          "wind_limit_kmh": "Velocidad de viento que fuerza el cierre protector. (↓ = cierra con menos viento)",
+          "wind_cap_span_kmh": "Rango por encima del límite en el que se limita progresivamente la apertura. (↑ = limita la apertura más gradualmente)",
+          "wind_cap_hyst_kmh": "Histéresis para soltar el cap de viento. (↑ = tarda más en soltar el cap)"
         }
       },
       "cat_slew": {
@@ -414,7 +414,7 @@
         },
         "data_description": {
           "slew_enabled": "Mover la persiana por pasos en vez de saltar (más suave, menos arranques de motor).",
-          "slew_step_pct": "Máx. % que cambia la posición por paso."
+          "slew_step_pct": "Máx. % que cambia la posición por paso. (↓ = movimiento más suave y lento)"
         }
       },
       "cat_geometry": {
@@ -429,12 +429,12 @@
           "shade_step_pct": "Paso de sombreado (%)"
         },
         "data_description": {
-          "window_height_cm": "Altura de la ventana para la geometría de penetración solar.",
-          "overhang_cm": "Profundidad del voladizo/alero sobre la ventana.",
-          "sill_height_cm": "Altura del alféizar sobre el suelo (sombreado geométrico).",
-          "room_depth_m": "Profundidad del suelo de la sala; la penetración solar se limita aquí.",
+          "window_height_cm": "Altura de la ventana para la geometría de penetración solar. (medida real de tu ventana)",
+          "overhang_cm": "Profundidad del voladizo/alero sobre la ventana. (medida real de tu voladizo)",
+          "sill_height_cm": "Altura del alféizar sobre el suelo (sombreado geométrico). (medida real de tu alféizar)",
+          "room_depth_m": "Profundidad del suelo de la sala; la penetración solar se limita aquí. (profundidad real de tu sala)",
           "target_penetration_m": "Profundidad de sol directo admitida en la sala antes de que el sombreado geométrico baje la persiana.",
-          "shade_step_pct": "Paso de cuantización de la posición geométrica de la persiana."
+          "shade_step_pct": "Paso de cuantización de la posición geométrica de la persiana. (↑ = pasos de posición más gruesos)"
         }
       },
       "cat_setpoints": {
@@ -448,11 +448,11 @@
           "vac_base_cool_day": "Vacaciones frío (°C)"
         },
         "data_description": {
-          "base_heat_day": "Punto de partida en calefacción de día. Alimenta la Base activa y, en cascada, el target. Ajústala a tu confort real (ej. 22,0–22,8 °C) y deja que los biases hagan el resto.",
-          "base_cool_day": "Punto de partida en refrigeración de día. Empieza conservador (26–27 °C) para evitar enfriamientos agresivos y oscilaciones.",
+          "base_heat_day": "Punto de partida en calefacción de día. Alimenta la Base activa y, en cascada, el target. Ajústala a tu confort real (ej. 22,0–22,8 °C) y deja que los biases hagan el resto. (↑ = más calor)",
+          "base_cool_day": "Punto de partida en refrigeración de día. Empieza conservador (26–27 °C) para evitar enfriamientos agresivos y oscilaciones. (↓ = más frío)",
           "delta_night": "Cuánto relaja la base de noche (sol < −3°): baja la consigna en calor y la sube en frío. Si de noche te pasas de calor, súbela poco a poco (0,1 en 0,1).",
-          "vac_base_heat_day": "Base de calefacción con el modo Vacaciones activo (consigna reducida de ahorro).",
-          "vac_base_cool_day": "Base de refrigeración con el modo Vacaciones activo (consigna elevada de ahorro)."
+          "vac_base_heat_day": "Base de calefacción con el modo Vacaciones activo (consigna reducida de ahorro). (↓ = más ahorro en vacaciones)",
+          "vac_base_cool_day": "Base de refrigeración con el modo Vacaciones activo (consigna elevada de ahorro). (↑ = más ahorro en vacaciones)"
         }
       },
       "cat_limits": {
@@ -475,16 +475,16 @@
         "data_description": {
           "target_min_heat": "Consigna mínima en calefacción (modo normal). El target final nunca baja de aquí.",
           "target_max_heat": "Consigna máxima en calefacción (modo normal). El target final nunca sube de aquí.",
-          "target_min_cool": "Consigna mínima en refrigeración (modo normal).",
-          "target_max_cool": "Consigna máxima en refrigeración (modo normal).",
-          "step": "Paso de cuantización del target final (redondeo), ej. 0,1 °C.",
+          "target_min_cool": "Consigna mínima en refrigeración (modo normal). (acota el target en frío)",
+          "target_max_cool": "Consigna máxima en refrigeración (modo normal). (acota el target en frío)",
+          "step": "Paso de cuantización del target final (redondeo), ej. 0,1 °C. (↑ = redondeo más grueso, menos micro-ajustes)",
           "max_mods_heat": "Tope duro al empuje total de todos los biases/frenos en calor, antes del target limitado. Si se queda corto, súbelo en pasos pequeños; si va agresivo, bájalo o revisa antes los biases.",
-          "max_mods_cool": "Tope duro al empuje total de todos los biases/frenos en frío (igual que el de calor).",
+          "max_mods_cool": "Tope duro al empuje total de todos los biases/frenos en frío (igual que el de calor). (↑ = deja que los biases muevan más el target)",
           "apply_min_delta": "Cambio mínimo respecto a la última consigna antes de enviar una nueva al termostato (anti-jitter). 0 aplica siempre; con paso pequeño (0,1) prueba 0,2.",
-          "vac_target_min_heat": "Consigna mínima de calefacción en vacaciones.",
-          "vac_target_max_heat": "Consigna máxima de calefacción en vacaciones.",
-          "vac_target_min_cool": "Consigna mínima de refrigeración en vacaciones.",
-          "vac_target_max_cool": "Consigna máxima de refrigeración en vacaciones."
+          "vac_target_min_heat": "Consigna mínima de calefacción en vacaciones. (acota el target en vacaciones)",
+          "vac_target_max_heat": "Consigna máxima de calefacción en vacaciones. (acota el target en vacaciones)",
+          "vac_target_min_cool": "Consigna mínima de refrigeración en vacaciones. (acota el target en vacaciones)",
+          "vac_target_max_cool": "Consigna máxima de refrigeración en vacaciones. (acota el target en vacaciones)"
         }
       },
       "cat_exterior": {
@@ -501,11 +501,11 @@
         },
         "data_description": {
           "ext_cold_threshold": "Temp. exterior en o por debajo de la cual entra el bias de frío (compensación por frío).",
-          "ext_hot_threshold": "Temp. exterior en o por encima de la cual entra el bias de calor (compensación por calor).",
+          "ext_hot_threshold": "Temp. exterior en o por encima de la cual entra el bias de calor (compensación por calor). (↓ = el bias de calor entra antes)",
           "bias_ext_heat_strong": "Bias de calefacción cuando hace claramente frío (bajo el umbral).",
-          "bias_ext_heat_mild": "Bias de calefacción en la banda suave justo por encima del umbral de frío.",
-          "bias_ext_cool_strong": "Bias de refrigeración cuando hace claramente calor.",
-          "bias_ext_cool_mild": "Bias de refrigeración en la banda suave cerca del umbral de calor.",
+          "bias_ext_heat_mild": "Bias de calefacción en la banda suave justo por encima del umbral de frío. (↑ = compensa más el exterior)",
+          "bias_ext_cool_strong": "Bias de refrigeración cuando hace claramente calor. (↑ = compensa más el exterior)",
+          "bias_ext_cool_mild": "Bias de refrigeración en la banda suave cerca del umbral de calor. (↑ = compensa más el exterior)",
           "insulation_factor": "Multiplicador 0–1 del bias exterior: bájalo en viviendas bien aisladas."
         }
       },
@@ -517,7 +517,7 @@
           "sdhb_bias_solar_shield_cool": "Protección solar frío (°C)"
         },
         "data_description": {
-          "sdhb_bias_solar_gain_heat": "Alivio de consigna cuando DC recibe del bus una intención de ganancia solar en calefacción (el sol calienta gratis).",
+          "sdhb_bias_solar_gain_heat": "Alivio de consigna cuando DC recibe del bus una intención de ganancia solar en calefacción (el sol calienta gratis). (↑ = aprovecha más el sol gratis)",
           "sdhb_bias_solar_shield_cool": "Subida de consigna cuando DC recibe protección solar en refrigeración."
         }
       },
@@ -533,12 +533,12 @@
           "vmc_bias_cool_3": "Bias frío V 3"
         },
         "data_description": {
-          "vmc_bias_heat_1": "Compensación en calefacción con la VMC a V1 (la ventilación carga la estancia).",
-          "vmc_bias_heat_2": "Compensación en calefacción con la VMC a V2.",
-          "vmc_bias_heat_3": "Compensación en calefacción con la VMC a V3.",
-          "vmc_bias_cool_1": "Compensación en refrigeración con la VMC a V1.",
-          "vmc_bias_cool_2": "Compensación en refrigeración con la VMC a V2.",
-          "vmc_bias_cool_3": "Compensación en refrigeración con la VMC a V3."
+          "vmc_bias_heat_1": "Compensación en calefacción con la VMC a V1 (la ventilación carga la estancia). (↑ = compensa más la ventilación)",
+          "vmc_bias_heat_2": "Compensación en calefacción con la VMC a V2. (↑ = compensa más la ventilación)",
+          "vmc_bias_heat_3": "Compensación en calefacción con la VMC a V3. (↑ = compensa más la ventilación)",
+          "vmc_bias_cool_1": "Compensación en refrigeración con la VMC a V1. (↑ = compensa más la ventilación)",
+          "vmc_bias_cool_2": "Compensación en refrigeración con la VMC a V2. (↑ = compensa más la ventilación)",
+          "vmc_bias_cool_3": "Compensación en refrigeración con la VMC a V3. (↑ = compensa más la ventilación)"
         }
       },
       "cat_trend": {
@@ -556,13 +556,13 @@
           "trend_ema_alpha": "Alpha EMA tendencia"
         },
         "data_description": {
-          "trend_lead_h": "Anticipación de respaldo (horas) cuando faltan temperaturas para el modelo.",
-          "trend_max_shift": "Máx. °C que la tendencia puede mover el target por ciclo (anti-pico).",
-          "lead_base_h": "Horizonte base de anticipación (horas).",
-          "lead_per_degree_h": "Anticipación extra por °C de diferencia interior/exterior (inercia).",
+          "trend_lead_h": "Anticipación de respaldo (horas) cuando faltan temperaturas para el modelo. (↑ = anticipa antes sin modelo)",
+          "trend_max_shift": "Máx. °C que la tendencia puede mover el target por ciclo (anti-pico). (↑ = la tendencia mueve más el target)",
+          "lead_base_h": "Horizonte base de anticipación (horas). (↑ = anticipa antes)",
+          "lead_per_degree_h": "Anticipación extra por °C de diferencia interior/exterior (inercia). (↑ = más anticipación con más inercia)",
           "lead_wind_h_per_kmh": "Anticipación extra por km/h de viento (más pérdidas).",
-          "lead_min_h": "Tope inferior del lead calculado (horas).",
-          "lead_max_h": "Tope superior del lead calculado (horas).",
+          "lead_min_h": "Tope inferior del lead calculado (horas). (acota el lead calculado)",
+          "lead_max_h": "Tope superior del lead calculado (horas). (acota el lead calculado)",
           "trend_deadband_cph": "Tendencia por debajo de esto (°C/h) se trata como cero (ruido).",
           "trend_ema_alpha": "Suavizado de la EMA de tendencia (mayor = más reactivo)."
         }
@@ -579,12 +579,12 @@
           "brake_biases_3": "Bias freno 3"
         },
         "data_description": {
-          "brake_thresholds_1": "Velocidad de tendencia (°C/h) para el paso 1 del freno (solo si la tendencia ya ayuda al modo).",
-          "brake_thresholds_2": "Velocidad de tendencia (°C/h) para el paso 2 del freno.",
-          "brake_thresholds_3": "Velocidad de tendencia (°C/h) para el paso 3 del freno.",
-          "brake_biases_1": "°C que resta el freno en el paso 1 para evitar sobrepasar.",
-          "brake_biases_2": "°C que resta el freno en el paso 2.",
-          "brake_biases_3": "°C que resta el freno en el paso 3."
+          "brake_thresholds_1": "Velocidad de tendencia (°C/h) para el paso 1 del freno (solo si la tendencia ya ayuda al modo). (↓ = frena antes)",
+          "brake_thresholds_2": "Velocidad de tendencia (°C/h) para el paso 2 del freno. (↓ = frena antes)",
+          "brake_thresholds_3": "Velocidad de tendencia (°C/h) para el paso 3 del freno. (↓ = frena antes)",
+          "brake_biases_1": "°C que resta el freno en el paso 1 para evitar sobrepasar. (↑ = frena más fuerte)",
+          "brake_biases_2": "°C que resta el freno en el paso 2. (↑ = frena más fuerte)",
+          "brake_biases_3": "°C que resta el freno en el paso 3. (↑ = frena más fuerte)"
         }
       },
       "cat_forecast": {
@@ -596,9 +596,9 @@
           "forecast_window_h": "Ventana forecast (h)"
         },
         "data_description": {
-          "forecast_gain": "Cuánto relaja la consigna el forecast (°C por °C de ayuda prevista). Solo frena, nunca empuja.",
-          "forecast_cap": "Máx. °C que puede aplicar el bias de forecast.",
-          "forecast_window_h": "Ventana de anticipación (horas) que se explora buscando el extremo que ayuda."
+          "forecast_gain": "Cuánto relaja la consigna el forecast (°C por °C de ayuda prevista). Solo frena, nunca empuja. (↑ = el forecast relaja más)",
+          "forecast_cap": "Máx. °C que puede aplicar el bias de forecast. (↑ = permite más alivio del forecast)",
+          "forecast_window_h": "Ventana de anticipación (horas) que se explora buscando el extremo que ayuda. (↑ = mira más horas por delante)"
         }
       },
       "cat_adaptive_lead": {
@@ -617,16 +617,16 @@
           "lead_adaptive_max_h": "Lead adapt. máx. (h)"
         },
         "data_description": {
-          "adapt_alpha": "Suavizado EMA de la tasa/overshoot/retardo aprendidos.",
-          "adapt_gain_lr": "Paso de aprendizaje hacia el lead objetivo en cada ciclo.",
+          "adapt_alpha": "Suavizado EMA de la tasa/overshoot/retardo aprendidos. (↑ = aprende más rápido pero más ruidoso)",
+          "adapt_gain_lr": "Paso de aprendizaje hacia el lead objetivo en cada ciclo. (↑ = converge antes al lead objetivo)",
           "adapt_overshoot_target": "Overshoot tolerado (°C) antes de corregir el lead.",
-          "adapt_rate_floor_cph": "Suelo de la tasa de calentamiento/enfriamiento aprendida (evita dividir por cero).",
-          "adapt_lag_k": "Peso del retardo térmico aprendido en el lead.",
-          "adapt_on_rate_min_dt_h": "Duración ON mínima (h) para fiarse de una muestra de tasa.",
-          "adapt_on_rate_min_dt": "Cambio de temperatura mínimo (°C) para fiarse de una muestra.",
-          "adapt_off_window_h": "Ventana (h) vigilada tras apagar para aprender overshoot y retardo.",
-          "lead_adaptive_min_h": "Tope inferior del lead aprendido (horas).",
-          "lead_adaptive_max_h": "Tope superior del lead aprendido (horas)."
+          "adapt_rate_floor_cph": "Suelo de la tasa de calentamiento/enfriamiento aprendida (evita dividir por cero). (avanzado; suelo de seguridad)",
+          "adapt_lag_k": "Peso del retardo térmico aprendido en el lead. (↑ = el retardo pesa más en el lead)",
+          "adapt_on_rate_min_dt_h": "Duración ON mínima (h) para fiarse de una muestra de tasa. (↑ = exige muestras más claras)",
+          "adapt_on_rate_min_dt": "Cambio de temperatura mínimo (°C) para fiarse de una muestra. (↑ = exige muestras más claras)",
+          "adapt_off_window_h": "Ventana (h) vigilada tras apagar para aprender overshoot y retardo. (↑ = observa más tras apagar)",
+          "lead_adaptive_min_h": "Tope inferior del lead aprendido (horas). (acota el lead aprendido)",
+          "lead_adaptive_max_h": "Tope superior del lead aprendido (horas). (acota el lead aprendido)"
         }
       },
       "cat_condensation": {
@@ -636,7 +636,7 @@
           "dew_spread_min": "Margen punto rocío (°C)"
         },
         "data_description": {
-          "dew_spread_min": "Riesgo de condensación cuando la temp. interior está a este margen del punto de rocío (seguridad de suelo refrescante)."
+          "dew_spread_min": "Riesgo de condensación cuando la temp. interior está a este margen del punto de rocío (seguridad de suelo refrescante). (↑ = corta antes, más conservador)"
         }
       },
       "cat_facade": {
@@ -647,8 +647,8 @@
           "facade_gain_cool": "Ganancia fachada frío (°C)"
         },
         "data_description": {
-          "facade_gain_heat": "Alivio máx. de consigna por fachadas soleadas abiertas en calefacción (ganancia solar gratis).",
-          "facade_gain_cool": "Alivio máx. de consigna por fachadas soleadas en refrigeración."
+          "facade_gain_heat": "Alivio máx. de consigna por fachadas soleadas abiertas en calefacción (ganancia solar gratis). (↑ = aprovecha más el sol de la fachada)",
+          "facade_gain_cool": "Alivio máx. de consigna por fachadas soleadas en refrigeración. (↑ = aprovecha más el sol de la fachada)"
         }
       },
       "preset": {
@@ -687,7 +687,7 @@
           "anticip_co2_rate_off": "Pendiente por debajo de la cual se desactiva el refuerzo (histéresis).",
           "anticip_pm_rate_on": "Velocidad de subida de PM2.5 (µg/m³/h) que adelanta el refuerzo.",
           "anticip_pm_rate_off": "Pendiente de PM2.5 por debajo de la cual se desactiva el refuerzo.",
-          "anticip_hold_s": "Tiempo mínimo de mantenimiento para que un pico breve no oscile (segundos).",
+          "anticip_hold_s": "Tiempo mínimo de mantenimiento para que un pico breve no oscile (segundos). (↑ = mantiene el refuerzo más tiempo)",
           "anticip_level": "Velocidad objetivo mientras se detecta una subida brusca (V1/V2/V3).",
           "anticip_ema_alpha": "Suavizado de la propia pendiente (mayor = más reactivo)."
         }
@@ -700,8 +700,8 @@
           "quiet_critical_pm": "PM2.5 crítico (µg/m³)"
         },
         "data_description": {
-          "quiet_critical_co2": "En horas de silencio la velocidad se limita, pero un CO₂ igual o superior a esto levanta el límite (salud > silencio).",
-          "quiet_critical_pm": "Un PM2.5 igual o superior a esto levanta el límite de las horas de silencio."
+          "quiet_critical_co2": "En horas de silencio la velocidad se limita, pero un CO₂ igual o superior a esto levanta el límite (salud > silencio). (↓ = levanta el cap antes)",
+          "quiet_critical_pm": "Un PM2.5 igual o superior a esto levanta el límite de las horas de silencio. (↓ = levanta el cap antes)"
         }
       },
       "cat_recuperator": {
@@ -713,7 +713,7 @@
         },
         "data_description": {
           "hrv_bypass_eff_max": "Eficiencia (0..1) por debajo de la cual, con un ΔT real, se considera que el recuperador está en bypass / sin recuperar.",
-          "hrv_bypass_dt_min": "ΔT mínimo extracción−absorción (°C) necesario para juzgar recuperación vs bypass."
+          "hrv_bypass_dt_min": "ΔT mínimo extracción−absorción (°C) necesario para juzgar recuperación vs bypass. (avanzado)"
         }
       },
       "cat_demand": {
@@ -723,7 +723,7 @@
           "valve_power_min": "Umbral de potencia de válvula (W)"
         },
         "data_description": {
-          "valve_power_min": "Cuando la fuente de la válvula es numérica (potencia, W), una lectura por encima cuenta la válvula/relé como activa."
+          "valve_power_min": "Cuando la fuente de la válvula es numérica (potencia, W), una lectura por encima cuenta la válvula/relé como activa. (↑ = exige más potencia para contar como activa)"
         }
       },
       "cat_mold": {
@@ -737,11 +737,11 @@
           "mold_cap_h": "Tope del índice (h)"
         },
         "data_description": {
-          "mold_rh_threshold": "Humedad relativa a partir de la cual se acumulan horas de riesgo de moho.",
-          "mold_on_h": "Horas acumuladas que arman el aviso y el secado.",
+          "mold_rh_threshold": "Humedad relativa a partir de la cual se acumulan horas de riesgo de moho. (↓ = más sensible al moho)",
+          "mold_on_h": "Horas acumuladas que arman el aviso y el secado. (↓ = avisa antes)",
           "mold_off_h": "Horas acumuladas por debajo de las cuales se desarma (histéresis).",
           "mold_decay_h": "Constante de decaimiento exponencial cuando la HR está por debajo del umbral.",
-          "mold_cap_h": "Valor máximo que puede alcanzar el índice."
+          "mold_cap_h": "Valor máximo que puede alcanzar el índice. (tope del índice)"
         }
       },
       "cat_window": {
@@ -754,10 +754,10 @@
           "window_max_lockout_min": "Bloqueo máx. (min)"
         },
         "data_description": {
-          "window_drop_cph": "Cambio de la temperatura interior en contra de la demanda (°C/h) que indica probable ventana abierta (solo si no hay sensor de ventana configurado).",
+          "window_drop_cph": "Cambio de la temperatura interior en contra de la demanda (°C/h) que indica probable ventana abierta (solo si no hay sensor de ventana configurado). (↓ = detecta la ventana con caídas más suaves)",
           "window_confirm_min": "Minutos que la anomalía debe persistir antes de apagar la zona.",
           "window_release_min": "Minutos con temperatura estable antes de reanudar el control normal.",
-          "window_max_lockout_min": "Tiempo de seguridad que reanuda el control aunque la temperatura no se haya estabilizado."
+          "window_max_lockout_min": "Tiempo de seguridad que reanuda el control aunque la temperatura no se haya estabilizado. (↑ = espera más antes de reanudar)"
         }
       },
       "cat_adjacent": {
@@ -792,9 +792,9 @@
         },
         "data_description": {
           "dawn_step_pct": "Cuánto sube la persiana en cada paso.",
-          "dawn_step_min": "Minutos entre pasos.",
-          "dawn_target_pct": "Apertura a la que llega la rampa.",
-          "dawn_trigger_elevation": "Elevación del sol (grados) que inicia la rampa al amanecer."
+          "dawn_step_min": "Minutos entre pasos. (↓ = amanecer más rápido)",
+          "dawn_target_pct": "Apertura a la que llega la rampa. (↑ = termina más abierta)",
+          "dawn_trigger_elevation": "Elevación del sol (grados) que inicia la rampa al amanecer. (↑ = arranca con el sol más alto)"
         }
       },
       "cat_night": {
@@ -805,7 +805,7 @@
           "night_iso_open_pct": "Apertura purga noche (%)"
         },
         "data_description": {
-          "night_iso_close_pct": "Posición cerrada de noche para aislar (calor) o proteger la masa térmica (frío, noche cálida).",
+          "night_iso_close_pct": "Posición cerrada de noche para aislar (calor) o proteger la masa térmica (frío, noche cálida). (↓ = cierra más para aislar)",
           "night_iso_open_pct": "Posición abierta de noche para purgar la masa térmica cuando el exterior está más fresco (frío)."
         }
       },
@@ -819,10 +819,10 @@
           "alert_hold_min": "Hold alerta (min)"
         },
         "data_description": {
-          "alert_pct": "Posición de protección para la alerta meteo genérica.",
-          "alert_hail_pct": "Posición de protección para alerta de granizo/tormenta (cerrar del todo protege mejor).",
-          "alert_wind_pct": "Posición de protección para alerta de viento (una posición media puede proteger las lamas).",
-          "alert_hold_min": "Minutos que se mantiene la protección tras levantarse la alerta."
+          "alert_pct": "Posición de protección para la alerta meteo genérica. (↓ = más cerrada, más protección)",
+          "alert_hail_pct": "Posición de protección para alerta de granizo/tormenta (cerrar del todo protege mejor). (↓ = más cerrada, más protección)",
+          "alert_wind_pct": "Posición de protección para alerta de viento (una posición media puede proteger las lamas). (↓ = más cerrada, más protección)",
+          "alert_hold_min": "Minutos que se mantiene la protección tras levantarse la alerta. (↑ = protege más tiempo tras la alerta)"
         }
       },
       "cat_hood": {
@@ -835,9 +835,9 @@
           "hood_hys": "Histéresis PM2.5 (µg/m³)"
         },
         "data_description": {
-          "hood_pm_v1": "PM2.5 interior a partir del cual la campana va a V1.",
-          "hood_pm_v2": "PM2.5 interior a partir del cual la campana va a V2.",
-          "hood_pm_v3": "PM2.5 interior a partir del cual la campana va a V3.",
+          "hood_pm_v1": "PM2.5 interior a partir del cual la campana va a V1. (↓ = la campana sube de velocidad antes)",
+          "hood_pm_v2": "PM2.5 interior a partir del cual la campana va a V2. (↓ = la campana sube de velocidad antes)",
+          "hood_pm_v3": "PM2.5 interior a partir del cual la campana va a V3. (↓ = la campana sube de velocidad antes)",
           "hood_hys": "Margen que el PM debe bajar antes de que la campana baje un nivel."
         }
       },
@@ -851,8 +851,8 @@
         },
         "data_description": {
           "stale_after_h": "Una fuente con datos más viejos que esto se considera caída (pasa a la siguiente).",
-          "alert_wind_kmh": "Viento a partir del cual se activa la alerta meteo.",
-          "alert_precip_mm": "Precipitación a partir de la cual se activa la alerta meteo."
+          "alert_wind_kmh": "Viento a partir del cual se activa la alerta meteo. (↓ = alerta con menos)",
+          "alert_precip_mm": "Precipitación a partir de la cual se activa la alerta meteo. (↓ = alerta con menos)"
         }
       },
       "cat_tariff": {
@@ -878,7 +878,7 @@
         "data_description": {
           "anticycle_min_on_s": "Tiempo mínimo que el compresor compartido permanece encendido antes de registrar una parada (evita el ciclado corto). Las paradas de seguridad lo anulan.",
           "anticycle_min_off_s": "Tiempo mínimo que el compresor permanece apagado antes de poder arrancar de nuevo.",
-          "anticycle_max_starts_per_h": "Máximo de arranques del compresor por hora móvil (por defecto 6)."
+          "anticycle_max_starts_per_h": "Máximo de arranques del compresor por hora móvil (por defecto 6). (↓ = protege más el compresor)"
         }
       },
       "cat_peak": {
@@ -893,8 +893,8 @@
         "data_description": {
           "peak_max_zones": "Cuántas cargas eléctricas (zonas de calor o persianas) pueden estar en marcha/movimiento a la vez antes de diferir nuevos arranques. Se usa cuando no hay presupuesto de potencia.",
           "peak_max_power_w": "Si es mayor que 0, limita por vatios totales en vez de por número (usa el medidor real si existe, si no la estimación). 0 = modo conteo.",
-          "peak_stagger_s": "Hueco mínimo entre arranques nuevos, para que una ráfaga de demandas arranque de uno en uno en vez de a la vez.",
-          "peak_comfort_bypass_c": "Una zona tan desviada de su consigna se salta el límite de pico — el confort gana al recorte (la seguridad sigue ganando por encima). 0 lo desactiva."
+          "peak_stagger_s": "Hueco mínimo entre arranques nuevos, para que una ráfaga de demandas arranque de uno en uno en vez de a la vez. (↑ = separa más los arranques)",
+          "peak_comfort_bypass_c": "Una zona tan desviada de su consigna se salta el límite de pico — el confort gana al recorte (la seguridad sigue ganando por encima). 0 lo desactiva. (↓ = salta el límite con menos desviación)"
         }
       },
       "cat_energy": {
@@ -909,12 +909,12 @@
           "full_travel_s": "Recorrido completo (s)"
         },
         "data_description": {
-          "est_w_v1": "Potencia estimada de la VMC a velocidad V1, usada cuando no hay medidor de potencia.",
-          "est_w_v2": "Potencia estimada de la VMC a velocidad V2.",
-          "est_w_v3": "Potencia estimada de la VMC a velocidad V3.",
-          "est_w_on": "Potencia estimada del clima mientras la zona pide calor/frío (sin medidor configurado).",
-          "est_w_motor": "Potencia estimada del motor de la persiana, usada para estimar la energía de cada movimiento.",
-          "full_travel_s": "Tiempo de un recorrido completo abrir↔cerrar de la persiana (escala la energía por movimiento)."
+          "est_w_v1": "Potencia estimada de la VMC a velocidad V1, usada cuando no hay medidor de potencia. (ajústalo al consumo real)",
+          "est_w_v2": "Potencia estimada de la VMC a velocidad V2. (ajústalo al consumo real)",
+          "est_w_v3": "Potencia estimada de la VMC a velocidad V3. (ajústalo al consumo real)",
+          "est_w_on": "Potencia estimada del clima mientras la zona pide calor/frío (sin medidor configurado). (ajústalo al consumo real)",
+          "est_w_motor": "Potencia estimada del motor de la persiana, usada para estimar la energía de cada movimiento. (ajústalo al consumo real)",
+          "full_travel_s": "Tiempo de un recorrido completo abrir↔cerrar de la persiana (escala la energía por movimiento). (mide el recorrido real)"
         }
       },
       "schedule": {
@@ -1025,7 +1025,7 @@
         "data_description": {
           "support_dev_on": "Cuánto puede quedarse la estancia por detrás de la consigna (en la dirección activa) antes de armar un emisor de apoyo.",
           "support_confirm_min": "Cuánto debe persistir ese retraso antes de que el apoyo encienda de verdad.",
-          "support_dev_off": "Cuando la estancia se recupera dentro de esta banda de la consigna, el apoyo empieza a retirarse.",
+          "support_dev_off": "Cuando la estancia se recupera dentro de esta banda de la consigna, el apoyo empieza a retirarse. (↓ = el apoyo se retira antes)",
           "support_release_min": "Cuánto debe mantenerse la recuperación antes de que el apoyo se apague (histéresis)."
         }
       },

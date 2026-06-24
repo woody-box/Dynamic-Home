@@ -4,6 +4,16 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.35.3] — 2026-06-24
+
+### Added
+- **Pista direccional en la ayuda por campo**: ~110 parámetros que solo decían *qué eran*
+  ahora añaden una pista compacta de **qué pasa si los subes/bajas** — p. ej.
+  `lead_base_h` *"(↑ = anticipa antes)"*, `brake_thresholds_1` *"(↓ = frena antes)"*,
+  `winter_night_pct` *"(↓ = cierra más para aislar)"*, `hood_pm_v1` *"(↓ = sube de
+  velocidad antes)"*. Completa el trío de ayuda contextual (campo + categoría + guía
+  TUNING.md). EN + ES (paridad).
+
 ## [0.35.2] — 2026-06-24
 
 ### Added
