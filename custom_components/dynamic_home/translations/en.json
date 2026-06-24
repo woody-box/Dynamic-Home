@@ -277,8 +277,8 @@
         },
         "data_description": {
           "freecool_t_ext_min": "Do not free-cool below this outdoor temp (too cold).",
-          "freecool_delta_on": "Indoor−outdoor ΔT that starts free-cooling.",
-          "freecool_delta_off": "ΔT that stops free-cooling (hysteresis)."
+          "freecool_delta_on": "Indoor−outdoor ΔT that starts free-cooling. (↓ = starts with less difference)",
+          "freecool_delta_off": "ΔT that stops free-cooling (hysteresis). (↓ = holds with less difference)"
         }
       },
       "cat_hostile": {
@@ -290,9 +290,9 @@
           "hostile_t3": "AQI threshold 3"
         },
         "data_description": {
-          "hostile_t1": "Outdoor AQI that caps the VMC at V2 (outside starting to be bad).",
-          "hostile_t2": "Outdoor AQI that caps the VMC at V1.",
-          "hostile_t3": "Outdoor AQI that turns the VMC off (don't pull very bad air)."
+          "hostile_t1": "Outdoor AQI that caps the VMC at V2 (outside starting to be bad). (↓ = reacts sooner to bad air)",
+          "hostile_t2": "Outdoor AQI that caps the VMC at V1. (↓ = reacts sooner to bad air)",
+          "hostile_t3": "Outdoor AQI that turns the VMC off (don't pull very bad air). (↓ = reacts sooner to bad air)"
         }
       },
       "cat_dry": {
@@ -306,10 +306,10 @@
           "dry_hys": "Drying hysteresis (°C)"
         },
         "data_description": {
-          "dry_v2_delta": "Dew-point advantage (dp_indoor − dp_outdoor, °C) to dry at V2.",
-          "dry_v3_delta": "Dew-point advantage to dry at V3.",
-          "dew_spread_min": "Indoor temp within this of the dew point flags condensation risk.",
-          "dry_margin": "Minimum dew-point advantage (dp_indoor − dp_outdoor, °C) before drying ventilation engages.",
+          "dry_v2_delta": "Dew-point advantage (dp_indoor − dp_outdoor, °C) to dry at V2. (↓ = dries with less dew advantage)",
+          "dry_v3_delta": "Dew-point advantage to dry at V3. (↓ = dries with less dew advantage)",
+          "dew_spread_min": "Indoor temp within this of the dew point flags condensation risk. (↑ = cuts sooner, more conservative)",
+          "dry_margin": "Minimum dew-point advantage (dp_indoor − dp_outdoor, °C) before drying ventilation engages. (↓ = ventilates to dry more readily)",
           "dry_hys": "Hysteresis band: drying disengages once the advantage falls below margin − hysteresis."
         }
       },
@@ -328,9 +328,9 @@
           "co2_sanity_floor": "CO₂ readings below this (ppm) are treated as a sensor fault and routed to the failsafe, since an occupied room can't be below the ~410 ppm atmospheric baseline. PM2.5 is not floored.",
           "stale_threshold_s": "A vital sensor older than this (s) counts as failed.",
           "startup_grace_s": "Grace period after start before the failsafe can trip (s).",
-          "trip_window_s": "Window (s) over which repeated trips are counted.",
-          "trip_limit": "Trips within the window that arm a lockout.",
-          "lockout_s": "How long the failsafe lockout lasts (s)."
+          "trip_window_s": "Window (s) over which repeated trips are counted. (↑ = counts faults over a longer window)",
+          "trip_limit": "Trips within the window that arm a lockout. (↓ = locks out after fewer faults)",
+          "lockout_s": "How long the failsafe lockout lasts (s). (↑ = longer lockout)"
         }
       },
       "cat_shower": {
@@ -346,7 +346,7 @@
           "shower_rh_delta_on": "Bathroom RH rise (Δ%) that triggers a shower boost. If it detects false showers, raise this.",
           "shower_rh_delta_off": "RH delta below which the shower boost ends. If it cuts too soon, lower this.",
           "shower_hold_s": "Minimum hold time for the shower boost (seconds). If it cuts too soon, raise it.",
-          "shower_level": "Target speed while a shower is detected (V2/V3)."
+          "shower_level": "Target speed while a shower is detected (V2/V3). (V3 ventilates harder than V2)"
         }
       },
       "cat_adaptive_iaq": {
@@ -371,12 +371,12 @@
           "sdhb_solar_shield_max_open_pct": "Solar shield max (%)"
         },
         "data_description": {
-          "rain_close_pct": "Shutter position when it rains (protection).",
-          "freecool_max_open_pct": "Max opening allowed during free-cooling.",
-          "summer_min_open_pct": "Minimum opening kept in summer.",
-          "winter_night_pct": "Position on winter nights (close to insulate).",
+          "rain_close_pct": "Shutter position when it rains (protection). (↓ = more closed, more protection)",
+          "freecool_max_open_pct": "Max opening allowed during free-cooling. (↑ = allows opening more)",
+          "summer_min_open_pct": "Minimum opening kept in summer. (↑ = keeps it more open in summer)",
+          "winter_night_pct": "Position on winter nights (close to insulate). (↓ = closes more to insulate)",
           "weather_max_open_pct": "Max opening under a weather alert.",
-          "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling)."
+          "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling). (↓ = shades more on shield)"
         }
       },
       "cat_thermal": {
@@ -387,8 +387,8 @@
           "hot_delta": "Hot ΔT (°C)"
         },
         "data_description": {
-          "freecool_delta": "Indoor−outdoor ΔT that justifies opening for free-cooling.",
-          "hot_delta": "ΔT above which the room counts as hot (shading logic)."
+          "freecool_delta": "Indoor−outdoor ΔT that justifies opening for free-cooling. (↓ = opens to purge with less difference)",
+          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)"
         }
       },
       "cat_wind": {
@@ -400,9 +400,9 @@
           "wind_cap_hyst_kmh": "Wind cap hysteresis (km/h)"
         },
         "data_description": {
-          "wind_limit_kmh": "Wind speed that forces protective closing.",
-          "wind_cap_span_kmh": "Range above the limit over which opening is progressively capped.",
-          "wind_cap_hyst_kmh": "Hysteresis to release the wind cap."
+          "wind_limit_kmh": "Wind speed that forces protective closing. (↓ = closes at less wind)",
+          "wind_cap_span_kmh": "Range above the limit over which opening is progressively capped. (↑ = ramps the cap more gradually)",
+          "wind_cap_hyst_kmh": "Hysteresis to release the wind cap. (↑ = releases the cap later)"
         }
       },
       "cat_slew": {
@@ -414,7 +414,7 @@
         },
         "data_description": {
           "slew_enabled": "Move the shutter in steps instead of jumping (smoother, fewer motor starts).",
-          "slew_step_pct": "Max % the position changes per step."
+          "slew_step_pct": "Max % the position changes per step. (↓ = smoother, slower moves)"
         }
       },
       "cat_geometry": {
@@ -429,12 +429,12 @@
           "shade_step_pct": "Shade step (%)"
         },
         "data_description": {
-          "window_height_cm": "Window height for the solar-penetration geometry.",
-          "overhang_cm": "Overhang/eave depth above the window.",
-          "sill_height_cm": "Window sill height above the floor (geometric shading).",
-          "room_depth_m": "Floor depth of the room; sun penetration is capped here.",
+          "window_height_cm": "Window height for the solar-penetration geometry. (your window's real measurement)",
+          "overhang_cm": "Overhang/eave depth above the window. (your overhang's real measurement)",
+          "sill_height_cm": "Window sill height above the floor (geometric shading). (your sill's real measurement)",
+          "room_depth_m": "Floor depth of the room; sun penetration is capped here. (your room's real depth)",
           "target_penetration_m": "Allowed sunlit depth into the room before the geometric shading closes the shutter.",
-          "shade_step_pct": "Quantization step of the geometric shutter position."
+          "shade_step_pct": "Quantization step of the geometric shutter position. (↑ = coarser position steps)"
         }
       },
       "cat_setpoints": {
@@ -448,11 +448,11 @@
           "vac_base_cool_day": "Vacation cool (°C)"
         },
         "data_description": {
-          "base_heat_day": "Daytime starting point when heating. Feeds the Active Base and, in cascade, the target. Set it to your real comfort (e.g. 22.0–22.8 °C) and let the biases do the rest.",
-          "base_cool_day": "Daytime starting point when cooling. Start conservative (26–27 °C) to avoid aggressive cooling and oscillation.",
+          "base_heat_day": "Daytime starting point when heating. Feeds the Active Base and, in cascade, the target. Set it to your real comfort (e.g. 22.0–22.8 °C) and let the biases do the rest. (↑ = warmer)",
+          "base_cool_day": "Daytime starting point when cooling. Start conservative (26–27 °C) to avoid aggressive cooling and oscillation. (↓ = cooler)",
           "delta_night": "How much the base eases at night (sun below −3°): lowers the setpoint when heating, raises it when cooling. If you get too warm at night, raise it gradually (0.1 steps).",
           "vac_base_heat_day": "Heating base while Vacation mode is on (energy-saving reduced setpoint).",
-          "vac_base_cool_day": "Cooling base while Vacation mode is on (energy-saving raised setpoint)."
+          "vac_base_cool_day": "Cooling base while Vacation mode is on (energy-saving raised setpoint). (↑ = more saving on vacation)"
         }
       },
       "cat_limits": {
@@ -475,16 +475,16 @@
         "data_description": {
           "target_min_heat": "Lowest allowed setpoint when heating (normal mode). The final target is never clamped below this.",
           "target_max_heat": "Highest allowed setpoint when heating (normal mode). The final target is never clamped above this.",
-          "target_min_cool": "Lowest allowed setpoint when cooling (normal mode).",
-          "target_max_cool": "Highest allowed setpoint when cooling (normal mode).",
-          "step": "Quantization step for the final target (rounding), e.g. 0.1 °C.",
+          "target_min_cool": "Lowest allowed setpoint when cooling (normal mode). (bounds the cooling target)",
+          "target_max_cool": "Highest allowed setpoint when cooling (normal mode). (bounds the cooling target)",
+          "step": "Quantization step for the final target (rounding), e.g. 0.1 °C. (↑ = coarser rounding, fewer micro-moves)",
           "max_mods_heat": "Hard cap on the combined push of all biases/brakes in heat, before the limited target. If it falls short, raise it in small steps; if it gets aggressive, lower it or review the biases first.",
-          "max_mods_cool": "Hard cap on the combined push of all biases/brakes in cool (same idea as the heat cap).",
+          "max_mods_cool": "Hard cap on the combined push of all biases/brakes in cool (same idea as the heat cap). (↑ = lets biases move the target more)",
           "apply_min_delta": "Minimum change vs the last setpoint before pushing a new one to the thermostat (anti-jitter). 0 applies always; with a small step (0.1) try 0.2.",
-          "vac_target_min_heat": "Lowest heating setpoint while on vacation.",
-          "vac_target_max_heat": "Highest heating setpoint while on vacation.",
-          "vac_target_min_cool": "Lowest cooling setpoint while on vacation.",
-          "vac_target_max_cool": "Highest cooling setpoint while on vacation."
+          "vac_target_min_heat": "Lowest heating setpoint while on vacation. (bounds the vacation target)",
+          "vac_target_max_heat": "Highest heating setpoint while on vacation. (bounds the vacation target)",
+          "vac_target_min_cool": "Lowest cooling setpoint while on vacation. (bounds the vacation target)",
+          "vac_target_max_cool": "Highest cooling setpoint while on vacation. (bounds the vacation target)"
         }
       },
       "cat_exterior": {
@@ -501,11 +501,11 @@
         },
         "data_description": {
           "ext_cold_threshold": "Outdoor temp at/below which a heating bias kicks in (cold compensation).",
-          "ext_hot_threshold": "Outdoor temp at/above which a cooling bias kicks in (hot compensation).",
+          "ext_hot_threshold": "Outdoor temp at/above which a cooling bias kicks in (hot compensation). (↓ = the heat bias kicks in sooner)",
           "bias_ext_heat_strong": "Heating bias when it is clearly cold (below the threshold).",
-          "bias_ext_heat_mild": "Heating bias in the mild band just above the cold threshold.",
-          "bias_ext_cool_strong": "Cooling bias when it is clearly hot.",
-          "bias_ext_cool_mild": "Cooling bias in the mild band near the hot threshold.",
+          "bias_ext_heat_mild": "Heating bias in the mild band just above the cold threshold. (↑ = compensates the outdoors more)",
+          "bias_ext_cool_strong": "Cooling bias when it is clearly hot. (↑ = compensates the outdoors more)",
+          "bias_ext_cool_mild": "Cooling bias in the mild band near the hot threshold. (↑ = compensates the outdoors more)",
           "insulation_factor": "0–1 multiplier on the outdoor bias: lower it for a well-insulated home."
         }
       },
@@ -517,7 +517,7 @@
           "sdhb_bias_solar_shield_cool": "Solar shield cool (°C)"
         },
         "data_description": {
-          "sdhb_bias_solar_gain_heat": "Setpoint relief when DC receives a solar-gain intent while heating (free sun warms the room).",
+          "sdhb_bias_solar_gain_heat": "Setpoint relief when DC receives a solar-gain intent while heating (free sun warms the room). (↑ = leans more on free sun)",
           "sdhb_bias_solar_shield_cool": "Setpoint raise when DC receives a solar-shield intent while cooling."
         }
       },
@@ -533,12 +533,12 @@
           "vmc_bias_cool_3": "Cool bias V 3"
         },
         "data_description": {
-          "vmc_bias_heat_1": "Heating compensation when the VMC runs at V1 (ventilation loads the room).",
-          "vmc_bias_heat_2": "Heating compensation when the VMC runs at V2.",
-          "vmc_bias_heat_3": "Heating compensation when the VMC runs at V3.",
-          "vmc_bias_cool_1": "Cooling compensation when the VMC runs at V1.",
-          "vmc_bias_cool_2": "Cooling compensation when the VMC runs at V2.",
-          "vmc_bias_cool_3": "Cooling compensation when the VMC runs at V3."
+          "vmc_bias_heat_1": "Heating compensation when the VMC runs at V1 (ventilation loads the room). (↑ = compensates ventilation more)",
+          "vmc_bias_heat_2": "Heating compensation when the VMC runs at V2. (↑ = compensates ventilation more)",
+          "vmc_bias_heat_3": "Heating compensation when the VMC runs at V3. (↑ = compensates ventilation more)",
+          "vmc_bias_cool_1": "Cooling compensation when the VMC runs at V1. (↑ = compensates ventilation more)",
+          "vmc_bias_cool_2": "Cooling compensation when the VMC runs at V2. (↑ = compensates ventilation more)",
+          "vmc_bias_cool_3": "Cooling compensation when the VMC runs at V3. (↑ = compensates ventilation more)"
         }
       },
       "cat_trend": {
@@ -556,13 +556,13 @@
           "trend_ema_alpha": "Trend EMA alpha"
         },
         "data_description": {
-          "trend_lead_h": "Fallback anticipation (hours) when temperatures are unavailable.",
-          "trend_max_shift": "Max °C the trend can shift the target per cycle (anti-spike).",
-          "lead_base_h": "Base anticipation horizon (hours).",
-          "lead_per_degree_h": "Extra anticipation per °C of indoor/outdoor gap (inertia).",
+          "trend_lead_h": "Fallback anticipation (hours) when temperatures are unavailable. (↑ = anticipates earlier without the model)",
+          "trend_max_shift": "Max °C the trend can shift the target per cycle (anti-spike). (↑ = the trend moves the target more)",
+          "lead_base_h": "Base anticipation horizon (hours). (↑ = anticipates earlier)",
+          "lead_per_degree_h": "Extra anticipation per °C of indoor/outdoor gap (inertia). (↑ = more anticipation with inertia)",
           "lead_wind_h_per_kmh": "Extra anticipation per km/h of wind (higher losses).",
-          "lead_min_h": "Lower clamp on the computed lead (hours).",
-          "lead_max_h": "Upper clamp on the computed lead (hours).",
+          "lead_min_h": "Lower clamp on the computed lead (hours). (bounds the computed lead)",
+          "lead_max_h": "Upper clamp on the computed lead (hours). (bounds the computed lead)",
           "trend_deadband_cph": "Trend below this (°C/h) is treated as zero (noise).",
           "trend_ema_alpha": "Trend EMA smoothing (higher = more reactive)."
         }
@@ -579,12 +579,12 @@
           "brake_biases_3": "Brake bias 3"
         },
         "data_description": {
-          "brake_thresholds_1": "Trend speed (°C/h) for brake step 1 (only when the trend already helps the mode).",
-          "brake_thresholds_2": "Trend speed (°C/h) for brake step 2.",
-          "brake_thresholds_3": "Trend speed (°C/h) for brake step 3.",
-          "brake_biases_1": "°C the brake subtracts at step 1 to avoid overshoot.",
-          "brake_biases_2": "°C the brake subtracts at step 2.",
-          "brake_biases_3": "°C the brake subtracts at step 3."
+          "brake_thresholds_1": "Trend speed (°C/h) for brake step 1 (only when the trend already helps the mode). (↓ = brakes sooner)",
+          "brake_thresholds_2": "Trend speed (°C/h) for brake step 2. (↓ = brakes sooner)",
+          "brake_thresholds_3": "Trend speed (°C/h) for brake step 3. (↓ = brakes sooner)",
+          "brake_biases_1": "°C the brake subtracts at step 1 to avoid overshoot. (↑ = brakes harder)",
+          "brake_biases_2": "°C the brake subtracts at step 2. (↑ = brakes harder)",
+          "brake_biases_3": "°C the brake subtracts at step 3. (↑ = brakes harder)"
         }
       },
       "cat_forecast": {
@@ -596,9 +596,9 @@
           "forecast_window_h": "Forecast window (h)"
         },
         "data_description": {
-          "forecast_gain": "How strongly the forecast eases the setpoint (°C per °C of expected help). Brake-only.",
-          "forecast_cap": "Max °C the forecast bias can apply.",
-          "forecast_window_h": "Look-ahead window (hours) scanned for the helping extreme."
+          "forecast_gain": "How strongly the forecast eases the setpoint (°C per °C of expected help). Brake-only. (↑ = forecast relaxes more)",
+          "forecast_cap": "Max °C the forecast bias can apply. (↑ = allows more forecast relief)",
+          "forecast_window_h": "Look-ahead window (hours) scanned for the helping extreme. (↑ = looks further ahead)"
         }
       },
       "cat_adaptive_lead": {
@@ -617,16 +617,16 @@
           "lead_adaptive_max_h": "Adaptive lead max (h)"
         },
         "data_description": {
-          "adapt_alpha": "EMA smoothing of the learned rate/overshoot/lag.",
-          "adapt_gain_lr": "Learning step toward the lead target each cycle.",
+          "adapt_alpha": "EMA smoothing of the learned rate/overshoot/lag. (↑ = learns faster but noisier)",
+          "adapt_gain_lr": "Learning step toward the lead target each cycle. (↑ = converges to the target lead faster)",
           "adapt_overshoot_target": "Tolerated overshoot (°C) before the lead is corrected.",
-          "adapt_rate_floor_cph": "Floor on the learned heating/cooling rate (avoids divide-by-zero).",
-          "adapt_lag_k": "Weight of the learned thermal lag in the lead.",
-          "adapt_on_rate_min_dt_h": "Min ON duration (h) to trust a rate sample.",
-          "adapt_on_rate_min_dt": "Min temperature change (°C) to trust a rate sample.",
-          "adapt_off_window_h": "Window (h) watched after OFF to learn overshoot and lag.",
-          "lead_adaptive_min_h": "Lower clamp on the learned lead (hours).",
-          "lead_adaptive_max_h": "Upper clamp on the learned lead (hours)."
+          "adapt_rate_floor_cph": "Floor on the learned heating/cooling rate (avoids divide-by-zero). (advanced; safety floor)",
+          "adapt_lag_k": "Weight of the learned thermal lag in the lead. (↑ = lag weighs more in the lead)",
+          "adapt_on_rate_min_dt_h": "Min ON duration (h) to trust a rate sample. (↑ = requires cleaner samples)",
+          "adapt_on_rate_min_dt": "Min temperature change (°C) to trust a rate sample. (↑ = requires cleaner samples)",
+          "adapt_off_window_h": "Window (h) watched after OFF to learn overshoot and lag. (↑ = observes longer after off)",
+          "lead_adaptive_min_h": "Lower clamp on the learned lead (hours). (bounds the learned lead)",
+          "lead_adaptive_max_h": "Upper clamp on the learned lead (hours). (bounds the learned lead)"
         }
       },
       "cat_condensation": {
@@ -636,7 +636,7 @@
           "dew_spread_min": "Dew-point margin (°C)"
         },
         "data_description": {
-          "dew_spread_min": "Condensation risk when indoor temp is within this margin of the dew point (radiant-cooling safety)."
+          "dew_spread_min": "Condensation risk when indoor temp is within this margin of the dew point (radiant-cooling safety). (↑ = cuts sooner, more conservative)"
         }
       },
       "cat_facade": {
@@ -647,8 +647,8 @@
           "facade_gain_cool": "Facade gain cool (°C)"
         },
         "data_description": {
-          "facade_gain_heat": "Max setpoint relief from sunlit open facades while heating (free solar gain).",
-          "facade_gain_cool": "Max setpoint relief from sunlit facades while cooling."
+          "facade_gain_heat": "Max setpoint relief from sunlit open facades while heating (free solar gain). (↑ = leans more on facade sun)",
+          "facade_gain_cool": "Max setpoint relief from sunlit facades while cooling. (↑ = leans more on facade sun)"
         }
       },
       "preset": {
@@ -687,7 +687,7 @@
           "anticip_co2_rate_off": "Rate below which the anticipatory boost releases (hysteresis).",
           "anticip_pm_rate_on": "PM2.5 rise rate (µg/m³/h) that pre-boosts ventilation.",
           "anticip_pm_rate_off": "PM2.5 rate below which the anticipatory boost releases.",
-          "anticip_hold_s": "Minimum hold so a brief spike doesn't cause oscillation (seconds).",
+          "anticip_hold_s": "Minimum hold so a brief spike doesn't cause oscillation (seconds). (↑ = holds the boost longer)",
           "anticip_level": "Target speed while a steep rise is detected (V1/V2/V3).",
           "anticip_ema_alpha": "Smoothing of the slope itself (higher = more reactive)."
         }
@@ -700,8 +700,8 @@
           "quiet_critical_pm": "Critical PM2.5 (µg/m³)"
         },
         "data_description": {
-          "quiet_critical_co2": "During quiet hours the speed is capped, but a CO₂ at or above this lifts the cap (health > silence).",
-          "quiet_critical_pm": "PM2.5 at or above this lifts the quiet-hours cap."
+          "quiet_critical_co2": "During quiet hours the speed is capped, but a CO₂ at or above this lifts the cap (health > silence). (↓ = lifts the cap sooner)",
+          "quiet_critical_pm": "PM2.5 at or above this lifts the quiet-hours cap. (↓ = lifts the cap sooner)"
         }
       },
       "cat_recuperator": {
@@ -713,7 +713,7 @@
         },
         "data_description": {
           "hrv_bypass_eff_max": "Efficiency (0..1) at or below which, with a real ΔT, the exchanger is considered in bypass / not recovering.",
-          "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass."
+          "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass. (advanced)"
         }
       },
       "cat_demand": {
@@ -723,7 +723,7 @@
           "valve_power_min": "Valve power threshold (W)"
         },
         "data_description": {
-          "valve_power_min": "When the valve source is numeric (power, W), a reading above this counts the valve/relay as active."
+          "valve_power_min": "When the valve source is numeric (power, W), a reading above this counts the valve/relay as active. (↑ = needs more power to count as on)"
         }
       },
       "cat_mold": {
@@ -737,11 +737,11 @@
           "mold_cap_h": "Index cap (h)"
         },
         "data_description": {
-          "mold_rh_threshold": "Relative humidity at/above which mold-risk hours accrue.",
-          "mold_on_h": "Accumulated hours that arm the alert and drying.",
+          "mold_rh_threshold": "Relative humidity at/above which mold-risk hours accrue. (↓ = more sensitive to mold)",
+          "mold_on_h": "Accumulated hours that arm the alert and drying. (↓ = warns sooner)",
           "mold_off_h": "Accumulated hours below which it disarms (hysteresis).",
           "mold_decay_h": "Exponential decay time constant while RH is below the threshold.",
-          "mold_cap_h": "Maximum value the index can reach."
+          "mold_cap_h": "Maximum value the index can reach. (index ceiling)"
         }
       },
       "cat_window": {
@@ -754,10 +754,10 @@
           "window_max_lockout_min": "Max lockout (min)"
         },
         "data_description": {
-          "window_drop_cph": "Indoor-temperature change against the demand (°C/h) that flags a likely open window (only when no window sensor is configured).",
+          "window_drop_cph": "Indoor-temperature change against the demand (°C/h) that flags a likely open window (only when no window sensor is configured). (↓ = detects the window on gentler drops)",
           "window_confirm_min": "Minutes the anomaly must persist before the zone is switched off.",
           "window_release_min": "Minutes of stable temperature before normal control resumes.",
-          "window_max_lockout_min": "Safety timeout that resumes control even if the temperature has not stabilised."
+          "window_max_lockout_min": "Safety timeout that resumes control even if the temperature has not stabilised. (↑ = waits longer before resuming)"
         }
       },
       "cat_adjacent": {
@@ -792,9 +792,9 @@
         },
         "data_description": {
           "dawn_step_pct": "How much the shutter opens at each step.",
-          "dawn_step_min": "Minutes between steps.",
-          "dawn_target_pct": "Opening the ramp climbs to.",
-          "dawn_trigger_elevation": "Sun elevation (degrees) that starts the ramp at dawn."
+          "dawn_step_min": "Minutes between steps. (↓ = faster sunrise)",
+          "dawn_target_pct": "Opening the ramp climbs to. (↑ = ends more open)",
+          "dawn_trigger_elevation": "Sun elevation (degrees) that starts the ramp at dawn. (↑ = starts with the sun higher)"
         }
       },
       "cat_night": {
@@ -805,7 +805,7 @@
           "night_iso_open_pct": "Night purge open (%)"
         },
         "data_description": {
-          "night_iso_close_pct": "Closed position at night to insulate (heat) or protect the thermal mass (cool, warm night).",
+          "night_iso_close_pct": "Closed position at night to insulate (heat) or protect the thermal mass (cool, warm night). (↓ = closes more to insulate)",
           "night_iso_open_pct": "Open position at night to purge the thermal mass when the outside is cooler (cool)."
         }
       },
@@ -819,10 +819,10 @@
           "alert_hold_min": "Alert hold (min)"
         },
         "data_description": {
-          "alert_pct": "Protection position for the generic weather alert.",
-          "alert_hail_pct": "Protection position for a hail/storm alert (fully closed protects best).",
-          "alert_wind_pct": "Protection position for a wind alert (a mid position can protect the slats).",
-          "alert_hold_min": "Minutes the protection is held after the alert clears."
+          "alert_pct": "Protection position for the generic weather alert. (↓ = more closed, more protection)",
+          "alert_hail_pct": "Protection position for a hail/storm alert (fully closed protects best). (↓ = more closed, more protection)",
+          "alert_wind_pct": "Protection position for a wind alert (a mid position can protect the slats). (↓ = more closed, more protection)",
+          "alert_hold_min": "Minutes the protection is held after the alert clears. (↑ = protects longer after the alert)"
         }
       },
       "cat_hood": {
@@ -835,9 +835,9 @@
           "hood_hys": "PM2.5 hysteresis (µg/m³)"
         },
         "data_description": {
-          "hood_pm_v1": "Indoor PM2.5 at/above which the hood runs at V1.",
-          "hood_pm_v2": "Indoor PM2.5 at/above which the hood runs at V2.",
-          "hood_pm_v3": "Indoor PM2.5 at/above which the hood runs at V3.",
+          "hood_pm_v1": "Indoor PM2.5 at/above which the hood runs at V1. (↓ = the hood steps up sooner)",
+          "hood_pm_v2": "Indoor PM2.5 at/above which the hood runs at V2. (↓ = the hood steps up sooner)",
+          "hood_pm_v3": "Indoor PM2.5 at/above which the hood runs at V3. (↓ = the hood steps up sooner)",
           "hood_hys": "Margin the PM must fall below before the hood steps down a level."
         }
       },
@@ -851,8 +851,8 @@
         },
         "data_description": {
           "stale_after_h": "A source whose data is older than this counts as down (fall back to the next).",
-          "alert_wind_kmh": "Wind at/above this raises the weather alert.",
-          "alert_precip_mm": "Precipitation at/above this raises the weather alert."
+          "alert_wind_kmh": "Wind at/above this raises the weather alert. (↓ = alerts sooner)",
+          "alert_precip_mm": "Precipitation at/above this raises the weather alert. (↓ = alerts sooner)"
         }
       },
       "cat_tariff": {
@@ -878,7 +878,7 @@
         "data_description": {
           "anticycle_min_on_s": "Minimum time the shared compressor stays on before a stop is registered (protects against short cycling). Safety stops override it.",
           "anticycle_min_off_s": "Minimum time the compressor stays off before it may restart.",
-          "anticycle_max_starts_per_h": "Maximum compressor starts allowed per rolling hour (default 6)."
+          "anticycle_max_starts_per_h": "Maximum compressor starts allowed per rolling hour (default 6). (↓ = protects the compressor more)"
         }
       },
       "cat_peak": {
@@ -893,8 +893,8 @@
         "data_description": {
           "peak_max_zones": "How many electric loads (heating zones or covers) may be running/moving at once before new starts are deferred. Used when no power budget is set.",
           "peak_max_power_w": "If above 0, limit by total watts instead of a count (uses the real power meter when present, otherwise the estimate). 0 = count mode.",
-          "peak_stagger_s": "Minimum gap between fresh starts, so a burst of demands ramps up one at a time instead of together.",
-          "peak_comfort_bypass_c": "A zone this far past its setpoint bypasses the peak limit entirely — comfort wins over peak-shaving (safety still wins above). 0 disables it."
+          "peak_stagger_s": "Minimum gap between fresh starts, so a burst of demands ramps up one at a time instead of together. (↑ = spaces starts more)",
+          "peak_comfort_bypass_c": "A zone this far past its setpoint bypasses the peak limit entirely — comfort wins over peak-shaving (safety still wins above). 0 disables it. (↓ = bypasses with less deviation)"
         }
       },
       "cat_energy": {
@@ -909,12 +909,12 @@
           "full_travel_s": "Full travel (s)"
         },
         "data_description": {
-          "est_w_v1": "Estimated VMC power at speed V1, used when no power meter is configured.",
-          "est_w_v2": "Estimated VMC power at speed V2.",
-          "est_w_v3": "Estimated VMC power at speed V3.",
-          "est_w_on": "Estimated climate power while the zone is calling for heat/cool (no meter configured).",
-          "est_w_motor": "Estimated shutter-motor power, used to estimate the energy of each movement.",
-          "full_travel_s": "Time for a full open↔close travel of the shutter (scales the per-move energy)."
+          "est_w_v1": "Estimated VMC power at speed V1, used when no power meter is configured. (set to the real draw)",
+          "est_w_v2": "Estimated VMC power at speed V2. (set to the real draw)",
+          "est_w_v3": "Estimated VMC power at speed V3. (set to the real draw)",
+          "est_w_on": "Estimated climate power while the zone is calling for heat/cool (no meter configured). (set to the real draw)",
+          "est_w_motor": "Estimated shutter-motor power, used to estimate the energy of each movement. (set to the real draw)",
+          "full_travel_s": "Time for a full open↔close travel of the shutter (scales the per-move energy). (measure the real travel)"
         }
       },
       "schedule": {
@@ -1025,7 +1025,7 @@
         "data_description": {
           "support_dev_on": "How far the room may fall behind the setpoint (in the active direction) before a support emitter is armed.",
           "support_confirm_min": "How long that lag must persist before the support actually turns on.",
-          "support_dev_off": "Once the room recovers to within this band of the setpoint, the support begins to retire.",
+          "support_dev_off": "Once the room recovers to within this band of the setpoint, the support begins to retire. (↓ = support retires sooner)",
           "support_release_min": "How long the recovery must hold before the support turns off (hysteresis)."
         }
       },
