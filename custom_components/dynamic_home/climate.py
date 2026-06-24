@@ -27,6 +27,9 @@ from . import const
 from .coordinator import DcCoordinator
 
 _HVAC_MODES = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL]
+# F37: community zones also offer HEAT_COOL = "follow the building" (the changeover
+# decides heat vs cool); honest UI instead of showing "heat" while actually cooling.
+_HVAC_MODES_COMMUNITY = _HVAC_MODES + [HVACMode.HEAT_COOL]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
@@ -41,7 +44,6 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
     _attr_has_entity_name = True
     _attr_name = None
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
-    _attr_hvac_modes = _HVAC_MODES
     _attr_target_temperature_step = 0.5
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
     # TURN_ON/OFF flags arrived in HA 2024.8; add only if available.
@@ -67,12 +69,26 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         """Restore the zone's mode across restarts."""
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
-        if last and last.state in _HVAC_MODES:
-            self.coordinator.hvac_mode = last.state
+        if last and last.state in _HVAC_MODES_COMMUNITY:
+            if last.state == HVACMode.HEAT_COOL:
+                self.coordinator.follow_changeover = True
+            else:
+                self.coordinator.follow_changeover = False
+                self.coordinator.hvac_mode = last.state
             await self.coordinator.async_refresh()
 
     @property
+    def hvac_modes(self) -> list[HVACMode]:
+        """Offer HEAT_COOL only on community zones (F37 follow-the-building)."""
+        profile = self.coordinator.install_profile
+        if profile and profile.get("community"):
+            return _HVAC_MODES_COMMUNITY
+        return _HVAC_MODES
+
+    @property
     def hvac_mode(self) -> HVACMode:
+        if self.coordinator.follow_changeover:
+            return HVACMode.HEAT_COOL
         return HVACMode(self.coordinator.hvac_mode)
 
     @property
@@ -108,7 +124,12 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
                 "peak_reason": self.coordinator.peak_reason}
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        self.coordinator.hvac_mode = str(hvac_mode)
+        if hvac_mode == HVACMode.HEAT_COOL:
+            # "Follow the building": the refresh resolves it from the changeover.
+            self.coordinator.follow_changeover = True
+        else:
+            self.coordinator.follow_changeover = False
+            self.coordinator.hvac_mode = str(hvac_mode)
         if hvac_mode != HVACMode.OFF:
             # Leaving a manual override when the user re-selects a mode.
             self.coordinator.override_active = False
@@ -117,7 +138,11 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
 
     async def async_set_temperature(self, **kwargs) -> None:
         if (mode := kwargs.get(ATTR_HVAC_MODE)) is not None:
-            self.coordinator.hvac_mode = str(mode)
+            if mode == HVACMode.HEAT_COOL:
+                self.coordinator.follow_changeover = True
+            else:
+                self.coordinator.follow_changeover = False
+                self.coordinator.hvac_mode = str(mode)
         temp = kwargs.get(ATTR_TEMPERATURE)
         if temp is not None:
             # Manual setpoint -> override.

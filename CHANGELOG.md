@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.34.0] — 2026-06-24
+
+### Added
+- **Clima (F37) · modo "seguir al edificio" (`HEAT_COOL`)**: las zonas **comunitarias**
+  ofrecen un cuarto modo de termostato, **Calor/Frío** (`HVACMode.HEAT_COOL`), que significa
+  *"sigo la dirección del changeover"*. UI honesta: antes una zona comunitaria en *Calor*
+  podía estar **enfriando** (porque el anillo de la comunidad va en frío) y la tarjeta no lo
+  reflejaba; ahora se expresa explícito y la **acción** muestra la dirección real. Las zonas
+  individuales mantienen los 3 modos de siempre.
+
+### Internal
+- `coordinator_dc.follow_changeover` (flag) + resolución a heat/cool/off cada ciclo desde
+  el changeover (el motor nunca ve `"heat_cool"`); `climate.py` ofrece `HEAT_COOL` solo en
+  zonas `community` (property `hvac_modes`), lo mapea en `hvac_mode` y restaura el modo.
+  `HEAT_COOL` es un modo estándar de HA (sin traducciones nuevas). Tests (comunitaria sigue
+  el changeover y al voltear; individual no lo ofrece). Suite 465→467.
+
 ## [0.33.0] — 2026-06-24
 
 ### Added
