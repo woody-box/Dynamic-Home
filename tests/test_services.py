@@ -49,7 +49,8 @@ async def test_services_registered_after_setup(hass: HomeAssistant) -> None:
     _seed(hass)
     await _add(hass, CLIMATE, "Salon")
     for svc in (const.SERVICE_RESET_LEARNING, const.SERVICE_SET_OBSERVE,
-                const.SERVICE_RESET_FILTER, const.SERVICE_RECALIBRATE):
+                const.SERVICE_RESET_FILTER, const.SERVICE_RECALIBRATE,
+                const.SERVICE_EXPORT_OPTIONS, const.SERVICE_IMPORT_OPTIONS):
         assert hass.services.has_service(const.DOMAIN, svc), svc
 
 
@@ -169,3 +170,37 @@ async def test_services_removed_with_last_entry(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     # Gone once the last entry unloads.
     assert not hass.services.has_service(const.DOMAIN, const.SERVICE_RECALIBRATE)
+
+
+async def test_export_then_import_options_round_trip(hass: HomeAssistant) -> None:
+    """Export a zone's tuned values and clone them onto another; junk is dropped."""
+    _seed(hass)
+    hass.states.async_set("sensor.cocina_temp", "21")
+    a = await _add(hass, CLIMATE, "Salon")
+    b = await _add(hass, {**CLIMATE, const.CONF_NAME: "Cocina",
+                          const.CONF_DC_T_INT: "sensor.cocina_temp"}, "Cocina")
+
+    # Tune zone A.
+    hass.config_entries.async_update_entry(
+        a, options={"base_heat_day": 23.0, "step": 0.2})
+    await hass.async_block_till_done()
+
+    # Export A -> response data carries its options.
+    resp = await hass.services.async_call(
+        const.DOMAIN, const.SERVICE_EXPORT_OPTIONS,
+        {"entity_id": "climate.salon"}, blocking=True, return_response=True)
+    opts = resp["options"][a.entry_id]
+    assert opts["base_heat_day"] == 23.0 and opts["step"] == 0.2
+
+    # Import into B, with junk that must be dropped (unknown key + a data-only key).
+    await hass.services.async_call(
+        const.DOMAIN, const.SERVICE_IMPORT_OPTIONS,
+        {"entity_id": "climate.cocina",
+         "values": {**opts, "not_a_real_key": 1, const.CONF_DC_T_INT: "sensor.evil"}},
+        blocking=True)
+    await hass.async_block_till_done()
+
+    assert b.options["base_heat_day"] == 23.0      # cloned
+    assert b.options["step"] == 0.2
+    assert "not_a_real_key" not in b.options       # unknown key rejected
+    assert const.CONF_DC_T_INT not in b.options    # data key is not an option key

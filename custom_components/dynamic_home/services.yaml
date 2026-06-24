@@ -61,3 +61,30 @@ boost:
           max: 240
           unit_of_measurement: min
           mode: box
+
+export_options:
+  name: Export options
+  description: >-
+    Returns the tuned option values of the targeted module(s) as response data,
+    so they can be saved or fed into Import options on another zone.
+  target:
+    entity:
+      integration: dynamic_home
+
+import_options:
+  name: Import options
+  description: >-
+    Merges a dict of option values into the targeted module(s). Only keys valid
+    for that module are applied (unknown keys are ignored), so a set exported
+    from one zone can be cloned onto another. Changes apply live.
+  target:
+    entity:
+      integration: dynamic_home
+  fields:
+    values:
+      name: Values
+      description: Option key/value pairs to merge (e.g. from Export options).
+      required: true
+      example: '{ "base_heat_day": 22.0, "step": 0.1 }'
+      selector:
+        object:

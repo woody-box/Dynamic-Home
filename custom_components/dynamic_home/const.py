@@ -167,8 +167,11 @@ SERVICE_SET_OBSERVE = "set_observe"
 SERVICE_RESET_FILTER = "reset_filter"
 SERVICE_RECALIBRATE = "recalibrate"
 SERVICE_BOOST = "boost"
+SERVICE_EXPORT_OPTIONS = "export_options"
+SERVICE_IMPORT_OPTIONS = "import_options"
 ATTR_ENABLED = "enabled"
 ATTR_MINUTES = "minutes"
+ATTR_VALUES = "values"
 BOOST_MIN_DEFAULT = 15.0
 
 # --- Native events (fired on transitions only, never every cycle) ---

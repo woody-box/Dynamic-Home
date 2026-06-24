@@ -1101,6 +1101,20 @@
           "description": "Cuánto mantener V3 antes de revertir (por defecto 15)."
         }
       }
+    },
+    "export_options": {
+      "name": "Exportar opciones",
+      "description": "Devuelve los valores de opciones ajustados de los módulos seleccionados, para guardarlos o pasarlos a Importar opciones."
+    },
+    "import_options": {
+      "name": "Importar opciones",
+      "description": "Fusiona un diccionario de valores de opciones en los módulos seleccionados. Solo se aplican las claves válidas para ese módulo; los cambios surten efecto en vivo.",
+      "fields": {
+        "values": {
+          "name": "Valores",
+          "description": "Pares clave/valor de opciones a fusionar (p. ej. de Exportar opciones)."
+        }
+      }
     }
   },
   "issues": {
