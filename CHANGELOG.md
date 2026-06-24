@@ -4,6 +4,16 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.35.2] — 2026-06-24
+
+### Added
+- **Ayuda por categoría en las opciones**: cada una de las **44 categorías** de parámetros
+  (Consignas base, Tendencia y lead, Freno, Anti-pico, Free-cooling, Posiciones…) muestra
+  ahora una **descripción** arriba del formulario que explica **qué hace el grupo y cómo se
+  relacionan sus mandos** (p. ej. "más anticipación → más freno", "el reparto de prioridad
+  no vive aquí, vive en Anti-pico", "configura el changeover para no ventilar calor"). Era
+  el hueco que la ayuda por campo aislado no cubría. EN + ES (paridad).
+
 ## [0.35.1] — 2026-06-24
 
 ### Added (docs)

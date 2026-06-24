@@ -233,6 +233,7 @@
       },
       "cat_iaq": {
         "title": "Air-quality thresholds",
+        "description": "At what CO2/PM the fan steps up. Lower the thresholds for stricter air; the hysteresis prevents flapping.",
         "data": {
           "co2_v2": "CO₂ → V2 (ppm)",
           "co2_v3": "CO₂ → V3 (ppm)",
@@ -252,6 +253,7 @@
       },
       "cat_smoothing": {
         "title": "Sensor smoothing",
+        "description": "Smooths CO2/PM with an EMA so it doesn't react to noise. Higher alpha = more reactive.",
         "data": {
           "co2_ema_enabled": "Smooth CO₂ (EMA)",
           "pm_ema_enabled": "Smooth PM2.5 (EMA)",
@@ -267,6 +269,7 @@
       },
       "cat_freecool": {
         "title": "Free-cooling",
+        "description": "Pulls in cool outside air when it's warmer indoors. Configure the changeover so it doesn't vent heat in winter.",
         "data": {
           "freecool_t_ext_min": "Min outdoor temp (°C)",
           "freecool_delta_on": "ΔT on (°C)",
@@ -280,6 +283,7 @@
       },
       "cat_hostile": {
         "title": "Hostile outdoor air",
+        "description": "Throttles ventilation when the outdoor air is hostile (extreme cold).",
         "data": {
           "hostile_t1": "AQI threshold 1",
           "hostile_t2": "AQI threshold 2",
@@ -293,6 +297,7 @@
       },
       "cat_dry": {
         "title": "Anti-condensation",
+        "description": "Ventilates to dry only when the outside air is genuinely drier (dew point + margin), not by raw humidity.",
         "data": {
           "dry_v2_delta": "Dry V2 ΔT (°C)",
           "dry_v3_delta": "Dry V3 ΔT (°C)",
@@ -310,6 +315,7 @@
       },
       "cat_failsafe": {
         "title": "Failsafe & startup",
+        "description": "Protects against dead sensors and bounces: staleness, startup grace, anti-trip. Touch with care.",
         "data": {
           "co2_sanity_floor": "CO₂ sanity floor (ppm)",
           "stale_threshold_s": "Stale sensor (s)",
@@ -329,6 +335,7 @@
       },
       "cat_shower": {
         "title": "Shower boost",
+        "description": "Boost to V3 on the shower's humidity jump, with a hold.",
         "data": {
           "shower_rh_delta_on": "RH Δ on (%)",
           "shower_rh_delta_off": "RH Δ off (%)",
@@ -344,6 +351,7 @@
       },
       "cat_adaptive_iaq": {
         "title": "Adaptive thresholds",
+        "description": "How many samples before trusting the learned thresholds.",
         "data": {
           "adaptive_min_samples": "Min samples"
         },
@@ -353,6 +361,7 @@
       },
       "cat_positions": {
         "title": "Shutter positions",
+        "description": "The target positions per situation (rain, summer shield, night, alert...). They set what % the shutter goes to in each branch.",
         "data": {
           "rain_close_pct": "Rain close (%)",
           "freecool_max_open_pct": "Free-cool max open (%)",
@@ -372,6 +381,7 @@
       },
       "cat_thermal": {
         "title": "Thermal deltas",
+        "description": "Temperature deltas that trigger free-cooling / the solar shield (how much warmer outside than inside).",
         "data": {
           "freecool_delta": "Free-cool ΔT (°C)",
           "hot_delta": "Hot ΔT (°C)"
@@ -383,6 +393,7 @@
       },
       "cat_wind": {
         "title": "Wind protection",
+        "description": "Wind cap with hysteresis to protect the slats. Works with Weather alerts.",
         "data": {
           "wind_limit_kmh": "Wind limit (km/h)",
           "wind_cap_span_kmh": "Wind cap span (km/h)",
@@ -396,6 +407,7 @@
       },
       "cat_slew": {
         "title": "Slew rate",
+        "description": "Limits the move step so the shutter doesn't go in jerks.",
         "data": {
           "slew_enabled": "Limit slew rate",
           "slew_step_pct": "Slew step (%)"
@@ -407,6 +419,7 @@
       },
       "cat_geometry": {
         "title": "Window geometry",
+        "description": "Window/overhang measurements for the geometric shading model (opt-in). Only matters with 'Geometric shading' on.",
         "data": {
           "window_height_cm": "Window height (cm)",
           "overhang_cm": "Overhang (cm)",
@@ -426,6 +439,7 @@
       },
       "cat_setpoints": {
         "title": "Base setpoints",
+        "description": "The starting point of the target; outdoor/VMC/facade biases, the lead and the brake all stack on top. Set these to your real comfort and let the rest modulate.",
         "data": {
           "base_heat_day": "Heat base (°C)",
           "base_cool_day": "Cool base (°C)",
@@ -443,6 +457,7 @@
       },
       "cat_limits": {
         "title": "Setpoint limits",
+        "description": "Safety net: how far the target may move and how often it is applied. If the target ever drifts out of a sane range, bound it here.",
         "data": {
           "target_min_heat": "Heat min (°C)",
           "target_max_heat": "Heat max (°C)",
@@ -474,6 +489,7 @@
       },
       "cat_exterior": {
         "title": "Outdoor bias",
+        "description": "How much the outdoor temperature pushes the target. Raise the biases to react more to cold/heat outside; lower insulation_factor if the home is well insulated.",
         "data": {
           "ext_cold_threshold": "Cold threshold (°C)",
           "ext_hot_threshold": "Hot threshold (°C)",
@@ -495,6 +511,7 @@
       },
       "cat_bus": {
         "title": "Bus self-bias",
+        "description": "How much the solar bus self-biases this zone (gain/shield intents). Works together with Facade bias and the shutter module.",
         "data": {
           "sdhb_bias_solar_gain_heat": "Solar gain heat (°C)",
           "sdhb_bias_solar_shield_cool": "Solar shield cool (°C)"
@@ -506,6 +523,7 @@
       },
       "cat_vmc": {
         "title": "VMC bias",
+        "description": "Compensates the target for the VMC speed (more ventilation = more loss), per speed and mode.",
         "data": {
           "vmc_bias_heat_1": "Heat bias V 1",
           "vmc_bias_heat_2": "Heat bias V 2",
@@ -525,6 +543,7 @@
       },
       "cat_trend": {
         "title": "Trend & lead",
+        "description": "The anticipation (lead): how many hours ahead the target reaches. Raise the lead to pre-heat/pre-cool earlier — but if you raise it, watch the Brake so you don't overshoot. lead_min/max cap the result.",
         "data": {
           "trend_lead_h": "Fallback lead (h)",
           "trend_max_shift": "Max trend shift (°C)",
@@ -550,6 +569,7 @@
       },
       "cat_brake": {
         "title": "Trend brake",
+        "description": "Brakes the target when the trend already pushes toward setpoint, to avoid overshooting. The natural pair of the lead: more anticipation -> more brake.",
         "data": {
           "brake_thresholds_1": "Brake threshold 1",
           "brake_thresholds_2": "Brake threshold 2",
@@ -569,6 +589,7 @@
       },
       "cat_forecast": {
         "title": "Forecast",
+        "description": "Uses the weather forecast to nudge the target. Gain sets how much it weighs; cap limits it.",
         "data": {
           "forecast_gain": "Forecast gain",
           "forecast_cap": "Forecast cap (°C)",
@@ -582,6 +603,7 @@
       },
       "cat_adaptive_lead": {
         "title": "Adaptive lead",
+        "description": "The model that LEARNS your thermal inertia (rate/lag) and sets the lead by itself. Advanced: these knobs tune the learning — you rarely need to touch them.",
         "data": {
           "adapt_alpha": "EMA alpha",
           "adapt_gain_lr": "Learning rate",
@@ -609,6 +631,7 @@
       },
       "cat_condensation": {
         "title": "Condensation",
+        "description": "Margin to the dew point before cutting cooling (anti-condensation).",
         "data": {
           "dew_spread_min": "Dew-point margin (°C)"
         },
@@ -618,6 +641,7 @@
       },
       "cat_facade": {
         "title": "Facade bias",
+        "description": "Push from sun entering each facade. Works with Bus self-bias and the shutters.",
         "data": {
           "facade_gain_heat": "Facade gain heat (°C)",
           "facade_gain_cool": "Facade gain cool (°C)"
@@ -638,6 +662,7 @@
       },
       "cat_filter": {
         "title": "Filter life",
+        "description": "Filter life hours before the replacement notice.",
         "data": {
           "filter_life_hours": "Filter life (h)"
         },
@@ -647,6 +672,7 @@
       },
       "cat_anticipatory": {
         "title": "Anticipatory boost",
+        "description": "Gets ahead of a fast CO2/PM rise by its slope, before it crosses the threshold.",
         "data": {
           "anticip_co2_rate_on": "CO₂ rate on (ppm/h)",
           "anticip_co2_rate_off": "CO₂ rate off (ppm/h)",
@@ -668,6 +694,7 @@
       },
       "cat_quiet": {
         "title": "Quiet hours",
+        "description": "Speed cap during the night window — but critical CO2/PM override it (health wins over silence).",
         "data": {
           "quiet_critical_co2": "Critical CO₂ (ppm)",
           "quiet_critical_pm": "Critical PM2.5 (µg/m³)"
@@ -679,6 +706,7 @@
       },
       "cat_recuperator": {
         "title": "Heat recovery",
+        "description": "Heat-recovery bypass (efficiency/threshold) used for free-cooling.",
         "data": {
           "hrv_bypass_eff_max": "Bypass efficiency max",
           "hrv_bypass_dt_min": "Bypass ΔT min (°C)"
@@ -690,6 +718,7 @@
       },
       "cat_demand": {
         "title": "Real demand signal",
+        "description": "Threshold to read the real demand (valve relay/power) instead of inferring it.",
         "data": {
           "valve_power_min": "Valve power threshold (W)"
         },
@@ -699,6 +728,7 @@
       },
       "cat_mold": {
         "title": "Mold risk",
+        "description": "Hours-of-high-humidity index that arms drying/dehumidifier. On/off hysteresis + decay.",
         "data": {
           "mold_rh_threshold": "RH threshold (%)",
           "mold_on_h": "Arm at (h)",
@@ -716,6 +746,7 @@
       },
       "cat_window": {
         "title": "Open-window detection",
+        "description": "Detects an open window from a sharp temperature drop. Confirm/recovery timers + a lockout cap.",
         "data": {
           "window_drop_cph": "Sensitivity (°C/h)",
           "window_confirm_min": "Confirm (min)",
@@ -731,6 +762,7 @@
       },
       "cat_adjacent": {
         "title": "Adjacent space",
+        "description": "Advisories from an adjacent space (a door open to a very different zone).",
         "data": {
           "adj_open_dt": "Open ΔT (°C)",
           "adj_alarm_dt": "Alarm ΔT (°C)"
@@ -751,6 +783,7 @@
       },
       "cat_dawn": {
         "title": "Gradual sunrise",
+        "description": "Gentle sunrise ramp: step, interval, target and the trigger elevation.",
         "data": {
           "dawn_step_pct": "Sunrise step (%)",
           "dawn_step_min": "Sunrise step (min)",
@@ -766,6 +799,7 @@
       },
       "cat_night": {
         "title": "Night insulation",
+        "description": "Night-insulation positions (close to insulate / open to purge the thermal mass).",
         "data": {
           "night_iso_close_pct": "Night close (%)",
           "night_iso_open_pct": "Night purge open (%)"
@@ -777,6 +811,7 @@
       },
       "cat_alert": {
         "title": "Weather alerts",
+        "description": "Protection position per alert (generic/hail/wind) + how long to hold it. A safety cap above the solar logic.",
         "data": {
           "alert_pct": "Alert protect (%)",
           "alert_hail_pct": "Hail protect (%)",
@@ -792,6 +827,7 @@
       },
       "cat_hood": {
         "title": "Extractor hood",
+        "description": "Boost on kitchen PM (range hood).",
         "data": {
           "hood_pm_v1": "PM2.5 → V1 (µg/m³)",
           "hood_pm_v2": "PM2.5 → V2 (µg/m³)",
@@ -807,6 +843,7 @@
       },
       "cat_wx": {
         "title": "Sources & alerts",
+        "description": "Weather sources and alerts (wind/rain/etc.) that feed the protections.",
         "data": {
           "stale_after_h": "Stale after (h)",
           "alert_wind_kmh": "Alert wind (km/h)",
@@ -820,6 +857,7 @@
       },
       "cat_tariff": {
         "title": "Tariff thresholds",
+        "description": "Tariff bands (cheap/normal/peak) the energy module publishes for the climate zones to use.",
         "data": {
           "cheap_below": "Cheap below (€/kWh)",
           "peak_above": "Peak above (€/kWh)"
@@ -831,6 +869,7 @@
       },
       "cat_cycle": {
         "title": "Short-cycle protection",
+        "description": "Protects the compressor: minimum ON/OFF and max starts/hour. Note: per-zone priority does NOT live here — it lives in Electrical peak. You can let 'Adaptive anti-cycle' size these from learning.",
         "data": {
           "anticycle_min_on_s": "Min ON (s)",
           "anticycle_min_off_s": "Min OFF (s)",
@@ -844,6 +883,7 @@
       },
       "cat_peak": {
         "title": "Electrical-peak staging",
+        "description": "Avoids tripping the main breaker: how many loads/watts at once + staggering. The comfort bypass lets a severe deviation skip the limit. Only applies to electrical/individual loads.",
         "data": {
           "peak_max_zones": "Max simultaneous starts",
           "peak_max_power_w": "Power budget (W, 0 = count)",
@@ -859,6 +899,7 @@
       },
       "cat_energy": {
         "title": "Energy estimate",
+        "description": "Estimated watts when there is no real meter, for the energy/power sensor.",
         "data": {
           "est_w_v1": "V1 power (W)",
           "est_w_v2": "V2 power (W)",
@@ -974,6 +1015,7 @@
       },
       "cat_staging": {
         "title": "Emitter staging",
+        "description": "When a support emitter kicks in if the primary lags (multi-emitter zones).",
         "data": {
           "support_dev_on": "Support arm Δ (°C)",
           "support_confirm_min": "Support confirm (min)",
@@ -989,6 +1031,7 @@
       },
       "cat_shared": {
         "title": "Shared emitter",
+        "description": "Reconciliation on a shared duct: this zone's weight and the anti-undershoot margin.",
         "data": {
           "zone_demand_weight": "Zone demand weight",
           "shared_undershoot_margin": "Undershoot margin (°C)"
@@ -1000,6 +1043,7 @@
       },
       "cat_tariff_bias": {
         "title": "Tariff bias",
+        "description": "How the tariff modulates anticipation: widen the lead off-peak, trim it at peak; a base bias loads thermal mass when cheap. Works with Electrical peak.",
         "data": {
           "tariff_lead_cheap_mult": "Cheap lead ×",
           "tariff_lead_peak_mult": "Peak lead ×",
