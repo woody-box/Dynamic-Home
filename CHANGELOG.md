@@ -4,6 +4,15 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.35.1] — 2026-06-24
+
+### Added (docs)
+- **`docs/TUNING.md` · guía de ajuste por objetivo**: agrupa los muchos parámetros por
+  **lo que el usuario quiere conseguir** ("que anticipe más", "que no oscile", "que respete
+  el ICP", "sombra en verano"…), diciendo **qué mover, hacia dónde y qué vigilar junto**
+  (la relación entre mandos que no captura la ayuda por campo). Cubre DC/DV/DS + la cascada
+  del target + cómo validar un cambio. Enlazada desde el README. Solo documentación.
+
 ## [0.35.0] — 2026-06-24
 
 ### Added
