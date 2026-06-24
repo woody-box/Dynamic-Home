@@ -223,6 +223,49 @@ async def test_freecool_suppressed_by_house_heating_changeover(
     assert co.state_data.freecool_active is False
 
 
+async def test_freecool_no_changeover_advisory_repair(hass: HomeAssistant) -> None:
+    """F37/F07: warn when free-cooling + a heating zone + no changeover coexist."""
+    from types import SimpleNamespace
+
+    from homeassistant.helpers import issue_registry as ir
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    hass.states.async_set("sensor.t_in", "22")
+    hass.states.async_set("sensor.t_ext", "12")          # free-cooling enabled
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW,
+        const.CONF_T_IN: "sensor.t_in", const.CONF_T_EXT: "sensor.t_ext",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = ir.async_get(hass)
+    issue_id = f"freecool_no_changeover_{entry.entry_id}"
+
+    # A heating zone exists and no changeover is configured -> advisory raised.
+    hass.data[const.DOMAIN]["dc1"] = SimpleNamespace(hvac_mode="heat")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    issue = reg.async_get_issue(const.DOMAIN, issue_id)
+    assert issue is not None
+    assert issue.translation_key == const.ISSUE_FREECOOL_NO_CHANGEOVER
+
+    # Configure a changeover -> the season is known -> cleared.
+    hass.data[const.DOMAIN][const.DATA_CHANGEOVER] = {"state": "heat"}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert reg.async_get_issue(const.DOMAIN, issue_id) is None
+
+    # No changeover, but the only zone is cooling (not heating) -> no advisory.
+    del hass.data[const.DOMAIN][const.DATA_CHANGEOVER]
+    hass.data[const.DOMAIN]["dc1"].hvac_mode = "cool"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert reg.async_get_issue(const.DOMAIN, issue_id) is None
+
+
 async def test_anticipatory_switch_wires_to_cfg(hass: HomeAssistant) -> None:
     """F11: the anticipatory switch exists and its gate reaches the engine cfg."""
     from homeassistant.helpers import entity_registry as er
