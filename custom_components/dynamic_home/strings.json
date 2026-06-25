@@ -32,6 +32,7 @@
           "hrv_supply": "HRV supply temp (optional)",
           "hrv_intake": "HRV fresh-air intake temp (optional)",
           "hrv_extract": "HRV extract (stale air) temp (optional)",
+          "hrv_exhaust": "HRV exhaust (air expelled outside) temp (optional)",
           "voc": "VOC sensor (optional)",
           "hood_v1": "Hood relay V1 (switch)",
           "hood_v2": "Hood relay V2 (switch)",

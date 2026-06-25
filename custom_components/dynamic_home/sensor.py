@@ -76,6 +76,7 @@ _MIRROR_ROLES: dict[str, tuple[tuple[str, str], ...]] = {
         (const.CONF_HRV_SUPPLY, "HRV impulsión"),
         (const.CONF_HRV_INTAKE, "HRV admisión"),
         (const.CONF_HRV_EXTRACT, "HRV extracción"),
+        (const.CONF_HRV_EXHAUST, "HRV expulsión"),
         (const.CONF_VOC, "COV"),
     ),
     const.MODULE_CLIMATE: (
@@ -764,7 +765,9 @@ class HrvEfficiencySensor(_Base):
 
     @property
     def extra_state_attributes(self) -> dict:
-        return {"state": self.coordinator.hrv_state}
+        # Expose all configured recuperator temperatures alongside η + state.
+        return {"state": self.coordinator.hrv_state,
+                **self.coordinator.hrv_temperatures}
 
 
 class VocSensor(_Base):

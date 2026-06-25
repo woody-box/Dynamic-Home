@@ -4,6 +4,17 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.38.0] — 2026-06-25
+
+### Added
+- **Recuperador (F28) · 4ª temperatura + exponer todas**: nuevo campo opcional **Temp.
+  expulsión HRV** (aire expulsado al exterior) en la config de la VMC. El sensor
+  **Recuperator efficiency** ahora expone **todas** las temperaturas configuradas como
+  atributos (`supply`, `intake`, `extract`, `exhaust`) junto al rendimiento (η) y su
+  estado (recovering/bypass/idle). La 4ª sonda **no** entra en el cálculo de η (sigue
+  siendo impulsión/admisión/extracción); se expone para observabilidad. También disponible
+  como **mirror** opt-in (`Hardware mirrors`) para graficar cada temperatura por separado.
+
 ## [0.37.0] — 2026-06-25
 
 ### Added

@@ -32,6 +32,7 @@
           "hrv_supply": "Temp. insuflación recuperador (opcional)",
           "hrv_intake": "Temp. absorción aire nuevo (opcional)",
           "hrv_extract": "Temp. extracción aire viciado (opcional)",
+          "hrv_exhaust": "Temp. expulsión HRV (aire expulsado al exterior) (opcional)",
           "voc": "Sensor VOC (opcional)",
           "hood_v1": "Relé campana V1 (switch)",
           "hood_v2": "Relé campana V2 (switch)",

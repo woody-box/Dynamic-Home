@@ -165,6 +165,17 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                 self._num(const.CONF_HRV_EXTRACT))
 
     @property
+    def hrv_temperatures(self) -> dict:
+        """All configured recuperator temperatures (°C) for observability.
+
+        Supply/intake/extract drive the efficiency; exhaust (optional) is exposed
+        too. Only the configured probes appear.
+        """
+        roles = (("supply", const.CONF_HRV_SUPPLY), ("intake", const.CONF_HRV_INTAKE),
+                 ("extract", const.CONF_HRV_EXTRACT), ("exhaust", const.CONF_HRV_EXHAUST))
+        return {name: self._num(key) for name, key in roles if self._hw(key)}
+
+    @property
     def hrv_efficiency_pct(self) -> float | None:
         eff = hrv_efficiency(*self._hrv_temps())
         return None if eff is None else round(eff * 100, 1)
