@@ -721,3 +721,28 @@ async def test_bathrooms_options_step_saves_and_clears(hass: HomeAssistant) -> N
     assert entry.options["bath_hum_1"] == "sensor.rh1"
     # An empty row clears a previously-set bathroom.
     assert "bath_hum_2" not in entry.options
+
+
+async def test_adaptive_thresholds_exposed_on_fan(hass: HomeAssistant) -> None:
+    """The learned CO2/PM thresholds + sample count surface as fan attributes."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.adaptive_enabled = True
+
+    # Feed enough varied history for the percentiles to be available.
+    cfg = co._cfg()
+    for i in range(150):
+        co._update_adaptive(cfg, 500 + (i % 200), 3 + (i % 10))
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    assert co.adaptive_samples >= 100
+    assert co.adaptive_co2_v2 is not None and co.adaptive_co2_v3 is not None
+
+    attrs = hass.states.get("fan.vmc").attributes
+    assert attrs["adaptive_co2_v2"] == co.adaptive_co2_v2
+    assert attrs["adaptive_co2_v3"] == co.adaptive_co2_v3
+    assert attrs["adaptive_samples"] == co.adaptive_samples

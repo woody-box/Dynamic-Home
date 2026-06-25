@@ -250,6 +250,14 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         # F13: name the bathroom whose humidity rise drove the shower boost.
         if data and data.reason == "shower_rh" and self.coordinator.shower_bathroom:
             attrs["shower_bathroom"] = self.coordinator.shower_bathroom
+        # Adaptive thresholds: surface what was learned (vs the fixed values), so
+        # they can be compared/graphed. None until enough samples accumulate.
+        if self.coordinator.adaptive_enabled:
+            attrs["adaptive_samples"] = self.coordinator.adaptive_samples
+            attrs["adaptive_co2_v2"] = self.coordinator.adaptive_co2_v2
+            attrs["adaptive_co2_v3"] = self.coordinator.adaptive_co2_v3
+            attrs["adaptive_pm_v2"] = self.coordinator.adaptive_pm_v2
+            attrs["adaptive_pm_v3"] = self.coordinator.adaptive_pm_v3
         return attrs
 
     # --- manual-override auto-revert ---

@@ -4,6 +4,15 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.37.0] — 2026-06-25
+
+### Added
+- **Umbrales adaptativos · visibles para comparar**: con *Adaptive thresholds* activo, el
+  ventilador expone como **atributos** los umbrales que ha **aprendido** (`adaptive_co2_v2`,
+  `adaptive_co2_v3`, `adaptive_pm_v2`, `adaptive_pm_v3` — p90/p95 de tu histórico) y el
+  número de muestras acumuladas (`adaptive_samples`). Así puedes **compararlos con los
+  fijos** y ver cómo convergen antes de fiarte. `None` hasta que hay muestras suficientes.
+
 ## [0.36.1] — 2026-06-25
 
 ### Fixed
