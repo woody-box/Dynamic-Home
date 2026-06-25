@@ -4,6 +4,14 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.36.1] — 2026-06-25
+
+### Fixed
+- **Paso "Baños" sin etiqueta en el menú de opciones de la VMC**: el paso existía (F13,
+  v0.36.0) pero faltaba su entrada en el menú, así que aparecía **en blanco** en *Configurar*
+  y era fácil no encontrarlo. Añadida la etiqueta **Baños (boost de ducha)** / *Bathrooms
+  (shower boost)* en EN y ES.
+
 ## [0.36.0] — 2026-06-24
 
 ### Added

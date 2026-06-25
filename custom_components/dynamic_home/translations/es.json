@@ -170,6 +170,7 @@
           "cat_shared": "Emisor compartido",
           "cat_tariff_bias": "Sesgo de tarifa",
           "schedule": "Programador semanal",
+          "bathrooms": "Baños (boost de ducha)",
           "install": "Tipo de instalación",
           "emitters": "Emisores",
           "zone_add": "Añadir zona",
