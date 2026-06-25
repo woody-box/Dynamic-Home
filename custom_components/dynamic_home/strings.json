@@ -170,6 +170,7 @@
           "cat_shared": "Shared emitter",
           "cat_tariff_bias": "Tariff bias",
           "schedule": "Weekly schedule",
+          "bathrooms": "Bathrooms (shower boost)",
           "install": "Installation type",
           "emitters": "Emitters",
           "zone_add": "Add zone",
