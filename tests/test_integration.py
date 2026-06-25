@@ -779,3 +779,33 @@ async def test_hrv_efficiency_exposes_all_four_temperatures(
     assert a["extract"] == 22 and a["exhaust"] == 11   # the new 4th temp
     # η = (21-8)/(22-8) = 92.9%
     assert float(hass.states.get(eid).state) > 90
+
+
+async def test_hardware_step_edits_entities(hass: HomeAssistant) -> None:
+    """Reconfigure: add the hood relays and clear an optional, no delete needed."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    hass.states.async_set("sensor.t_in", "21")
+    hass.states.async_set("switch.hood1", "off")
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC, const.CONF_T_IN: "sensor.t_in"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    flow = await hass.config_entries.options.async_init(entry.entry_id)
+    flow = await hass.config_entries.options.async_configure(
+        flow["flow_id"], {"next_step_id": "hardware"})
+    assert flow["step_id"] == "hardware"
+    # Submit the required relays/sensors + the hood; omit t_in to clear it.
+    flow = await hass.config_entries.options.async_configure(flow["flow_id"], {
+        const.CONF_NAME: "VMC",
+        const.CONF_SW_PWR: "switch.vmc_pwr", const.CONF_SW_V2: "switch.vmc_v2",
+        const.CONF_SW_V3: "switch.vmc_v3", const.CONF_CO2: "sensor.co2",
+        const.CONF_PM25: "sensor.pm25", const.CONF_HOOD_V1: "switch.hood1"})
+    await hass.async_block_till_done()
+
+    assert entry.data[const.CONF_HOOD_V1] == "switch.hood1"   # added
+    assert const.CONF_T_IN not in entry.data                  # cleared
+    assert entry.data[const.CONF_MODULE] == const.MODULE_VMC  # preserved
