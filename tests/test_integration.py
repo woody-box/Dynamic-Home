@@ -746,3 +746,36 @@ async def test_adaptive_thresholds_exposed_on_fan(hass: HomeAssistant) -> None:
     assert attrs["adaptive_co2_v2"] == co.adaptive_co2_v2
     assert attrs["adaptive_co2_v3"] == co.adaptive_co2_v3
     assert attrs["adaptive_samples"] == co.adaptive_samples
+
+
+async def test_hrv_efficiency_exposes_all_four_temperatures(
+        hass: HomeAssistant) -> None:
+    """The recuperator-efficiency sensor exposes all configured HRV temps."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    for e, v in [("sensor.hrv_sup", "21"), ("sensor.hrv_int", "8"),
+                 ("sensor.hrv_ext", "22"), ("sensor.hrv_exh", "11")]:
+        hass.states.async_set(e, v, {"device_class": "temperature"})
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC,
+        const.CONF_HRV_SUPPLY: "sensor.hrv_sup",
+        const.CONF_HRV_INTAKE: "sensor.hrv_int",
+        const.CONF_HRV_EXTRACT: "sensor.hrv_ext",
+        const.CONF_HRV_EXHAUST: "sensor.hrv_exh"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_hrv_efficiency")
+    assert eid is not None
+    a = hass.states.get(eid).attributes
+    assert a["supply"] == 21 and a["intake"] == 8
+    assert a["extract"] == 22 and a["exhaust"] == 11   # the new 4th temp
+    # η = (21-8)/(22-8) = 92.9%
+    assert float(hass.states.get(eid).state) > 90
