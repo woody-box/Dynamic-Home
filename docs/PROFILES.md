@@ -81,8 +81,10 @@ aparte si lo tienes.
 - **Punto de rocío (F13):** si tienes humedad interior/exterior, activa `dry_mode`. Solo
   ventila para secar cuando el aire de fuera es **de verdad más seco** (`dp_diff` supera
   `dry_margin`), no por humedad absoluta.
-- **Ducha (ΔRH):** `shower_enabled` para boost a V3 al detectar el salto de humedad del
-  baño, con hold.
+- **Ducha (ΔRH):** boost a V3 al detectar el salto de humedad del baño, con hold.
+  **Varios baños:** opciones de la VMC → **Baños** → añade hasta 6 (nombre + sensor de
+  humedad). Cualquier ducha en cualquier baño dispara el boost (gana la mayor subida) y el
+  atributo `shower_bathroom` del ventilador dice **qué baño** fue.
 - **Free-cooling:** `freecool_enabled`. Con changeover en calor se **suprime** (F37); sin
   changeover se rige solo por temperatura (y verás el aviso de Reparaciones si hay
   calefacción).

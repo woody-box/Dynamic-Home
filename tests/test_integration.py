@@ -651,3 +651,73 @@ async def test_dv_schedule_editor_persists(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert entry.options[const.CONF_SCHEDULE]["5"] == [
         {"start": "08:00", "value": 2}]
+
+
+# --- F13: multiple bathrooms for the shower boost ---
+async def test_multi_bathroom_rh_delta_takes_max_and_names_it(
+        hass: HomeAssistant) -> None:
+    _seed_states(hass)
+    hass.states.async_set("sensor.rh_ext", "40", {"device_class": "humidity"})
+    hass.states.async_set("sensor.rh_pasillo", "55", {"device_class": "humidity"})
+    hass.states.async_set("sensor.rh_dorm", "70", {"device_class": "humidity"})
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC",
+                            data={**HW, const.CONF_MODULE: const.MODULE_VMC,
+                                  const.CONF_HUM_EXT: "sensor.rh_ext"},
+                            options={
+                                "bath_name_1": "Baño pasillo",
+                                "bath_hum_1": "sensor.rh_pasillo",
+                                "bath_name_2": "Baño dormitorio",
+                                "bath_hum_2": "sensor.rh_dorm"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Largest rise wins (dorm: 70-40=30 > pasillo: 55-40=15) and is named.
+    assert co._rh_delta() == 30.0
+    assert co.shower_bathroom == "Baño dormitorio"
+    assert co._cfg().shower_enabled is True
+
+
+async def test_single_legacy_hum_bath_still_works(hass: HomeAssistant) -> None:
+    _seed_states(hass)
+    hass.states.async_set("sensor.rh_ext", "40", {"device_class": "humidity"})
+    hass.states.async_set("sensor.rh_bath", "62", {"device_class": "humidity"})
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC,
+        const.CONF_HUM_BATH: "sensor.rh_bath",
+        const.CONF_HUM_EXT: "sensor.rh_ext"}, options={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co._rh_delta() == 22.0           # 62 - 40, back-compat single sensor
+    assert co.shower_bathroom is None        # legacy sensor is unnamed
+    assert co._cfg().shower_enabled is True
+
+
+async def test_bathrooms_options_step_saves_and_clears(hass: HomeAssistant) -> None:
+    from homeassistant.data_entry_flow import FlowResultType
+    _seed_states(hass)
+    hass.states.async_set("sensor.rh1", "50", {"device_class": "humidity"})
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC",
+                            data={**HW, const.CONF_MODULE: const.MODULE_VMC},
+                            options={"bath_name_2": "viejo", "bath_hum_2": "sensor.x"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "bathrooms"})
+    assert result["step_id"] == "bathrooms"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {"bath_name_1": "Baño pasillo", "bath_hum_1": "sensor.rh1"})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+
+    assert entry.options["bath_name_1"] == "Baño pasillo"
+    assert entry.options["bath_hum_1"] == "sensor.rh1"
+    # An empty row clears a previously-set bathroom.
+    assert "bath_hum_2" not in entry.options

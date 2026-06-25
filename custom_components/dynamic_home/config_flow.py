@@ -272,6 +272,9 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         # Weekly scheduler (F21): VMC (speed) and climate (base setpoint) only.
         if self._module in (const.MODULE_VMC, const.MODULE_CLIMATE):
             menu.append("schedule")
+        # Bathrooms for the shower boost (F13): VMC only.
+        if self._module == const.MODULE_VMC:
+            menu.append("bathrooms")
         # Installation type (F26) + emitters editor (F25): climate zones only.
         if self._module == const.MODULE_CLIMATE:
             menu.append("install")
@@ -554,6 +557,34 @@ class DynamicHomeOptionsFlow(OptionsFlow):
             vol.Optional(const.CONF_EXPOSE_MIRRORS, default=cur): bool,
         })
         return self.async_show_form(step_id="mirrors", data_schema=schema)
+
+    async def async_step_bathrooms(self, user_input: dict[str, Any] | None = None):
+        """Configure up to ``BATHROOM_MAX`` bathrooms (name + humidity) for F13.
+
+        Each filled row adds a bathroom the shower boost watches; the engine takes
+        the largest RH rise across them. Cleared rows are removed from the options.
+        """
+        if user_input is not None:
+            merged = {**self.entry.options}
+            for i in range(1, const.BATHROOM_MAX + 1):
+                for base in (const.CONF_BATH_NAME, const.CONF_BATH_HUM):
+                    key = f"{base}_{i}"
+                    if user_input.get(key):
+                        merged[key] = user_input[key]
+                    else:
+                        merged.pop(key, None)
+            return self.async_create_entry(title="", data=merged)
+        o = self.entry.options
+        fields: dict = {}
+        for i in range(1, const.BATHROOM_MAX + 1):
+            name_key = f"{const.CONF_BATH_NAME}_{i}"
+            hum_key = f"{const.CONF_BATH_HUM}_{i}"
+            fields[vol.Optional(name_key, description={
+                "suggested_value": o.get(name_key)})] = str
+            fields[vol.Optional(hum_key, description={
+                "suggested_value": o.get(hum_key)})] = _entity("sensor", "humidity")
+        return self.async_show_form(
+            step_id="bathrooms", data_schema=vol.Schema(fields))
 
     async def async_step_preset(self, user_input: dict[str, Any] | None = None):
         """Apply a ready-made preset (merges its values into the options)."""

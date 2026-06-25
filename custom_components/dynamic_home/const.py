@@ -40,6 +40,11 @@ CONF_AQI = "outdoor_aqi_entity"
 CONF_HUM_BATH = "hum_bath"
 CONF_HUM_EXT = "hum_ext"
 CONF_HUM_IN = "hum_in"            # optional: indoor RH for dry-mode/dew
+# F13: extra bathrooms for the shower boost (each: name + humidity sensor),
+# configured in the VMC options. The engine takes the max RH rise across them.
+BATHROOM_MAX = 6
+CONF_BATH_HUM = "bath_hum"        # options keys bath_hum_1..N (humidity sensor)
+CONF_BATH_NAME = "bath_name"      # options keys bath_name_1..N (label)
 # Heat-recovery (HRV) efficiency probes (F28). The exhaust probe is NOT used.
 CONF_HRV_SUPPLY = "hrv_supply"    # supply into the house (after the exchanger)
 CONF_HRV_INTAKE = "hrv_intake"    # fresh outdoor air taken in

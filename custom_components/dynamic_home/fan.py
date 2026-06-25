@@ -244,9 +244,13 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     @property
     def extra_state_attributes(self) -> dict:
         data = self.coordinator.data
-        return {"reason": data.reason if data else None,
-                "base_target": data.base_target if data else None,
-                **(data.details if data else {})}
+        attrs = {"reason": data.reason if data else None,
+                 "base_target": data.base_target if data else None,
+                 **(data.details if data else {})}
+        # F13: name the bathroom whose humidity rise drove the shower boost.
+        if data and data.reason == "shower_rh" and self.coordinator.shower_bathroom:
+            attrs["shower_bathroom"] = self.coordinator.shower_bathroom
+        return attrs
 
     # --- manual-override auto-revert ---
     def _cancel_override(self) -> None:

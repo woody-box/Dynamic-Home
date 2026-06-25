@@ -1108,6 +1108,24 @@
           "sleep": "Velocidad máx. en modo Dormir (ruido / WAF).",
           "away": "Velocidad máx. en modo Fuera."
         }
+      },
+      "bathrooms": {
+        "title": "Baños (boost de ducha)",
+        "description": "Añade hasta 6 baños (nombre + sensor de humedad). El boost de ducha vigila la mayor subida de humedad entre ellos, así cualquier ducha en cualquier baño lo dispara. Rellena solo las filas que tengas.",
+        "data": {
+          "bath_name_1": "Nombre del baño 1",
+          "bath_hum_1": "Humedad del baño 1 (sensor)",
+          "bath_name_2": "Nombre del baño 2",
+          "bath_hum_2": "Humedad del baño 2 (sensor)",
+          "bath_name_3": "Nombre del baño 3",
+          "bath_hum_3": "Humedad del baño 3 (sensor)",
+          "bath_name_4": "Nombre del baño 4",
+          "bath_hum_4": "Humedad del baño 4 (sensor)",
+          "bath_name_5": "Nombre del baño 5",
+          "bath_hum_5": "Humedad del baño 5 (sensor)",
+          "bath_name_6": "Nombre del baño 6",
+          "bath_hum_6": "Humedad del baño 6 (sensor)"
+        }
       }
     },
     "abort": {

@@ -1108,6 +1108,24 @@
           "sleep": "Max VMC speed in Sleep mode (noise / WAF).",
           "away": "Max VMC speed in Away mode."
         }
+      },
+      "bathrooms": {
+        "title": "Bathrooms (shower boost)",
+        "description": "Add up to 6 bathrooms (name + humidity sensor). The shower boost watches the largest humidity rise across them, so a shower in any bathroom triggers it. Fill only the rows you have.",
+        "data": {
+          "bath_name_1": "Bathroom 1 name",
+          "bath_hum_1": "Bathroom 1 humidity (sensor)",
+          "bath_name_2": "Bathroom 2 name",
+          "bath_hum_2": "Bathroom 2 humidity (sensor)",
+          "bath_name_3": "Bathroom 3 name",
+          "bath_hum_3": "Bathroom 3 humidity (sensor)",
+          "bath_name_4": "Bathroom 4 name",
+          "bath_hum_4": "Bathroom 4 humidity (sensor)",
+          "bath_name_5": "Bathroom 5 name",
+          "bath_hum_5": "Bathroom 5 humidity (sensor)",
+          "bath_name_6": "Bathroom 6 name",
+          "bath_hum_6": "Bathroom 6 humidity (sensor)"
+        }
       }
     },
     "abort": {

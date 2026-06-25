@@ -91,6 +91,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.quiet_end = dtime(7, 0)
         # Timed V3 boost (F14): epoch until which boost is active (None = off).
         self.boost_until: float | None = None
+        self.shower_bathroom: str | None = None   # F13: which bathroom triggered
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise.
@@ -223,7 +224,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         cfg.freecool_enabled = bool(self._hw(const.CONF_T_IN) and
                                     self._hw(const.CONF_T_EXT))
         cfg.hostile_enabled = bool(self._hw(const.CONF_AQI))
-        cfg.shower_enabled = bool(self._hw(const.CONF_HUM_BATH) and
+        cfg.shower_enabled = bool(self._bathrooms() and
                                   self._hw(const.CONF_HUM_EXT))
         cfg.adaptive_enabled = self.adaptive_enabled
         cfg.anticip_enabled = self.anticip_enabled
@@ -350,12 +351,57 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.hass.async_create_task(self.async_request_refresh())
 
     # --- the actual update ---
-    def _rh_delta(self) -> float | None:
-        bath = self._num(const.CONF_HUM_BATH)
-        ext = self._num(const.CONF_HUM_EXT)
-        if bath is None or ext is None:
+    def _num_entity(self, ent: str | None) -> float | None:
+        """Float state of a specific entity id (used for option-stored sensors)."""
+        if not ent:
             return None
-        return bath - ext
+        st = self.hass.states.get(ent)
+        if st is None or st.state in ("unknown", "unavailable", "none", ""):
+            return None
+        try:
+            return float(st.state)
+        except (TypeError, ValueError):
+            return None
+
+    def _bathrooms(self) -> list[tuple[str | None, str]]:
+        """Configured ``(name, humidity entity)`` bathrooms for the shower boost.
+
+        The per-bathroom list (VMC options, F13) takes precedence; if none is
+        configured it falls back to the single legacy ``hum_bath`` from the
+        initial config (back-compat, one unnamed bathroom).
+        """
+        o = self.entry.options
+        out: list[tuple[str | None, str]] = []
+        for i in range(1, const.BATHROOM_MAX + 1):
+            ent = o.get(f"{const.CONF_BATH_HUM}_{i}")
+            if ent:
+                out.append((o.get(f"{const.CONF_BATH_NAME}_{i}") or f"Baño {i}",
+                            ent))
+        if not out and self._hw(const.CONF_HUM_BATH):
+            out.append((None, self._hw(const.CONF_HUM_BATH)))
+        return out
+
+    def _rh_delta(self) -> float | None:
+        """Largest RH rise (bathroom − outdoor) across all bathrooms (F13).
+
+        Any bathroom that spikes (someone showering) wins; the winning bathroom's
+        name is stored in ``shower_bathroom`` for the entity attributes.
+        """
+        ext = self._num(const.CONF_HUM_EXT)
+        if ext is None:
+            self.shower_bathroom = None
+            return None
+        best: float | None = None
+        best_name: str | None = None
+        for name, ent in self._bathrooms():
+            rh = self._num_entity(ent)
+            if rh is None:
+                continue
+            delta = rh - ext
+            if best is None or delta > best:
+                best, best_name = delta, name
+        self.shower_bathroom = best_name if best is not None else None
+        return best
 
     def _dew(self, cfg: DvConfig) -> tuple[bool, float | None]:
         """(dew_risk, dp_diff) for dry-mode from indoor/outdoor temp+RH."""
