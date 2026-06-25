@@ -94,6 +94,12 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.shower_bathroom: str | None = None   # F13: which bathroom triggered
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
+        # Learned thresholds (None until mature) + sample count, for observability.
+        self.adaptive_co2_v2: float | None = None
+        self.adaptive_co2_v3: float | None = None
+        self.adaptive_pm_v2: float | None = None
+        self.adaptive_pm_v3: float | None = None
+        self.adaptive_samples = 0
         # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise.
         self.anticip_enabled = False
         self._co2_hist: deque[float] = deque(maxlen=10080)
@@ -447,6 +453,11 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             self.hood_speed_auto = hood_speed(pm_raw, self.hood_speed_auto, cfg)
         a_co2_v2, a_co2_v3, a_pm_v2, a_pm_v3 = self._update_adaptive(
             cfg, co2_raw, pm_raw)
+        # Surface the learned thresholds + sample count for observability (so the
+        # user can compare them against the fixed ones before trusting adaptive).
+        self.adaptive_co2_v2, self.adaptive_co2_v3 = a_co2_v2, a_co2_v3
+        self.adaptive_pm_v2, self.adaptive_pm_v3 = a_pm_v2, a_pm_v3
+        self.adaptive_samples = min(len(self._co2_hist), len(self._pm_hist))
         dew_r, dp_diff = self._dew(cfg)
 
         # Weekly schedule (F21): a non-empty profile drives the base speed/on-off
