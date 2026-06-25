@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.39.0] — 2026-06-25
+
+### Added
+- **Reconfigurar entidades sin borrar el módulo**: nuevo paso **Editar entidades / hardware**
+  en *Configurar* (opciones) de cada módulo (VMC, persianas, clima, meteo, energía). Re-muestra
+  el formulario de entidades **precargado** con lo que ya tienes y permite **añadir, cambiar o
+  quitar** cualquiera (sensores, relés, recuperador… p. ej. los relés de la campana que se te
+  olvidaron). Al guardar actualiza la config y **recarga** el módulo para que surta efecto —
+  **sin borrar ni volver a añadir**, conservando opciones e histórico. Compatible con HA 2024.3
+  (el «Reconfigurar» nativo necesita 2024.4+).
+
+### Internal
+- `_HARDWARE_SCHEMA` (reusa los schemas de alta) + `async_step_hardware` en el options-flow
+  (preserva datos no-schema, borra opcionales vaciados, `async_update_entry` + reload);
+  «hardware» en el menú; paso `hardware` con la **unión** de etiquetas de campos de todos los
+  módulos (EN/ES, paridad). Test (añadir campana + quitar opcional + preservar módulo).
+
 ## [0.38.0] — 2026-06-25
 
 ### Added

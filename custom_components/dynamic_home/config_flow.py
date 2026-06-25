@@ -164,6 +164,16 @@ STEP_ENERGY_SCHEMA = vol.Schema(
 _ASSIGNABLE = (const.MODULE_VMC, const.MODULE_SHUTTER, const.MODULE_CLIMATE,
                const.MODULE_WEATHER)
 
+# The entity/hardware schema per module, reused by the options "Edit entities"
+# step so the chosen sensors/relays can be changed after setup (no delete + re-add).
+_HARDWARE_SCHEMA = {
+    const.MODULE_VMC: STEP_USER_SCHEMA,
+    const.MODULE_SHUTTER: STEP_SHUTTER_SCHEMA,
+    const.MODULE_CLIMATE: STEP_CLIMATE_SCHEMA,
+    const.MODULE_WEATHER: STEP_WEATHER_SCHEMA,
+    const.MODULE_ENERGY: STEP_ENERGY_SCHEMA,
+}
+
 
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
@@ -265,9 +275,13 @@ class DynamicHomeOptionsFlow(OptionsFlow):
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
         cats = options_spec.categories(self._module, self.show_advanced_options)
-        if not cats:
-            return self.async_abort(reason="no_options")
         menu = [f"cat_{c}" for c in cats]
+        # Edit the chosen entities/relays after setup (add/change/remove), so a
+        # forgotten sensor or the hood relays don't force a delete + re-add.
+        if self._module in _HARDWARE_SCHEMA:
+            menu.insert(0, "hardware")
+        if not menu:
+            return self.async_abort(reason="no_options")
         if presets.preset_ids(self._module):
             menu.append("preset")
         # Weekly scheduler (F21): VMC (speed) and climate (base setpoint) only.
@@ -547,6 +561,34 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         return selector.NumberSelector(selector.NumberSelectorConfig(
             min=5, max=35, step=0.1, unit_of_measurement="°C",
             mode=selector.NumberSelectorMode.BOX))
+
+    async def async_step_hardware(self, user_input: dict[str, Any] | None = None):
+        """Edit the module's chosen entities/relays after setup (reconfigure).
+
+        Re-shows the same entity form used at creation, pre-filled with what is
+        configured. Saving updates the entry data and reloads the module so new or
+        removed entities (e.g. the extractor-hood relays) take effect — without
+        deleting and re-adding the entry, keeping its options and history.
+        """
+        schema = _HARDWARE_SCHEMA.get(self._module)
+        if schema is None:
+            return self.async_abort(reason="no_options")
+        if user_input is not None:
+            keys = {m.schema for m in schema.schema}
+            # Keep non-schema data (module id, etc.); cleared optional fields drop
+            # out of user_input, so they are correctly removed.
+            data = {k: v for k, v in self.entry.data.items() if k not in keys}
+            data.update(user_input)
+            title = user_input.get(const.CONF_NAME) or self.entry.title
+            self.hass.config_entries.async_update_entry(
+                self.entry, data=data, title=title)
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(self.entry.entry_id))
+            return self.async_create_entry(title="", data=dict(self.entry.options))
+        return self.async_show_form(
+            step_id="hardware",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, dict(self.entry.data)))
 
     async def async_step_mirrors(self, user_input: dict[str, Any] | None = None):
         """Toggle stable per-role hardware mirror sensors (F36)."""
