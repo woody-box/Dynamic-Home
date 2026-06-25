@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.36.0] — 2026-06-24
+
+### Added
+- **Ventilación (F13) · varios baños para el boost de ducha**: en las opciones de la VMC,
+  un nuevo paso **Baños** permite declarar hasta **6 baños**, cada uno con **nombre** (p. ej.
+  "Baño pasillo") y su **sensor de humedad**. El boost de ducha vigila la **mayor subida de
+  humedad** entre todos, así una ducha en **cualquier** baño lo dispara; y el atributo
+  `shower_bathroom` del ventilador indica **qué baño** lo activó. Rellenas solo las filas
+  que tengas. **Back-compat**: el campo único *Humedad baño* de siempre sigue funcionando.
+
+### Internal
+- `coordinator_dv._bathrooms()` (lista de opciones `bath_hum_/bath_name_1..6`, fallback al
+  `hum_bath` legacy) + `_rh_delta` toma el máx y guarda `shower_bathroom`; `shower_enabled`
+  se activa con cualquier baño; atributo en `fan.py`. Paso de opciones `bathrooms` +
+  traducciones EN/ES. Tests (máx + nombre; legacy; el paso guarda/borra). Suite 469→472.
+
 ## [0.35.5] — 2026-06-24
 
 ### Fixed
