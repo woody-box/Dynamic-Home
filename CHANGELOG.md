@@ -4,6 +4,15 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.35.5] — 2026-06-24
+
+### Fixed
+- **Campo `hum_in` sin etiqueta en la config de VMC**: el selector de **humedad interior**
+  (opcional, alimenta el punto de rocío / modo secado de la VMC) mostraba la clave cruda
+  `hum_in` porque le faltaba la traducción. Añadida en EN y ES (*"Humedad interior
+  (opcional, punto de rocío / secado)"*). Distinto de *Humedad baño* (boost de ducha) y
+  *Humedad exterior*.
+
 ## [0.35.4] — 2026-06-24
 
 ### Fixed

@@ -28,6 +28,7 @@
           "outdoor_aqi_entity": "AQI exterior (opcional)",
           "hum_bath": "Humedad baño (opcional, boost ducha)",
           "hum_ext": "Humedad exterior (opcional, boost ducha)",
+          "hum_in": "Humedad interior (opcional, punto de rocío / secado)",
           "hrv_supply": "Temp. insuflación recuperador (opcional)",
           "hrv_intake": "Temp. absorción aire nuevo (opcional)",
           "hrv_extract": "Temp. extracción aire viciado (opcional)",

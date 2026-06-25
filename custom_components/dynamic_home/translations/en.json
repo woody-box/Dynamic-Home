@@ -28,6 +28,7 @@
           "outdoor_aqi_entity": "Outdoor AQI (optional)",
           "hum_bath": "Bathroom humidity (optional, shower boost)",
           "hum_ext": "Outdoor humidity (optional, shower boost)",
+          "hum_in": "Indoor humidity (optional, dew point / dry mode)",
           "hrv_supply": "HRV supply temp (optional)",
           "hrv_intake": "HRV fresh-air intake temp (optional)",
           "hrv_extract": "HRV extract (stale air) temp (optional)",
