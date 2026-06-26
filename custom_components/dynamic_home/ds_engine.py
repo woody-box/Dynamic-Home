@@ -28,6 +28,11 @@ class DsConfig:
     summer_min_open_pct: int = 20
     hot_delta: float = 0.8
     winter_night_pct: int = 0
+    # Ambient heat shield: in cooling season, when it is hotter outside than in
+    # (by hot_delta) but the sun no longer hits this facade, keep the shutter
+    # closed against the ambient/terrace heat instead of opening. 0 = fully shut
+    # (default); raise it (e.g. 20/40) to let some daylight in.
+    heat_shield_pct: int = 0
 
     wind_limit_kmh: float = 40.0
     wind_cap_span_kmh: float = 20.0
@@ -346,6 +351,11 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
                 raw = max(100 - impact, cfg.summer_min_open_pct)
                 pos, reason = quantize10(raw), "summer_solar_shield"
                 detail = {"impact": impact}
+        elif is_cool and temps_ok and ins.t_out >= ins.t_in + cfg.hot_delta:
+            # Cooling and hotter outside, but no direct sun on this facade: don't
+            # open into the ambient/terrace heat — hold the heat-shield position.
+            pos, reason = cfg.heat_shield_pct, "summer_heat_shield"
+            detail = {"t_in": ins.t_in, "t_out": ins.t_out}
         elif is_heat and impact > 0:
             pos, reason = 100, "winter_solar_gain"
         elif is_heat and impact == 0:

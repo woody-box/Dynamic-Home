@@ -184,6 +184,7 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("rain_close_pct", "Rain close (%)", "Cierre por lluvia (%)"),
             _v("freecool_max_open_pct", "Free-cool max open (%)", "Free-cool máx. (%)"),
             _v("summer_min_open_pct", "Summer min open (%)", "Verano mín. (%)"),
+            _v("heat_shield_pct", "Heat shield (%)", "Escudo térmico (%)"),
             _v("winter_night_pct", "Winter night (%)", "Noche invierno (%)"),
             _v("weather_max_open_pct", "Weather max open (%)", "Meteo máx. (%)"),
             _v("sdhb_solar_shield_max_open_pct", "Solar shield max (%)",

@@ -352,6 +352,29 @@ async def test_geo_shade_switch_refines_solar_branch(hass: HomeAssistant) -> Non
     assert "penetration_m" in co.data.details
 
 
+async def test_heat_shield_holds_closed_when_hot_no_direct_sun(
+        hass: HomeAssistant) -> None:
+    """Cooling + hotter outside + sun off this facade -> stay shut, not open."""
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    # Low west sun: off the (south) facade -> no direct impact, but it's hot out.
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 290, "elevation": 20})
+    hass.states.async_set("climate.salon", "cool")
+    hass.states.async_set("sensor.salon_in", "24")
+    hass.states.async_set("sensor.salon_out", "31")          # hotter outside
+    entry = MockConfigEntry(domain=const.DOMAIN, data=GEO, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "summer_heat_shield"
+    assert co.data.pos == 0                                   # default heat shield
+
+
 # --- F03: electrical-peak staging of mass shutter starts ---
 async def _two_shutters(hass: HomeAssistant):
     _seed(hass)

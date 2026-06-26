@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.41.0] — 2026-06-26
+
+### Added
+- **Persiana · escudo térmico (calor ambiente)**: en modo **frío**, cuando **fuera hace más
+  calor que dentro** (por `hot_delta`) pero el sol **ya no da** en esa fachada, la persiana
+  **deja de abrirse** y se mantiene en una posición de protección en vez de dejar entrar el
+  calor de la terraza/ambiente. Cubre el hueco que tenía la protección solar (que solo
+  actuaba con **sol directo**): al irse el sol, la persiana se abría aunque siguiera haciendo
+  calor fuera. Posición configurable **`heat_shield_pct`** en *Posiciones de persiana*, por
+  defecto **0 %** (cerrada del todo); súbela a 20/40 si quieres algo de luz. Respeta
+  override/lluvia/viento/alertas como el resto de la cascada, y **cede ante el sol directo**
+  (ahí sigue mandando el sombreado solar/geométrico).
+
+### Internal
+- `DsConfig.heat_shield_pct` (def. 0) + rama `summer_heat_shield` en `decide_cover`, tras
+  `shield_ok` (gated `is_cool and temps_ok and t_out >= t_in + hot_delta`); no afecta a
+  persianas sin clima/cambio estacional ni sin sensores de Tª (back-compat). Categoría
+  `positions` (EN/ES, paridad). Tests: motor (cierra sin sol; configurable; no si no hace
+  más calor; cede al sol directo; solo en frío) + integración (frío + calor + sol fuera de
+  fachada → `summer_heat_shield` a 0 %).
+
 ## [0.40.0] — 2026-06-26
 
 ### Added

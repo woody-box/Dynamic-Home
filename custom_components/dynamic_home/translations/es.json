@@ -370,6 +370,7 @@
           "rain_close_pct": "Cierre por lluvia (%)",
           "freecool_max_open_pct": "Free-cool máx. (%)",
           "summer_min_open_pct": "Verano mín. (%)",
+          "heat_shield_pct": "Escudo térmico (%)",
           "winter_night_pct": "Noche invierno (%)",
           "weather_max_open_pct": "Meteo máx. (%)",
           "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)"
@@ -378,6 +379,7 @@
           "rain_close_pct": "Posición de la persiana cuando llueve (protección). (↓ = más cerrada, más protección)",
           "freecool_max_open_pct": "Apertura máx. permitida durante el free-cooling. (↑ = permite abrir más)",
           "summer_min_open_pct": "Apertura mínima que se mantiene en verano. (↑ = no cierra tanto en verano)",
+          "heat_shield_pct": "Posición cuando refrigera y fuera hace más calor pero ya no le da el sol a esta fachada (calor ambiente/terraza). 0 = cerrada del todo; súbela para dejar entrar algo de luz. (↓ = bloquea más calor)",
           "winter_night_pct": "Posición en noches de invierno (cerrar para aislar). (↓ = cierra más para aislar)",
           "weather_max_open_pct": "Apertura máx. bajo una alerta meteo.",
           "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración). (↓ = sombrea más al pedir escudo)"
