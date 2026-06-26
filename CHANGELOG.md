@@ -4,6 +4,30 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.40.0] — 2026-06-26
+
+### Added
+- **Persiana · sensor de posición real**: cada persiana expone ahora un sensor de
+  diagnóstico **Position** (`%`) que **re-publica la posición física real** leída del
+  `cover` (`current_position`). La entidad `cover` ya la mostraba, pero como cover no es un
+  sensor numérico graficable; este sensor sí entra en el histórico/estadísticas y es fácil de
+  usar en plantillas. Como atributos lleva el **objetivo** que manda la cascada DS (`target`)
+  y el **motivo** (`reason`), así de un vistazo ves lo que la persiana *es* frente a lo que el
+  sistema *quiere* y por qué. `unknown` si el cover no reporta posición.
+- **Sombreado geométrico (F15) · separación del alero**: nuevo parámetro **Separación del
+  alero (cm)** (`overhang_offset_cm`) en *Geometría de ventana*. Es la **distancia vertical
+  entre el alero/voladizo y el borde superior de la ventana**: el alero solo da sombra al
+  cristal por debajo de esa separación, así que un alero alto (p. ej. el tejado de una terraza
+  cubierta) sombrea mucho menos que uno a ras de la ventana. Afina tanto el `solar_impact`
+  como el modelo de penetración (`solar_penetration_m`). `0` = a ras (comportamiento previo).
+
+### Internal
+- `DsConfig.overhang_offset_cm` resta del alto de sombra del voladizo (`max(0, overhang·tan(el)
+  − offset)`) en `solar_impact`/`solar_penetration_m`; `DsPositionSensor` (reusa `_Base`,
+  `unique_id={entry}_position`). Tests: motor (offset reduce sombra en impacto y penetración) +
+  integración (sensor reporta el real con `target`/`reason`; `unknown` sin feedback). Etiquetas
+  EN/ES en la categoría `geometry` (paridad strings/en/es).
+
 ## [0.39.0] — 2026-06-25
 
 ### Added

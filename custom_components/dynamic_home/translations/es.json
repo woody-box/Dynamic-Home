@@ -427,6 +427,7 @@
         "data": {
           "window_height_cm": "Altura ventana (cm)",
           "overhang_cm": "Voladizo (cm)",
+          "overhang_offset_cm": "Separación del alero (cm)",
           "sill_height_cm": "Altura del alféizar (cm)",
           "room_depth_m": "Profundidad de sala (m)",
           "target_penetration_m": "Penetración objetivo (m)",
@@ -435,6 +436,7 @@
         "data_description": {
           "window_height_cm": "Altura de la ventana para la geometría de penetración solar. (medida real de tu ventana)",
           "overhang_cm": "Profundidad del voladizo/alero sobre la ventana. (medida real de tu voladizo)",
+          "overhang_offset_cm": "Separación vertical entre el alero/voladizo y el borde superior de la ventana; el alero solo da sombra al cristal por debajo de esa separación. Terrazas cubiertas: el borde del tejado queda muy por encima, usa un valor mayor. (↑ = el alero da menos sombra)",
           "sill_height_cm": "Altura del alféizar sobre el suelo (sombreado geométrico). (medida real de tu alféizar)",
           "room_depth_m": "Profundidad del suelo de la sala; la penetración solar se limita aquí. (profundidad real de tu sala)",
           "target_penetration_m": "Profundidad de sol directo admitida en la sala antes de que el sombreado geométrico baje la persiana.",

@@ -427,6 +427,7 @@
         "data": {
           "window_height_cm": "Window height (cm)",
           "overhang_cm": "Overhang (cm)",
+          "overhang_offset_cm": "Overhang offset (cm)",
           "sill_height_cm": "Sill height (cm)",
           "room_depth_m": "Room depth (m)",
           "target_penetration_m": "Target penetration (m)",
@@ -435,6 +436,7 @@
         "data_description": {
           "window_height_cm": "Window height for the solar-penetration geometry. (your window's real measurement)",
           "overhang_cm": "Overhang/eave depth above the window. (your overhang's real measurement)",
+          "overhang_offset_cm": "Vertical gap between the overhang/eave and the top of the window; the eave only shades the glass below this gap. Covered terraces: the roof edge sits well above, so use a larger value. (↑ = the eave shades less)",
           "sill_height_cm": "Window sill height above the floor (geometric shading). (your sill's real measurement)",
           "room_depth_m": "Floor depth of the room; sun penetration is capped here. (your room's real depth)",
           "target_penetration_m": "Allowed sunlit depth into the room before the geometric shading closes the shutter.",

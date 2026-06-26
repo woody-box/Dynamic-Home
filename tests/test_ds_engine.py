@@ -64,6 +64,14 @@ def test_solar_impact_overhang_shades():
     assert solar_impact(cfg, 180, 60, True) < 50
 
 
+def test_solar_impact_overhang_offset_reduces_shading():
+    base = dict(facade_azimuth_deg=180, facade_span_deg=180,
+                window_height_cm=100, overhang_cm=60)
+    flush = solar_impact(_cfg(**base), 180, 45, True)
+    raised = solar_impact(_cfg(**base, overhang_offset_cm=30), 180, 45, True)
+    assert raised > flush       # lifting the eave off the window head shades less
+
+
 # --------------------------------------------------------------------------- #
 # Cascade — base branches
 # --------------------------------------------------------------------------- #
@@ -264,6 +272,15 @@ def test_penetration_overhang_reduces():
     shaded = solar_penetration_m(_geo_cfg(overhang_cm=50), 180, 45, True)
     assert base is not None and shaded is not None
     assert shaded < base
+
+
+def test_penetration_overhang_offset_reduces_shading():
+    # A high eave (offset gap above the window) shades less -> deeper sun.
+    shaded = solar_penetration_m(_geo_cfg(overhang_cm=80), 180, 45, True)
+    raised = solar_penetration_m(
+        _geo_cfg(overhang_cm=80, overhang_offset_cm=40), 180, 45, True)
+    assert shaded is not None and raised is not None
+    assert raised > shaded
 
 
 def test_penetration_clamped_to_room_depth():
