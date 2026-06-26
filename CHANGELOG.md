@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.43.0] — 2026-06-26
+
+### Changed
+- **Persiana · el escudo térmico pasa a ser opt-in (switch dedicado)**: el escudo térmico de
+  verano e invierno (v0.41/0.42) ahora **se activa con un interruptor** *Thermal shield*
+  (**apagado por defecto**), como el resto de funciones de persiana. Nueva categoría de
+  opciones **Escudo térmico** que **explica claramente qué hace según el termostato**: en
+  **cool** mantiene cerrada si fuera hace más calor y no da el sol; en **heat** de día cierra
+  si fuera está más frío y abre si está templado. **Apagado** = comportamiento previo a
+  v0.41 (en frío abre sin sol; en calor aísla siempre que no hay sol).
+
+### Internal
+- `DsInputs.heat_shield` (gating de `summer_heat_shield` y de la rama día de invierno
+  `winter_cold_shield`/`winter_mild_open`); `coordinator_ds.heat_shield_enabled` (RestoreEntity
+  vía el switch); `_ToggleDesc("heat_shield", "Thermal shield")` en `switch.py`. `heat_shield_pct`
+  y `cold_delta` se mueven de `positions`/`thermal` a la categoría nueva `shield` (con título +
+  descripción heat/cool). Tests: motor (on cierra; off abre en verano y aísla siempre en
+  invierno) + integración (switch presente; off no protege, on sí). Paridad strings/en/es.
+
 ## [0.42.0] — 2026-06-26
 
 ### Added

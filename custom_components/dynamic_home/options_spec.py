@@ -46,6 +46,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "filter": ("Filter life", "Vida del filtro"),
     "positions": ("Shutter positions", "Posiciones de persiana"),
     "thermal": ("Thermal deltas", "Deltas térmicos"),
+    "shield": ("Thermal shield", "Escudo térmico"),
     "wind": ("Wind protection", "Protección de viento"),
     "slew": ("Slew rate", "Slew rate"),
     "geometry": ("Window geometry", "Geometría de ventana"),
@@ -184,7 +185,6 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("rain_close_pct", "Rain close (%)", "Cierre por lluvia (%)"),
             _v("freecool_max_open_pct", "Free-cool max open (%)", "Free-cool máx. (%)"),
             _v("summer_min_open_pct", "Summer min open (%)", "Verano mín. (%)"),
-            _v("heat_shield_pct", "Heat shield (%)", "Escudo térmico (%)"),
             _v("winter_night_pct", "Winter night (%)", "Noche invierno (%)"),
             _v("weather_max_open_pct", "Weather max open (%)", "Meteo máx. (%)"),
             _v("sdhb_solar_shield_max_open_pct", "Solar shield max (%)",
@@ -193,6 +193,9 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "thermal": [
             _v("freecool_delta", "Free-cool ΔT (°C)", "ΔT free-cool (°C)"),
             _v("hot_delta", "Hot ΔT (°C)", "ΔT calor (°C)"),
+        ],
+        "shield": [
+            _v("heat_shield_pct", "Heat shield (%)", "Escudo térmico (%)"),
             _v("cold_delta", "Cold ΔT (°C)", "ΔT frío (°C)"),
         ],
         "wind": [
