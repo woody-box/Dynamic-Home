@@ -177,6 +177,44 @@ def test_winter_night_insulate():
     assert d.pos == 0 and d.reason == "winter_night_insulate"
 
 
+def test_heat_shield_closes_when_hot_outside_no_direct_sun():
+    # Cooling, hotter outside, but the sun no longer hits the facade (impact 0):
+    # don't open into the ambient heat -> hold the heat-shield position (0).
+    d = decide_cover(_cfg(heat_shield_pct=0, hot_delta=0.8, slew_enabled=False),
+                     DsState(),
+                     DsInputs(hvac_mode="cool", impact=0, t_in=24, t_out=30))
+    assert d.pos == 0 and d.reason == "summer_heat_shield"
+
+
+def test_heat_shield_position_configurable():
+    d = decide_cover(_cfg(heat_shield_pct=40, hot_delta=0.8, slew_enabled=False),
+                     DsState(),
+                     DsInputs(hvac_mode="cool", impact=0, t_in=24, t_out=30))
+    assert d.pos == 40 and d.reason == "summer_heat_shield"
+
+
+def test_heat_shield_not_when_not_hotter_outside():
+    # Outside not hotter than inside -> behaves as before (opens).
+    d = decide_cover(_cfg(hot_delta=0.8, slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=0, t_in=24, t_out=24))
+    assert d.pos == 100 and d.reason == "default"
+
+
+def test_heat_shield_yields_to_direct_sun_shield():
+    # With direct sun the (geometric/fixed) solar shield still owns the branch.
+    d = decide_cover(_cfg(heat_shield_pct=0, hot_delta=0.8, summer_min_open_pct=20,
+                          slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=70, t_in=24, t_out=30))
+    assert d.reason == "summer_solar_shield"
+
+
+def test_heat_shield_only_in_cooling():
+    # Heat mode + no sun -> winter insulation, never the heat shield.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="heat", impact=0, t_in=24, t_out=30))
+    assert d.reason != "summer_heat_shield"
+
+
 # --------------------------------------------------------------------------- #
 # Caps
 # --------------------------------------------------------------------------- #

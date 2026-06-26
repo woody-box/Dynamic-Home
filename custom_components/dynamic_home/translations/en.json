@@ -370,6 +370,7 @@
           "rain_close_pct": "Rain close (%)",
           "freecool_max_open_pct": "Free-cool max open (%)",
           "summer_min_open_pct": "Summer min open (%)",
+          "heat_shield_pct": "Heat shield (%)",
           "winter_night_pct": "Winter night (%)",
           "weather_max_open_pct": "Weather max open (%)",
           "sdhb_solar_shield_max_open_pct": "Solar shield max (%)"
@@ -378,6 +379,7 @@
           "rain_close_pct": "Shutter position when it rains (protection). (↓ = more closed, more protection)",
           "freecool_max_open_pct": "Max opening allowed during free-cooling. (↑ = allows opening more)",
           "summer_min_open_pct": "Minimum opening kept in summer. (↑ = keeps it more open in summer)",
+          "heat_shield_pct": "Position when cooling and it's hotter outside but the sun no longer hits this facade (ambient/terrace heat). 0 = fully shut; raise it to let some daylight in. (↓ = blocks more heat)",
           "winter_night_pct": "Position on winter nights (close to insulate). (↓ = closes more to insulate)",
           "weather_max_open_pct": "Max opening under a weather alert.",
           "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling). (↓ = shades more on shield)"
