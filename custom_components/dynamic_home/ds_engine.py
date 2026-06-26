@@ -140,6 +140,13 @@ class DsInputs:
     # uses the real solar-penetration model instead of the fixed impact shield.
     geo_shade: bool = False
 
+    # Thermal shield: opt-in. When True, with no direct sun on the facade, the
+    # shutter protects against the outdoor temperature (cool: stay shut if hotter
+    # outside; heat by day: insulate if colder outside, else open for light).
+    # When False, the legacy behaviour applies (cool opens; heat always insulates
+    # when there is no sun).
+    heat_shield: bool = False
+
     # Weather alert (F17): anticipatory protection position while active, else None.
     alert_pos: int | None = None
 
@@ -352,7 +359,8 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
                 raw = max(100 - impact, cfg.summer_min_open_pct)
                 pos, reason = quantize10(raw), "summer_solar_shield"
                 detail = {"impact": impact}
-        elif is_cool and temps_ok and ins.t_out >= ins.t_in + cfg.hot_delta:
+        elif (ins.heat_shield and is_cool and temps_ok
+              and ins.t_out >= ins.t_in + cfg.hot_delta):
             # Cooling and hotter outside, but no direct sun on this facade: don't
             # open into the ambient/terrace heat — hold the heat-shield position.
             pos, reason = cfg.heat_shield_pct, "summer_heat_shield"
@@ -360,12 +368,12 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         elif is_heat and impact > 0:
             pos, reason = 100, "winter_solar_gain"
         elif is_heat and impact == 0:
-            # No direct sun on the facade. Symmetric to the summer heat shield:
-            # at night (sun below the horizon) always insulate; by day insulate
-            # only when it's genuinely colder outside, otherwise stay open for
-            # light. Without temps, keep the legacy always-insulate behaviour.
+            # No direct sun on the facade. With the thermal shield on (and by day,
+            # sun up): insulate only when it's genuinely colder outside, otherwise
+            # stay open for light. With the shield off, at night, or without
+            # temps, keep the legacy always-insulate behaviour.
             sun_up = ins.sun_elevation is not None and ins.sun_elevation > 0
-            if not sun_up or not temps_ok:
+            if not ins.heat_shield or not sun_up or not temps_ok:
                 pos, reason = cfg.winter_night_pct, "winter_night_insulate"
             elif ins.t_out < ins.t_in - cfg.cold_delta:
                 pos, reason = cfg.winter_night_pct, "winter_cold_shield"

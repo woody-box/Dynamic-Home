@@ -354,7 +354,8 @@ async def test_geo_shade_switch_refines_solar_branch(hass: HomeAssistant) -> Non
 
 async def test_heat_shield_holds_closed_when_hot_no_direct_sun(
         hass: HomeAssistant) -> None:
-    """Cooling + hotter outside + sun off this facade -> stay shut, not open."""
+    """Cooling + hotter outside + sun off this facade -> stay shut (opt-in)."""
+    from homeassistant.helpers import entity_registry as er
     async_mock_service(hass, "cover", "set_cover_position")
     hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
     # Low west sun: off the (south) facade -> no direct impact, but it's hot out.
@@ -369,6 +370,14 @@ async def test_heat_shield_holds_closed_when_hot_no_direct_sun(
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
 
+    # Off by default -> opt-in switch exists; the shutter opens until it's on.
+    eid = er.async_get(hass).async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_heat_shield")
+    assert eid is not None
+    await co.async_refresh()
+    assert co.data.reason != "summer_heat_shield"
+
+    co.heat_shield_enabled = True
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.reason == "summer_heat_shield"
@@ -389,6 +398,7 @@ async def test_winter_cold_shield_day_no_sun(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
+    co.heat_shield_enabled = True                            # opt-in
 
     await co.async_refresh()
     await hass.async_block_till_done()

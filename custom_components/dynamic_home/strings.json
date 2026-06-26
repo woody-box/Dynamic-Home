@@ -134,6 +134,7 @@
           "cat_adaptive_iaq": "Adaptive thresholds",
           "cat_positions": "Shutter positions",
           "cat_thermal": "Thermal deltas",
+          "cat_shield": "Thermal shield",
           "cat_wind": "Wind protection",
           "cat_slew": "Slew rate",
           "cat_geometry": "Window geometry",
@@ -370,7 +371,6 @@
           "rain_close_pct": "Rain close (%)",
           "freecool_max_open_pct": "Free-cool max open (%)",
           "summer_min_open_pct": "Summer min open (%)",
-          "heat_shield_pct": "Heat shield (%)",
           "winter_night_pct": "Winter night (%)",
           "weather_max_open_pct": "Weather max open (%)",
           "sdhb_solar_shield_max_open_pct": "Solar shield max (%)"
@@ -379,7 +379,6 @@
           "rain_close_pct": "Shutter position when it rains (protection). (↓ = more closed, more protection)",
           "freecool_max_open_pct": "Max opening allowed during free-cooling. (↑ = allows opening more)",
           "summer_min_open_pct": "Minimum opening kept in summer. (↑ = keeps it more open in summer)",
-          "heat_shield_pct": "Position when cooling and it's hotter outside but the sun no longer hits this facade (ambient/terrace heat). 0 = fully shut; raise it to let some daylight in. (↓ = blocks more heat)",
           "winter_night_pct": "Position on winter nights (close to insulate). (↓ = closes more to insulate)",
           "weather_max_open_pct": "Max opening under a weather alert.",
           "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling). (↓ = shades more on shield)"
@@ -390,12 +389,22 @@
         "description": "Temperature deltas that trigger free-cooling / the solar shield (how much warmer outside than inside).",
         "data": {
           "freecool_delta": "Free-cool ΔT (°C)",
-          "hot_delta": "Hot ΔT (°C)",
-          "cold_delta": "Cold ΔT (°C)"
+          "hot_delta": "Hot ΔT (°C)"
         },
         "data_description": {
           "freecool_delta": "Indoor−outdoor ΔT that justifies opening for free-cooling. (↓ = opens to purge with less difference)",
-          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)",
+          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)"
+        }
+      },
+      "cat_shield": {
+        "title": "Thermal shield",
+        "description": "Opt-in (turn on the 'Thermal shield' switch). When no direct sun hits the facade, protect against the outdoor temperature. In COOL (thermostat cooling) with hotter outside → keep the shutter shut against ambient/terrace heat (Heat shield %, 0 = fully shut). In HEAT (thermostat heating) by day with colder outside → close to insulate; if it's milder outside it stays open for light (Cold ΔT). Off = legacy (cool opens, heat always insulates when there is no sun).",
+        "data": {
+          "heat_shield_pct": "Heat shield (%)",
+          "cold_delta": "Cold ΔT (°C)"
+        },
+        "data_description": {
+          "heat_shield_pct": "Position when cooling and it's hotter outside but the sun no longer hits this facade (ambient/terrace heat). 0 = fully shut; raise it to let some daylight in. (↓ = blocks more heat)",
           "cold_delta": "In heating, ΔT below which the outside counts as cold: by day with no direct sun, the shutter closes to insulate only when it's this much colder outside (else it stays open for light). (↓ = insulates sooner)"
         }
       },

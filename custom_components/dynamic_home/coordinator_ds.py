@@ -55,6 +55,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.night_iso_enabled = False
         # Geometric shading (F15): opt-in real solar-penetration model.
         self.geo_shade_enabled = False
+        # Thermal shield: opt-in protection against ambient heat/cold with no
+        # direct sun (cool: stay shut if hotter out; heat by day: insulate if
+        # colder out, else open for light).
+        self.heat_shield_enabled = False
         # Electrical-peak staging (F03): opt-in; stagger mass shutter starts.
         self.peak_enabled = False
         self.peak_reason = "off"
@@ -320,6 +324,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             night_pos=night_pos,
             alert_pos=alert_pos,
             geo_shade=self.geo_shade_enabled,
+            heat_shield=self.heat_shield_enabled,
             privacy_active=self.privacy_enabled,
             override_mode="lock" if self.lock_enabled else "none",
             override_pos=int(self.lock_pct),
