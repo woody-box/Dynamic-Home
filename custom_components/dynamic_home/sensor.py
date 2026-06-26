@@ -148,6 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     if module == const.MODULE_SHUTTER:
         async_add_entities([BusSensor(coordinator, entry),
                             EnergySensor(coordinator, entry),
+                            DsPositionSensor(coordinator, entry),
                             *_mirror_sensors(entry, module)])
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
@@ -605,6 +606,38 @@ class PowerSensor(_Base):
     @property
     def native_value(self) -> float:
         return round(self.coordinator.power_w, 1)
+
+
+class DsPositionSensor(_Base):
+    """Real shutter position (% open) read back from the cover (diagnostic).
+
+    The managed cover already shows the physical position, but as a cover it is
+    not a graphable numeric sensor. This re-publishes the cover's
+    ``current_position`` as a plain ``%`` sensor (history/statistics friendly,
+    easy to template against), with the commanded ``target`` and the ``reason``
+    as attributes — so a glance shows what the shutter *is* vs what the system
+    *wants* and why. ``unknown`` when the cover reports no position feedback.
+    """
+
+    _attr_name = "Position"
+    _attr_icon = "mdi:window-shutter"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "position")
+
+    @property
+    def native_value(self) -> int | None:
+        return self.coordinator._current_pos()
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        data = self.coordinator.data
+        return {"target": getattr(data, "pos", None),
+                "reason": getattr(data, "reason", None)}
 
 
 class ScheduleSensor(CoordinatorEntity, SensorEntity):

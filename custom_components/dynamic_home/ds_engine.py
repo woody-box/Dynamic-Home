@@ -66,6 +66,11 @@ class DsConfig:
     facade_span_deg: float = 180.0      # angular acceptance
     window_height_cm: float = 100.0
     overhang_cm: float = 0.0
+    # Vertical gap between the overhang/eave and the top of the window. The
+    # overhang's shadow only starts shading the glass once it has dropped past
+    # this gap, so a high eave (covered terrace) shades far less than one flush
+    # with the window head. 0 = flush (legacy behaviour).
+    overhang_offset_cm: float = 0.0
 
     # Geometric shading (F15): opt-in real solar-penetration model. The shutter
     # closes from the top just enough to keep direct sun off the floor beyond
@@ -172,7 +177,8 @@ def solar_impact(cfg: DsConfig, sun_azimuth: float, sun_elevation: float,
     if sun_elevation <= 0:
         exposed = 0.0
     else:
-        shadow = cfg.overhang_cm * math.tan(math.radians(sun_elevation))
+        shadow = max(0.0, cfg.overhang_cm * math.tan(math.radians(sun_elevation))
+                     - cfg.overhang_offset_cm)
         shaded = max(0.0, min(1.0, shadow / cfg.window_height_cm))
         exposed = 1.0 - shaded
     impact = exposed if (in_front and sun_effective) else 0.0
@@ -209,7 +215,8 @@ def solar_penetration_m(cfg: DsConfig, sun_azimuth: float | None,
     tan_el = math.tan(math.radians(sun_elevation))
     if tan_el <= 0:
         return None
-    shadow = cfg.overhang_cm * tan_el                       # overhang shades top
+    shadow = max(0.0, cfg.overhang_cm * tan_el               # overhang shades top
+                 - cfg.overhang_offset_cm)                   # ... minus the eave gap
     unshaded_h = max(0.0, cfg.window_height_cm - shadow)
     top_m = (cfg.sill_height_cm + unshaded_h) / 100.0       # highest sunlit point
     pen = (top_m / tan_el) * cos_diff

@@ -206,6 +206,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "geometry": [
             _v("window_height_cm", "Window height (cm)", "Altura ventana (cm)"),
             _v("overhang_cm", "Overhang (cm)", "Voladizo (cm)"),
+            _v("overhang_offset_cm", "Overhang offset (cm)",
+               "Separación del alero (cm)"),
             _v("sill_height_cm", "Sill height (cm)", "Altura del alféizar (cm)"),
             _v("room_depth_m", "Room depth (m)", "Profundidad de sala (m)"),
             _v("target_penetration_m", "Target penetration (m)",

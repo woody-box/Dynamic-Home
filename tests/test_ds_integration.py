@@ -224,6 +224,41 @@ async def test_cover_reports_real_position_not_target(hass: HomeAssistant) -> No
     assert managed.attributes["target_position"] == target     # target exposed
 
 
+async def test_position_sensor_reports_real_with_target_attr(
+        hass: HomeAssistant) -> None:
+    """A diagnostic sensor re-publishes the cover's real % + target/reason."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")  # real cover won't move
+    _seed(hass, position=25)                                 # physical cover at 25%
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_position")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert int(float(st.state)) == 25                        # REAL, not the target
+    assert st.attributes["unit_of_measurement"] == "%"
+    assert st.attributes["target"] == co.data.pos            # commanded target
+    assert st.attributes["reason"] == co.data.reason
+    assert st.attributes["target"] != 25                     # target differs (slew)
+
+
+async def test_position_sensor_unknown_without_feedback(
+        hass: HomeAssistant) -> None:
+    """No position feedback from the cover -> the sensor reports unknown."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)                                              # no current_position
+    entry = await _setup(hass)
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_position")
+    assert hass.states.get(eid).state == "unknown"
+
+
 async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
     """Privacy clamps the cover; lock pins it (override) and wins over privacy."""
     _seed(hass)  # sun below horizon, cover.salon_real without position
