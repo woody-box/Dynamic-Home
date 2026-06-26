@@ -375,6 +375,27 @@ async def test_heat_shield_holds_closed_when_hot_no_direct_sun(
     assert co.data.pos == 0                                   # default heat shield
 
 
+async def test_winter_cold_shield_day_no_sun(hass: HomeAssistant) -> None:
+    """Heating + daytime + no direct sun + colder outside -> insulate (shut)."""
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 290, "elevation": 20})   # day, off the facade
+    hass.states.async_set("climate.salon", "heat")
+    hass.states.async_set("sensor.salon_in", "21")
+    hass.states.async_set("sensor.salon_out", "7")             # colder outside
+    entry = MockConfigEntry(domain=const.DOMAIN, data=GEO, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "winter_cold_shield"
+    assert co.data.pos == 0
+
+
 # --- F03: electrical-peak staging of mass shutter starts ---
 async def _two_shutters(hass: HomeAssistant):
     _seed(hass)

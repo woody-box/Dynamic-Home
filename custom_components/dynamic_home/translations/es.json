@@ -390,11 +390,13 @@
         "description": "Deltas de temperatura que activan free-cooling / el escudo solar (cuánto más caliente fuera que dentro).",
         "data": {
           "freecool_delta": "ΔT free-cool (°C)",
-          "hot_delta": "ΔT calor (°C)"
+          "hot_delta": "ΔT calor (°C)",
+          "cold_delta": "ΔT frío (°C)"
         },
         "data_description": {
           "freecool_delta": "ΔT interior−exterior que justifica abrir para free-cooling. (↓ = abre para purgar con menos diferencia)",
-          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo). (↓ = cuenta como caliente con menos)"
+          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo). (↓ = cuenta como caliente con menos)",
+          "cold_delta": "En calefacción, ΔT por debajo del cual el exterior cuenta como frío: de día y sin sol directo, la persiana cierra para aislar solo si fuera está al menos esto más frío (si no, se queda abierta para dejar luz). (↓ = aísla antes)"
         }
       },
       "cat_wind": {
