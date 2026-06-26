@@ -27,6 +27,7 @@ class DsConfig:
     freecool_delta: float = 0.8
     summer_min_open_pct: int = 20
     hot_delta: float = 0.8
+    cold_delta: float = 0.8             # ΔT below which the outside counts as cold
     winter_night_pct: int = 0
     # Ambient heat shield: in cooling season, when it is hotter outside than in
     # (by hot_delta) but the sun no longer hits this facade, keep the shutter
@@ -359,7 +360,18 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         elif is_heat and impact > 0:
             pos, reason = 100, "winter_solar_gain"
         elif is_heat and impact == 0:
-            pos, reason = cfg.winter_night_pct, "winter_night_insulate"
+            # No direct sun on the facade. Symmetric to the summer heat shield:
+            # at night (sun below the horizon) always insulate; by day insulate
+            # only when it's genuinely colder outside, otherwise stay open for
+            # light. Without temps, keep the legacy always-insulate behaviour.
+            sun_up = ins.sun_elevation is not None and ins.sun_elevation > 0
+            if not sun_up or not temps_ok:
+                pos, reason = cfg.winter_night_pct, "winter_night_insulate"
+            elif ins.t_out < ins.t_in - cfg.cold_delta:
+                pos, reason = cfg.winter_night_pct, "winter_cold_shield"
+                detail = {"t_in": ins.t_in, "t_out": ins.t_out}
+            else:
+                pos, reason = 100, "winter_mild_open"
         else:
             pos, reason = 100, "default"
 

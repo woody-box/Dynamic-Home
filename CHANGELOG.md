@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.42.0] — 2026-06-26
+
+### Added
+- **Persiana · escudo de frío de invierno (simétrico al de verano)**: en modo **calor**, sin
+  sol directo en la fachada, ahora distingue noche y día. **De noche** (sol bajo el horizonte)
+  **cierra siempre** para aislar, como hasta ahora. **De día** cierra para aislar
+  (`winter_cold_shield`) **solo si fuera está más frío** que dentro (por el nuevo `cold_delta`);
+  si fuera está **igual o más templado**, **deja la persiana abierta** para dejar entrar luz
+  (`winter_mild_open`) en vez de cerrar a ciegas. Con **sol directo** sigue abriendo para
+  ganancia solar (`winter_solar_gain`). Nuevo parámetro **`cold_delta`** (ΔT frío, def. 0.8 °C)
+  en *Deltas térmicos*; la posición de cierre reusa `winter_night_pct`.
+
+### Internal
+- `DsConfig.cold_delta` (0.8) + rama `is_heat and impact == 0` reescrita en `decide_cover`:
+  `sun_elevation > 0` distingue día/noche (el coordinator no rellena `ins.night`); sin sol o
+  sin Tª → `winter_night_insulate` (legacy, back-compat); día + `t_out < t_in − cold_delta` →
+  `winter_cold_shield`; día templado → `winter_mild_open` (100). Categoría `thermal` (EN/ES,
+  paridad). Tests: motor (noche aísla aunque temple; día frío cierra; día templado abre; sin
+  Tª aísla) + integración (calor + día + sol fuera + frío → `winter_cold_shield`).
+
 ## [0.41.0] — 2026-06-26
 
 ### Added

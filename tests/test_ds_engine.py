@@ -172,8 +172,35 @@ def test_winter_solar_gain():
 
 
 def test_winter_night_insulate():
+    # No sun info (sun below horizon / unknown) -> always insulate (legacy).
     d = decide_cover(_cfg(winter_night_pct=0, slew_enabled=False), DsState(),
                      DsInputs(hvac_mode="heat", impact=0))
+    assert d.pos == 0 and d.reason == "winter_night_insulate"
+
+
+def test_winter_cold_shield_day_colder_outside():
+    # Daytime (sun up), no direct sun on the facade, colder outside -> insulate.
+    d = decide_cover(_cfg(winter_night_pct=0, cold_delta=0.8, slew_enabled=False),
+                     DsState(),
+                     DsInputs(hvac_mode="heat", impact=0, t_in=21, t_out=8,
+                              sun_elevation=20))
+    assert d.pos == 0 and d.reason == "winter_cold_shield"
+
+
+def test_winter_mild_day_opens_for_light():
+    # Daytime, no direct sun, but mild/warmer outside -> stay open (light).
+    d = decide_cover(_cfg(winter_night_pct=0, cold_delta=0.8, slew_enabled=False),
+                     DsState(),
+                     DsInputs(hvac_mode="heat", impact=0, t_in=21, t_out=22,
+                              sun_elevation=20))
+    assert d.pos == 100 and d.reason == "winter_mild_open"
+
+
+def test_winter_night_insulates_even_if_mild():
+    # Sun below horizon -> insulate regardless of the outdoor temperature.
+    d = decide_cover(_cfg(winter_night_pct=0, slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="heat", impact=0, t_in=21, t_out=22,
+                              sun_elevation=-5))
     assert d.pos == 0 and d.reason == "winter_night_insulate"
 
 

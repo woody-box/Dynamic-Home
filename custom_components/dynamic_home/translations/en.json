@@ -390,11 +390,13 @@
         "description": "Temperature deltas that trigger free-cooling / the solar shield (how much warmer outside than inside).",
         "data": {
           "freecool_delta": "Free-cool ΔT (°C)",
-          "hot_delta": "Hot ΔT (°C)"
+          "hot_delta": "Hot ΔT (°C)",
+          "cold_delta": "Cold ΔT (°C)"
         },
         "data_description": {
           "freecool_delta": "Indoor−outdoor ΔT that justifies opening for free-cooling. (↓ = opens to purge with less difference)",
-          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)"
+          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)",
+          "cold_delta": "In heating, ΔT below which the outside counts as cold: by day with no direct sun, the shutter closes to insulate only when it's this much colder outside (else it stays open for light). (↓ = insulates sooner)"
         }
       },
       "cat_wind": {

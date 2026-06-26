@@ -193,6 +193,7 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "thermal": [
             _v("freecool_delta", "Free-cool ΔT (°C)", "ΔT free-cool (°C)"),
             _v("hot_delta", "Hot ΔT (°C)", "ΔT calor (°C)"),
+            _v("cold_delta", "Cold ΔT (°C)", "ΔT frío (°C)"),
         ],
         "wind": [
             _v("wind_limit_kmh", "Wind limit (km/h)", "Límite de viento (km/h)"),
