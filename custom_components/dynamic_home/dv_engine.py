@@ -605,7 +605,10 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     base = base_target(co2, pm, co2_v2, co2_v3, pm_v2, pm_v3,
                        ins.current_speed, co2_hys, pm_hys)
     t = base
-    reason = "iaq"
+    # "iaq" only when air quality actually raised the speed (V2/V3). When CO2 and
+    # PM are both below the V2 threshold the engine just holds the baseline V1, so
+    # report "iaq_ok" (clean air, base ventilation) instead of implying a reaction.
+    reason = "iaq" if base >= 2 else "iaq_ok"
 
     # 0) Weekly schedule base (F21): a programmed slot sets a minimum auto speed.
     # Later caps (hostile / quiet / mode) still lower it; anti-flap protects it.

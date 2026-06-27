@@ -156,7 +156,7 @@ def _dry_cfg():
 def test_dry_gate_blocks_below_margin():
     # Outdoor not meaningfully drier -> do NOT ventilate to dry; fall through.
     d = decide(_dry_cfg(), DvState(), _dry_ins(0.5))
-    assert d.reason == "iaq" and d.speed == 1
+    assert d.reason == "iaq_ok" and d.speed == 1
 
 
 # --- F22: bus-driven dry request (DC mold alert) honours the dp_diff gate ---
@@ -174,7 +174,7 @@ def test_dry_requested_via_bus_blocked_when_outdoor_humid():
                    dp_diff=0.3, co2_raw=500, pm_raw=5, current_speed=1,
                    trigger_is_iaq=True)
     d = decide(_dry_cfg(), DvState(), ins)
-    assert d.reason == "iaq" and d.speed == 1
+    assert d.reason == "iaq_ok" and d.speed == 1
 
 
 def test_dry_gate_opens_above_margin():
@@ -187,7 +187,7 @@ def test_dry_gate_hysteresis_holds_and_does_not_arm_in_band():
     d_on = decide(_dry_cfg(), DvState(dry_active=True), _dry_ins(0.7))
     assert d_on.reason == "dry_mode"
     d_off = decide(_dry_cfg(), DvState(), _dry_ins(0.7))
-    assert d_off.reason == "iaq"
+    assert d_off.reason == "iaq_ok"
 
 
 def test_dry_gate_turns_off_below_off_threshold():
@@ -204,7 +204,7 @@ def test_dry_gate_resets_when_dry_mode_off():
 
 def test_dry_gate_none_dp_diff_falls_through():
     d = decide(_dry_cfg(), DvState(), _dry_ins(None))
-    assert d.reason == "iaq"
+    assert d.reason == "iaq_ok"
 
 
 # --- F11: anticipatory ventilation (CO2/PM slope detector) ---
@@ -269,7 +269,7 @@ def test_anticip_detector_disabled_keeps_hold():
 def test_anticip_steep_co2_lifts_to_level():
     cfg, st = _anticip_cfg(), DvState()
     d1 = decide(cfg, st, _ains(600, 5, 100.0))             # bootstrap, clean -> V1
-    assert d1.speed == 1 and d1.reason in ("iaq", "hold_antiflap")
+    assert d1.speed == 1 and d1.reason in ("iaq_ok", "hold_antiflap")
     # +280 ppm over 30 min = 560 ppm/h >= on, while 880 < co2_v2 (900) -> base V1.
     d2 = decide(cfg, st, _ains(880, 5, 100.0 + 1800))
     assert d2.reason == "anticipatory" and d2.speed == 2
@@ -341,7 +341,7 @@ def test_co2_sanity_floor_allows_normal():
     d = decide(cfg, DvState(),
                DvInputs(co2_raw=500, pm_raw=5, current_speed=1, now_ts=1000,
                         startup_grace_active=False, trigger_is_iaq=True))
-    assert d.reason == "iaq" and d.speed == 1
+    assert d.reason == "iaq_ok" and d.speed == 1
 
 
 def test_co2_sanity_floor_does_not_pollute_ema():
@@ -366,7 +366,7 @@ def test_pm_low_is_not_floored():
     d = decide(cfg, DvState(),
                DvInputs(co2_raw=500, pm_raw=0, current_speed=1, now_ts=1000,
                         startup_grace_active=False, trigger_is_iaq=True))
-    assert d.reason == "iaq" and d.speed == 1
+    assert d.reason == "iaq_ok" and d.speed == 1
 
 
 # --- F12: quiet hours (night cap OFF/V1/V2 with critical-air exception) ---
@@ -447,7 +447,7 @@ def test_boost_inactive_is_normal():
     d = decide(cfg, DvState(),
                DvInputs(co2_raw=500, pm_raw=5, boost_active=False, now_ts=0,
                         trigger_is_iaq=True))
-    assert d.reason == "iaq"
+    assert d.reason == "iaq_ok"
 
 
 def test_boost_respects_not_permitted():
@@ -502,11 +502,12 @@ def test_hostile_outdoor_overrides_indoor_demand():
 
 
 def test_auto_clean_air_v1():
+    # Clean air -> baseline V1; reason is "iaq_ok" (not reacting), not "iaq".
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
     d = decide(cfg, DvState(),
                DvInputs(co2_raw=500, pm_raw=5, current_speed=1,
                         trigger_is_iaq=True))
-    assert d.speed == 1 and d.reason == "iaq"
+    assert d.speed == 1 and d.reason == "iaq_ok"
 
 
 def test_auto_high_co2_raises_v3_on_iaq_trigger():
@@ -514,7 +515,8 @@ def test_auto_high_co2_raises_v3_on_iaq_trigger():
     d = decide(cfg, DvState(),
                DvInputs(co2_raw=1400, pm_raw=5, current_speed=1,
                         trigger_is_iaq=True))
-    assert d.speed == 3
+    # Air quality actually raised the speed -> reason is "iaq".
+    assert d.speed == 3 and d.reason == "iaq"
 
 
 def test_freecool_lifts_to_v2():
