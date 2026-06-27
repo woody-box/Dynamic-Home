@@ -92,6 +92,10 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         # Timed V3 boost (F14): epoch until which boost is active (None = off).
         self.boost_until: float | None = None
         self.shower_bathroom: str | None = None   # F13: which bathroom triggered
+        # Observability snapshots (filled each cycle for the diagnostic sensors).
+        self.shower_rise: float | None = None     # live RH rise (bath − outdoor)
+        self.shower_gate = False                  # shower boost prerequisites met
+        self.iaq_snapshot: dict = {}              # live IAQ values vs thresholds
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
         self.adaptive_enabled = False
         # Learned thresholds (None until mature) + sample count, for observability.
@@ -480,6 +484,28 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                                       now.hour * 60 + now.minute)
             sched_speed = int(v) if v is not None else None
 
+        # Snapshot the shower trigger + the effective IAQ thresholds (adaptive if
+        # learned, else fixed) so the diagnostic sensors show value-vs-threshold.
+        rh_delta = self._rh_delta()
+        self.shower_rise = rh_delta
+        self.shower_gate = cfg.shower_enabled
+        self.iaq_snapshot = {
+            "co2": co2_raw,
+            "co2_v2": a_co2_v2 if a_co2_v2 is not None else cfg.co2_v2,
+            "co2_v3": a_co2_v3 if a_co2_v3 is not None else cfg.co2_v3,
+            "pm": pm_raw,
+            "pm_v2": a_pm_v2 if a_pm_v2 is not None else cfg.pm_v2,
+            "pm_v3": a_pm_v3 if a_pm_v3 is not None else cfg.pm_v3,
+            "thresholds": "adaptive" if a_co2_v2 is not None else "fixed",
+            "shower_rise": rh_delta,
+            "shower_on": cfg.shower_rh_delta_on,
+            "shower_off": cfg.shower_rh_delta_off,
+            "shower_bathroom": self.shower_bathroom,
+            "shower_enabled": cfg.shower_enabled,
+            "dp_diff": dp_diff,
+            "dry_margin": cfg.dry_margin,
+        }
+
         ins = DvInputs(
             co2_raw=co2_raw,
             pm_raw=pm_raw,
@@ -504,7 +530,7 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             co2_age_s=self._age_s(const.CONF_CO2),
             pm_age_s=self._age_s(const.CONF_PM25),
             startup_grace_active=grace_active,
-            rh_delta=self._rh_delta(),
+            rh_delta=rh_delta,
             dry_mode=self.dry_mode_enabled,
             dry_requested=(self.bus_explain["winner"] == "request_dry"),
             dew_risk=dew_r,

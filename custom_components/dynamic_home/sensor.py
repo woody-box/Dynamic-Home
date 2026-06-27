@@ -20,6 +20,7 @@ from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
     UnitOfEnergy,
+    UnitOfTemperature,
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
@@ -94,6 +95,15 @@ _MIRROR_ROLES: dict[str, tuple[tuple[str, str], ...]] = {
 }
 
 
+# Recuperator probes exposed as first-class temperature sensors (F28).
+_HRV_TEMPS: tuple[tuple[str, str, str], ...] = (
+    ("supply", "HRV supply", const.CONF_HRV_SUPPLY),
+    ("intake", "HRV intake", const.CONF_HRV_INTAKE),
+    ("extract", "HRV extract", const.CONF_HRV_EXTRACT),
+    ("exhaust", "HRV exhaust", const.CONF_HRV_EXHAUST),
+)
+
+
 def _mirror_sensors(entry: ConfigEntry, module: str) -> list[SensorEntity]:
     """F36: a stable mirror sensor per configured input role (opt-in)."""
     if not entry.options.get(const.CONF_EXPOSE_MIRRORS, False):
@@ -163,6 +173,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     entities.append(FilterLifeSensor(coordinator, entry))
     if coordinator.has_hrv():
         entities.append(HrvEfficiencySensor(coordinator, entry))
+    for role, name, key in _HRV_TEMPS:
+        if coordinator._hw(key):
+            entities.append(HrvTempSensor(coordinator, entry, role, name))
+    if coordinator._bathrooms():
+        entities.append(ShowerRiseSensor(coordinator, entry))
     if coordinator.has_voc():
         entities.append(VocSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
@@ -770,6 +785,71 @@ class ReasonSensor(_Base):
     def native_value(self) -> str | None:
         data = self.coordinator.data
         return data.reason if data else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        # The live IAQ drivers next to the thresholds actually in use (adaptive or
+        # fixed), plus the shower trigger and the dry-mode margin — so you can see
+        # *why* the speed is what it is and whether a threshold is mis-tuned.
+        return dict(self.coordinator.iaq_snapshot)
+
+
+class HrvTempSensor(_Base):
+    """One recuperator probe as a first-class temperature sensor (F28).
+
+    Supply (insuflación), intake (admisión), extract (extracción) and exhaust
+    (expulsión) — graphable individually instead of only as efficiency-sensor
+    attributes.
+    """
+
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+    _attr_icon = "mdi:thermometer"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry, role: str,
+                 name: str) -> None:
+        super().__init__(coordinator, entry, f"hrv_{role}")
+        self._role = role
+        self._attr_name = name
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.hrv_temperatures.get(self._role)
+
+
+class ShowerRiseSensor(_Base):
+    """Live shower trigger: bathroom RH minus outdoor RH (F13).
+
+    The shower boost fires when this rise reaches ``trigger_on``. Exposing it
+    makes the boost tunable: if it never reaches the threshold (or stays
+    ``unknown`` because there is no outdoor-humidity sensor), you can see why.
+    """
+
+    _attr_name = "Shower humidity rise"
+    _attr_icon = "mdi:shower"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "shower_rise")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.shower_rise
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        s = self.coordinator.iaq_snapshot
+        return {"trigger_on": s.get("shower_on"),
+                "trigger_off": s.get("shower_off"),
+                "bathroom": s.get("shower_bathroom"),
+                "enabled": s.get("shower_enabled"),
+                "needs": "bathroom + outdoor humidity sensors"}
 
 
 class ModeSensor(_Base):

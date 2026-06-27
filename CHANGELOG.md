@@ -4,6 +4,31 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.45.0] — 2026-06-27
+
+### Added
+- **VMC · observabilidad para tunear (por qué ventila y por qué no)**: para poder afinar la
+  VMC en pruebas sin adivinar los umbrales:
+  - **4 temperaturas del recuperador como sensores de primer nivel**: *HRV supply*
+    (insuflación), *HRV intake* (admisión), *HRV extract* (extracción) y *HRV exhaust*
+    (expulsión) — graficables por separado (además de seguir como atributos del sensor de
+    rendimiento). Cada una aparece solo si su sonda está configurada.
+  - **Sensor "Shower humidity rise"**: la **subida real** de humedad que dispara el boost de
+    ducha = humedad del baño − humedad exterior (%). Como atributos lleva el **umbral de
+    disparo** (`trigger_on`/`off`), el baño ganador y si está **habilitado**. Hace tuneable la
+    ducha: si nunca llega al umbral —o sale `unknown` porque **falta el sensor de humedad
+    exterior**— se ve al instante (el boost exige humedad de baño **y** exterior, y subida ≥ 8%).
+  - **Sensor "Reason" enriquecido**: ahora expone como atributos los **valores en vivo junto a
+    los umbrales en uso** (CO₂ y su `co2_v2/v3`, PM y `pm_v2/v3`, adaptativos o fijos), la
+    subida de ducha y el margen de secado — el *por qué* de la velocidad, en un sitio.
+
+### Internal
+- `coordinator_dv` cachea `shower_rise`, `shower_gate` e `iaq_snapshot` por ciclo (umbrales
+  efectivos = adaptativos si hay, si no fijos). `sensor.py`: `HrvTempSensor` (×4),
+  `ShowerRiseSensor`, atributos en `ReasonSensor`. Tests (4 sondas como sensores; shower rise
+  + trigger + enabled; thresholds en Reason). Nombres de sensor hardcodeados (sin cambios de
+  traducción).
+
 ## [0.44.0] — 2026-06-26
 
 ### Added
