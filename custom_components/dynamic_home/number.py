@@ -103,7 +103,7 @@ class ThresholdNumber(NumberEntity):
         self._entry = entry
         self._desc = desc
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.key   # name from translations (i18n)
         self._attr_native_min_value = desc.min_v
         self._attr_native_max_value = desc.max_v
         self._attr_native_step = desc.step
@@ -138,7 +138,7 @@ class CoordNumber(NumberEntity, RestoreEntity):
         self._coordinator = coordinator
         self._desc = desc
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.key   # name from translations (i18n)
         self._attr_icon = desc.icon
         self._attr_native_min_value = desc.min_v
         self._attr_native_max_value = desc.max_v
