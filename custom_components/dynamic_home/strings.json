@@ -136,7 +136,7 @@
           "cat_thermal": "Thermal deltas (Advanced)",
           "cat_shield": "Thermal shield (Advanced)",
           "cat_wind": "Wind protection",
-          "cat_slew": "Slew rate (Advanced)",
+          "cat_slew": "Progressive movement (Advanced)",
           "cat_geometry": "Window geometry (Expert)",
           "cat_setpoints": "Base setpoints",
           "cat_limits": "Setpoint limits (Advanced)",
@@ -423,11 +423,11 @@
         }
       },
       "cat_slew": {
-        "title": "Slew rate",
-        "description": "Limits the move step so the shutter doesn't go in jerks.",
+        "title": "Progressive movement",
+        "description": "Limits how much the shutter position can change each cycle (smoother, fewer motor starts).",
         "data": {
-          "slew_enabled": "Limit slew rate",
-          "slew_step_pct": "Slew step (%)"
+          "slew_enabled": "Progressive movement",
+          "slew_step_pct": "Movement step (%)"
         },
         "data_description": {
           "slew_enabled": "Move the shutter in steps instead of jumping (smoother, fewer motor starts).",

@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.48.0] — 2026-06-27
+
+### Changed
+- **UX · textos más claros**: el sensor de salud de cada módulo se llama ahora **"Estado"**
+  (con `device_class problem` HA muestra **OK / Problema**), en vez del raro **"Degradado: OK"**.
+  Y la categoría **"Slew rate"** pasa a **"Movimiento progresivo"** (campos: *Movimiento
+  progresivo* y *Paso de movimiento (%)*), con descripción *"limita cuánto puede cambiar la
+  posición de la persiana en cada ciclo"*.
+
+### Internal
+- `DegradedBinarySensor._attr_name` "Degradado" → "Estado". `options_spec`: categoría `slew`
+  relabel + campos `slew_enabled`/`slew_step_pct`. Traducciones `cat_slew` (menú + título +
+  descripción + data) en strings/en/es. Sin cambios de lógica (el `unique_id`/entity_id no
+  cambia en instalaciones existentes).
+
 ## [0.47.0] — 2026-06-27
 
 ### Changed

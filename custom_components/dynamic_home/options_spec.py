@@ -48,7 +48,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "thermal": ("Thermal deltas", "Deltas térmicos"),
     "shield": ("Thermal shield", "Escudo térmico"),
     "wind": ("Wind protection", "Protección de viento"),
-    "slew": ("Slew rate", "Slew rate"),
+    "slew": ("Progressive movement", "Movimiento progresivo"),
     "geometry": ("Window geometry", "Geometría de ventana"),
     "setpoints": ("Base setpoints", "Consignas base"),
     "limits": ("Setpoint limits", "Límites de consigna"),
@@ -205,8 +205,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
                "Histéresis cap viento (km/h)"),
         ],
         "slew": [
-            _v("slew_enabled", "Limit slew rate", "Limitar slew rate"),
-            _v("slew_step_pct", "Slew step (%)", "Paso slew (%)"),
+            _v("slew_enabled", "Progressive movement", "Movimiento progresivo"),
+            _v("slew_step_pct", "Movement step (%)", "Paso de movimiento (%)"),
         ],
         "geometry": [
             _v("window_height_cm", "Window height (cm)", "Altura ventana (cm)"),

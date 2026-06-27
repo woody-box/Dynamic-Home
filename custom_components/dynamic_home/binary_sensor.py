@@ -219,7 +219,9 @@ class DegradedBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Module health: ON when a required source is missing (F07, DV/DS/DC)."""
 
     _attr_has_entity_name = True
-    _attr_name = "Degradado"
+    # device_class PROBLEM -> HA shows the state as OK / Problema, so "Estado"
+    # reads naturally ("Estado: OK") instead of the odd "Degradado: OK".
+    _attr_name = "Estado"
     _attr_icon = "mdi:alert-circle-outline"
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
