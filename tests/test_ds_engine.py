@@ -281,13 +281,49 @@ def test_heat_shield_off_opens_in_summer():
     assert d.pos == 100 and d.reason == "default"
 
 
-def test_heat_shield_yields_to_direct_sun_shield():
-    # With direct sun the (geometric/fixed) solar shield still owns the branch.
+def test_cool_cap_applies_with_direct_sun_when_shield_on():
+    # Shield on + direct sun: the cooling cap (0) wins over the daylight shield.
     d = decide_cover(_cfg(heat_shield_pct=0, hot_delta=0.8, summer_min_open_pct=20,
                           slew_enabled=False), DsState(),
                      DsInputs(hvac_mode="cool", impact=70, t_in=24, t_out=30,
                               heat_shield=True))
-    assert d.reason == "summer_solar_shield"
+    assert d.pos == 0 and d.reason == "summer_heat_shield"
+
+
+def test_cool_cap_lets_geo_close_further():
+    # Cap 40 but the fixed shield wants 30 (more closed) -> the more-closed wins.
+    d = decide_cover(_cfg(heat_shield_pct=40, hot_delta=0.8, summer_min_open_pct=20,
+                          slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=70, t_in=24, t_out=30,
+                              heat_shield=True))
+    assert d.pos == 30 and d.reason == "summer_solar_shield"
+
+
+def test_direct_sun_shield_unchanged_when_shield_off():
+    # Shield off: the daylight (fixed/geo) shield owns it, no cooling cap.
+    d = decide_cover(_cfg(heat_shield_pct=0, hot_delta=0.8, summer_min_open_pct=20,
+                          slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=70, t_in=24, t_out=30))
+    assert d.pos == 30 and d.reason == "summer_solar_shield"
+
+
+def test_heat_gain_cap_limits_opening():
+    # Heating + sun + shield on: gain capped at heat_max_open_pct.
+    d = decide_cover(_cfg(heat_max_open_pct=80, slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="heat", impact=80, t_in=20, t_out=2,
+                              heat_shield=True))
+    assert d.pos == 80 and d.reason == "winter_solar_gain"
+
+
+def test_heat_gain_full_when_shield_off_or_default():
+    # Shield off -> full gain; shield on with default 100 -> full gain too.
+    off = decide_cover(_cfg(heat_max_open_pct=80, slew_enabled=False), DsState(),
+                       DsInputs(hvac_mode="heat", impact=80, t_in=20, t_out=2))
+    assert off.pos == 100 and off.reason == "winter_solar_gain"
+    dflt = decide_cover(_cfg(slew_enabled=False), DsState(),
+                        DsInputs(hvac_mode="heat", impact=80, t_in=20, t_out=2,
+                                 heat_shield=True))
+    assert dflt.pos == 100
 
 
 def test_heat_shield_only_in_cooling():

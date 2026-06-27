@@ -398,13 +398,15 @@
       },
       "cat_shield": {
         "title": "Thermal shield",
-        "description": "Opt-in (turn on the 'Thermal shield' switch). When no direct sun hits the facade, protect against the outdoor temperature. In COOL (thermostat cooling) with hotter outside → keep the shutter shut against ambient/terrace heat (Heat shield %, 0 = fully shut). In HEAT (thermostat heating) by day with colder outside → close to insulate; if it's milder outside it stays open for light (Cold ΔT). Off = legacy (cool opens, heat always insulates when there is no sun).",
+        "description": "Opt-in (turn on the 'Thermal shield' switch). Thermal priority by season. COOLING with hotter outside: the shutter never opens past 'Max open while cooling' (0 = fully shut), with or without sun — the geometric shading can still close further. HEATING with sun: captures gain up to 'Max open while heating' (100 = full gain); by day with no sun it closes to insulate only when it's colder outside (Cold ΔT). Off = legacy.",
         "data": {
-          "heat_shield_pct": "Heat shield (%)",
+          "heat_shield_pct": "Max open while cooling (%)",
+          "heat_max_open_pct": "Max open while heating (%)",
           "cold_delta": "Cold ΔT (°C)"
         },
         "data_description": {
-          "heat_shield_pct": "Position when cooling and it's hotter outside but the sun no longer hits this facade (ambient/terrace heat). 0 = fully shut; raise it to let some daylight in. (↓ = blocks more heat)",
+          "heat_shield_pct": "Max opening while cooling and it's hotter outside (preserve the cool). 0 = fully shut; raise it to let some daylight in. (↓ = blocks more heat)",
+          "heat_max_open_pct": "Max opening while heating with direct sun (solar gain). 100 = full gain; lower it to limit glare or over-gain. (↓ = captures less sun)",
           "cold_delta": "In heating, ΔT below which the outside counts as cold: by day with no direct sun, the shutter closes to insulate only when it's this much colder outside (else it stays open for light). (↓ = insulates sooner)"
         }
       },
