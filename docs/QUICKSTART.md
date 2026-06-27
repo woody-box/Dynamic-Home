@@ -137,9 +137,13 @@ esa es la trazabilidad "qué decidió, cuándo y por qué".
 - **DV (ventilación):** `iaq` (CO₂/PM), `shower_rh` (boost por ducha), `dry_mode` (secado
   por rocío), `freecool` (free-cooling), `quiet_cap` (horas de silencio),
   `failsafe_vital_ko` (fuente vital obsoleta), `hold_antiflap`.
-- **DS (persianas):** `summer_solar_shield` / `winter_solar_gain` (estrategia solar),
-  `freecool_night` (purga nocturna), `night_insulate` (aislamiento), `meteo_rain` y los
-  caps por `alert_wind` / `alert_hail`.
+- **DS (persianas):** `summer_solar_shield` / `summer_solar_geo` (escudo solar fijo o
+  geométrico), `summer_heat_shield` (tope por calor refrigerando), `winter_solar_gain`
+  (ganancia), `winter_cold_shield` / `winter_mild_open` (día de invierno sin sol),
+  `freecool_night` (purga nocturna), `dawn_ramp` (amanecer), `meteo_rain` / `meteo_alert`
+  y los caps de viento. **Ojo:** `night_insulate` = el switch **F16** (aislamiento
+  nocturno), distinto de `winter_night_insulate` = la rama **built-in** de calefacción sin
+  sol. Glosario completo en [`SPEC_DS.md`](SPEC_DS.md).
 
 ---
 

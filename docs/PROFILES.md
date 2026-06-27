@@ -167,6 +167,57 @@ mecanismos: tarifa (F34), anti-pico (F03) y anticiclado (F09).
 
 ---
 
+## Perfil 5 · Terraza acristalada (efecto invernadero)
+
+**Escenario:** una persiana en la puerta de la cocina que da a una **terraza
+acristalada**, orientada al **este (~90°)**, así que recibe el sol del amanecer.
+La terraza, al estar acristalada, hace **efecto invernadero** en verano: se
+calienta mucho y ese calor acaba entrando a la cocina/salón (que están abiertos).
+
+**Módulos:** DS (la persiana de la cocina) + DC del salón como referencia de
+temporada.
+
+**La idea clave — usar la terraza como "exterior" de esa persiana:**
+- `facade_azimuth_deg: 90` (este).
+- `ds_t_out: sensor.terraza` → la Tª **de la terraza**, no la de la calle (es el
+  aire que realmente entra).
+- `climate: climate.salon` → como cocina y salón están abiertos, el salón es la
+  referencia. Su modo da la **temporada** a DS: `heat` (invierno) / `off`
+  (neutro) / `cool` (verano).
+
+> **¿No tienes refrigeración real?** Crea un **`climate` dummy** en `cool`. No
+> enfría nada, pero le dice a DS *"estoy en modo verano, protege del calor"* → el
+> **escudo térmico** se activa igual.
+
+**Configuración clave:**
+- Activa **Sombreado geométrico** (ajusta la posición a la incidencia real del sol
+  en esa fachada) y, sobre todo, **Thermal shield** (tiene prioridad).
+- **Apertura máx. refrigerando**: el tope cuando refrigeras y la terraza está más
+  caliente que dentro.
+  - `20%` → se queda lo justo abierta para algo de luz natural.
+  - `0%` → **"modo cueva"**: máxima protección térmica, sin luz.
+- Si la terraza está **más fresca** que el interior, la persiana puede abrir para
+  aprovechar luz o **free-cooling**; si está **más caliente** y estás en `cool`,
+  **limita la apertura** para que no entre el calor.
+
+**Por fachada:** cada persiana lleva su orientación y su tope. En el salón, una
+persiana **norte** (poca carga solar) puede abrir un 20% para tener luz, mientras
+las de más sol se mantienen más cerradas.
+
+**De noche:** si la Tª exterior baja por debajo de la del salón/cocina, DS puede
+**subir** las persianas para facilitar el free-cooling (lo ideal sería abrir
+también las ventanas, pero eso aún no está motorizado 😄).
+
+**Reason codes a vigilar:** `summer_heat_shield` (tope por calor refrigerando),
+`summer_solar_geo` (sombreado geométrico), `freecool_night` (purga nocturna),
+`dawn_ramp` (amanecer) y `winter_solar_gain` en invierno.
+
+> En resumen: no es "bajar si hace sol". Es usar **cada persiana** según su
+> orientación, Tª exterior/interior, estación y modo de climatización para
+> equilibrar **luz natural, confort y protección térmica**.
+
+---
+
 ## Más
 
 - **[QUICKSTART.md](QUICKSTART.md)** — montar una zona ficticia y leer reason codes en 10 min.
