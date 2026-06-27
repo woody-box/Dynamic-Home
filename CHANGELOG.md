@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.46.0] — 2026-06-27
+
+### Fixed
+- **Persiana · el amanecer gradual ya no abre contra el sol/calor en refrigeración**: el
+  *Gradual sunrise* (F19) tenía más prioridad que la protección estacional, así que al
+  amanecer abría en pasos de 10% **aunque el escudo solar (cool + sol directo + calor)
+  quisiera cerrar** — entraba el sol de la mañana. Ahora el amanecer **cede ante la
+  protección de refrigeración** (`cool_protect`: en `cool`, más calor fuera y con sol directo
+  o con el *Thermal shield* activo): deja que el escudo solar/geométrico o el térmico
+  mantengan la persiana protegida. En **calefacción** el amanecer sigue igual (da luz/ganancia
+  por la mañana), y si en `cool` no hay amenaza (ni calor ni sol) también rampa normal.
+
+### Internal
+- `decide_cover`: `is_cool`/`is_heat`/`temps_ok`/`hot_out` se calculan antes de la cascada y
+  la rama del amanecer se gatea con `not cool_protect`. Tests: amanecer cede al escudo solar y
+  al térmico; rampa cuando no hay amenaza en cool; rampa en calefacción.
+
 ## [0.45.0] — 2026-06-27
 
 ### Added

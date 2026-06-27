@@ -311,6 +311,16 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         impact = solar_impact(cfg, ins.sun_azimuth, ins.sun_elevation, ins.sun_effective)
     impact = impact or 0
 
+    is_cool = ins.hvac_mode == "cool"
+    is_heat = ins.hvac_mode == "heat"
+    temps_ok = ins.t_in is not None and ins.t_out is not None
+    hot_out = temps_ok and ins.t_out >= ins.t_in + cfg.hot_delta
+    # Cooling-season protection wants the shutter shaded: hotter outside with
+    # either direct sun (solar shield) or the thermal shield armed. The dawn ramp
+    # yields to this, so the morning opening doesn't let the sun/heat in. Winter
+    # is unaffected — a gradual sunrise still gives morning light/solar gain.
+    cool_protect = is_cool and hot_out and (impact > 0 or ins.heat_shield)
+
     # 1) Override (lock / hold / ttl)
     if ins.override_mode == "lock":
         pos, reason = ins.override_pos, "ov_lock"
@@ -328,22 +338,18 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     elif ins.privacy_active:
         pos, reason = cfg.privacy_pos_pct, "privacy_time"
     # 4) Gradual sunrise ramp (F19): drives the morning opening in steps. Yields
-    # to override/rain/privacy above; the coordinator only sets dawn_pos when the
-    # ramp is active and never below the current position (it only ever opens).
-    elif ins.dawn_pos is not None:
+    # to override/rain/privacy above; also yields to cooling-season protection
+    # (cool_protect) so it never opens into the morning sun/heat. The coordinator
+    # only sets dawn_pos while the ramp is active (never below the current pos).
+    elif ins.dawn_pos is not None and not cool_protect:
         pos, reason = ins.dawn_pos, "dawn_ramp"
     # 5) Seasonal night insulation (F16): owns the night strategy when enabled.
     elif ins.night_pos is not None:
         pos, reason = ins.night_pos, "night_insulate"
     else:
-        is_cool = ins.hvac_mode == "cool"
-        is_heat = ins.hvac_mode == "heat"
-        temps_ok = ins.t_in is not None and ins.t_out is not None
-
         free_ok = (is_cool and ins.night and temps_ok
                    and ins.t_out <= ins.t_in - cfg.freecool_delta)
-        shield_ok = (is_cool and impact > 0 and temps_ok
-                     and ins.t_out >= ins.t_in + cfg.hot_delta)
+        shield_ok = is_cool and impact > 0 and hot_out
 
         if free_ok and not ins.sleep_mode:
             pos, reason = cfg.freecool_max_open_pct, "freecool_night"
@@ -359,8 +365,7 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
                 raw = max(100 - impact, cfg.summer_min_open_pct)
                 pos, reason = quantize10(raw), "summer_solar_shield"
                 detail = {"impact": impact}
-        elif (ins.heat_shield and is_cool and temps_ok
-              and ins.t_out >= ins.t_in + cfg.hot_delta):
+        elif ins.heat_shield and is_cool and hot_out:
             # Cooling and hotter outside, but no direct sun on this facade: don't
             # open into the ambient/terrace heat — hold the heat-shield position.
             pos, reason = cfg.heat_shield_pct, "summer_heat_shield"
