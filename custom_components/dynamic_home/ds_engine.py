@@ -29,11 +29,12 @@ class DsConfig:
     hot_delta: float = 0.8
     cold_delta: float = 0.8             # ΔT below which the outside counts as cold
     winter_night_pct: int = 0
-    # Ambient heat shield: in cooling season, when it is hotter outside than in
-    # (by hot_delta) but the sun no longer hits this facade, keep the shutter
-    # closed against the ambient/terrace heat instead of opening. 0 = fully shut
-    # (default); raise it (e.g. 20/40) to let some daylight in.
-    heat_shield_pct: int = 0
+    # Thermal-shield opening caps (opt-in via the switch). Cooling: max opening
+    # while it is hotter outside (0 = fully shut, blocks sun+heat; raise to let
+    # some daylight in — the geometric shield can still close further). Heating:
+    # max opening with solar gain (100 = full gain; lower to limit glare/over-gain).
+    heat_shield_pct: int = 0            # max opening while cooling + hotter out
+    heat_max_open_pct: int = 100        # max opening while heating + direct sun
 
     wind_limit_kmh: float = 40.0
     wind_cap_span_kmh: float = 20.0
@@ -365,13 +366,21 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
                 raw = max(100 - impact, cfg.summer_min_open_pct)
                 pos, reason = quantize10(raw), "summer_solar_shield"
                 detail = {"impact": impact}
+            # Cooling priority (thermal shield on): cap openness to block heat,
+            # even with direct sun — the geometric/fixed shield can still close
+            # further (glare), but it never opens past the cooling cap.
+            if ins.heat_shield and pos > cfg.heat_shield_pct:
+                pos, reason = cfg.heat_shield_pct, "summer_heat_shield"
         elif ins.heat_shield and is_cool and hot_out:
             # Cooling and hotter outside, but no direct sun on this facade: don't
-            # open into the ambient/terrace heat — hold the heat-shield position.
+            # open into the ambient/terrace heat — hold the cooling cap position.
             pos, reason = cfg.heat_shield_pct, "summer_heat_shield"
             detail = {"t_in": ins.t_in, "t_out": ins.t_out}
         elif is_heat and impact > 0:
-            pos, reason = 100, "winter_solar_gain"
+            # Solar gain. With the thermal shield on, cap the opening (glare /
+            # privacy / over-gain); default 100 keeps full gain.
+            pos = (min(100, cfg.heat_max_open_pct) if ins.heat_shield else 100)
+            reason = "winter_solar_gain"
         elif is_heat and impact == 0:
             # No direct sun on the facade. With the thermal shield on (and by day,
             # sun up): insulate only when it's genuinely colder outside, otherwise

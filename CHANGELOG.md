@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.51.0] — 2026-06-27
+
+### Changed
+- **Persiana · escudo térmico coherente con topes por estación**: el switch *Thermal shield*
+  pasa a ser el mando de **prioridad térmica** y unifica sol/sin-sol:
+  - **Refrigerando + más calor fuera**: la persiana **no abre más de "Apertura máx.
+    refrigerando"** (antes *Escudo térmico %*, sigue **0** = cerrada del todo) **también con sol
+    directo** — antes el sombreado geométrico dejaba una rendija (p. ej. 20%) por la que entraba
+    el calor; ahora el tope manda y el geométrico solo puede **cerrar más** (deslumbramiento).
+  - **Calentando + sol**: nuevo tope **"Apertura máx. calentando"** (def. **100** = ganancia
+    plena) para limitar deslumbramiento/sobre-ganancia si se quiere.
+  - **Apagado** = comportamiento previo (geométrico deja luz; ganancia plena).
+
+### Internal
+- `DsConfig.heat_max_open_pct` (100). `decide_cover`: en `shield_ok` con `heat_shield`,
+  `pos = min(pos, heat_shield_pct)` (reason `summer_heat_shield` si el tope manda); en
+  `winter_solar_gain` con `heat_shield`, `pos = min(100, heat_max_open_pct)`. Relabel de
+  `heat_shield_pct` → "Apertura máx. refrigerando" (mismo campo, sin migración) + nuevo campo en
+  la categoría `shield` (EN/ES). Tests motor (cap cool con sol; geo cierra más; cap heat;
+  defaults).
+
 ## [0.50.0] — 2026-06-27
 
 ### Changed

@@ -195,7 +195,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("hot_delta", "Hot ΔT (°C)", "ΔT calor (°C)"),
         ],
         "shield": [
-            _v("heat_shield_pct", "Heat shield (%)", "Escudo térmico (%)"),
+            _v("heat_shield_pct", "Max open while cooling (%)",
+               "Apertura máx. refrigerando (%)"),
+            _v("heat_max_open_pct", "Max open while heating (%)",
+               "Apertura máx. calentando (%)"),
             _v("cold_delta", "Cold ΔT (°C)", "ΔT frío (°C)"),
         ],
         "wind": [

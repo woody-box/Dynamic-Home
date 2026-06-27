@@ -398,13 +398,15 @@
       },
       "cat_shield": {
         "title": "Escudo térmico",
-        "description": "Opt-in (activa el interruptor 'Thermal shield'). Cuando el sol ya no da en la fachada, protege según la temperatura exterior. En FRÍO (termostato en cool) con más calor fuera → mantiene la persiana cerrada contra el calor ambiente/terraza (Escudo térmico %, 0 = cerrada del todo). En CALOR (termostato en heat) de día con más frío fuera → cierra para aislar; si fuera está templado se queda abierta para dejar luz (ΔT frío). Apagado = comportamiento previo (frío abre; calor aísla siempre que no hay sol).",
+        "description": "Opt-in (activa el interruptor 'Thermal shield'). Prioridad térmica por estación. REFRIGERANDO (cool) con más calor fuera: la persiana no abre más de 'Apertura máx. refrigerando' (0 = cerrada del todo), con o sin sol — el sombreado geométrico puede cerrar aún más. CALENTANDO (heat) con sol: capta ganancia hasta 'Apertura máx. calentando' (100 = ganancia plena); de día sin sol cierra para aislar solo si fuera está más frío (ΔT frío). Apagado = comportamiento previo.",
         "data": {
-          "heat_shield_pct": "Escudo térmico (%)",
+          "heat_shield_pct": "Apertura máx. refrigerando (%)",
+          "heat_max_open_pct": "Apertura máx. calentando (%)",
           "cold_delta": "ΔT frío (°C)"
         },
         "data_description": {
-          "heat_shield_pct": "Posición cuando refrigera y fuera hace más calor pero ya no le da el sol a esta fachada (calor ambiente/terraza). 0 = cerrada del todo; súbela para dejar entrar algo de luz. (↓ = bloquea más calor)",
+          "heat_shield_pct": "Máxima apertura mientras refrigeras y fuera hace más calor (reserva el frío). 0 = cerrada del todo; súbela para dejar algo de luz. (↓ = bloquea más calor)",
+          "heat_max_open_pct": "Máxima apertura mientras calientas y hay sol directo (ganancia solar). 100 = ganancia plena; bájala para limitar deslumbramiento o sobre-ganancia. (↓ = capta menos sol)",
           "cold_delta": "En calefacción, ΔT por debajo del cual el exterior cuenta como frío: de día y sin sol directo, la persiana cierra para aislar solo si fuera está al menos esto más frío (si no, se queda abierta para dejar luz). (↓ = aísla antes)"
         }
       },
