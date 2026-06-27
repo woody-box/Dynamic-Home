@@ -1430,7 +1430,8 @@
       "window_inferred": {"name": "Window (inferred)"},
       "weather_alert": {"name": "Weather alert"},
       "degraded": {"name": "Status"},
-      "zone_occupancy": {"name": "Presence {zone}"}
+      "zone_occupancy": {"name": "Presence {zone}"},
+      "in_sun": {"name": "In sun"}
     }
   }
 }

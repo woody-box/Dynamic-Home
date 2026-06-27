@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.52.0] — 2026-06-27
+
+### Added
+- **Persiana · binary_sensor "Al sol"**: por persiana, indica si **el sol directo está
+  dando en esa fachada** (on/off). Tiene en cuenta la **orientación** (azimut/span de
+  fachada), el **horizonte** y la **sombra del voladizo/alero**, así que es `on` solo cuando
+  el sol realmente llega a la ventana (`impact > 0`). Atributo `impact` (0..100). Útil para
+  dashboards y automatizaciones ("si el salón está al sol, …").
+
+### Internal
+- `coordinator_ds.sun_impact` (calculado con `solar_impact` cada ciclo); `InSunBinarySensor`
+  (`{entry}_in_sun`, translation_key `in_sun`, EN/ES). Test de integración (off de noche, on
+  con sol en la fachada). Rama DS de `binary_sensor.async_setup_entry` separada de la de VMC.
+
 ## [0.51.0] — 2026-06-27
 
 ### Changed

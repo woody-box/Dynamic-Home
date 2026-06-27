@@ -1430,7 +1430,8 @@
       "window_inferred": {"name": "Ventana (inferida)"},
       "weather_alert": {"name": "Alerta meteo"},
       "degraded": {"name": "Estado"},
-      "zone_occupancy": {"name": "Presencia {zone}"}
+      "zone_occupancy": {"name": "Presencia {zone}"},
+      "in_sun": {"name": "Al sol"}
     }
   }
 }

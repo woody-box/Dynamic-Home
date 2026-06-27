@@ -280,6 +280,30 @@ async def test_target_and_reason_sensors(hass: HomeAssistant) -> None:
     assert hass.states.get(rid).state == co.data.reason
 
 
+async def test_in_sun_binary_sensor(hass: HomeAssistant) -> None:
+    """'In sun' is on only when direct sun reaches this facade."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)                                   # sun below horizon
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_in_sun")
+    assert eid is not None
+    assert hass.states.get(eid).state == "off"    # night -> not in sun
+
+    # Sun on the south facade (SHUTTER facade_azimuth = 180).
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180, "elevation": 50})
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(eid).state == "on"
+    assert hass.states.get(eid).attributes["impact"] > 0
+
+
 async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
     """Privacy clamps the cover; lock pins it (override) and wins over privacy."""
     _seed(hass)  # sun below horizon, cover.salon_real without position
