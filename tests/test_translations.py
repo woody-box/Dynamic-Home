@@ -37,3 +37,23 @@ def test_number_names_translated():
         names = _names(path, "number")
         missing = {k for k in keys if "name" not in names.get(k, {})}
         assert not missing, f"{path.name}: number names missing {missing}"
+
+
+def test_sensor_desc_names_translated():
+    from custom_components.dynamic_home import sensor as sm
+    keys = {d.key for d in sm._HOURS}
+    keys |= {f"hrv_{role}" for role, _name, _key in sm._HRV_TEMPS}
+    keys |= {d.key for d in sm._DC_SENSORS}
+    keys |= {d.key for d in sm._DC_LEARN}
+    for path in _FILES:
+        names = _names(path, "sensor")
+        missing = {k for k in keys if "name" not in names.get(k, {})}
+        assert not missing, f"{path.name}: sensor names missing {missing}"
+
+
+def test_entity_name_parity_across_locales():
+    platforms = ("switch", "number", "sensor", "binary_sensor")
+    ref = {p: set(_names(_FILES[0], p)) for p in platforms}
+    for path in _FILES[1:]:
+        for p in platforms:
+            assert set(_names(path, p)) == ref[p], f"{path.name}: {p} keys differ"

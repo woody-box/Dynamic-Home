@@ -192,7 +192,7 @@ class ChangeoverSensor(CoordinatorEntity, SensorEntity):
     """Community changeover (F37): resolved water direction + manual/water_temp."""
 
     _attr_has_entity_name = True
-    _attr_name = "Changeover"
+    _attr_translation_key = "changeover"
     _attr_icon = "mdi:sun-snowflake-variant"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = ["heat", "cool", "off", "unknown"]
@@ -219,7 +219,7 @@ class HeadroomSensor(CoordinatorEntity, SensorEntity):
     """Import headroom (F34): watts left under the contracted power (ICP)."""
 
     _attr_has_entity_name = True
-    _attr_name = "Margen de red"
+    _attr_translation_key = "headroom"
     _attr_icon = "mdi:transmission-tower"
     _attr_device_class = SensorDeviceClass.POWER
     _attr_native_unit_of_measurement = "W"
@@ -248,7 +248,7 @@ class TariffSensor(CoordinatorEntity, SensorEntity):
     """Tariff state (F34): cheap / normal / peak."""
 
     _attr_has_entity_name = True
-    _attr_name = "Tarifa"
+    _attr_translation_key = "tariff"
     _attr_icon = "mdi:cash-clock"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = ["cheap", "normal", "peak"]
@@ -272,7 +272,7 @@ class SurplusSensor(CoordinatorEntity, SensorEntity):
     """PV surplus (F34, ⚠️ gated on PV): production − consumption."""
 
     _attr_has_entity_name = True
-    _attr_name = "Excedente FV"
+    _attr_translation_key = "surplus"
     _attr_icon = "mdi:solar-power"
     _attr_device_class = SensorDeviceClass.POWER
     _attr_native_unit_of_measurement = "W"
@@ -293,7 +293,7 @@ class HouseEnergySensor(CoordinatorEntity, SensorEntity):
     """House energy total (F34 §8.2): sum of every module's kWh; Energy dashboard."""
 
     _attr_has_entity_name = True
-    _attr_name = "Consumo de casa"
+    _attr_translation_key = "house_energy"
     _attr_icon = "mdi:home-lightning-bolt"
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
@@ -318,7 +318,7 @@ class HouseCostSensor(CoordinatorEntity, RestoreSensor):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Coste de casa"
+    _attr_translation_key = "house_cost"
     _attr_icon = "mdi:cash"
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
@@ -347,7 +347,7 @@ class HousePowerSensor(CoordinatorEntity, SensorEntity):
     """House instantaneous power (F06/REQ-ENE-5): sum of every module's ``power_w``."""
 
     _attr_has_entity_name = True
-    _attr_name = "Potencia de casa"
+    _attr_translation_key = "house_power"
     _attr_icon = "mdi:home-lightning-bolt-outline"
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -369,7 +369,7 @@ class ZonesSensor(CoordinatorEntity, SensorEntity):
     """Zone/group hierarchy (F24): zone count + a readable tree in attributes."""
 
     _attr_has_entity_name = True
-    _attr_name = "Zonas"
+    _attr_translation_key = "zones"
     _attr_icon = "mdi:home-group"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -407,7 +407,7 @@ class WeatherSourceSensor(CoordinatorEntity, SensorEntity):
     """Active weather source (F33): which source is serving, and whether degraded."""
 
     _attr_has_entity_name = True
-    _attr_name = "Fuente activa"
+    _attr_translation_key = "weather_source"
     _attr_icon = "mdi:weather-partly-cloudy"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -561,7 +561,7 @@ class HoursSensor(_Base, RestoreSensor):
                  desc: _HoursDesc) -> None:
         super().__init__(coordinator, entry, desc.key)
         self._desc = desc
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.key
         self._attr_icon = desc.icon
 
     async def async_added_to_hass(self) -> None:
@@ -582,7 +582,7 @@ class EnergySensor(_Base, RestoreSensor):
     across restarts so the total keeps climbing.
     """
 
-    _attr_name = "Energy"
+    _attr_translation_key = "energy"
     _attr_icon = "mdi:lightning-bolt"
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
@@ -610,7 +610,7 @@ class PowerSensor(_Base):
     the kWh integral — a real meter if configured, else the per-state estimate).
     """
 
-    _attr_name = "Power"
+    _attr_translation_key = "power"
     _attr_icon = "mdi:flash"
     _attr_device_class = SensorDeviceClass.POWER
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -636,7 +636,7 @@ class DsPositionSensor(_Base):
     *wants* and why. ``unknown`` when the cover reports no position feedback.
     """
 
-    _attr_name = "Position"
+    _attr_translation_key = "position"
     _attr_icon = "mdi:window-shutter"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -665,7 +665,7 @@ class DsTargetSensor(_Base):
     penetration, indoor/outdoor temps...) ride along as attributes.
     """
 
-    _attr_name = "Target position"
+    _attr_translation_key = "target_position"
     _attr_icon = "mdi:window-shutter-cog"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -698,7 +698,7 @@ class DsReasonSensor(_Base):
     the logic before letting it drive the hardware.
     """
 
-    _attr_name = "Reason"
+    _attr_translation_key = "reason"
     _attr_icon = "mdi:information-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -724,7 +724,7 @@ class ScheduleSensor(CoordinatorEntity, SensorEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Programación"
+    _attr_translation_key = "schedule"
     _attr_icon = "mdi:calendar-clock"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -762,7 +762,7 @@ class ScheduleSensor(CoordinatorEntity, SensorEntity):
 
 
 class SpeedSensor(_Base):
-    _attr_name = "Speed"
+    _attr_translation_key = "speed"
     _attr_icon = "mdi:fan"
 
     def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
@@ -774,7 +774,7 @@ class SpeedSensor(_Base):
 
 
 class ReasonSensor(_Base):
-    _attr_name = "Reason"
+    _attr_translation_key = "reason"
     _attr_icon = "mdi:information-outline"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -813,7 +813,7 @@ class HrvTempSensor(_Base):
                  name: str) -> None:
         super().__init__(coordinator, entry, f"hrv_{role}")
         self._role = role
-        self._attr_name = name
+        self._attr_translation_key = f"hrv_{role}"
 
     @property
     def native_value(self) -> float | None:
@@ -828,7 +828,7 @@ class ShowerRiseSensor(_Base):
     ``unknown`` because there is no outdoor-humidity sensor), you can see why.
     """
 
-    _attr_name = "Shower humidity rise"
+    _attr_translation_key = "shower_rise"
     _attr_icon = "mdi:shower"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -853,7 +853,7 @@ class ShowerRiseSensor(_Base):
 
 
 class ModeSensor(_Base):
-    _attr_name = "Mode"
+    _attr_translation_key = "mode"
     _attr_icon = "mdi:fan-auto"
 
     def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
@@ -867,7 +867,7 @@ class ModeSensor(_Base):
 class StateSensor(_Base):
     """Operational state: boot (not evaluated) / grace (startup) / active."""
 
-    _attr_name = "State"
+    _attr_translation_key = "op_state"
     _attr_icon = "mdi:state-machine"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -888,7 +888,7 @@ class StateSensor(_Base):
 class OverrideRemainingSensor(_Base):
     """Minutes left before a manual override auto-reverts to auto (0 if none)."""
 
-    _attr_name = "Override remaining"
+    _attr_translation_key = "override_remaining"
     _attr_icon = "mdi:timer-sand"
     _attr_native_unit_of_measurement = UnitOfTime.MINUTES
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -908,7 +908,7 @@ class OverrideRemainingSensor(_Base):
 class FilterLifeSensor(_Base):
     """Remaining filter life as a percentage (100 % = fresh, 0 % = due)."""
 
-    _attr_name = "Filter life"
+    _attr_translation_key = "filter_life"
     _attr_icon = "mdi:air-filter"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_suggested_display_precision = 1
@@ -924,7 +924,7 @@ class FilterLifeSensor(_Base):
 class HrvEfficiencySensor(_Base):
     """Heat-recovery efficiency (%) with a recovering/bypass/idle state attribute."""
 
-    _attr_name = "Recuperator efficiency"
+    _attr_translation_key = "hrv_efficiency"
     _attr_icon = "mdi:heat-wave"
     _attr_native_unit_of_measurement = PERCENTAGE
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -947,7 +947,7 @@ class HrvEfficiencySensor(_Base):
 class VocSensor(_Base):
     """Observed VOC level (F30). Informational only — it never drives the speed."""
 
-    _attr_name = "VOC"
+    _attr_translation_key = "voc"
     _attr_icon = "mdi:molecule"
     _attr_state_class = SensorStateClass.MEASUREMENT
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -1071,7 +1071,7 @@ class DcLearnSensor(_Base, RestoreSensor):
                  desc: _DcLearnDesc) -> None:
         super().__init__(coordinator, entry, desc.key)
         self._desc = desc
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.key
         self._attr_icon = desc.icon
         self._attr_native_unit_of_measurement = desc.unit
 
@@ -1090,7 +1090,7 @@ class DcLearnSensor(_Base, RestoreSensor):
 class MoldIndexSensor(_Base, RestoreSensor):
     """Mold-risk index (F22): accumulated hours, restored across restarts."""
 
-    _attr_name = "Índice de moho"
+    _attr_translation_key = "mold_index"
     _attr_icon = "mdi:mushroom-outline"
     _attr_native_unit_of_measurement = "h"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -1118,7 +1118,7 @@ class AdjacentAdviceSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
     """Adjacent warm-space advisory (F31): open_gain / close_alarm / none."""
 
     _attr_has_entity_name = True
-    _attr_name = "Aviso espacio adyacente"
+    _attr_translation_key = "adjacent_advice"
     _attr_icon = "mdi:door-sliding"
     _attr_device_class = SensorDeviceClass.ENUM
     _attr_options = ["none", "open_gain", "close_alarm"]
@@ -1144,7 +1144,7 @@ class InstallSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
     """
 
     _attr_has_entity_name = True
-    _attr_name = "Instalación"
+    _attr_translation_key = "install"
     _attr_icon = "mdi:radiator"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
 
@@ -1174,7 +1174,7 @@ class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
                  desc: _DcDesc) -> None:
         super().__init__(coordinator)
         self._desc = desc
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.key
         self._attr_icon = desc.icon
         self._attr_native_unit_of_measurement = desc.unit
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"

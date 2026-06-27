@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.50.0] — 2026-06-27
+
+### Changed
+- **i18n de entidades (fase 2: sensores y binary_sensors)**: completa el punto 4. **Todos** los
+  sensores (Posición, Posición objetivo, Motivo, Energía, Potencia, Velocidad, Modo, Estado
+  operativo, Vida del filtro, Rendimiento recuperador, temperaturas HRV, subida de ducha,
+  Margen de red, Tarifa, Consumo/Coste/Potencia de casa, Zonas, sensores DC de diagnóstico…)
+  y los **binary_sensors** (Estado, Presencia, Riesgo de condensación, Demanda real, Ventana
+  inferida, Alerta meteo, Escasez…) **siguen ahora el idioma de HA** vía `translation_key`. Se
+  acaba la mezcla ES/EN en las entidades.
+
+### Internal
+- `sensor.py`/`binary_sensor.py`: `_attr_name` → `_attr_translation_key` (estáticos + tablas
+  por-descriptor `_HOURS`/`_HRV_TEMPS`/`_DC_SENSORS`/`_DC_LEARN`; `ZoneOccupancy` con
+  `translation_placeholders`). Secciones `entity.sensor` (54) + `entity.binary_sensor` (8) en
+  strings/en/es. `test_translations.py`: completitud de las tablas + **paridad de claves** entre
+  los 3 ficheros. `BusSensor` mantiene el título de la entrada (por diseño); los espejos F36
+  (`(espejo)`) quedan para una limpieza futura. `entity_id` intacto en instalaciones existentes.
+
 ## [0.49.0] — 2026-06-27
 
 ### Changed

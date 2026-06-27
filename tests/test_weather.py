@@ -121,5 +121,5 @@ async def test_weather_alert_from_active_source(hass: HomeAssistant) -> None:
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.alert_active is True
-    alert = hass.states.get("binary_sensor.meteo_alerta_meteo")
+    alert = hass.states.get("binary_sensor.meteo_weather_alert")
     assert alert is not None and alert.state == "on"
