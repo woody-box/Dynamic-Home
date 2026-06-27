@@ -59,7 +59,7 @@ class ScarcityBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Energy scarcity (F34): on when expensive with no PV surplus."""
 
     _attr_has_entity_name = True
-    _attr_name = "Escasez de energía"
+    _attr_translation_key = "scarcity"
     _attr_icon = "mdi:flash-alert"
 
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
@@ -85,7 +85,8 @@ class ZoneOccupancyBinarySensor(CoordinatorEntity[ZonesCoordinator],
                  zid: str, name: str) -> None:
         super().__init__(coordinator)
         self._zid = zid
-        self._attr_name = f"Presencia {name}"
+        self._attr_translation_key = "zone_occupancy"
+        self._attr_translation_placeholders = {"zone": name}
         self._attr_unique_id = f"{entry.entry_id}_occupancy_{zid}"
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)})
@@ -104,7 +105,7 @@ class HousePresenceBinarySensor(CoordinatorEntity[ZonesCoordinator],
     """House presence (F32): on while occupied/sleeping, off when away."""
 
     _attr_has_entity_name = True
-    _attr_name = "Presencia casa"
+    _attr_translation_key = "house_presence"
     _attr_device_class = BinarySensorDeviceClass.OCCUPANCY
     _attr_icon = "mdi:home-account"
 
@@ -127,7 +128,7 @@ class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
     """Condensation risk for the zone (radiant cooling)."""
 
     _attr_has_entity_name = True
-    _attr_name = "Riesgo de condensación"
+    _attr_translation_key = "dew_risk"
     _attr_icon = "mdi:water-alert"
     _attr_device_class = BinarySensorDeviceClass.MOISTURE
 
@@ -146,7 +147,7 @@ class RealDemandBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntit
     """Real heating/cooling demand (F27): reflects the actual valve/relay state."""
 
     _attr_has_entity_name = True
-    _attr_name = "Demanda real"
+    _attr_translation_key = "real_demand"
     _attr_icon = "mdi:heating-coil"
     _attr_device_class = BinarySensorDeviceClass.RUNNING
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -171,7 +172,7 @@ class WindowInferredBinarySensor(CoordinatorEntity[DcCoordinator],
     """Open window inferred from temperature (F20): ON forces the zone OFF."""
 
     _attr_has_entity_name = True
-    _attr_name = "Ventana (inferida)"
+    _attr_translation_key = "window_inferred"
     _attr_icon = "mdi:window-open-variant"
     _attr_device_class = BinarySensorDeviceClass.WINDOW
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -196,7 +197,7 @@ class WeatherAlertBinarySensor(CoordinatorEntity[WxCoordinator],
     """Generic weather alert derived from the active source (F33 → F17)."""
 
     _attr_has_entity_name = True
-    _attr_name = "Alerta meteo"
+    _attr_translation_key = "weather_alert"
     _attr_icon = "mdi:weather-lightning"
     _attr_device_class = BinarySensorDeviceClass.SAFETY
 
@@ -221,7 +222,7 @@ class DegradedBinarySensor(CoordinatorEntity, BinarySensorEntity):
     _attr_has_entity_name = True
     # device_class PROBLEM -> HA shows the state as OK / Problema, so "Estado"
     # reads naturally ("Estado: OK") instead of the odd "Degradado: OK".
-    _attr_name = "Estado"
+    _attr_translation_key = "degraded"
     _attr_icon = "mdi:alert-circle-outline"
     _attr_device_class = BinarySensorDeviceClass.PROBLEM
     _attr_entity_category = EntityCategory.DIAGNOSTIC
