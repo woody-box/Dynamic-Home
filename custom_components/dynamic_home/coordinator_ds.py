@@ -17,7 +17,14 @@ from homeassistant.util import dt as dt_util
 
 from . import const, energy, events, repairs, zones
 from .bus import SdhbHub
-from .ds_engine import DsConfig, DsDecision, DsInputs, DsState, decide_cover
+from .ds_engine import (
+    DsConfig,
+    DsDecision,
+    DsInputs,
+    DsState,
+    decide_cover,
+    solar_impact,
+)
 from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
@@ -59,6 +66,8 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # direct sun (cool: stay shut if hotter out; heat by day: insulate if
         # colder out, else open for light).
         self.heat_shield_enabled = False
+        # Direct-sun signal for this facade (impact 0..100); >0 = sun on it.
+        self.sun_impact = 0.0
         # Electrical-peak staging (F03): opt-in; stagger mass shutter starts.
         self.peak_enabled = False
         self.peak_reason = "off"
@@ -304,6 +313,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.degraded = self._update_degraded(self._missing_required(), now_ts)
         winner = self.bus_explain["winner"]
         sun_az, sun_el, sun_above = self._sun()
+        # Direct sun on this facade (orientation + horizon + overhang), for the
+        # "In sun" binary sensor. 0 when the sun isn't reaching the window.
+        self.sun_impact = (solar_impact(cfg, sun_az, sun_el, sun_above)
+                           if sun_az is not None and sun_el is not None else 0.0)
         current_pos = self._current_pos()
         dawn_pos = self._dawn_step(cfg, sun_el, current_pos, now_ts)
         t_in = self._num(const.CONF_DS_T_IN)

@@ -41,10 +41,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ents.append(HousePresenceBinarySensor(coordinator, entry))
         async_add_entities(ents)
         return
-    # DV/DS only expose the transversal "Degradado" health sensor (F07); the
-    # rest below are DC-specific (dew risk, real demand, inferred window).
-    if module in (const.MODULE_VMC, const.MODULE_SHUTTER):
+    # DV/DS expose the transversal "Estado" health sensor (F07); DS adds the
+    # "In sun" facade signal. The rest below are DC-specific.
+    if module == const.MODULE_VMC:
         async_add_entities([DegradedBinarySensor(coordinator, entry)])
+        return
+    if module == const.MODULE_SHUTTER:
+        async_add_entities([DegradedBinarySensor(coordinator, entry),
+                            InSunBinarySensor(coordinator, entry)])
         return
     entities = [DewRiskBinarySensor(coordinator, entry),
                 DegradedBinarySensor(coordinator, entry)]
@@ -236,3 +240,29 @@ class DegradedBinarySensor(CoordinatorEntity, BinarySensorEntity):
     @property
     def is_on(self) -> bool:
         return self.coordinator.degraded
+
+
+class InSunBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """DS: ON when direct sun is reaching this facade (impact > 0).
+
+    Accounts for orientation (facade azimuth/span), the horizon and the overhang
+    shading — so it's 'in sun' only when the sun actually hits the window.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "in_sun"
+    _attr_icon = "mdi:weather-sunny"
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_in_sun"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def is_on(self) -> bool:
+        return self.coordinator.sun_impact > 0
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"impact": round(self.coordinator.sun_impact)}
