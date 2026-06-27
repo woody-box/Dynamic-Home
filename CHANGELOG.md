@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.47.0] — 2026-06-27
+
+### Changed
+- **Opciones · todas visibles, con niveles (sin necesidad del modo avanzado de HA)**: el menú
+  de *Configurar* ya **no oculta** categorías detrás del "modo avanzado" del perfil de HA —
+  todo está accesible (quien monta un BMS las necesita). Para no abrumar al principio, cada
+  categoría se **etiqueta y ordena por nivel**: **básicas primero**, luego **(Avanzado)** y por
+  último **(Experto)**, así sabes que esas zonas tienen más miga y no hay por qué tocarlas el
+  primer día. (HA no permite color/punto por ítem de menú, así que se usa el sufijo de texto,
+  que es la vía nativa.)
+
+### Internal
+- `options_spec`: `category_tier()` + `_CAT_ADVANCED`/`_CAT_EXPERT`; `categories()` muestra todas
+  y las ordena por nivel (estable, conserva el orden del SPEC dentro de cada nivel). `config_flow`
+  deja de gatear por `show_advanced_options` (menú, dispatcher y schema). Sufijos
+  `(Avanzado)`/`(Experto)` / `(Advanced)`/`(Expert)` en las etiquetas de menú (strings/en/es,
+  41 categorías). Test de niveles (sin huérfanos, disjuntos, menú ordenado).
+
 ## [0.46.0] — 2026-06-27
 
 ### Fixed

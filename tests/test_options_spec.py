@@ -62,6 +62,17 @@ def test_advanced_fields_hidden_in_basic_mode():
     assert "setpoints" in spec.categories(m, False)
 
 
+def test_category_tiers_valid_and_menu_sorted():
+    all_cats = set(spec.CATEGORIES)
+    assert spec._CAT_ADVANCED <= all_cats          # no typos
+    assert spec._CAT_EXPERT <= all_cats
+    assert not (spec._CAT_ADVANCED & spec._CAT_EXPERT)   # disjoint
+    # Every module's menu lists basic first, then advanced, then expert.
+    for module in (const.MODULE_VMC, const.MODULE_SHUTTER, const.MODULE_CLIMATE):
+        tiers = [spec.category_tier(c) for c in spec.categories(module)]
+        assert tiers == sorted(tiers), f"{module}: {tiers}"
+
+
 def test_preset_keys_are_valid_option_keys():
     for module in presets.PRESETS:
         valid = {spec.option_key(o)
