@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.44.0] — 2026-06-26
+
+### Added
+- **Persiana · observabilidad para observe-only (target + motivo)**: dos sensores nuevos por
+  persiana que hacen útil el modo *Observe only* (que calcula la decisión pero no mueve el
+  `cover`):
+  - **Target position** (`%`): la posición que la cascada **quiere**. En observe-only es el
+    dato clave — "lo que habría hecho" — graficable aunque la persiana real no se mueva.
+    Lleva como atributos el `reason`, el `peak_reason` y los `details` de la decisión
+    (`impact`, `penetration_m`, `t_in`/`t_out`…).
+  - **Reason**: el **motivo** (rama ganadora de la cascada: `summer_solar_shield`,
+    `winter_cold_shield`, `meteo_rain`, `meteo_alert`…) como **estado graficable**, para
+    seguir *por qué* a lo largo del día y validar la lógica antes de soltar el hardware.
+
+### Internal
+- `DsTargetSensor` (`{entry}_target`, %, MEASUREMENT, diagnóstico) y `DsReasonSensor`
+  (`{entry}_reason`, diagnóstico) en `sensor.py`, leyendo `coordinator.data` (DsDecision).
+  Espejo del `ReasonSensor` de la VMC. Test de integración (ambos presentes; target = lo
+  comandado aunque el cover real esté a otro %; reason = la rama).
+
 ## [0.43.0] — 2026-06-26
 
 ### Changed

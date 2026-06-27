@@ -259,6 +259,27 @@ async def test_position_sensor_unknown_without_feedback(
     assert hass.states.get(eid).state == "unknown"
 
 
+async def test_target_and_reason_sensors(hass: HomeAssistant) -> None:
+    """Observe-only signals: target position (%) and reason as graphable states."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass, position=25)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    reg = er.async_get(hass)
+    tid = reg.async_get_entity_id("sensor", const.DOMAIN, f"{entry.entry_id}_target")
+    rid = reg.async_get_entity_id("sensor", const.DOMAIN, f"{entry.entry_id}_reason")
+    assert tid is not None and rid is not None
+    # Target = what the cascade wants (even though the real cover sits at 25%).
+    assert int(float(hass.states.get(tid).state)) == co.data.pos
+    assert hass.states.get(tid).attributes["unit_of_measurement"] == "%"
+    # Reason = the winning branch, as a graphable state.
+    assert hass.states.get(rid).state == co.data.reason
+
+
 async def test_privacy_and_lock_switches(hass: HomeAssistant) -> None:
     """Privacy clamps the cover; lock pins it (override) and wins over privacy."""
     _seed(hass)  # sun below horizon, cover.salon_real without position
