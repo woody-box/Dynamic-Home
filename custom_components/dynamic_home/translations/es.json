@@ -1332,6 +1332,37 @@
           "off": "Apagado"
         }
       }
+    },
+    "switch": {
+      "observe": {"name": "Solo observar"},
+      "privacy": {"name": "Privacidad"},
+      "lock": {"name": "Bloqueo"},
+      "dawn": {"name": "Amanecer gradual"},
+      "night_iso": {"name": "Aislamiento nocturno"},
+      "geo_shade": {"name": "Sombreado geométrico"},
+      "heat_shield": {"name": "Escudo térmico"},
+      "peak": {"name": "Limitación de pico"},
+      "adaptive": {"name": "Umbrales adaptativos"},
+      "bootstrap": {"name": "Arranque inicial"},
+      "dry_mode": {"name": "Modo secado"},
+      "anticipatory": {"name": "Refuerzo anticipatorio"},
+      "schedule": {"name": "Programador"},
+      "quiet_hours": {"name": "Horas de silencio"},
+      "vacation": {"name": "Vacaciones"},
+      "adaptive_lead": {"name": "Lead adaptativo"},
+      "anticycle": {"name": "Anti-ciclado"},
+      "anticycle_autosize": {"name": "Anti-ciclado adaptativo"}
+    },
+    "number": {
+      "co2_v2": {"name": "Umbral CO₂ V2"},
+      "co2_v3": {"name": "Umbral CO₂ V3"},
+      "pm_v2": {"name": "Umbral PM2.5 V2"},
+      "pm_v3": {"name": "Umbral PM2.5 V3"},
+      "filter_life_hours": {"name": "Vida del filtro"},
+      "privacy_pct": {"name": "Posición privacidad"},
+      "lock_pct": {"name": "Posición bloqueo"},
+      "override_minutes": {"name": "Temporizador override"},
+      "quiet_max_level": {"name": "Nivel máx. en silencio"}
     }
   }
 }

@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.49.0] — 2026-06-27
+
+### Changed
+- **i18n de entidades (fase 1: interruptores y números)**: los **switches** (Solo observar,
+  Privacidad, Bloqueo, Amanecer gradual, Aislamiento nocturno, Sombreado geométrico, Escudo
+  térmico, Limitación de pico, Umbrales adaptativos, Programador, Horas de silencio,
+  Vacaciones, Lead adaptativo, Anti-ciclado…) y los **números** (Posición privacidad/bloqueo,
+  umbrales CO₂/PM, Vida del filtro, Temporizador, Nivel máx. en silencio) **ya siguen el idioma
+  de HA** vía `translation_key` — se acabó la mezcla ES/EN en esas entidades. En HA en español
+  salen en español; en inglés, en inglés. Sin cambios de `entity_id` en instalaciones
+  existentes.
+
+### Internal
+- `switch.DsToggle` y `number.ThresholdNumber`/`CoordNumber` pasan de `_attr_name` hardcodeado a
+  `_attr_translation_key`. Nuevas secciones `entity.switch` / `entity.number` (name) en
+  strings/en/es. Test `test_translations.py` (toda clave de switch/number tiene nombre en los 3
+  ficheros). Sensores/binary_sensors quedan para la fase 2.
+
 ## [0.48.0] — 2026-06-27
 
 ### Changed

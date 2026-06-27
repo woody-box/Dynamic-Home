@@ -155,7 +155,7 @@ class DsToggle(SwitchEntity, RestoreEntity):
         self._coordinator = coordinator
         self._entry = entry
         self._desc = desc
-        self._attr_name = desc.name
+        self._attr_translation_key = desc.key   # name from translations (i18n)
         self._attr_icon = desc.icon
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"
         self._attr_device_info = DeviceInfo(
