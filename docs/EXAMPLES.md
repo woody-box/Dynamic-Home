@@ -113,5 +113,47 @@ it (wind, bus, slew):
 
 ---
 
+## Example 4 — Glazed terrace (greenhouse effect)
+
+A real case that shows the *why*. A kitchen door opens onto a **glazed terrace**;
+the shutter faces **east (~90°)**, so it catches the sunrise. In summer the glazed
+terrace acts like a greenhouse: it heats up and that heat then leaks into the
+open kitchen/living room.
+
+**The trick — treat the terrace as this shutter's "outdoor":**
+
+| Role | Field | Value | Why |
+|------|-------|-------|-----|
+| Cover | `cover` | `cover.kitchen` | the shutter |
+| Facade azimuth | `facade_azimuth_deg` | `90` (east) | sunrise side |
+| Outdoor temp | `ds_t_out` | `sensor.terrace_temp` | **the terrace**, not the street |
+| Climate ref | `climate` | `climate.living` | kitchen + living are open-plan |
+
+The linked `climate` gives DS the **season**: `heat` (winter) / `off` (neutral) /
+`cool` (summer). No real A/C? Create a **dummy `climate`** in `cool` — it cools
+nothing, but it tells DS *"summer mode, protect from heat"* so the thermal shield
+engages.
+
+**Behaviour with *Geometric shading* + *Thermal shield* on:**
+
+- At sunrise the shutter wants to open (gradual sunrise) for daylight, and the
+  geometric shading trims the position to the real sun angle.
+- But the **thermal shield has priority**: if the terrace is **cooler** than
+  inside, it may open (light / free-cooling); if the terrace is **hotter** and the
+  mode is `cool`, it **caps the opening** to keep heat out.
+  - *Max open while cooling = 20%* → just enough for some daylight.
+  - *= 0%* → "cave mode": maximum thermal protection, no light.
+- Per-facade tuning: a low-load **north** shutter in the living room can sit at
+  20% for daylight while the sun-loaded facades stay shut.
+- At night, if the terrace drops **below** the indoor temperature, DS can raise
+  the shutters for **free-cooling** (open the windows too, if you ever motorize
+  them 😄).
+
+In short: not "close if sunny", but *per-shutter* orientation × indoor/outdoor
+temperature × season × HVAC mode, balancing daylight, comfort and heat
+protection.
+
+---
+
 See the per-module algorithms in [`SPEC_DC.md`](SPEC_DC.md),
 [`SPEC_DV.md`](SPEC_DV.md) and [`SPEC_DS.md`](SPEC_DS.md) (Spanish).
