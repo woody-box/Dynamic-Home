@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.54.0] — 2026-06-27
+
+### Added
+- **VMC · sensor de NOx (índice, observación)**: nuevo campo opcional **Sensor NOx** y su
+  sensor, simétrico al de VOC (p. ej. el índice NOx del Sensirion SEN55 de un M5Stack). Es un
+  **índice relativo** (~100 nominal, sin unidades) y, como el VOC, **es solo observación**: se
+  expone para tablas/histórico pero **no actúa** sobre la ventilación. También disponible como
+  mirror (F36).
+
+### Internal
+- `CONF_NOX` (en `OPTIONAL_HW`); `coordinator_dv.has_nox()`/`nox_level`; `NoxSensor`
+  (`{entry}_nox`, `translation_key` nox, diagnóstico, EN/ES); selector opcional en
+  `STEP_USER_SCHEMA` + etiqueta en el paso *Editar entidades*; rol `nox` en los mirrors. Test
+  de integración. (NOx/VOC siguen fuera de `decide()` por diseño.)
+
 ## [0.53.0] — 2026-06-27
 
 ### Added
