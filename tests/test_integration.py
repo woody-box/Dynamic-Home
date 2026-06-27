@@ -780,6 +780,53 @@ async def test_hrv_efficiency_exposes_all_four_temperatures(
     # η = (21-8)/(22-8) = 92.9%
     assert float(hass.states.get(eid).state) > 90
 
+    # Each probe is also a first-class temperature sensor.
+    reg = er.async_get(hass)
+    for role, val in [("supply", 21), ("intake", 8), ("extract", 22),
+                      ("exhaust", 11)]:
+        tid = reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_hrv_{role}")
+        assert tid is not None, role
+        st = hass.states.get(tid)
+        assert int(float(st.state)) == val
+        assert st.attributes["device_class"] == "temperature"
+
+
+async def test_shower_rise_sensor_and_reason_thresholds(
+        hass: HomeAssistant) -> None:
+    """Shower-rise sensor shows the live RH rise + trigger; Reason shows thresholds."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass, co2="1100")
+    hass.states.async_set("sensor.rh_bath", "70")
+    hass.states.async_set("sensor.rh_ext", "55")            # rise = 15% (> on 8)
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC,
+        const.CONF_HUM_BATH: "sensor.rh_bath",
+        const.CONF_HUM_EXT: "sensor.rh_ext"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    reg = er.async_get(hass)
+    sid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_shower_rise")
+    assert sid is not None
+    st = hass.states.get(sid)
+    assert abs(float(st.state) - 15) < 0.01                 # live rise
+    assert st.attributes["trigger_on"] == 8.0               # so it's tunable
+    assert st.attributes["enabled"] is True                 # bath + outdoor RH set
+
+    # The Reason sensor carries the live IAQ values next to the thresholds in use.
+    rid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_reason")
+    ra = hass.states.get(rid).attributes
+    assert ra["co2"] == 1100 and "co2_v2" in ra and "pm_v2" in ra
+
 
 async def test_hardware_step_edits_entities(hass: HomeAssistant) -> None:
     """Reconfigure: add the hood relays and clear an optional, no delete needed."""
