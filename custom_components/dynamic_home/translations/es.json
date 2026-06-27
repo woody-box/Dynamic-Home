@@ -341,16 +341,20 @@
       },
       "cat_shower": {
         "title": "Refuerzo de ducha",
-        "description": "Boost a V3 al detectar el salto de humedad de la ducha, con hold.",
+        "description": "Boost al detectar una SUBIDA de humedad en el baño sobre su propia línea base (no el delta con la calle), con hold. La humedad exterior solo decide si expulsar es útil.",
         "data": {
-          "shower_rh_delta_on": "Δ HR activación (%)",
-          "shower_rh_delta_off": "Δ HR desactivación (%)",
+          "shower_rh_delta_on": "Subida HR activación (%)",
+          "shower_rh_delta_off": "Subida HR desactivación (%)",
+          "shower_effective_margin": "Margen para expulsar (%HR)",
+          "shower_baseline_alpha": "Velocidad línea base",
           "shower_hold_s": "Mantener (s)",
           "shower_level": "Velocidad de ducha"
         },
         "data_description": {
-          "shower_rh_delta_on": "Subida de HR del baño (Δ%) que dispara el refuerzo de ducha. Si detecta «falsas duchas», súbelo.",
-          "shower_rh_delta_off": "Δ de HR por debajo del cual termina el refuerzo. Si corta demasiado pronto, bájalo.",
+          "shower_rh_delta_on": "Subida de HR del baño sobre su línea base (%) que dispara el refuerzo. Una ducha sube rápido; un nivel estable no. Si detecta «falsas duchas», súbelo.",
+          "shower_rh_delta_off": "Subida por debajo de la cual termina el refuerzo (histéresis). Si corta demasiado pronto, bájalo.",
+          "shower_effective_margin": "Cuánto más seco (%HR) debe estar el exterior para que expulsar ayude. 0 = expulsa si el baño está por encima del exterior. (↑ = más exigente)",
+          "shower_baseline_alpha": "Rapidez con la que la línea base sigue a la humedad real (se congela durante la ducha). (↑ = se adapta antes, detecta duchas más cortas peor)",
           "shower_hold_s": "Tiempo mínimo de mantenimiento del refuerzo (segundos). Si corta pronto, súbelo.",
           "shower_level": "Velocidad objetivo mientras se detecta ducha (V2/V3). (V3 ventila más fuerte que V2)"
         }

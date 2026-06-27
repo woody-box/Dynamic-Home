@@ -341,16 +341,20 @@
       },
       "cat_shower": {
         "title": "Shower boost",
-        "description": "Boost to V3 on the shower's humidity jump, with a hold.",
+        "description": "Boost on a RISE of the bathroom's own RH over its baseline (not the delta with outdoors), with a hold. Outdoor humidity only decides whether expelling helps.",
         "data": {
-          "shower_rh_delta_on": "RH Δ on (%)",
-          "shower_rh_delta_off": "RH Δ off (%)",
+          "shower_rh_delta_on": "RH rise on (%)",
+          "shower_rh_delta_off": "RH rise off (%)",
+          "shower_effective_margin": "Expel margin (%RH)",
+          "shower_baseline_alpha": "Baseline speed",
           "shower_hold_s": "Hold (s)",
           "shower_level": "Shower speed"
         },
         "data_description": {
-          "shower_rh_delta_on": "Bathroom RH rise (Δ%) that triggers a shower boost. If it detects false showers, raise this.",
-          "shower_rh_delta_off": "RH delta below which the shower boost ends. If it cuts too soon, lower this.",
+          "shower_rh_delta_on": "Bathroom RH rise over its baseline (%) that triggers the boost. A shower spikes it; a steady level doesn't. If it detects false showers, raise this.",
+          "shower_rh_delta_off": "Rise below which the boost ends (hysteresis). If it cuts too soon, lower this.",
+          "shower_effective_margin": "How much drier (%RH) the outside must be for expelling to help. 0 = expel whenever the bathroom is above outdoors. (↑ = stricter)",
+          "shower_baseline_alpha": "How fast the baseline tracks the real humidity (frozen during a shower). (↑ = adapts sooner, detects short showers worse)",
           "shower_hold_s": "Minimum hold time for the shower boost (seconds). If it cuts too soon, raise it.",
           "shower_level": "Target speed while a shower is detected (V2/V3). (V3 ventilates harder than V2)"
         }

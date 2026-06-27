@@ -96,12 +96,16 @@ class DvConfig:
     trip_limit: int = 3
     lockout_s: float = 1800.0
 
-    # Shower boost via ΔRH (SPEC §7)
+    # Shower boost: detect by the bathroom's own RH *rise* over a slow baseline
+    # (a shower spikes it; a steady level doesn't). The outdoor humidity is only
+    # an effectiveness gate — boost to expel only if the outside air is drier.
     shower_enabled: bool = False
-    shower_rh_delta_on: float = 8.0
-    shower_rh_delta_off: float = 4.0
+    shower_rh_delta_on: float = 8.0    # rise (% over baseline) that arms the boost
+    shower_rh_delta_off: float = 4.0   # rise that releases it (hysteresis)
     shower_hold_s: float = 600.0
     shower_level: int = 3  # target speed while a shower is detected
+    shower_baseline_alpha: float = 0.02   # baseline EMA speed (frozen during a shower)
+    shower_effective_margin: float = 0.0  # outside must be this many %RH drier to expel
 
     # Adaptive thresholds (SPEC §7) — engine uses them when provided & ready.
     adaptive_enabled: bool = False

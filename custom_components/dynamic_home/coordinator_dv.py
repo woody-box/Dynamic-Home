@@ -92,8 +92,10 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         # Timed V3 boost (F14): epoch until which boost is active (None = off).
         self.boost_until: float | None = None
         self.shower_bathroom: str | None = None   # F13: which bathroom triggered
+        self._bath_baseline: dict[str, float] = {}  # slow RH baseline per bathroom
         # Observability snapshots (filled each cycle for the diagnostic sensors).
-        self.shower_rise: float | None = None     # live RH rise (bath − outdoor)
+        self.shower_rise: float | None = None     # bathroom RH rise over its baseline
+        self.shower_effective = True              # outside drier -> expelling helps
         self.shower_gate = False                  # shower boost prerequisites met
         self.iaq_snapshot: dict = {}              # live IAQ values vs thresholds
         # Adaptive thresholds: rolling history (~7 days @ 1 sample/min).
@@ -409,27 +411,44 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             out.append((None, self._hw(const.CONF_HUM_BATH)))
         return out
 
-    def _rh_delta(self) -> float | None:
-        """Largest RH rise (bathroom − outdoor) across all bathrooms (F13).
+    def _shower_signal(self, cfg: DvConfig) -> float | None:
+        """Shower-detection signal fed to the engine (F13).
 
-        Any bathroom that spikes (someone showering) wins; the winning bathroom's
-        name is stored in ``shower_bathroom`` for the entity attributes.
+        Detection = the bathroom's own RH **rise** over a slow baseline (a shower
+        spikes it; a steady level — even one well above the dry outdoor air —
+        does not). The outdoor humidity is only an **effectiveness gate**: boost
+        to expel only when the outside air is drier. The baseline EMA is frozen
+        while a shower is latched so it keeps the pre-shower level.
+
+        Sets ``shower_rise`` (the real rise), ``shower_bathroom`` and
+        ``shower_effective`` for the diagnostic sensor. Returns the value the
+        engine latches on (the rise, or 0 when expelling wouldn't help), or
+        ``None`` if there's no bathroom reading.
         """
-        ext = self._num(const.CONF_HUM_EXT)
-        if ext is None:
-            self.shower_bathroom = None
-            return None
-        best: float | None = None
+        frozen = self.state_data.shower_active   # keep the pre-shower baseline
+        best_rise: float | None = None
         best_name: str | None = None
+        best_rh: float | None = None
         for name, ent in self._bathrooms():
             rh = self._num_entity(ent)
             if rh is None:
                 continue
-            delta = rh - ext
-            if best is None or delta > best:
-                best, best_name = delta, name
-        self.shower_bathroom = best_name if best is not None else None
-        return best
+            base = self._bath_baseline.get(ent, rh)
+            if not frozen:
+                base += cfg.shower_baseline_alpha * (rh - base)
+            self._bath_baseline[ent] = base
+            rise = rh - base
+            if best_rise is None or rise > best_rise:
+                best_rise, best_name, best_rh = rise, name, rh
+        self.shower_rise = best_rise
+        self.shower_bathroom = best_name
+        if best_rise is None:
+            self.shower_effective = True
+            return None
+        ext = self._num(const.CONF_HUM_EXT)
+        self.shower_effective = (ext is None
+                                 or (best_rh - ext) > cfg.shower_effective_margin)
+        return best_rise if self.shower_effective else 0.0
 
     def _dew(self, cfg: DvConfig) -> tuple[bool, float | None]:
         """(dew_risk, dp_diff) for dry-mode from indoor/outdoor temp+RH."""
@@ -491,10 +510,9 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                                       now.hour * 60 + now.minute)
             sched_speed = int(v) if v is not None else None
 
-        # Snapshot the shower trigger + the effective IAQ thresholds (adaptive if
-        # learned, else fixed) so the diagnostic sensors show value-vs-threshold.
-        rh_delta = self._rh_delta()
-        self.shower_rise = rh_delta
+        # Shower detection (rise over baseline) + effectiveness gate; also snapshot
+        # the effective IAQ thresholds so the diagnostic sensors show value-vs-threshold.
+        rh_delta = self._shower_signal(cfg)
         self.shower_gate = cfg.shower_enabled
         self.iaq_snapshot = {
             "co2": co2_raw,
@@ -504,10 +522,11 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             "pm_v2": a_pm_v2 if a_pm_v2 is not None else cfg.pm_v2,
             "pm_v3": a_pm_v3 if a_pm_v3 is not None else cfg.pm_v3,
             "thresholds": "adaptive" if a_co2_v2 is not None else "fixed",
-            "shower_rise": rh_delta,
+            "shower_rise": self.shower_rise,
             "shower_on": cfg.shower_rh_delta_on,
             "shower_off": cfg.shower_rh_delta_off,
             "shower_bathroom": self.shower_bathroom,
+            "shower_effective": self.shower_effective,
             "shower_enabled": cfg.shower_enabled,
             "dp_diff": dp_diff,
             "dry_margin": cfg.dry_margin,

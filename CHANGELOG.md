@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.55.0] — 2026-06-27
+
+### Changed
+- **VMC · detección de ducha por subida de humedad propia del baño** (corrige falso positivo):
+  la ducha se detecta ahora por la **subida de HR del propio baño sobre su línea base**
+  (una EMA lenta), no por el **delta con la calle**. Un baño con HR alta pero **estable**
+  (p. ej. 55–62 % con exterior seco) ya **no** dispara la velocidad de ducha; solo lo hace
+  un **repunte real** de humedad. El **delta con el exterior** pasa a ser únicamente la
+  **puerta de efectividad** ("¿merece la pena echar el aire?"): si fuera está más húmedo
+  que el baño, hay repunte pero **no se ventila** para expulsar.
+
+### Internal
+- `coordinator_dv._shower_signal()` (sustituye a `_rh_delta()`): mantiene `_bath_baseline`
+  (EMA por baño, **congelada** mientras la ducha está enganchada), expone `shower_rise` y
+  `shower_effective`. Nuevos tunables en `DvConfig`: `shower_rh_delta_on`/`_off` (subida sobre
+  base), `shower_baseline_alpha` (velocidad de la línea base), `shower_effective_margin`
+  (margen de la puerta de expulsión). Sensor *Subida ducha* y categoría de opciones *Ducha*
+  actualizados (EN/ES). Tests de integración reescritos a la nueva semántica + caso de
+  "repunte real pero exterior húmedo → no expulsa".
+
 ## [0.54.0] — 2026-06-27
 
 ### Added

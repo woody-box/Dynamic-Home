@@ -654,12 +654,14 @@ async def test_dv_schedule_editor_persists(hass: HomeAssistant) -> None:
 
 
 # --- F13: multiple bathrooms for the shower boost ---
-async def test_multi_bathroom_rh_delta_takes_max_and_names_it(
+async def test_multi_bathroom_rise_takes_max_and_names_it(
         hass: HomeAssistant) -> None:
+    """Detection is the bathroom's own RH rise; the spiking one wins and is named."""
     _seed_states(hass)
     hass.states.async_set("sensor.rh_ext", "40", {"device_class": "humidity"})
+    # Both bathrooms steady -> the baseline settles on this level at setup.
     hass.states.async_set("sensor.rh_pasillo", "55", {"device_class": "humidity"})
-    hass.states.async_set("sensor.rh_dorm", "70", {"device_class": "humidity"})
+    hass.states.async_set("sensor.rh_dorm", "55", {"device_class": "humidity"})
     entry = MockConfigEntry(domain=const.DOMAIN, title="VMC",
                             data={**HW, const.CONF_MODULE: const.MODULE_VMC,
                                   const.CONF_HUM_EXT: "sensor.rh_ext"},
@@ -672,11 +674,17 @@ async def test_multi_bathroom_rh_delta_takes_max_and_names_it(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
 
-    # Largest rise wins (dorm: 70-40=30 > pasillo: 55-40=15) and is named.
-    assert co._rh_delta() == 30.0
+    # Steady level -> no rise -> no false trigger.
+    assert co._shower_signal(cfg) < cfg.shower_rh_delta_on
+
+    # A shower spikes the dorm bathroom; its rise wins and is named.
+    hass.states.async_set("sensor.rh_dorm", "78", {"device_class": "humidity"})
+    assert co._shower_signal(cfg) > 18
     assert co.shower_bathroom == "Baño dormitorio"
-    assert co._cfg().shower_enabled is True
+    assert co.shower_effective is True       # 78% bath vs 40% outside -> expel helps
+    assert cfg.shower_enabled is True
 
 
 async def test_single_legacy_hum_bath_still_works(hass: HomeAssistant) -> None:
@@ -691,10 +699,41 @@ async def test_single_legacy_hum_bath_still_works(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
 
-    assert co._rh_delta() == 22.0           # 62 - 40, back-compat single sensor
+    # Steady 62% (well above the 40% outdoors) is NOT a shower -> no false boost.
+    assert co._shower_signal(cfg) < cfg.shower_rh_delta_on
     assert co.shower_bathroom is None        # legacy sensor is unnamed
-    assert co._cfg().shower_enabled is True
+
+    # A real rise on the single legacy sensor is detected (back-compat).
+    hass.states.async_set("sensor.rh_bath", "85", {"device_class": "humidity"})
+    assert co._shower_signal(cfg) > 18
+    assert co.shower_bathroom is None
+    assert cfg.shower_enabled is True
+
+
+async def test_shower_rise_but_humid_outside_does_not_expel(
+        hass: HomeAssistant) -> None:
+    """A real shower rise still won't boost when the outside air is wetter."""
+    _seed_states(hass)
+    hass.states.async_set("sensor.rh_ext", "90", {"device_class": "humidity"})
+    hass.states.async_set("sensor.rh_bath", "55", {"device_class": "humidity"})
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC,
+        const.CONF_HUM_BATH: "sensor.rh_bath",
+        const.CONF_HUM_EXT: "sensor.rh_ext"}, options={})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+
+    # Real rise in the bathroom...
+    hass.states.async_set("sensor.rh_bath", "78", {"device_class": "humidity"})
+    signal = co._shower_signal(cfg)
+    assert co.shower_rise > 18                 # the rise is real and detected
+    assert co.shower_effective is False        # but outside is wetter -> won't help
+    assert signal == 0.0                       # so the engine gets no boost signal
 
 
 async def test_bathrooms_options_step_saves_and_clears(hass: HomeAssistant) -> None:
@@ -840,13 +879,13 @@ async def test_co2_pm25_primary_sensors(hass: HomeAssistant) -> None:
 
 async def test_shower_rise_sensor_and_reason_thresholds(
         hass: HomeAssistant) -> None:
-    """Shower-rise sensor shows the live RH rise + trigger; Reason shows thresholds."""
+    """Shower-rise sensor shows the live RH rise over baseline; Reason shows thresholds."""
     from homeassistant.helpers import entity_registry as er
     async_mock_service(hass, "switch", "turn_on")
     async_mock_service(hass, "switch", "turn_off")
     _seed_states(hass, co2="1100")
-    hass.states.async_set("sensor.rh_bath", "70")
-    hass.states.async_set("sensor.rh_ext", "55")            # rise = 15% (> on 8)
+    hass.states.async_set("sensor.rh_bath", "55")           # steady -> baseline 55%
+    hass.states.async_set("sensor.rh_ext", "40")
     entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
         **HW, const.CONF_MODULE: const.MODULE_VMC,
         const.CONF_HUM_BATH: "sensor.rh_bath",
@@ -855,6 +894,9 @@ async def test_shower_rise_sensor_and_reason_thresholds(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # A shower spikes the bathroom; the sensor shows the rise over its baseline.
+    hass.states.async_set("sensor.rh_bath", "70")
     await co.async_refresh()
     await hass.async_block_till_done()
 
@@ -863,7 +905,7 @@ async def test_shower_rise_sensor_and_reason_thresholds(
         "sensor", const.DOMAIN, f"{entry.entry_id}_shower_rise")
     assert sid is not None
     st = hass.states.get(sid)
-    assert abs(float(st.state) - 15) < 0.01                 # live rise
+    assert 8.0 < float(st.state) <= 15.0                    # live rise over baseline
     assert st.attributes["trigger_on"] == 8.0               # so it's tunable
     assert st.attributes["enabled"] is True                 # bath + outdoor RH set
 

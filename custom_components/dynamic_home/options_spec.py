@@ -141,8 +141,11 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("lockout_s", "Lockout (s)", "Bloqueo (s)"),
         ],
         "shower": [
-            _v("shower_rh_delta_on", "RH Δ on (%)", "Δ HR activación (%)"),
-            _v("shower_rh_delta_off", "RH Δ off (%)", "Δ HR desactivación (%)"),
+            _v("shower_rh_delta_on", "RH rise on (%)", "Subida HR activación (%)"),
+            _v("shower_rh_delta_off", "RH rise off (%)", "Subida HR desactivación (%)"),
+            _v("shower_effective_margin", "Expel margin (%RH)",
+               "Margen para expulsar (%HR)"),
+            _v("shower_baseline_alpha", "Baseline speed", "Velocidad línea base"),
             _v("shower_hold_s", "Hold (s)", "Mantener (s)"),
             _v("shower_level", "Shower speed", "Velocidad de ducha"),
         ],

@@ -830,11 +830,11 @@ class HrvTempSensor(_Base):
 
 
 class ShowerRiseSensor(_Base):
-    """Live shower trigger: bathroom RH minus outdoor RH (F13).
+    """Live shower trigger: the bathroom RH rise over its own baseline (F13).
 
-    The shower boost fires when this rise reaches ``trigger_on``. Exposing it
-    makes the boost tunable: if it never reaches the threshold (or stays
-    ``unknown`` because there is no outdoor-humidity sensor), you can see why.
+    The shower boost fires when this rise reaches ``trigger_on``. A steady level
+    reads ~0 (no false boost); a shower spikes it. The ``effective`` attribute
+    shows whether expelling helps (outside drier).
     """
 
     _attr_translation_key = "shower_rise"
@@ -857,8 +857,9 @@ class ShowerRiseSensor(_Base):
         return {"trigger_on": s.get("shower_on"),
                 "trigger_off": s.get("shower_off"),
                 "bathroom": s.get("shower_bathroom"),
+                "effective": s.get("shower_effective"),
                 "enabled": s.get("shower_enabled"),
-                "needs": "bathroom + outdoor humidity sensors"}
+                "needs": "bathroom humidity (+ outdoor for the expel gate)"}
 
 
 class ModeSensor(_Base):
