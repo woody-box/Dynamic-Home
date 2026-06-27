@@ -114,6 +114,41 @@ def test_dawn_ramp_yields_to_safety_and_privacy():
     assert d.reason == "privacy_time"
 
 
+def test_dawn_yields_to_solar_shield():
+    # Cooling + direct sun + hot: the dawn ramp must NOT open into the sun; the
+    # solar shield owns it instead.
+    d = decide_cover(_cfg(hot_delta=0.8, summer_min_open_pct=20, slew_enabled=False),
+                     DsState(),
+                     DsInputs(hvac_mode="cool", impact=70, t_in=26, t_out=28,
+                              dawn_pos=50))
+    assert d.reason == "summer_solar_shield" and d.pos != 50
+
+
+def test_dawn_yields_to_heat_shield():
+    # Cooling + hot + no sun + shield on: the dawn ramp yields to the heat shield.
+    d = decide_cover(_cfg(hot_delta=0.8, heat_shield_pct=0, slew_enabled=False),
+                     DsState(),
+                     DsInputs(hvac_mode="cool", impact=0, t_in=26, t_out=28,
+                              heat_shield=True, dawn_pos=50))
+    assert d.reason == "summer_heat_shield"
+
+
+def test_dawn_runs_when_no_cooling_threat():
+    # Cooling but not hotter outside -> no protection needed -> dawn ramps.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=0, t_in=26, t_out=24,
+                              dawn_pos=50))
+    assert d.reason == "dawn_ramp" and d.pos == 50
+
+
+def test_dawn_runs_in_heat_season():
+    # Heating: the gradual sunrise still gives morning light/gain (unaffected).
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="heat", impact=80, t_in=20, t_out=2,
+                              dawn_pos=50))
+    assert d.reason == "dawn_ramp" and d.pos == 50
+
+
 def test_weather_alert_protects_and_is_protected():
     # F17: an active alert drives the protection position with reason meteo_alert.
     d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(alert_pos=0))
