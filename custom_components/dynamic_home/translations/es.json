@@ -136,7 +136,7 @@
           "cat_thermal": "Deltas térmicos (Avanzado)",
           "cat_shield": "Escudo térmico (Avanzado)",
           "cat_wind": "Protección de viento",
-          "cat_slew": "Slew rate (Avanzado)",
+          "cat_slew": "Movimiento progresivo (Avanzado)",
           "cat_geometry": "Geometría de ventana (Experto)",
           "cat_setpoints": "Consignas base",
           "cat_limits": "Límites de consigna (Avanzado)",
@@ -423,14 +423,14 @@
         }
       },
       "cat_slew": {
-        "title": "Slew rate",
-        "description": "Limita el paso de movimiento para que la persiana no vaya a tirones.",
+        "title": "Movimiento progresivo",
+        "description": "Limita cuánto puede cambiar la posición de la persiana en cada ciclo (más suave, menos arranques de motor).",
         "data": {
-          "slew_enabled": "Limitar slew rate",
-          "slew_step_pct": "Paso slew (%)"
+          "slew_enabled": "Movimiento progresivo",
+          "slew_step_pct": "Paso de movimiento (%)"
         },
         "data_description": {
-          "slew_enabled": "Mover la persiana por pasos en vez de saltar (más suave, menos arranques de motor).",
+          "slew_enabled": "Mueve la persiana por pasos en vez de saltar (más suave, menos arranques de motor).",
           "slew_step_pct": "Máx. % que cambia la posición por paso. (↓ = movimiento más suave y lento)"
         }
       },
