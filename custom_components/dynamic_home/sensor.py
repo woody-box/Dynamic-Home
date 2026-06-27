@@ -17,6 +17,8 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONCENTRATION_MICROGRAMS_PER_CUBIC_METER,
+    CONCENTRATION_PARTS_PER_MILLION,
     PERCENTAGE,
     EntityCategory,
     UnitOfEnergy,
@@ -165,6 +167,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
                                     for d in _HOURS]
+    if coordinator._hw(const.CONF_CO2):
+        entities.append(Co2Sensor(coordinator, entry))
+    if coordinator._hw(const.CONF_PM25):
+        entities.append(Pm25Sensor(coordinator, entry))
     entities.append(SpeedSensor(coordinator, entry))
     entities.append(ReasonSensor(coordinator, entry))
     entities.append(ModeSensor(coordinator, entry))
@@ -958,6 +964,40 @@ class VocSensor(_Base):
     @property
     def native_value(self) -> float | None:
         return self.coordinator.voc_level
+
+
+class Co2Sensor(_Base):
+    """Live CO₂ as a first-class sensor (the VMC's required input, re-exposed)."""
+
+    _attr_translation_key = "co2"
+    _attr_device_class = SensorDeviceClass.CO2
+    _attr_native_unit_of_measurement = CONCENTRATION_PARTS_PER_MILLION
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "co2")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator._num(const.CONF_CO2)
+
+
+class Pm25Sensor(_Base):
+    """Live PM2.5 as a first-class sensor (the VMC's required input, re-exposed)."""
+
+    _attr_translation_key = "pm25"
+    _attr_device_class = SensorDeviceClass.PM25
+    _attr_native_unit_of_measurement = CONCENTRATION_MICROGRAMS_PER_CUBIC_METER
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "pm25")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator._num(const.CONF_PM25)
 
 
 # --------------------------------------------------------------------------- #

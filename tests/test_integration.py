@@ -792,6 +792,30 @@ async def test_hrv_efficiency_exposes_all_four_temperatures(
         assert st.attributes["device_class"] == "temperature"
 
 
+async def test_co2_pm25_primary_sensors(hass: HomeAssistant) -> None:
+    """CO₂ and PM2.5 are exposed as first-class sensors on the VMC."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass, co2="850", pm="12")
+    entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    reg = er.async_get(hass)
+    cid = reg.async_get_entity_id("sensor", const.DOMAIN, f"{entry.entry_id}_co2")
+    pid = reg.async_get_entity_id("sensor", const.DOMAIN, f"{entry.entry_id}_pm25")
+    assert cid is not None and pid is not None
+    cst, pst = hass.states.get(cid), hass.states.get(pid)
+    assert int(float(cst.state)) == 850
+    assert cst.attributes["device_class"] == "carbon_dioxide"
+    assert int(float(pst.state)) == 12
+    assert pst.attributes["device_class"] == "pm25"
+    # Primary, not diagnostic.
+    assert reg.async_get(cid).entity_category is None
+
+
 async def test_shower_rise_sensor_and_reason_thresholds(
         hass: HomeAssistant) -> None:
     """Shower-rise sensor shows the live RH rise + trigger; Reason shows thresholds."""
