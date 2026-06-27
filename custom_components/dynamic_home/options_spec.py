@@ -475,10 +475,37 @@ def fields(module: str, category: str, include_advanced: bool = True) -> list[Op
     return [o for o in out if not is_advanced(module, o)]
 
 
+# UI tier per category for the options menu. Everything is visible (no HA
+# "advanced mode" needed) — a BMS owner will need these — but advanced/expert
+# categories are labelled "(Advanced)"/"(Expert)" (in the translations) and
+# sorted last so a newcomer isn't overwhelmed at first. Basic = not listed here.
+_CAT_ADVANCED: set[str] = {
+    "positions", "thermal", "shield", "slew", "night", "dawn", "freecool",
+    "dry", "quiet", "recuperator", "filter", "limits", "alert", "hood", "wx",
+    "energy", "tariff",
+}
+_CAT_EXPERT: set[str] = {
+    "geometry", "smoothing", "hostile", "failsafe", "adaptive_iaq", "exterior",
+    "bus", "vmc", "trend", "brake", "forecast", "adaptive_lead", "condensation",
+    "facade", "demand", "mold", "window", "adjacent", "staging", "shared",
+    "tariff_bias", "cycle", "peak", "anticipatory",
+}
+
+
+def category_tier(category: str) -> int:
+    """0 = basic, 1 = advanced, 2 = expert (menu labelling + ordering)."""
+    if category in _CAT_EXPERT:
+        return 2
+    if category in _CAT_ADVANCED:
+        return 1
+    return 0
+
+
 def categories(module: str, include_advanced: bool = True) -> list[str]:
-    """Categories with at least one visible field for the given advanced setting."""
-    return [c for c in SPEC.get(module, {})
+    """Categories with at least one visible field, basic first then advanced/expert."""
+    cats = [c for c in SPEC.get(module, {})
             if fields(module, c, include_advanced)]
+    return sorted(cats, key=category_tier)   # stable: keeps SPEC order per tier
 
 
 def current_value(cfg, opt: Opt):

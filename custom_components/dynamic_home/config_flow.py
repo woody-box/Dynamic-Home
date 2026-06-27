@@ -274,7 +274,9 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         return getattr(self.hass.config, "language", "en") if self.hass else "en"
 
     async def async_step_init(self, user_input: dict[str, Any] | None = None):
-        cats = options_spec.categories(self._module, self.show_advanced_options)
+        # Show every category (no HA "advanced mode" needed); advanced/expert
+        # ones are labelled and sorted last by options_spec.categories().
+        cats = options_spec.categories(self._module)
         menu = [f"cat_{c}" for c in cats]
         # Edit the chosen entities/relays after setup (add/change/remove), so a
         # forgotten sensor or the hood relays don't force a delete + re-add.
@@ -652,8 +654,7 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         """Dispatch async_step_cat_<category> to a generic category handler."""
         if name.startswith("async_step_cat_"):
             cat = name[len("async_step_cat_"):]
-            adv = getattr(self, "show_advanced_options", False)
-            if cat in options_spec.categories(self.__dict__.get("_module"), adv):
+            if cat in options_spec.categories(self.__dict__.get("_module")):
                 async def handler(user_input=None, _cat=cat):
                     return await self._async_category(_cat, user_input)
                 return handler
@@ -671,7 +672,7 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         cfg = options_spec.fresh_config(self._module)
         o = self.entry.options
         out: dict = {}
-        for opt in options_spec.fields(self._module, cat, self.show_advanced_options):
+        for opt in options_spec.fields(self._module, cat):   # all fields visible
             key = options_spec.option_key(opt)
             default = o.get(key, options_spec.current_value(cfg, opt))
             if isinstance(default, bool):
