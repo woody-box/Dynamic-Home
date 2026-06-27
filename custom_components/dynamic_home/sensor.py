@@ -149,6 +149,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         async_add_entities([BusSensor(coordinator, entry),
                             EnergySensor(coordinator, entry),
                             DsPositionSensor(coordinator, entry),
+                            DsTargetSensor(coordinator, entry),
+                            DsReasonSensor(coordinator, entry),
                             *_mirror_sensors(entry, module)])
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
@@ -638,6 +640,65 @@ class DsPositionSensor(_Base):
         data = self.coordinator.data
         return {"target": getattr(data, "pos", None),
                 "reason": getattr(data, "reason", None)}
+
+
+class DsTargetSensor(_Base):
+    """Commanded target position (the % the cascade wants).
+
+    The key signal in observe-only, where the real cover never moves: this is
+    "what it would have done". The reason and the decision details (impact,
+    penetration, indoor/outdoor temps...) ride along as attributes.
+    """
+
+    _attr_name = "Target position"
+    _attr_icon = "mdi:window-shutter-cog"
+    _attr_native_unit_of_measurement = PERCENTAGE
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 0
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "target")
+
+    @property
+    def native_value(self) -> int | None:
+        data = self.coordinator.data
+        return data.pos if data else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        data = self.coordinator.data
+        attrs = {"reason": getattr(data, "reason", None),
+                 "peak_reason": self.coordinator.peak_reason}
+        if data:
+            attrs.update(data.details)
+        return attrs
+
+
+class DsReasonSensor(_Base):
+    """Why the shutter is where it is (the winning cascade branch).
+
+    Graphable as a state, so in observe-only you can follow *why* across the day
+    (rain, summer_solar_shield, winter_cold_shield, meteo_alert...) and validate
+    the logic before letting it drive the hardware.
+    """
+
+    _attr_name = "Reason"
+    _attr_icon = "mdi:information-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "reason")
+
+    @property
+    def native_value(self) -> str | None:
+        data = self.coordinator.data
+        return data.reason if data else None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        data = self.coordinator.data
+        return dict(data.details) if data else {}
 
 
 class ScheduleSensor(CoordinatorEntity, SensorEntity):
