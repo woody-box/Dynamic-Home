@@ -77,6 +77,42 @@ async def test_setup_creates_fan_and_numbers(hass: HomeAssistant) -> None:
     assert len(numbers) >= 4
 
 
+async def test_startup_reconciles_leftover_relay(hass: HomeAssistant) -> None:
+    """Relays keep their physical state across a reload; startup must drive them to
+    the decision, not trust the assumed V1.
+
+    Regression: a V3 relay left energised before a reload stayed on (108 W) while
+    the UI showed V1, because the change-only auto handler saw decision V1 ==
+    assumed-boot V1 and never re-applied. We spy on the relay driver (capturing
+    service calls is unreliable here — the integration's own switch platform
+    re-registers switch.turn_on/off, shadowing async_mock_service).
+    """
+    from unittest.mock import patch
+
+    from custom_components.dynamic_home import fan as fan_mod
+
+    _seed_states(hass)                       # clean air -> auto decides V1
+    hass.states.async_set("switch.vmc_v3", "on")   # leftover from before the reload
+
+    calls: list[tuple[str, bool]] = []
+    orig = fan_mod.DvFan._switch
+
+    async def _spy(self, entity_id, on):
+        if entity_id:
+            calls.append((entity_id, on))
+        return await orig(self, entity_id, on)
+
+    with patch.object(fan_mod.DvFan, "_switch", _spy):
+        entry = await _setup_entry(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.data.speed == 1                 # clean air -> baseline V1
+    # Startup reconciled the hardware to the decision: power on, V3 dropped.
+    assert ("switch.vmc_v3", False) in calls
+    assert ("switch.vmc_pwr", True) in calls
+    assert co.current_speed == 1
+
+
 async def test_observe_mode_computes_but_does_not_touch_relays(
         hass: HomeAssistant) -> None:
     """Dry-run: the decision is still computed, but no relay service is called."""

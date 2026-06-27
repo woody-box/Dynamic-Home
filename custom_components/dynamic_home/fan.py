@@ -203,16 +203,18 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         )
 
     async def async_added_to_hass(self) -> None:
-        """Restore the selected preset across restarts."""
+        """Restore the selected preset and reconcile the relays across restarts."""
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
         if last and last.attributes.get("preset_mode") in const.PRESET_MODES:
             self._preset = last.attributes["preset_mode"]
             self.coordinator.preset = self._preset
-            # In a manual preset, re-assert the speed on the relays so the
-            # hardware matches the restored state (auto self-heals on its own).
-            if self._preset != const.PRESET_AUTO:
-                await self._apply_speed(self._logical_speed)
+        # The relays keep their physical state across a restart/reload, but the
+        # coordinator boots assuming V1. Always re-assert the (restored) logical
+        # speed on the hardware so it matches — otherwise a leftover V2/V3 relay
+        # stays energised while the integration believes it is at V1, and the
+        # change-only auto handler never corrects it (decision V1 == assumed V1).
+        await self._apply_speed(self._logical_speed)
 
     # --- derived state ---
     @property
