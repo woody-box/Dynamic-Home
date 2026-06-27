@@ -1390,6 +1390,8 @@
       "filter_life": {"name": "Vida del filtro"},
       "hrv_efficiency": {"name": "Rendimiento recuperador"},
       "voc": {"name": "VOC"},
+      "co2": {"name": "CO₂"},
+      "pm25": {"name": "PM2.5"},
       "mold_index": {"name": "Índice de moho"},
       "adjacent_advice": {"name": "Aviso espacio adyacente"},
       "install": {"name": "Instalación"},

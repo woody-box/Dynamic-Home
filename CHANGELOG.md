@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.53.0] — 2026-06-27
+
+### Added
+- **VMC · CO₂ y PM2.5 como sensores de primer nivel**: la VMC expone ahora **CO₂** (ppm) y
+  **PM2.5** (µg/m³) como sensores propios (no diagnóstico), con `device_class`
+  `carbon_dioxide`/`pm25` → entran bien en tarjetas, histórico y estadísticas. Son el valor en
+  vivo de las fuentes que ya tenías configuradas, re-expuesto en el dispositivo de la VMC.
+
+### Internal
+- `Co2Sensor`/`Pm25Sensor` (`{entry}_co2` / `{entry}_pm25`, `translation_key` co2/pm25, EN/ES)
+  leen `_num(CONF_CO2)`/`_num(CONF_PM25)`; se crean si la fuente está configurada (requerida en
+  VMC). Test de integración (valores + device_class + categoría primaria).
+
 ## [0.52.0] — 2026-06-27
 
 ### Added
