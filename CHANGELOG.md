@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.56.0] — 2026-06-27
+
+### Changed
+- **VMC · razón `iaq_ok` cuando el aire está bien**: cuando el CO₂ y el PM2.5 están **por
+  debajo del umbral de V2**, la VMC se mantiene en la velocidad base (V1); la razón ahora es
+  **`iaq_ok`** (aire limpio, ventilación base) en lugar de `iaq`. La razón `iaq` queda
+  reservada para cuando la calidad del aire **sí** sube la velocidad (V2/V3). Es solo la
+  etiqueta de la razón: **no cambia ninguna velocidad ni comportamiento**.
+
+### Internal
+- `dv_engine.decide()`: `reason = "iaq" if base >= 2 else "iaq_ok"` en la rama IAQ. Tests de
+  motor actualizados (clean-air → `iaq_ok`; CO₂ alto → `iaq`).
+
 ## [0.55.0] — 2026-06-27
 
 ### Changed
