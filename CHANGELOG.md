@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.56.1] — 2026-06-27
+
+### Fixed
+- **VMC · reasentar los relés al arrancar** (corrige V3 pegado tras reiniciar): los relés
+  Shelly **conservan su estado físico** al reiniciar/recargar la integración, pero el
+  coordinator arranca asumiendo **V1**. Si la primera decisión en auto era también V1 (aire
+  limpio), el manejador "solo-al-cambiar" veía `V1 == V1` y **no reasentaba** el hardware →
+  un relé V2/V3 que quedó encendido **seguía energizado** (p. ej. 108 W reales) mientras la
+  tarjeta mostraba V1. Ahora el ventilador **siempre reaplica** la velocidad lógica
+  (restaurada) sobre los relés al añadirse, de modo que el hardware coincide con el estado
+  que muestra la integración. (Antes solo se reasentaba en presets manuales.)
+
+### Internal
+- `DvFan.async_added_to_hass`: reconcilia siempre vía `_apply_speed(self._logical_speed)`
+  (auto incluido), no solo en manual. Test de regresión que espía el driver de relés
+  (la captura de servicios no vale aquí: la plataforma `switch` de la integración
+  re-registra `switch.turn_on/off` y eclipsa `async_mock_service`).
+
 ## [0.56.0] — 2026-06-27
 
 ### Changed
