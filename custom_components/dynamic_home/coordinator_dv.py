@@ -188,9 +188,12 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
     def hrv_state(self) -> str | None:
         return hrv_state(*self._hrv_temps(), self._cfg())
 
-    # --- Extended IAQ (F30): VOC is observation-only and never enters decide() ---
+    # --- Extended IAQ (F30): VOC/NOx are observation-only, never enter decide() ---
     def has_voc(self) -> bool:
         return bool(self._hw(const.CONF_VOC))
+
+    def has_nox(self) -> bool:
+        return bool(self._hw(const.CONF_NOX))
 
     # --- Extractor hood (F35) ---
     def has_hood(self) -> bool:
@@ -200,6 +203,10 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
     @property
     def voc_level(self) -> float | None:
         return self._num(const.CONF_VOC)
+
+    @property
+    def nox_level(self) -> float | None:
+        return self._num(const.CONF_NOX)
 
     @property
     def filter_life_pct(self) -> float:

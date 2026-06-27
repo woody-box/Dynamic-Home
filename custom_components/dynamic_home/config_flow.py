@@ -83,6 +83,7 @@ STEP_USER_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_HRV_EXTRACT): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_HRV_EXHAUST): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_VOC): _entity("sensor"),
+        vol.Optional(const.CONF_NOX): _entity("sensor"),
         vol.Optional(const.CONF_HOOD_V1): _entity("switch"),
         vol.Optional(const.CONF_HOOD_V2): _entity("switch"),
         vol.Optional(const.CONF_HOOD_V3): _entity("switch"),

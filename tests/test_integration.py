@@ -792,6 +792,28 @@ async def test_hrv_efficiency_exposes_all_four_temperatures(
         assert st.attributes["device_class"] == "temperature"
 
 
+async def test_nox_sensor_observation_only(hass: HomeAssistant) -> None:
+    """NOx index is exposed as an observation sensor (does not drive the fan)."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    hass.states.async_set("sensor.nox", "100")
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC, const.CONF_NOX: "sensor.nox"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    nid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_nox")
+    assert nid is not None
+    assert int(float(hass.states.get(nid).state)) == 100
+
+
 async def test_co2_pm25_primary_sensors(hass: HomeAssistant) -> None:
     """CO₂ and PM2.5 are exposed as first-class sensors on the VMC."""
     from homeassistant.helpers import entity_registry as er

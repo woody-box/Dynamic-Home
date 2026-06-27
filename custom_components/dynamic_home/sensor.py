@@ -81,6 +81,7 @@ _MIRROR_ROLES: dict[str, tuple[tuple[str, str], ...]] = {
         (const.CONF_HRV_EXTRACT, "HRV extracción"),
         (const.CONF_HRV_EXHAUST, "HRV expulsión"),
         (const.CONF_VOC, "COV"),
+        (const.CONF_NOX, "NOx"),
     ),
     const.MODULE_CLIMATE: (
         (const.CONF_DC_T_INT, "Temperatura interior"),
@@ -186,6 +187,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         entities.append(ShowerRiseSensor(coordinator, entry))
     if coordinator.has_voc():
         entities.append(VocSensor(coordinator, entry))
+    if coordinator.has_nox():
+        entities.append(NoxSensor(coordinator, entry))
     entities.append(BusSensor(coordinator, entry))
     entities.append(EnergySensor(coordinator, entry))
     entities.append(PowerSensor(coordinator, entry))
@@ -964,6 +967,25 @@ class VocSensor(_Base):
     @property
     def native_value(self) -> float | None:
         return self.coordinator.voc_level
+
+
+class NoxSensor(_Base):
+    """Observed NOx index (Sensirion). Informational only — never drives speed.
+
+    A relative index (~100 nominal, no unit), like the VOC index.
+    """
+
+    _attr_translation_key = "nox"
+    _attr_icon = "mdi:molecule"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "nox")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.nox_level
 
 
 class Co2Sensor(_Base):
