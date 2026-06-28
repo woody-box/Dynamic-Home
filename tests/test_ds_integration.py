@@ -525,6 +525,40 @@ async def test_direct_sun_shield_switch(hass: HomeAssistant) -> None:
     assert co.data.reason == "summer_solar_shield"
 
 
+async def test_ds_auto_alert_from_dynamic_weather(hass: HomeAssistant) -> None:
+    """With no per-shutter alert sensor, DS follows the Dynamic Weather alert."""
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)
+    entry = await _setup(hass)                  # SHUTTER fixture: no alert sensors
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+
+    # Nothing published -> no alert.
+    assert co._weather_alert(cfg, 1000.0) is None
+    # Module alert on -> protect at the generic alert position.
+    hass.data[const.DOMAIN][const.DATA_WEATHER] = {"source": "weather.x", "alert": True}
+    assert co._weather_alert(cfg, 1000.0) == cfg.alert_pct
+
+
+async def test_ds_local_alert_overrides_dynamic_weather(hass: HomeAssistant) -> None:
+    """A per-shutter alert sensor takes precedence over the module alert."""
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)
+    for e in ("binary_sensor.meteo_alert", "binary_sensor.meteo_hail",
+              "binary_sensor.meteo_wind"):
+        hass.states.async_set(e, "off")
+    entry = MockConfigEntry(domain=const.DOMAIN, data=ALERTS, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+
+    # Module alert is on, but this shutter has its own (off) sensors -> ignores it.
+    hass.data[const.DOMAIN][const.DATA_WEATHER] = {"source": "weather.x", "alert": True}
+    assert co._weather_alert(cfg, 1000.0) is None
+
+
 async def test_manual_override_hold_resume_and_expiry(hass: HomeAssistant) -> None:
     """A hand command pins the position; the resume button and the timeout clear it."""
     from homeassistant.helpers import entity_registry as er

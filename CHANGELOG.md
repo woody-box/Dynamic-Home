@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.63.0] — 2026-06-28
+
+### Added
+- **Dynamic Weather alimenta DC y DS automáticamente**: en cuanto existe una entrada *Weather*,
+  el módulo **publica** su estado (fuente activa + alerta) y:
+  - **DC** usa esa fuente para el **bias por previsión** si la zona no tiene *Meteo/weather*
+    configurado.
+  - **DS** usa la **alerta** del módulo para la protección anticipatoria si la persiana no
+    tiene ninguna *Alerta meteo* configurada.
+  En ambos casos, **la configuración por módulo sigue mandando** (si la pones, gana). Antes
+  había que enchufar el Weather a mano en cada zona/persiana.
+
+### Internal
+- `coordinator_weather` publica `DATA_WEATHER = {source, alert}`. `coordinator_dc._forecast_source()`
+  (zona o, en su defecto, la fuente publicada). `coordinator_ds._weather_alert` usa la alerta
+  publicada cuando no hay sensores de alerta locales. `DATA_WEATHER` se limpia al descargar la
+  entrada Weather. Tests (publicación + auto-consumo DC/DS + override por módulo).
+
 ## [0.62.0] — 2026-06-28
 
 ### Added

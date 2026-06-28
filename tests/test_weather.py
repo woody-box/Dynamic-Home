@@ -123,3 +123,22 @@ async def test_weather_alert_from_active_source(hass: HomeAssistant) -> None:
     assert co.alert_active is True
     alert = hass.states.get("binary_sensor.meteo_weather_alert")
     assert alert is not None and alert.state == "on"
+
+
+async def test_weather_publishes_data_for_dc_ds(hass: HomeAssistant) -> None:
+    """The module publishes DATA_WEATHER so DC/DS auto-consume it; cleared on unload."""
+    _seed(hass)
+    entry = await _setup(hass)
+    wx = hass.data[const.DOMAIN].get(const.DATA_WEATHER)
+    assert wx is not None
+    assert wx["source"] == "weather.primary" and wx["alert"] is False
+
+    hass.states.async_set("weather.primary", "lightning", {"temperature": 20.0})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.data[const.DOMAIN][const.DATA_WEATHER]["alert"] is True
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert const.DATA_WEATHER not in hass.data[const.DOMAIN]

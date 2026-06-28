@@ -274,6 +274,14 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             positions.append(cfg.alert_hail_pct)
         if self._is_on(const.CONF_DS_ALERT_WIND):
             positions.append(cfg.alert_wind_pct)
+        # Auto: with no per-shutter alert sensor configured, follow the Dynamic
+        # Weather module's alert if one exists (a local alert always overrides).
+        local_alert = any(self._hw(k) for k in (
+            const.CONF_DS_ALERT, const.CONF_DS_ALERT_HAIL, const.CONF_DS_ALERT_WIND))
+        if not local_alert:
+            wx = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_WEATHER) or {}
+            if wx.get("alert"):
+                positions.append(cfg.alert_pct)
         if positions:
             self._last_alert_pos = min(positions)        # most protective wins
             self._alert_hold_until = now_ts + cfg.alert_hold_min * 60.0

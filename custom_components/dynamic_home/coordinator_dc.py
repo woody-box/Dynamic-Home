@@ -829,9 +829,18 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._prev_tint, self._prev_ts = t_int, now_ts
         return 0.0 if abs(self._cph) < cfg.trend_deadband_cph else self._cph
 
+    def _forecast_source(self) -> str | None:
+        """Weather entity for the forecast bias: the zone's own, else (auto) the
+        Dynamic Weather module's active source if one exists."""
+        ent = self._hw(const.CONF_DC_WEATHER)
+        if ent:
+            return ent
+        wx = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_WEATHER) or {}
+        return wx.get("source")
+
     async def _forecast_temp(self, cfg: DcConfig, hvac: str) -> float | None:
         """Extreme forecast temp in the look-ahead window (max heat / min cool)."""
-        ent = self._hw(const.CONF_DC_WEATHER)
+        ent = self._forecast_source()
         if not ent or hvac not in ("heat", "cool"):
             return None
         try:

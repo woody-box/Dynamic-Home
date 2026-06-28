@@ -130,6 +130,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             hass.data[const.DOMAIN].pop(const.DATA_MODE, None)
         if entry.data.get(const.CONF_MODULE) == const.MODULE_ENERGY:
             hass.data[const.DOMAIN].pop(const.DATA_ENERGY, None)
+        if entry.data.get(const.CONF_MODULE) == const.MODULE_WEATHER:
+            hass.data[const.DOMAIN].pop(const.DATA_WEATHER, None)
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
         # Tear the services down with the last entry so they don't linger as
