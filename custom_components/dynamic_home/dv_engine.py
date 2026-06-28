@@ -114,6 +114,7 @@ class DvConfig:
     # Heat-recovery efficiency (F28): bypass / no-recovery detection thresholds.
     hrv_bypass_eff_max: float = 0.2   # η at/below this with real ΔT => bypass
     hrv_bypass_dt_min: float = 3.0    # min |extract - intake| ΔT (°C) to judge
+    hrv_bypass_min_ext_c: float = 10.0  # free-cooling bypass only above this T_ext
 
     # Anticipatory ventilation (F11): pre-boost on a steep CO2/PM rise (the
     # EMA-smoothed derivative), with on/off thresholds + hold like the shower boost.
@@ -159,14 +160,21 @@ def hrv_state(supply: float | None, intake: float | None,
               extract: float | None, cfg: DvConfig) -> str | None:
     """'recovering' / 'bypass' / 'idle' (F28), or None if not computable.
 
-    'idle' when the ΔT is too small to judge; 'bypass' when there IS a meaningful
-    ΔT but efficiency collapses (the exchanger isn't recovering).
+    'idle' when the ΔT is too small to judge. 'bypass' is detected two ways:
+    by the unit's actual free-cooling rule (Siber DF Optima BP manual §4.2 — the
+    damper opens when it's mild outside, ``T_ext > hrv_bypass_min_ext_c``, AND
+    outside is cooler than indoors, so fresh air goes straight in without
+    recovery), or — as a fallback — when efficiency collapses with a real ΔT.
+    ``intake`` is the outdoor air (T_ext) and ``extract`` the indoor return (T_int).
     """
     eff = hrv_efficiency(supply, intake, extract)
     if eff is None:
         return None
     if abs(extract - intake) < cfg.hrv_bypass_dt_min:
         return "idle"
+    # Free-cooling bypass by temperature (the real physical trigger).
+    if intake > cfg.hrv_bypass_min_ext_c and intake < extract:
+        return "bypass"
     return "bypass" if eff <= cfg.hrv_bypass_eff_max else "recovering"
 
 

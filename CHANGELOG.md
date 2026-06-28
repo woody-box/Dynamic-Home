@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.61.0] — 2026-06-28
+
+### Changed
+- **VMC · detección de bypass por temperatura** (recuperador): el estado del recuperador
+  (`recovering` / `bypass` / `idle`) ahora detecta el **free-cooling** con la **regla física
+  del fabricante** (manual Siber DF Optima BP §4.2): la compuerta del bypass abre cuando la
+  **Tª exterior > umbral** (10 °C por defecto) **y** además es **más fresca que el interior**.
+  Antes solo se deducía de forma indirecta (cuando la eficiencia se desplomaba). Así un % de
+  rendimiento bajo en una noche de verano se etiqueta correctamente como **bypass** (free-cooling
+  intencionado), no como mal rendimiento. La detección por eficiencia se mantiene como respaldo.
+
+### Internal
+- `dv_engine.hrv_state`: rama de bypass por temperatura (`intake > hrv_bypass_min_ext_c and
+  intake < extract`, con `intake`=T_ext y `extract`=T_int). Nuevo tunable
+  `DvConfig.hrv_bypass_min_ext_c = 10.0` + categoría *Recuperador* en opciones (EN/ES). Tests de
+  motor (noche de verano→bypass aunque η alta; día caluroso/invierno→recovering).
+
 ## [0.60.0] — 2026-06-28
 
 ### Changed
