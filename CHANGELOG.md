@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.64.0] — 2026-06-28
+
+### Added
+- **DS · switch "Protección meteo" por persiana** (ON por defecto): permite **eximir una
+  persiana** de toda la protección por tiempo. Apagado, esa persiana **ignora lluvia, alerta
+  meteo (local y la auto de Dynamic Weather) y el tope de viento** — pensado para una **terraza
+  cubierta** donde no quieres que se cierre por el tiempo (y no quedarte fuera). La lógica de
+  confort y el override manual siguen funcionando.
+
+### Internal
+- `coordinator_ds.weather_protect` (switch restaurado, default True). `_weather_alert` corta y
+  expone `alert_source = "off"` cuando está apagado; `weather_protect_enabled` (lluvia/viento)
+  pasa `False`. `switch.py`: toggle `weather_protect` (translation_key EN/ES). Tests de motor
+  (lluvia ignorada) e integración (exime la alerta del módulo).
+
 ## [0.63.1] — 2026-06-28
 
 ### Added
