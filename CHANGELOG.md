@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.60.0] — 2026-06-28
+
+### Changed
+- **VMC · refresco inmediato al cambiar de velocidad**: al aplicar una velocidad (manual o
+  automática), el ventilador **empuja un refresco del coordinator** (`async_update_listeners`),
+  de modo que `sensor.vmc_speed`, potencia y demás reflejan el cambio **al instante** en los
+  dashboards, en vez de esperar al siguiente sondeo (~60 s). El `fan.vmc` ya se actualizaba al
+  momento; ahora también los sensores que cuelgan del coordinator.
+
+### Internal
+- `DvFan._apply_speed`: `self.coordinator.async_update_listeners()` tras fijar `current_speed`
+  (en arranque/parada y al fijar V1/V2/V3). Test de integración (cambio de preset → el sensor
+  de velocidad se actualiza sin esperar al poll).
+
 ## [0.59.0] — 2026-06-28
 
 ### Added
