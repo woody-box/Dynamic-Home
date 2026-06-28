@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.59.0] — 2026-06-28
+
+### Added
+- **DS · copiar/clonar configuración entre persianas**: para varias ventanas casi idénticas
+  (p. ej. tres del mismo salón) ya no hay que configurarlo todo una a una. Dos vías:
+  - **Al crear** una persiana nueva: si ya existe otra, un paso previo permite **elegirla como
+    plantilla** → el formulario aparece precargado con todo (orientación, span, climate,
+    sensores…) **excepto el cover**, y se **copian sus opciones/tunables**. Solo cambias el
+    cover y el nombre.
+  - **En una persiana ya creada**: nuevo paso *Clonar de otra persiana* en Configurar → copia
+    los datos (excepto el cover) y las opciones del origen sobre esta, y recarga.
+
+### Internal
+- `config_flow`: `async_step_shutter` pasa a ser el selector de plantilla (paso `shutter`) y el
+  formulario de entidad se mueve a `async_step_shutter_form` (paso `shutter_form`,
+  `add_suggested_values_to_schema`); `async_create_entry(..., options=...)` clona los tunables.
+  `async_step_clone` en el options flow (menú `clone`, solo si hay otra persiana). Helper
+  `_ds_entries`. Traducciones EN/ES (`shutter`/`shutter_form`/`clone`). Tests de flujo
+  (copia al crear + clon en existente).
+
 ## [0.58.0] — 2026-06-28
 
 ### Added

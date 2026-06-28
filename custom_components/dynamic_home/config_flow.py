@@ -176,6 +176,12 @@ _HARDWARE_SCHEMA = {
 }
 
 
+def _ds_entries(hass) -> list:
+    """Existing shutter (DS) config entries — used as copy/clone templates."""
+    return [e for e in hass.config_entries.async_entries(const.DOMAIN)
+            if e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER]
+
+
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
 
@@ -227,14 +233,47 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
             step_id="weather", data_schema=STEP_WEATHER_SCHEMA)
 
     async def async_step_shutter(self, user_input: dict[str, Any] | None = None):
+        """Optionally pick an existing shutter as a template, then show the form.
+
+        Near-identical windows (e.g. three in one room) only differ in the cover
+        entity. Copying a sibling pre-fills the form with everything but the cover
+        and clones its options/tunables, so you just pick the new cover and adjust.
+        """
+        others = _ds_entries(self.hass)
+        if not others:                       # first shutter: straight to the form
+            return await self.async_step_shutter_form()
+        if user_input is not None:
+            self._ds_copy_from = user_input.get("copy_from") or None
+            return await self.async_step_shutter_form()
+        opts = [selector.SelectOptionDict(value="", label="—")]
+        opts += [selector.SelectOptionDict(value=e.entry_id, label=e.title)
+                 for e in others]
+        schema = vol.Schema({
+            vol.Optional("copy_from", default=""): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=opts, mode=selector.SelectSelectorMode.DROPDOWN))})
+        return self.async_show_form(step_id="shutter", data_schema=schema)
+
+    async def async_step_shutter_form(self,
+                                      user_input: dict[str, Any] | None = None):
+        """The shutter entity form; pre-filled from a template when chosen."""
+        src_id = getattr(self, "_ds_copy_from", None)
+        src = (self.hass.config_entries.async_get_entry(src_id)
+               if src_id else None)
         if user_input is not None:
             await self.async_set_unique_id(f"ds_{user_input[const.CONF_COVER]}")
             self._abort_if_unique_id_configured()
             data = {**user_input, const.CONF_MODULE: const.MODULE_SHUTTER}
             return self.async_create_entry(
-                title=user_input[const.CONF_NAME], data=data)
-        return self.async_show_form(
-            step_id="shutter", data_schema=STEP_SHUTTER_SCHEMA)
+                title=user_input[const.CONF_NAME], data=data,
+                options=dict(src.options) if src else {})   # clone the tunables
+        schema = STEP_SHUTTER_SCHEMA
+        if src:
+            suggested = {k: v for k, v in src.data.items()
+                         if k not in (const.CONF_COVER, const.CONF_MODULE)}
+            schema = self.add_suggested_values_to_schema(
+                STEP_SHUTTER_SCHEMA, suggested)
+        return self.async_show_form(step_id="shutter_form", data_schema=schema)
 
     async def async_step_climate(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
@@ -293,6 +332,10 @@ class DynamicHomeOptionsFlow(OptionsFlow):
         # Bathrooms for the shower boost (F13): VMC only.
         if self._module == const.MODULE_VMC:
             menu.append("bathrooms")
+        # Clone settings from a sibling shutter (only if there is one to copy).
+        if self._module == const.MODULE_SHUTTER and any(
+                e.entry_id != self.entry.entry_id for e in _ds_entries(self.hass)):
+            menu.append("clone")
         # Installation type (F26) + emitters editor (F25): climate zones only.
         if self._module == const.MODULE_CLIMATE:
             menu.append("install")
@@ -592,6 +635,36 @@ class DynamicHomeOptionsFlow(OptionsFlow):
             step_id="hardware",
             data_schema=self.add_suggested_values_to_schema(
                 schema, dict(self.entry.data)))
+
+    async def async_step_clone(self, user_input: dict[str, Any] | None = None):
+        """Copy another shutter's data (except its cover) + options onto this one.
+
+        For near-identical windows: configure one fully, then clone it into the
+        siblings and only fine-tune what differs. Keeps this entry's own cover and
+        name; reloads so the copied entities take effect.
+        """
+        others = [e for e in _ds_entries(self.hass)
+                  if e.entry_id != self.entry.entry_id]
+        if not others:
+            return self.async_abort(reason="no_options")
+        if user_input is not None:
+            src = self.hass.config_entries.async_get_entry(user_input["source"])
+            data = {**src.data,
+                    const.CONF_COVER: self.entry.data.get(const.CONF_COVER),
+                    const.CONF_NAME: self.entry.data.get(const.CONF_NAME,
+                                                         self.entry.title),
+                    const.CONF_MODULE: const.MODULE_SHUTTER}
+            self.hass.config_entries.async_update_entry(self.entry, data=data)
+            self.hass.async_create_task(
+                self.hass.config_entries.async_reload(self.entry.entry_id))
+            return self.async_create_entry(title="", data=dict(src.options))
+        opts = [selector.SelectOptionDict(value=e.entry_id, label=e.title)
+                for e in others]
+        schema = vol.Schema({
+            vol.Required("source"): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=opts, mode=selector.SelectSelectorMode.DROPDOWN))})
+        return self.async_show_form(step_id="clone", data_schema=schema)
 
     async def async_step_mirrors(self, user_input: dict[str, Any] | None = None):
         """Toggle stable per-role hardware mirror sensors (F36)."""

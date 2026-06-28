@@ -42,6 +42,13 @@
         }
       },
       "shutter": {
+        "title": "Copiar de otra persiana (opcional)",
+        "description": "Si ya tienes una persiana parecida configurada, elígela para precargar el formulario (todo menos el cover) y copiar sus ajustes. Déjalo vacío para empezar de cero.",
+        "data": {
+          "copy_from": "Copiar configuración de"
+        }
+      },
+      "shutter_form": {
         "title": "Dynamic Shutter (Persiana)",
         "description": "Selecciona la persiana y su orientación. El clima y los sensores son opcionales (habilitan solar shield, free-cooling y protección meteo).",
         "data": {
@@ -161,6 +168,7 @@
           "cat_adjacent": "Espacio adyacente (Experto)",
           "mirrors": "Espejos de hardware",
           "hardware": "Editar entidades / hardware",
+          "clone": "Clonar de otra persiana",
           "cat_dawn": "Amanecer gradual (Avanzado)",
           "cat_night": "Aislamiento nocturno (Avanzado)",
           "cat_alert": "Avisos meteo (Avanzado)",
@@ -796,6 +804,13 @@
         "data_description": {
           "adj_open_dt": "En calefacción, avisa para abrir la puerta cuando el espacio adyacente está al menos esto más caliente que el interior (ganancia solar gratuita).",
           "adj_alarm_dt": "En refrigeración, avisa cuando la puerta está abierta y el espacio adyacente está al menos esto más caliente que el interior."
+        }
+      },
+      "clone": {
+        "title": "Clonar de otra persiana",
+        "description": "Copia los datos (excepto el cover) y los ajustes de la persiana elegida sobre esta. Se conserva el cover y el nombre de esta persiana y se recarga.",
+        "data": {
+          "source": "Persiana origen"
         }
       },
       "mirrors": {
