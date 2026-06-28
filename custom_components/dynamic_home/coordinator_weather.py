@@ -124,6 +124,13 @@ class WxCoordinator(DataUpdateCoordinator):
         self.active_label = label
         self.active_entity = active_entity
 
+        # Publish so DC (forecast bias) and DS (alert) auto-consume it when set,
+        # without wiring each module by hand. Per-module config still overrides.
+        self.hass.data.setdefault(const.DOMAIN, {})[const.DATA_WEATHER] = {
+            "source": active_entity,        # current best weather.* (for forecasts)
+            "alert": self.alert_active,
+        }
+
         return WxData(
             active_label=label, active_entity=active_entity,
             alert=self.alert_active, condition=condition,

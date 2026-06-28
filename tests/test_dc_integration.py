@@ -49,6 +49,27 @@ async def _add(hass: HomeAssistant, data: dict, title: str) -> MockConfigEntry:
     return entry
 
 
+async def test_dc_auto_forecast_source_from_dynamic_weather(
+        hass: HomeAssistant) -> None:
+    """With no zone weather configured, DC's forecast bias auto-uses the module's."""
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")     # no CONF_DC_WEATHER set
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co._forecast_source() is None           # nothing published yet
+    hass.data[const.DOMAIN][const.DATA_WEATHER] = {
+        "source": "weather.casa", "alert": False}
+    assert co._forecast_source() == "weather.casa"
+
+    # An explicit per-zone weather overrides the auto source.
+    co2 = hass.data[const.DOMAIN][
+        (await _add(hass, {**CLIMATE, const.CONF_NAME: "Salon2",
+                           const.CONF_DC_T_INT: "sensor.salon_temp",
+                           const.CONF_DC_WEATHER: "weather.zona"},
+                    "Salon2")).entry_id]
+    assert co2._forecast_source() == "weather.zona"
+
+
 async def test_climate_config_flow(hass: HomeAssistant) -> None:
     result = await hass.config_entries.flow.async_init(
         const.DOMAIN, context={"source": "user"})

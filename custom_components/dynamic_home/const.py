@@ -144,6 +144,9 @@ CONF_CHANGEOVER_TUNE = "changeover_tune"      # threshold overrides (dict)
 DATA_CHANGEOVER = "_changeover"               # resolved changeover published in hass.data
 EVENT_CHANGEOVER_CHANGED = f"{DOMAIN}_changeover_changed"
 
+# --- F33 Dynamic Weather: published so DC/DS auto-consume it when it exists ---
+DATA_WEATHER = "_weather"          # {"source": weather.* for forecast, "alert": bool}
+
 # --- F34 Dynamic Energy (singleton module; publishes house energy context) ---
 CONF_ENERGY_GRID = "energy_grid"          # grid import power (W)
 CONF_ENERGY_PRICE = "energy_price"        # electricity price sensor (€/kWh)
