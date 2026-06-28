@@ -148,6 +148,12 @@ class DsInputs:
     # when there is no sun).
     heat_shield: bool = False
 
+    # Direct-sun shield: opt-in. When True, in cooling the solar shield also fires
+    # on direct sun on the facade even when the outdoor air is cooler (solar gain
+    # through the glass still heats the room). When False (legacy), the solar shield
+    # only fires when it is also hotter outside.
+    sun_gain_shield: bool = False
+
     # Weather alert (F17): anticipatory protection position while active, else None.
     alert_pos: int | None = None
 
@@ -350,7 +356,10 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     else:
         free_ok = (is_cool and ins.night and temps_ok
                    and ins.t_out <= ins.t_in - cfg.freecool_delta)
-        shield_ok = is_cool and impact > 0 and hot_out
+        # Solar shield: direct sun on the facade while cooling. By default it needs
+        # hotter outside too; with the direct-sun shield opt-in it fires on the sun
+        # alone (the glazing's solar gain heats the room even if the air is cooler).
+        shield_ok = is_cool and impact > 0 and (hot_out or ins.sun_gain_shield)
 
         if free_ok and not ins.sleep_mode:
             pos, reason = cfg.freecool_max_open_pct, "freecool_night"
