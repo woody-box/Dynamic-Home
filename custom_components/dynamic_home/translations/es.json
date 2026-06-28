@@ -1372,6 +1372,7 @@
       "geo_shade": {"name": "Sombreado geométrico"},
       "heat_shield": {"name": "Escudo térmico"},
       "sun_shield": {"name": "Escudo de sol directo"},
+      "weather_protect": {"name": "Protección meteo"},
       "peak": {"name": "Limitación de pico"},
       "adaptive": {"name": "Umbrales adaptativos"},
       "bootstrap": {"name": "Arranque inicial"},

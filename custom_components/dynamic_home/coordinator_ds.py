@@ -64,6 +64,9 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._last_alert_pos = 0
         # Where the alert comes from, for observability: local / dynamic_weather / none.
         self.alert_source = "none"
+        # Weather protection master switch for THIS shutter (rain + alert + wind cap).
+        # On by default; turn off for a covered terrace that must never close on weather.
+        self.weather_protect = True
         # Seasonal night insulation (F16): opt-in.
         self.night_iso_enabled = False
         # Geometric shading (F15): opt-in real solar-penetration model.
@@ -269,6 +272,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         (generic / hail / wind). When all clear, keeps protecting for
         ``alert_hold_min`` before releasing.
         """
+        # This shutter opted out of weather protection (e.g. a covered terrace).
+        if not self.weather_protect:
+            self.alert_source = "off"
+            return None
         positions: list[int] = []
         if self._is_on(const.CONF_DS_ALERT):
             positions.append(cfg.alert_pct)
@@ -413,8 +420,8 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             hvac_mode=self._hvac_mode(),
             t_in=t_in,
             t_out=t_out,
-            weather_protect_enabled=bool(self._hw(const.CONF_WIND) or
-                                         self._hw(const.CONF_RAIN)),
+            weather_protect_enabled=(self.weather_protect and bool(
+                self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN))),
             raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
             current_pos=current_pos,

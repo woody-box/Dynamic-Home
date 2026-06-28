@@ -92,6 +92,13 @@ def test_rain_closes():
     assert d.pos == 0 and d.reason == "meteo_rain"
 
 
+def test_weather_protect_off_ignores_rain():
+    # With weather protection off for this shutter, rain no longer closes it.
+    d = decide_cover(_cfg(rain_close_pct=0, slew_enabled=False), DsState(),
+                     DsInputs(weather_protect_enabled=False, raining=True))
+    assert d.reason != "meteo_rain"
+
+
 def test_privacy_time():
     d = decide_cover(_cfg(privacy_pos_pct=40, slew_enabled=False), DsState(),
                      DsInputs(privacy_active=True))

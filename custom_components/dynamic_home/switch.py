@@ -72,6 +72,10 @@ _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c: c.sun_shield_enabled,
         lambda c, v: setattr(c, "sun_shield_enabled", v)),
     _ToggleDesc(
+        "weather_protect", "Weather protection", "mdi:weather-cloudy-alert",
+        lambda c: c.weather_protect,
+        lambda c, v: setattr(c, "weather_protect", v)),
+    _ToggleDesc(
         "peak", "Peak limiting", "mdi:flash-alert",
         lambda c: c.peak_enabled,
         lambda c, v: setattr(c, "peak_enabled", v)),

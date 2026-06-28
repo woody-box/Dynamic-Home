@@ -542,6 +542,23 @@ async def test_ds_auto_alert_from_dynamic_weather(hass: HomeAssistant) -> None:
     assert co.alert_source == "dynamic_weather"
 
 
+async def test_ds_weather_protect_off_exempts_shutter(hass: HomeAssistant) -> None:
+    """A covered-terrace shutter can opt out of all weather protection."""
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    hass.data[const.DOMAIN][const.DATA_WEATHER] = {"source": "weather.x", "alert": True}
+
+    # Default ON -> follows the module alert.
+    assert co._weather_alert(cfg, 1000.0) == cfg.alert_pct
+    # Switch off -> exempt (no alert, source reads "off").
+    co.weather_protect = False
+    assert co._weather_alert(cfg, 1000.0) is None
+    assert co.alert_source == "off"
+
+
 async def test_ds_local_alert_overrides_dynamic_weather(hass: HomeAssistant) -> None:
     """A per-shutter alert sensor takes precedence over the module alert."""
     async_mock_service(hass, "cover", "set_cover_position")
