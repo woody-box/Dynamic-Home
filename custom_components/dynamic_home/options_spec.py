@@ -173,6 +173,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("hrv_bypass_eff_max", "Bypass efficiency max",
                "Eficiencia máx. de bypass"),
             _v("hrv_bypass_dt_min", "Bypass ΔT min (°C)", "ΔT mín. de bypass (°C)"),
+            _v("hrv_bypass_min_ext_c", "Bypass min outdoor T (°C)",
+               "Tª ext mín. de bypass (°C)"),
         ],
         "filter": [
             _v("filter_life_hours", "Filter life (h)", "Vida del filtro (h)"),

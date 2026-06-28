@@ -490,6 +490,19 @@ def test_hrv_state_none_when_missing():
     assert hrv_state(None, 0, 22, _cfg()) is None
 
 
+def test_hrv_state_bypass_by_temperature():
+    # Free-cooling rule (manual): mild outside (>10°C) AND outside cooler than in.
+    cfg = _cfg()                                   # default min_ext 10, dt_min 3
+    # Summer night: T_ext 20 < T_int 26, and 20 > 10 -> bypass, even if η is high.
+    assert hrv_state(24, 20, 26, cfg) == "bypass"  # η 0.67 but damper is open
+    # Hot day: outside warmer than inside -> recover (no free-cooling).
+    assert hrv_state(29, 31, 28, cfg) == "recovering"
+    # Cold outside (< 10): never free-cools -> recover.
+    assert hrv_state(18, 5, 21, cfg) == "recovering"
+    # Just below the outdoor threshold -> not bypass (falls to efficiency path).
+    assert hrv_state(19.5, 9, 20, cfg) == "recovering"  # η 0.95, T_ext 9 < 10
+
+
 # --- F30: extended IAQ — hostile outdoor overrides indoor demand (REQ-IAQ-4) ---
 def test_hostile_outdoor_overrides_indoor_demand():
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False,

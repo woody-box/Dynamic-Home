@@ -743,11 +743,13 @@
         "description": "Heat-recovery bypass (efficiency/threshold) used for free-cooling.",
         "data": {
           "hrv_bypass_eff_max": "Bypass efficiency max",
-          "hrv_bypass_dt_min": "Bypass ΔT min (°C)"
+          "hrv_bypass_dt_min": "Bypass ΔT min (°C)",
+          "hrv_bypass_min_ext_c": "Bypass min outdoor T (°C)"
         },
         "data_description": {
           "hrv_bypass_eff_max": "Efficiency (0..1) at or below which, with a real ΔT, the exchanger is considered in bypass / not recovering.",
-          "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass. (advanced)"
+          "hrv_bypass_dt_min": "Minimum extract−intake ΔT (°C) needed before judging recovery vs bypass. (advanced)",
+          "hrv_bypass_min_ext_c": "Free-cooling (bypass) is only detected when the outdoor temperature is above this value and also cooler than indoors (manual's rule)."
         }
       },
       "cat_demand": {
