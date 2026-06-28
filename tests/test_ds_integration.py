@@ -155,8 +155,9 @@ async def test_shutter_config_flow(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"next_step_id": "shutter"})
+    # No shutter exists yet -> skip the copy picker, straight to the entity form.
     assert result["type"] == FlowResultType.FORM
-    assert result["step_id"] == "shutter"
+    assert result["step_id"] == "shutter_form"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -164,6 +165,69 @@ async def test_shutter_config_flow(hass: HomeAssistant) -> None:
                     const.CONF_FACADE_AZIMUTH: 180})
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][const.CONF_MODULE] == const.MODULE_SHUTTER
+
+
+async def test_shutter_create_copies_from_template(hass: HomeAssistant) -> None:
+    """Adding a 2nd shutter can copy a sibling: form pre-filled + options cloned."""
+    src = MockConfigEntry(
+        domain=const.DOMAIN, title="Salón Izquierda",
+        data={**SHUTTER, const.CONF_COVER: "cover.salon_izq",
+              const.CONF_FACADE_AZIMUTH: 0.0, const.CONF_CLIMATE: "climate.salon"},
+        options={"summer_min_open_pct": 35})
+    src.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": "user"})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "shutter"})
+    # A sibling exists -> the copy picker shows first.
+    assert result["step_id"] == "shutter"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"copy_from": src.entry_id})
+    assert result["step_id"] == "shutter_form"
+
+    # Only the cover (and name) differ; the rest is taken from the template.
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={const.CONF_NAME: "Salón Derecha",
+                    const.CONF_COVER: "cover.salon_der",
+                    const.CONF_FACADE_AZIMUTH: 0.0, const.CONF_FACADE_SPAN: 180})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][const.CONF_COVER] == "cover.salon_der"
+    assert result["options"] == {"summer_min_open_pct": 35}   # tunables cloned
+
+
+async def test_shutter_clone_into_existing(hass: HomeAssistant) -> None:
+    """Options 'clone' copies a sibling's data (except cover) + options onto this one."""
+    hass.states.async_set("cover.salon_izq", "open", {"supported_features": 15})
+    hass.states.async_set("cover.salon_der", "open", {"supported_features": 15})
+    src = MockConfigEntry(
+        domain=const.DOMAIN, title="Salón Izquierda",
+        data={**SHUTTER, const.CONF_COVER: "cover.salon_izq",
+              const.CONF_FACADE_AZIMUTH: 0.0, const.CONF_CLIMATE: "climate.salon"},
+        options={"summer_min_open_pct": 35})
+    dst = MockConfigEntry(
+        domain=const.DOMAIN, title="Salón Derecha",
+        data={**SHUTTER, const.CONF_COVER: "cover.salon_der"}, options={})
+    src.add_to_hass(hass)
+    dst.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(dst.entry_id)
+    await hass.async_block_till_done()
+
+    result = await hass.config_entries.options.async_init(dst.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "clone"})
+    assert result["step_id"] == "clone"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"source": src.entry_id})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+
+    # Cover kept; orientation/climate + options taken from the source.
+    assert dst.data[const.CONF_COVER] == "cover.salon_der"
+    assert dst.data[const.CONF_FACADE_AZIMUTH] == 0.0
+    assert dst.data[const.CONF_CLIMATE] == "climate.salon"
+    assert dst.options == {"summer_min_open_pct": 35}
 
 
 async def test_setup_creates_cover(hass: HomeAssistant) -> None:

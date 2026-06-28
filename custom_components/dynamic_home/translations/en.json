@@ -42,6 +42,13 @@
         }
       },
       "shutter": {
+        "title": "Copy from another shutter (optional)",
+        "description": "If you already have a similar shutter configured, pick it to pre-fill the form (everything but the cover) and copy its settings. Leave empty to start from scratch.",
+        "data": {
+          "copy_from": "Copy configuration from"
+        }
+      },
+      "shutter_form": {
         "title": "Dynamic Shutter",
         "description": "Select the shutter and its orientation. Climate and sensors are optional (enable solar shield, free-cooling and weather protection).",
         "data": {
@@ -161,6 +168,7 @@
           "cat_adjacent": "Adjacent space (Expert)",
           "mirrors": "Hardware mirrors",
           "hardware": "Edit entities / hardware",
+          "clone": "Clone from another shutter",
           "cat_dawn": "Gradual sunrise (Advanced)",
           "cat_night": "Night insulation (Advanced)",
           "cat_alert": "Weather alerts (Advanced)",
@@ -796,6 +804,13 @@
         "data_description": {
           "adj_open_dt": "In heat, advise opening the door when the adjacent space is at least this much warmer than indoors (free solar gain).",
           "adj_alarm_dt": "In cool, warn when the door is open and the adjacent space is at least this much warmer than indoors."
+        }
+      },
+      "clone": {
+        "title": "Clone from another shutter",
+        "description": "Copies the data (except the cover) and settings of the chosen shutter onto this one. This shutter's own cover and name are kept, and it is reloaded.",
+        "data": {
+          "source": "Source shutter"
         }
       },
       "mirrors": {
