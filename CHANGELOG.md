@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.62.0] — 2026-06-28
+
+### Added
+- **DS · override manual (no quedarse atrapado)**: al mover la persiana **a mano** (por la
+  entidad gestionada de la integración), ahora **mantiene tu posición y pausa el automático**
+  para que la lógica de confort (sol/escudo/free-cool/amanecer/noche) **no la vuelva a cerrar**
+  detrás de ti. El override se mantiene hasta que:
+  - pulses el botón nuevo **«Reanudar automático»**, o
+  - pasen las horas configuradas en **«Override manual (h)»** (por defecto **4 h**; `0 = sin
+    caducidad`).
+  Las **protecciones de seguridad** (bloqueo, alerta meteo, lluvia, tope de viento) **siguen
+  mandando** por encima del override. Nuevo sensor **«Override restante»** (minutos).
+
+### Internal
+- `ds_engine`: rama `manual_hold` en `decide_cover` (tras override/alerta/lluvia, antes de
+  privacidad/amanecer/noche/estacional), añadida a `PROTECTED`; `DsInputs.manual_pos` +
+  `DsConfig.override_hours`. `coordinator_ds`: `arm_manual_override`/`clear_manual_override`/
+  `override_remaining_min` + caducidad. `cover.py` arma el hold en las órdenes del usuario.
+  Nueva plataforma `button` en DS (`ResumeAutoButton`) + `DsOverrideRemainingSensor`. Opción
+  `override_hours` (categoría Posiciones) y traducciones EN/ES. Tests de motor + integración.
+
 ## [0.61.0] — 2026-06-28
 
 ### Changed

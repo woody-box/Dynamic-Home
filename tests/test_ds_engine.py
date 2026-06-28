@@ -98,6 +98,41 @@ def test_privacy_time():
     assert d.pos == 40 and d.reason == "privacy_time"
 
 
+def test_manual_hold_beats_comfort():
+    # A manual hold pins the position over all the comfort logic (no trap).
+    cfg = _cfg(slew_enabled=False, summer_min_open_pct=20)
+    base = dict(hvac_mode="cool", impact=80, t_in=24, t_out=30)   # would solar-shield
+    d_auto = decide_cover(cfg, DsState(), DsInputs(**base))
+    assert d_auto.reason == "summer_solar_shield"                 # closes by default
+    d_hold = decide_cover(cfg, DsState(), DsInputs(**base, manual_pos=90))
+    assert d_hold.pos == 90 and d_hold.reason == "manual_hold"    # stays where you left it
+    # Also outranks privacy and the dawn ramp.
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(manual_pos=70, privacy_active=True, dawn_pos=30))
+    assert d.pos == 70 and d.reason == "manual_hold"
+
+
+def test_manual_hold_yields_to_safety():
+    # Safety layers (lock / weather alert / rain) still win over a manual hold.
+    cfg = _cfg(rain_close_pct=0, slew_enabled=False)
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(manual_pos=90, weather_protect_enabled=True,
+                              raining=True))
+    assert d.reason == "meteo_rain"
+    d = decide_cover(cfg, DsState(), DsInputs(manual_pos=90, alert_pos=0))
+    assert d.reason == "meteo_alert"
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(manual_pos=90, override_mode="lock", override_pos=10))
+    assert d.reason == "ov_lock"
+
+
+def test_manual_hold_is_protected_from_slew():
+    # PROTECTED: the slew limiter doesn't drag a manual hold toward its old spot.
+    cfg = _cfg(slew_enabled=True, slew_step_pct=10)
+    d = decide_cover(cfg, DsState(), DsInputs(manual_pos=100, current_pos=0))
+    assert d.pos == 100 and d.reason == "manual_hold"
+
+
 def test_dawn_ramp_drives_position():
     # F19: an active sunrise ramp sets the stepped opening.
     d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(dawn_pos=30))

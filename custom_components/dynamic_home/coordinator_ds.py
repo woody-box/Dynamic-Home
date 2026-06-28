@@ -55,6 +55,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.privacy_pct = 40
         self.lock_enabled = False
         self.lock_pct = 50
+        # Manual override: a hand command holds its position (auto paused) until it
+        # expires (``override_hours``) or the user resumes auto.
+        self.manual_pos: int | None = None
+        self.manual_until = 0.0
         # Weather alert (F17): anticipatory protection hold state.
         self._alert_hold_until = 0.0
         self._last_alert_pos = 0
@@ -134,6 +138,33 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             cfg.facade_azimuth_deg = float(az)
         cfg.facade_span_deg = self.facade_span
         return cfg
+
+    def arm_manual_override(self, pos: int) -> None:
+        """A hand command holds ``pos`` (auto paused) for ``override_hours``.
+
+        Called by the managed cover on a user open/close/set-position. Re-arms the
+        timer on every manual command. ``override_hours == 0`` means no expiry
+        (hold until the user resumes auto).
+        """
+        hours = self._cfg().override_hours
+        self.manual_pos = max(0, min(100, int(pos)))
+        self.manual_until = (dt_util.utcnow().timestamp() + hours * 3600.0
+                             if hours > 0 else float("inf"))
+        self.hass.async_create_task(self.async_request_refresh())
+
+    def clear_manual_override(self) -> None:
+        """Resume automatic control now (the 'back to auto' button)."""
+        self.manual_pos = None
+        self.manual_until = 0.0
+        self.hass.async_create_task(self.async_request_refresh())
+
+    @property
+    def override_remaining_min(self) -> float:
+        """Minutes left on the manual hold (0 if none, 0 also when no-expiry)."""
+        if self.manual_pos is None or self.manual_until in (0.0, float("inf")):
+            return 0.0
+        left = self.manual_until - dt_util.utcnow().timestamp()
+        return round(max(0.0, left) / 60.0, 1)
 
     @property
     def facade_key(self) -> str:
@@ -360,6 +391,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         t_out = self._num(const.CONF_DS_T_OUT)
         night_pos = self._night_iso(cfg, self._hvac_mode(), sun_el, t_in, t_out)
         alert_pos = self._weather_alert(cfg, now_ts)
+        # Manual hold expiry: drop it once the "tiempo prudencial" elapses.
+        if self.manual_pos is not None and now_ts >= self.manual_until:
+            self.manual_pos = None
+            self.manual_until = 0.0
 
         ins = DsInputs(
             hvac_mode=self._hvac_mode(),
@@ -373,6 +408,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             dawn_pos=dawn_pos,
             night_pos=night_pos,
             alert_pos=alert_pos,
+            manual_pos=self.manual_pos,
             geo_shade=self.geo_shade_enabled,
             heat_shield=self.heat_shield_enabled,
             sun_gain_shield=self.sun_shield_enabled,
