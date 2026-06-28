@@ -397,6 +397,54 @@ async def test_geo_shade_switch_refines_solar_branch(hass: HomeAssistant) -> Non
     assert "penetration_m" in co.data.details
 
 
+async def test_ds_context_sensors_expose_temps_and_climate(
+        hass: HomeAssistant) -> None:
+    """First-class sensors surface the shutter's indoor/outdoor temps and the
+    linked climate's mode/setpoint/current temp, so the 'why' reads at a glance."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180, "elevation": 70})
+    hass.states.async_set("climate.salon", "cool",
+                          {"temperature": 23.5, "current_temperature": 25.0})
+    hass.states.async_set("sensor.salon_in", "24")
+    hass.states.async_set("sensor.salon_out", "30")
+    entry = MockConfigEntry(domain=const.DOMAIN, data=GEO, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    reg = er.async_get(hass)
+
+    def _state(key: str):
+        eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                      f"{entry.entry_id}_{key}")
+        assert eid is not None, key
+        return hass.states.get(eid).state
+
+    assert float(_state("ds_indoor_temp")) == 24.0
+    assert float(_state("ds_outdoor_temp")) == 30.0
+    assert _state("ds_climate_mode") == "cool"
+    assert float(_state("ds_climate_setpoint")) == 23.5
+    assert float(_state("ds_climate_temp")) == 25.0
+
+
+async def test_ds_context_sensors_absent_without_sources(
+        hass: HomeAssistant) -> None:
+    """No temp/climate configured -> the context sensors are not created."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    entry = await _setup(hass)            # plain SHUTTER (no temps, no climate)
+
+    reg = er.async_get(hass)
+    for key in ("ds_indoor_temp", "ds_outdoor_temp", "ds_climate_mode",
+                "ds_climate_setpoint", "ds_climate_temp"):
+        assert reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is None, key
+
+
 async def test_heat_shield_holds_closed_when_hot_no_direct_sun(
         hass: HomeAssistant) -> None:
     """Cooling + hotter outside + sun off this facade -> stay shut (opt-in)."""

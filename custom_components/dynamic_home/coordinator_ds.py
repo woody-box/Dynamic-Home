@@ -182,6 +182,39 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         co = self._house_changeover()
         return co if co in ("heat", "cool") else "off"
 
+    def _climate_attr(self, attr: str) -> float | None:
+        """A numeric attribute of the linked ``climate`` (setpoint / current temp)."""
+        ent = self._hw(const.CONF_CLIMATE)
+        if not ent:
+            return None
+        st = self.hass.states.get(ent)
+        if st is None:
+            return None
+        val = st.attributes.get(attr)
+        try:
+            return float(val) if val is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    @property
+    def climate_mode(self) -> str | None:
+        """Raw mode of the linked ``climate`` (heat/cool/off/...), or None."""
+        ent = self._hw(const.CONF_CLIMATE)
+        if not ent:
+            return None
+        st = self.hass.states.get(ent)
+        if st is None or st.state in ("unknown", "unavailable", ""):
+            return None
+        return st.state
+
+    @property
+    def climate_setpoint(self) -> float | None:
+        return self._climate_attr("temperature")
+
+    @property
+    def climate_temp(self) -> float | None:
+        return self._climate_attr("current_temperature")
+
     def _current_pos(self) -> int | None:
         ent = self._hw(const.CONF_COVER)
         if not ent:

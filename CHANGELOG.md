@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.57.0] — 2026-06-28
+
+### Added
+- **DS · sensores de contexto de primer nivel en la persiana**: para "atar cabos" de un
+  vistazo de por qué actúa la persiana, ahora expone como sensores principales (cada uno solo
+  si su fuente está configurada):
+  - **Temperatura interior** y **Temperatura exterior** (las que usa el motor, `ds_t_in`/`ds_t_out`).
+  - Del **climate** enlazado de la zona: **Modo** (heat/cool/off — lo que gobierna toda la
+    cascada), **Consigna** (temp objetivo) y **Temperatura** actual.
+
+### Internal
+- `coordinator_ds`: `climate_mode`/`climate_setpoint`/`climate_temp` (lee el `climate` enlazado)
+  y `_climate_attr`. `sensor.py`: `DsIndoorTempSensor`/`DsOutdoorTempSensor`/`DsClimateModeSensor`/
+  `DsClimateSetpointSensor`/`DsClimateTempSensor` (translation_key EN/ES), creados en la rama
+  `MODULE_SHUTTER` según fuentes presentes. Tests de integración (presentes con fuentes /
+  ausentes sin ellas).
+
 ## [0.56.1] — 2026-06-27
 
 ### Fixed
