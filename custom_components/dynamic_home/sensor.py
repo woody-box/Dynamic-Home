@@ -159,12 +159,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         async_add_entities(ents)
         return
     if module == const.MODULE_SHUTTER:
-        async_add_entities([BusSensor(coordinator, entry),
-                            EnergySensor(coordinator, entry),
-                            DsPositionSensor(coordinator, entry),
-                            DsTargetSensor(coordinator, entry),
-                            DsReasonSensor(coordinator, entry),
-                            *_mirror_sensors(entry, module)])
+        ds_ents: list[SensorEntity] = [
+            BusSensor(coordinator, entry),
+            EnergySensor(coordinator, entry),
+            DsPositionSensor(coordinator, entry),
+            DsTargetSensor(coordinator, entry),
+            DsReasonSensor(coordinator, entry)]
+        # First-class context sensors, to read the "why" at a glance — each only
+        # when its source is configured.
+        if coordinator._hw(const.CONF_DS_T_IN):
+            ds_ents.append(DsIndoorTempSensor(coordinator, entry))
+        if coordinator._hw(const.CONF_DS_T_OUT):
+            ds_ents.append(DsOutdoorTempSensor(coordinator, entry))
+        if coordinator._hw(const.CONF_CLIMATE):
+            ds_ents.append(DsClimateModeSensor(coordinator, entry))
+            ds_ents.append(DsClimateSetpointSensor(coordinator, entry))
+            ds_ents.append(DsClimateTempSensor(coordinator, entry))
+        ds_ents.extend(_mirror_sensors(entry, module))
+        async_add_entities(ds_ents)
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
                                     for d in _HOURS]
@@ -723,6 +735,92 @@ class DsReasonSensor(_Base):
     def extra_state_attributes(self) -> dict:
         data = self.coordinator.data
         return dict(data.details) if data else {}
+
+
+class DsIndoorTempSensor(_Base):
+    """Indoor temperature this shutter uses for its decisions (first-class)."""
+
+    _attr_translation_key = "ds_indoor_temp"
+    _attr_icon = "mdi:home-thermometer"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_indoor_temp")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator._num(const.CONF_DS_T_IN)
+
+
+class DsOutdoorTempSensor(_Base):
+    """Outdoor temperature this shutter uses for its decisions (first-class)."""
+
+    _attr_translation_key = "ds_outdoor_temp"
+    _attr_icon = "mdi:sun-thermometer"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_outdoor_temp")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator._num(const.CONF_DS_T_OUT)
+
+
+class DsClimateModeSensor(_Base):
+    """Mode of the zone's linked climate (heat/cool/off) — gates the whole cascade."""
+
+    _attr_translation_key = "ds_climate_mode"
+    _attr_icon = "mdi:thermostat"
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_climate_mode")
+
+    @property
+    def native_value(self) -> str | None:
+        return self.coordinator.climate_mode
+
+
+class DsClimateSetpointSensor(_Base):
+    """Target temperature set on the zone's linked climate (first-class)."""
+
+    _attr_translation_key = "ds_climate_setpoint"
+    _attr_icon = "mdi:thermostat-box"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_climate_setpoint")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.climate_setpoint
+
+
+class DsClimateTempSensor(_Base):
+    """Current temperature reported by the zone's linked climate (first-class)."""
+
+    _attr_translation_key = "ds_climate_temp"
+    _attr_icon = "mdi:thermometer"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_climate_temp")
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.climate_temp
 
 
 class ScheduleSensor(CoordinatorEntity, SensorEntity):
