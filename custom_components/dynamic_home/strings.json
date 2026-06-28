@@ -60,7 +60,7 @@
           "ds_t_in": "Indoor temperature (optional)",
           "ds_t_out": "Outdoor temperature (optional)",
           "wind": "Wind km/h (optional)",
-          "rain": "Rain (optional; binary_sensor on/off or mm sensor)",
+          "rain": "Rain (binary_sensor, optional)",
           "ds_alert": "Weather alert (binary_sensor)",
           "ds_alert_hail": "Hail/storm alert (binary_sensor)",
           "ds_alert_wind": "Wind alert (binary_sensor)",
@@ -431,14 +431,12 @@
         "data": {
           "wind_limit_kmh": "Wind limit (km/h)",
           "wind_cap_span_kmh": "Wind cap span (km/h)",
-          "wind_cap_hyst_kmh": "Wind cap hysteresis (km/h)",
-          "rain_mm_threshold": "Rain threshold (mm, numeric sensor)"
+          "wind_cap_hyst_kmh": "Wind cap hysteresis (km/h)"
         },
         "data_description": {
           "wind_limit_kmh": "Wind speed that forces protective closing. (↓ = closes at less wind)",
           "wind_cap_span_kmh": "Range above the limit over which opening is progressively capped. (↑ = ramps the cap more gradually)",
-          "wind_cap_hyst_kmh": "Hysteresis to release the wind cap. (↑ = releases the cap later)",
-          "rain_mm_threshold": "When the Rain field is a numeric mm sensor, it counts as raining above this value. (↑ = needs more rain to close). Ignored for an on/off binary_sensor."
+          "wind_cap_hyst_kmh": "Hysteresis to release the wind cap. (↑ = releases the cap later)"
         }
       },
       "cat_slew": {
@@ -1206,7 +1204,7 @@
           "ds_t_in": "Indoor temperature (optional)",
           "ds_t_out": "Outdoor temperature (optional)",
           "wind": "Wind km/h (optional)",
-          "rain": "Rain (optional; binary_sensor on/off or mm sensor)",
+          "rain": "Rain (binary_sensor, optional)",
           "ds_alert": "Weather alert (binary_sensor)",
           "ds_alert_hail": "Hail/storm alert (binary_sensor)",
           "ds_alert_wind": "Wind alert (binary_sensor)",

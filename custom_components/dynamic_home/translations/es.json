@@ -60,7 +60,7 @@
           "ds_t_in": "Temperatura interior (opcional)",
           "ds_t_out": "Temperatura exterior (opcional)",
           "wind": "Viento km/h (opcional)",
-          "rain": "Lluvia (opcional; binary_sensor on/off o sensor de mm)",
+          "rain": "Lluvia (binary_sensor, opcional)",
           "ds_alert": "Alerta meteo (binary_sensor)",
           "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor)",
           "ds_alert_wind": "Alerta viento (binary_sensor)",
@@ -431,14 +431,12 @@
         "data": {
           "wind_limit_kmh": "Límite de viento (km/h)",
           "wind_cap_span_kmh": "Rango cap viento (km/h)",
-          "wind_cap_hyst_kmh": "Histéresis cap viento (km/h)",
-          "rain_mm_threshold": "Umbral de lluvia (mm, sensor numérico)"
+          "wind_cap_hyst_kmh": "Histéresis cap viento (km/h)"
         },
         "data_description": {
           "wind_limit_kmh": "Velocidad de viento que fuerza el cierre protector. (↓ = cierra con menos viento)",
           "wind_cap_span_kmh": "Rango por encima del límite en el que se limita progresivamente la apertura. (↑ = limita la apertura más gradualmente)",
-          "wind_cap_hyst_kmh": "Histéresis para soltar el cap de viento. (↑ = tarda más en soltar el cap)",
-          "rain_mm_threshold": "Cuando el campo Lluvia es un sensor numérico de mm, cuenta como lluvia por encima de este valor. (↑ = necesita más lluvia para cerrar). Se ignora con un binary_sensor on/off."
+          "wind_cap_hyst_kmh": "Histéresis para soltar el cap de viento. (↑ = tarda más en soltar el cap)"
         }
       },
       "cat_slew": {
@@ -1206,7 +1204,7 @@
           "ds_t_in": "Temperatura interior (opcional)",
           "ds_t_out": "Temperatura exterior (opcional)",
           "wind": "Viento km/h (opcional)",
-          "rain": "Lluvia (opcional; binary_sensor on/off o sensor de mm)",
+          "rain": "Lluvia (binary_sensor, opcional)",
           "ds_alert": "Alerta meteo (binary_sensor)",
           "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor)",
           "ds_alert_wind": "Alerta viento (binary_sensor)",
