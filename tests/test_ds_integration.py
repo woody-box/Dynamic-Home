@@ -85,6 +85,44 @@ async def test_weather_alert_absent_without_sensors(hass: HomeAssistant) -> None
     assert co._weather_alert(co._cfg(), 1000.0) is None
 
 
+# --- Rain source: binary_sensor on/off OR numeric mm sensor ---
+async def test_rain_accepts_binary_sensor(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = MockConfigEntry(
+        domain=const.DOMAIN,
+        data={**SHUTTER, const.CONF_RAIN: "binary_sensor.lluvia"},
+        title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    hass.states.async_set("binary_sensor.lluvia", "off")
+    assert co._raining(cfg) is False
+    hass.states.async_set("binary_sensor.lluvia", "on")
+    assert co._raining(cfg) is True
+
+
+async def test_rain_accepts_numeric_mm_sensor(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = MockConfigEntry(
+        domain=const.DOMAIN,
+        data={**SHUTTER, const.CONF_RAIN: "sensor.precip_mm"},
+        title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()                       # rain_mm_threshold default 0.0
+    hass.states.async_set("sensor.precip_mm", "0.0")
+    assert co._raining(cfg) is False
+    hass.states.async_set("sensor.precip_mm", "0.4")
+    assert co._raining(cfg) is True
+    # Unavailable / non-numeric never reads as raining.
+    hass.states.async_set("sensor.precip_mm", "unavailable")
+    assert co._raining(cfg) is False
+
+
 # --- F16: seasonal night insulation ---
 async def test_night_insulation_heat_and_cool(hass: HomeAssistant) -> None:
     _seed(hass)

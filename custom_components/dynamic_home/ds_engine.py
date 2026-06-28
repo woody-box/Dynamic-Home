@@ -22,6 +22,7 @@ class DsConfig:
     """Tunables. Defaults mirror the YAML ``initial:`` values."""
 
     rain_close_pct: int = 0
+    rain_mm_threshold: float = 0.0      # numeric precip sensor: raining when mm > this
     privacy_pos_pct: int = 40
     override_hours: float = 4.0         # manual command holds this long (0 = forever)
     freecool_max_open_pct: int = 60
