@@ -430,6 +430,37 @@ async def test_ds_context_sensors_expose_temps_and_climate(
     assert float(_state("ds_climate_temp")) == 25.0
 
 
+async def test_direct_sun_shield_switch(hass: HomeAssistant) -> None:
+    """Opt-in: in cooling, close on direct sun even when the outdoor air is cooler."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180, "elevation": 45})   # sun on the facade
+    hass.states.async_set("climate.salon", "cool")
+    hass.states.async_set("sensor.salon_in", "26")
+    hass.states.async_set("sensor.salon_out", "22")            # cooler outside
+    entry = MockConfigEntry(domain=const.DOMAIN, data=GEO, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Switch exists and is off by default -> cooler outside means no shield.
+    eid = er.async_get(hass).async_get_entity_id(
+        "switch", const.DOMAIN, f"{entry.entry_id}_sun_shield")
+    assert eid is not None
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "default"
+
+    # Enabling it shades on the direct sun alone (solar gain through the glass).
+    co.sun_shield_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "summer_solar_shield"
+
+
 async def test_ds_context_sensors_absent_without_sources(
         hass: HomeAssistant) -> None:
     """No temp/climate configured -> the context sensors are not created."""

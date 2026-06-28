@@ -1349,6 +1349,7 @@
       "night_iso": {"name": "Aislamiento nocturno"},
       "geo_shade": {"name": "Sombreado geométrico"},
       "heat_shield": {"name": "Escudo térmico"},
+      "sun_shield": {"name": "Escudo de sol directo"},
       "peak": {"name": "Limitación de pico"},
       "adaptive": {"name": "Umbrales adaptativos"},
       "bootstrap": {"name": "Arranque inicial"},

@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.58.0] — 2026-06-28
+
+### Added
+- **DS · escudo de sol directo (opt-in)**: nuevo switch *Escudo de sol directo*. En modo
+  refrigeración, cierra ante **sol directo en la fachada aunque fuera haga más fresco** que
+  dentro — la ganancia solar a través del cristal calienta la habitación aunque el aire
+  exterior esté templado. Por defecto **apagado** (comportamiento anterior: el escudo solar
+  solo actúa cuando además hace más calor fuera). Reutiliza el escudo solar existente (fijo o
+  geométrico) y respeta los topes; solo cambia **cuándo** se dispara.
+
+### Internal
+- `ds_engine`: `DsInputs.sun_gain_shield`; `shield_ok = is_cool and impact > 0 and (hot_out or
+  sun_gain_shield)`. `coordinator_ds.sun_shield_enabled` → `DsInputs`. `switch.py`: toggle
+  `sun_shield` (translation_key EN/ES). Tests de motor (cool+sol+fresco fuera: opt-in cierra,
+  por defecto no) e integración (switch on/off).
+
 ## [0.57.0] — 2026-06-28
 
 ### Added

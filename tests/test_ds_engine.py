@@ -200,6 +200,17 @@ def test_summer_shield_respects_min_open():
     assert d.pos == 20
 
 
+def test_direct_sun_shield_needs_opt_in_when_cooler_outside():
+    # Cooling + direct sun, but cooler outside: legacy = no shield (stays open).
+    cfg = _cfg(summer_min_open_pct=20, hot_delta=0.8, slew_enabled=False)
+    ins = dict(hvac_mode="cool", impact=70, t_in=26, t_out=22)   # 22 < 26 -> not hot
+    d_off = decide_cover(cfg, DsState(), DsInputs(**ins))
+    assert d_off.reason == "default" and d_off.pos == 100
+    # With the direct-sun shield opt-in, the sun alone shades (solar gain).
+    d_on = decide_cover(cfg, DsState(), DsInputs(**ins, sun_gain_shield=True))
+    assert d_on.reason == "summer_solar_shield" and d_on.pos == 30
+
+
 def test_winter_solar_gain():
     d = decide_cover(_cfg(slew_enabled=False), DsState(),
                      DsInputs(hvac_mode="heat", impact=50))

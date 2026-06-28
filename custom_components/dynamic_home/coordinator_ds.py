@@ -66,6 +66,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # direct sun (cool: stay shut if hotter out; heat by day: insulate if
         # colder out, else open for light).
         self.heat_shield_enabled = False
+        # Direct-sun shield: opt-in. In cooling, shade against direct sun on the
+        # facade even when the outdoor air is cooler (solar gain through glazing
+        # still heats the room). Off by default (legacy: shade only when hotter out).
+        self.sun_shield_enabled = False
         # Direct-sun signal for this facade (impact 0..100); >0 = sun on it.
         self.sun_impact = 0.0
         # Electrical-peak staging (F03): opt-in; stagger mass shutter starts.
@@ -371,6 +375,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             alert_pos=alert_pos,
             geo_shade=self.geo_shade_enabled,
             heat_shield=self.heat_shield_enabled,
+            sun_gain_shield=self.sun_shield_enabled,
             privacy_active=self.privacy_enabled,
             override_mode="lock" if self.lock_enabled else "none",
             override_pos=int(self.lock_pct),
