@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.65.1] — 2026-06-28
+
+### Changed
+- **DS · el campo "Lluvia" vuelve a ser solo `binary_sensor`** (revierte el desvío de la
+  0.65.0). El selector vuelve a restringirse a `binary_sensor` y la etiqueta lo indica
+  explícitamente: *"Lluvia (binary_sensor, opcional)"*. La aceptación de sensores numéricos
+  de mm no aportaba (si llueve, llueve, da igual cuántos mm) y se elimina junto con el tunable
+  `rain_mm_threshold`.
+
+### Internal
+- Revertido `coordinator_ds._raining` (vuelve a `_is_on(CONF_RAIN)`), `DsConfig.rain_mm_threshold`,
+  la entrada de `options_spec` y los bloques de traducción. Test de integración deja la lectura
+  binaria. La protección por lluvia se alimenta con un `binary_sensor` (p.ej. derivado de
+  Open-Meteo).
+
 ## [0.65.0] — 2026-06-28
 
 ### Added

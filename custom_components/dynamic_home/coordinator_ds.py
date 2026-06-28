@@ -134,26 +134,6 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         ent = self._hw(key)
         return bool(ent) and self.hass.states.is_state(ent, "on")
 
-    def _raining(self, cfg: DsConfig) -> bool:
-        """Rain source accepts either a binary_sensor (on/off) or a numeric
-        precipitation sensor (mm): raining when the value exceeds the threshold.
-
-        The config selector offers both domains, so honour both instead of
-        only matching the literal "on" state (a mm sensor never reads "on").
-        """
-        ent = self._hw(const.CONF_RAIN)
-        if not ent:
-            return False
-        st = self.hass.states.get(ent)
-        if st is None or st.state in ("unknown", "unavailable", "none", ""):
-            return False
-        if st.state in ("on", "off"):
-            return st.state == "on"
-        try:
-            return float(st.state) > cfg.rain_mm_threshold
-        except (TypeError, ValueError):
-            return False
-
     def _cfg(self) -> DsConfig:
         cfg = DsConfig()
         apply_options(cfg, self.entry.options, const.MODULE_SHUTTER)
@@ -442,7 +422,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             t_out=t_out,
             weather_protect_enabled=(self.weather_protect and bool(
                 self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN))),
-            raining=self._raining(cfg),
+            raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
             current_pos=current_pos,
             dawn_pos=dawn_pos,
