@@ -342,6 +342,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
             await self._switch(sw_v3, False)
             await self._switch(sw_pwr, False)
             self.coordinator.current_speed = 0
+            self.coordinator.async_update_listeners()   # push the new speed now
             return
         await self._switch(sw_pwr, True)
         # Bootstrap kick: pulse V2 ~800 ms once after startup so the motor
@@ -360,6 +361,10 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
             await self._switch(sw_v2, speed == 2)
             await self._switch(sw_v3, speed == 3)
         self.coordinator.current_speed = speed
+        # Refresh the coordinator entities (speed/power sensors, etc.) right away
+        # so dashboards reflect a manual change instantly instead of waiting for
+        # the next ~60 s poll. The fan itself already wrote its state on apply.
+        self.coordinator.async_update_listeners()
 
     async def _switch(self, entity_id: str | None, on: bool) -> None:
         # Observe (dry-run): compute the decision but never touch the relays.

@@ -113,6 +113,24 @@ async def test_startup_reconciles_leftover_relay(hass: HomeAssistant) -> None:
     assert co.current_speed == 1
 
 
+async def test_manual_speed_refreshes_sensor_immediately(
+        hass: HomeAssistant) -> None:
+    """A manual speed change pushes a coordinator refresh so the speed sensor
+    updates at once, not at the next ~60 s poll (dashboards react instantly)."""
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    await _setup_entry(hass)
+
+    assert hass.states.get("sensor.vmc_speed").state == "1"
+    await hass.services.async_call(
+        "fan", "set_preset_mode",
+        {"entity_id": "fan.vmc", "preset_mode": const.PRESET_V3}, blocking=True)
+    await hass.async_block_till_done()
+    # No coordinator poll happened in between -> only updates if the fan pushed it.
+    assert hass.states.get("sensor.vmc_speed").state == "3"
+
+
 async def test_observe_mode_computes_but_does_not_touch_relays(
         hass: HomeAssistant) -> None:
     """Dry-run: the decision is still computed, but no relay service is called."""
