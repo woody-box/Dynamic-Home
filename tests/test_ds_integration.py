@@ -533,11 +533,13 @@ async def test_ds_auto_alert_from_dynamic_weather(hass: HomeAssistant) -> None:
     co = hass.data[const.DOMAIN][entry.entry_id]
     cfg = co._cfg()
 
-    # Nothing published -> no alert.
+    # Nothing published -> no alert, and the source reads "none" (observability).
     assert co._weather_alert(cfg, 1000.0) is None
-    # Module alert on -> protect at the generic alert position.
+    assert co.alert_source == "none"
+    # Module alert on -> protect at the generic alert position, source visible.
     hass.data[const.DOMAIN][const.DATA_WEATHER] = {"source": "weather.x", "alert": True}
     assert co._weather_alert(cfg, 1000.0) == cfg.alert_pct
+    assert co.alert_source == "dynamic_weather"
 
 
 async def test_ds_local_alert_overrides_dynamic_weather(hass: HomeAssistant) -> None:
@@ -557,6 +559,7 @@ async def test_ds_local_alert_overrides_dynamic_weather(hass: HomeAssistant) -> 
     # Module alert is on, but this shutter has its own (off) sensors -> ignores it.
     hass.data[const.DOMAIN][const.DATA_WEATHER] = {"source": "weather.x", "alert": True}
     assert co._weather_alert(cfg, 1000.0) is None
+    assert co.alert_source == "local"
 
 
 async def test_manual_override_hold_resume_and_expiry(hass: HomeAssistant) -> None:

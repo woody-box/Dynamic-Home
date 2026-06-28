@@ -706,7 +706,8 @@ class DsTargetSensor(_Base):
     def extra_state_attributes(self) -> dict:
         data = self.coordinator.data
         attrs = {"reason": getattr(data, "reason", None),
-                 "peak_reason": self.coordinator.peak_reason}
+                 "peak_reason": self.coordinator.peak_reason,
+                 "alert_source": self.coordinator.alert_source}
         if data:
             attrs.update(data.details)
         return attrs
@@ -1199,7 +1200,8 @@ _DC_SENSORS: tuple[_DcDesc, ...] = (
             diagnostic=True),
     _DcDesc("bias_forecast", "Bias forecast", "mdi:weather-partly-cloudy",
             lambda c: _detail(c, "bias_forecast"), UnitOfTemperature.CELSIUS,
-            diagnostic=True),
+            diagnostic=True,
+            attrs=lambda c: {"forecast_source": c._forecast_source()}),
     _DcDesc("bias_facade", "Bias fachadas", "mdi:window-shutter",
             lambda c: _detail(c, "bias_facade"), UnitOfTemperature.CELSIUS,
             diagnostic=True),

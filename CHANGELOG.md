@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.63.1] — 2026-06-28
+
+### Added
+- **Observabilidad de qué meteo usa cada módulo** (que no sea "cuestión de fe"):
+  - **DS**: el sensor *Posición objetivo* añade el atributo **`alert_source`** = `local` /
+    `dynamic_weather` / `none`, para ver de dónde sale (o saldría) la alerta de cada persiana.
+  - **DC**: el sensor *Bias forecast* añade el atributo **`forecast_source`** = la entidad
+    weather que alimenta el bias por previsión (la de la zona o la de Dynamic Weather).
+
+### Internal
+- `coordinator_ds.alert_source` (calculado en `_weather_alert`); atributo en `DsTargetSensor`.
+  Atributo `forecast_source` en el sensor `bias_forecast` (DC), vía `_forecast_source()`. Tests
+  ampliados.
+
 ## [0.63.0] — 2026-06-28
 
 ### Added
