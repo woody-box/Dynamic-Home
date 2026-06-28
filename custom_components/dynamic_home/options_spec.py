@@ -188,6 +188,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
     const.MODULE_SHUTTER: {
         "positions": [
             _v("rain_close_pct", "Rain close (%)", "Cierre por lluvia (%)"),
+            _v("override_hours", "Manual hold (h, 0=∞)",
+               "Override manual (h, 0=∞)"),
             _v("freecool_max_open_pct", "Free-cool max open (%)", "Free-cool máx. (%)"),
             _v("summer_min_open_pct", "Summer min open (%)", "Verano mín. (%)"),
             _v("winter_night_pct", "Winter night (%)", "Noche invierno (%)"),

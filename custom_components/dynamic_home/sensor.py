@@ -164,7 +164,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             EnergySensor(coordinator, entry),
             DsPositionSensor(coordinator, entry),
             DsTargetSensor(coordinator, entry),
-            DsReasonSensor(coordinator, entry)]
+            DsReasonSensor(coordinator, entry),
+            DsOverrideRemainingSensor(coordinator, entry)]
         # First-class context sensors, to read the "why" at a glance — each only
         # when its source is configured.
         if coordinator._hw(const.CONF_DS_T_IN):
@@ -735,6 +736,26 @@ class DsReasonSensor(_Base):
     def extra_state_attributes(self) -> dict:
         data = self.coordinator.data
         return dict(data.details) if data else {}
+
+
+class DsOverrideRemainingSensor(_Base):
+    """Minutes left on the shutter's manual hold before it resumes auto (0 if none)."""
+
+    _attr_translation_key = "override_remaining"
+    _attr_icon = "mdi:timer-sand"
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "override_remaining")
+
+    @property
+    def native_value(self) -> float:
+        return self.coordinator.override_remaining_min
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"held_position": self.coordinator.manual_pos}
 
 
 class DsIndoorTempSensor(_Base):

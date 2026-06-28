@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 
 # Reasons that must not be overridden by the soft caps (wind/SDHB/slew).
 PROTECTED = {"ov_lock", "ov_hold", "ov_ttl", "meteo_rain",
-             "meteo_wind_cap", "meteo_alert", "privacy_time"}
+             "meteo_wind_cap", "meteo_alert", "privacy_time", "manual_hold"}
 
 
 @dataclass
@@ -23,6 +23,7 @@ class DsConfig:
 
     rain_close_pct: int = 0
     privacy_pos_pct: int = 40
+    override_hours: float = 4.0         # manual command holds this long (0 = forever)
     freecool_max_open_pct: int = 60
     freecool_delta: float = 0.8
     summer_min_open_pct: int = 20
@@ -156,6 +157,11 @@ class DsInputs:
 
     # Weather alert (F17): anticipatory protection position while active, else None.
     alert_pos: int | None = None
+
+    # Manual override: position the user last set by hand; held (auto paused) until
+    # it expires or is cleared. None = no manual hold active. Yields to the explicit
+    # protections (override/alert/rain) above, but beats all the comfort logic.
+    manual_pos: int | None = None
 
     # SDHB bus consumption
     sdhb_allow_override: bool = False
@@ -341,6 +347,11 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # 2) Meteo rain
     elif ins.weather_protect_enabled and ins.raining:
         pos, reason = cfg.rain_close_pct, "meteo_rain"
+    # 2b) Manual hold: a hand command pauses the comfort logic so it never undoes
+    # what you just did (no more "open it, step out, it shuts and traps you").
+    # Sits below the safety layers (override/alert/rain) and above all comfort.
+    elif ins.manual_pos is not None:
+        pos, reason = ins.manual_pos, "manual_hold"
     # 3) Privacy by time
     elif ins.privacy_active:
         pos, reason = cfg.privacy_pos_pct, "privacy_time"

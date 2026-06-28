@@ -382,6 +382,7 @@
         "description": "The target positions per situation (rain, summer shield, night, alert...). They set what % the shutter goes to in each branch.",
         "data": {
           "rain_close_pct": "Rain close (%)",
+          "override_hours": "Manual hold (h, 0=∞)",
           "freecool_max_open_pct": "Free-cool max open (%)",
           "summer_min_open_pct": "Summer min open (%)",
           "winter_night_pct": "Winter night (%)",
@@ -390,6 +391,7 @@
         },
         "data_description": {
           "rain_close_pct": "Shutter position when it rains (protection). (↓ = more closed, more protection)",
+          "override_hours": "After you move it by hand, the shutter holds your position and pauses automatic control for this many hours (0 = until you press “Resume automatic”).",
           "freecool_max_open_pct": "Max opening allowed during free-cooling. (↑ = allows opening more)",
           "summer_min_open_pct": "Minimum opening kept in summer. (↑ = keeps it more open in summer)",
           "winter_night_pct": "Position on winter nights (close to insulate). (↓ = closes more to insulate)",
@@ -1357,6 +1359,9 @@
           "off": "Off"
         }
       }
+    },
+    "button": {
+      "resume_auto": {"name": "Resume automatic"}
     },
     "switch": {
       "observe": {"name": "Observe only"},

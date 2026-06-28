@@ -105,13 +105,19 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         return attrs
 
     # --- commands pass through to the underlying cover ---
+    # A user command also arms the manual hold so the comfort logic won't undo it
+    # (no getting trapped). The auto path drives via _drive directly, never here.
     async def async_set_cover_position(self, **kwargs) -> None:
-        await self._drive(kwargs[ATTR_POSITION])
+        pos = kwargs[ATTR_POSITION]
+        self.coordinator.arm_manual_override(pos)
+        await self._drive(pos)
 
     async def async_open_cover(self, **kwargs) -> None:
+        self.coordinator.arm_manual_override(100)
         await self._drive(100)
 
     async def async_close_cover(self, **kwargs) -> None:
+        self.coordinator.arm_manual_override(0)
         await self._drive(0)
 
     async def _drive(self, position: int) -> None:

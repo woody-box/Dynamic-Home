@@ -525,6 +525,48 @@ async def test_direct_sun_shield_switch(hass: HomeAssistant) -> None:
     assert co.data.reason == "summer_solar_shield"
 
 
+async def test_manual_override_hold_resume_and_expiry(hass: HomeAssistant) -> None:
+    """A hand command pins the position; the resume button and the timeout clear it."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass, position=100)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = er.async_get(hass)
+
+    # Hand command (what the managed cover does on a user move) arms the hold.
+    co.arm_manual_override(80)
+    await hass.async_block_till_done()
+    assert co.manual_pos == 80
+    assert co.data.reason == "manual_hold" and co.data.pos == 80
+
+    # "Override restante" sensor shows time left.
+    sid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_override_remaining")
+    assert sid is not None and float(hass.states.get(sid).state) > 0
+
+    # Resume button -> back to automatic.
+    bid = reg.async_get_entity_id(
+        "button", const.DOMAIN, f"{entry.entry_id}_resume_auto")
+    assert bid is not None
+    await hass.services.async_call(
+        "button", "press", {"entity_id": bid}, blocking=True)
+    await hass.async_block_till_done()
+    assert co.manual_pos is None
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason != "manual_hold"
+
+    # Timeout: re-arm, backdate the deadline -> next cycle drops the hold.
+    co.arm_manual_override(50)
+    await hass.async_block_till_done()
+    assert co.manual_pos == 50
+    co.manual_until = 1.0                       # in the past
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.manual_pos is None and co.data.reason != "manual_hold"
+
+
 async def test_ds_context_sensors_absent_without_sources(
         hass: HomeAssistant) -> None:
     """No temp/climate configured -> the context sensors are not created."""

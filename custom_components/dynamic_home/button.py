@@ -1,4 +1,4 @@
-"""Button platform — VMC maintenance actions (DV)."""
+"""Button platform — VMC maintenance actions (DV) + shutter resume-auto (DS)."""
 
 from __future__ import annotations
 
@@ -14,8 +14,28 @@ from .coordinator import DvCoordinator
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
-    coordinator: DvCoordinator = hass.data[const.DOMAIN][entry.entry_id]
+    coordinator = hass.data[const.DOMAIN][entry.entry_id]
+    if entry.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER:
+        async_add_entities([ResumeAutoButton(coordinator, entry)])
+        return
     async_add_entities([FilterResetButton(coordinator, entry)])
+
+
+class ResumeAutoButton(ButtonEntity):
+    """Clears the manual hold so the shutter goes back to automatic control."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "resume_auto"
+    _attr_icon = "mdi:autorenew"
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_resume_auto"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_press(self) -> None:
+        self._coordinator.clear_manual_override()
 
 
 class FilterResetButton(ButtonEntity):
