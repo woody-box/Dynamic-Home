@@ -4,6 +4,29 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.65.0] — 2026-06-28
+
+### Added
+- **DS · el campo "Lluvia" admite sensor numérico de mm además de binary_sensor.** Antes solo
+  se leía el estado literal `"on"` (binary_sensor), pero el selector ya ofrecía también
+  `sensor` → un sensor de precipitación (p.ej. **Open-Meteo Precipitación actual**, en mm)
+  quedaba puesto pero **nunca disparaba la protección de lluvia**. Ahora cuenta como lluvia
+  cuando los mm superan el umbral, y sigue admitiendo el binary_sensor on/off de siempre.
+- **DS · tunable `rain_mm_threshold`** (mm, categoría "Protección de viento"; por defecto 0.0 =
+  cualquier precipitación > 0) para ajustar a partir de cuántos mm se considera que llueve
+  cuando el campo Lluvia es un sensor numérico.
+
+### Changed
+- **Etiqueta del campo "Lluvia"** en el alta/edición de persianas: ahora indica
+  *"binary_sensor on/off o sensor de mm"* (antes solo "(opcional)", que inducía a error frente
+  a los campos de alerta que sí decían "(binary_sensor)").
+
+### Internal
+- `coordinator_ds._raining(cfg)`: nuevo lector que acepta binary (on/off) o numérico (mm >
+  `rain_mm_threshold`); sustituye `_is_on(CONF_RAIN)` en la construcción de `DsInputs`.
+  `ds_engine.DsConfig.rain_mm_threshold`. Tests de integración (lluvia binaria y numérica,
+  incl. unavailable). Paridad de traducciones es/en/strings.
+
 ## [0.64.0] — 2026-06-28
 
 ### Added

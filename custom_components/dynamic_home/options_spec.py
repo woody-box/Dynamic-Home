@@ -213,6 +213,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("wind_cap_span_kmh", "Wind cap span (km/h)", "Rango cap viento (km/h)"),
             _v("wind_cap_hyst_kmh", "Wind cap hysteresis (km/h)",
                "Histéresis cap viento (km/h)"),
+            _v("rain_mm_threshold", "Rain threshold (mm, numeric sensor)",
+               "Umbral de lluvia (mm, sensor numérico)"),
         ],
         "slew": [
             _v("slew_enabled", "Progressive movement", "Movimiento progresivo"),
