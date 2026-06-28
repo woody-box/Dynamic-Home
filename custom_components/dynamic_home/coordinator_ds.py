@@ -62,6 +62,8 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Weather alert (F17): anticipatory protection hold state.
         self._alert_hold_until = 0.0
         self._last_alert_pos = 0
+        # Where the alert comes from, for observability: local / dynamic_weather / none.
+        self.alert_source = "none"
         # Seasonal night insulation (F16): opt-in.
         self.night_iso_enabled = False
         # Geometric shading (F15): opt-in real solar-penetration model.
@@ -278,10 +280,13 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Weather module's alert if one exists (a local alert always overrides).
         local_alert = any(self._hw(k) for k in (
             const.CONF_DS_ALERT, const.CONF_DS_ALERT_HAIL, const.CONF_DS_ALERT_WIND))
-        if not local_alert:
-            wx = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_WEATHER) or {}
-            if wx.get("alert"):
-                positions.append(cfg.alert_pct)
+        wx = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_WEATHER) or {}
+        # Where this shutter's alert comes from (observability, not "faith"):
+        self.alert_source = ("local" if local_alert
+                             else "dynamic_weather" if const.DATA_WEATHER in
+                             self.hass.data.get(const.DOMAIN, {}) else "none")
+        if not local_alert and wx.get("alert"):
+            positions.append(cfg.alert_pct)
         if positions:
             self._last_alert_pos = min(positions)        # most protective wins
             self._alert_hold_until = now_ts + cfg.alert_hold_min * 60.0
