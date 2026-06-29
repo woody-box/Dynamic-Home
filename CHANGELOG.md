@@ -4,6 +4,13 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.70.1] — 2026-06-29
+
+### Fixed
+- **DC · el campo "Sensor de ventana abierta" (`dc_window`) ya se traduce.** Faltaba la etiqueta
+  en strings/en/es, así que en el formulario de alta/edición de un clima salía la clave cruda
+  `dc_window`. Añadida en los 3 idiomas.
+
 ## [0.70.0] — 2026-06-29
 
 ### Added
