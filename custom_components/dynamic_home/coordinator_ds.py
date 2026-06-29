@@ -134,6 +134,15 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         """Don't actuate when in observe OR while paused."""
         return self.observe_enabled or self._paused()
 
+    def _peak_params(self, cfg: DsConfig) -> tuple[int, float, float]:
+        """(max_zones, max_power_w, stagger_s): the global peak config (Zones)
+        wins when set, else this shutter's own values."""
+        gp = (self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE)
+              or {}).get("ds_peak") or {}
+        return (gp.get("max_zones", cfg.peak_max_zones),
+                gp.get("max_power_w", cfg.peak_max_power_w),
+                gp.get("stagger_s", cfg.peak_stagger_s))
+
     def _num(self, key: str) -> float | None:
         ent = self._hw(key)
         if not ent:
@@ -447,13 +456,14 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.peak_reason = "off"
             return decision
         wants_move = decision.pos != current_pos
-        power_mode = cfg.peak_max_power_w > 0
+        max_zones, max_power_w, stagger_s = self._peak_params(cfg)
+        power_mode = max_power_w > 0
         units = cfg.est_w_motor if power_mode else 1.0
-        max_units = cfg.peak_max_power_w if power_mode else float(cfg.peak_max_zones)
+        max_units = max_power_w if power_mode else float(max_zones)
         allowed, self.peak_reason = ph.evaluate(
             self.entry.entry_id, demand=wants_move, units=units, sustained=False,
             hold_s=cfg.full_travel_s, now_ts=now_ts, max_units=max_units,
-            stagger_s=cfg.peak_stagger_s)
+            stagger_s=stagger_s)
         if wants_move and not allowed:
             return DsDecision(pos=current_pos, reason="peak_stagger",
                               details={**decision.details,

@@ -96,7 +96,9 @@ class ZonesCoordinator(DataUpdateCoordinator):
                                  "pause": {"all": self.pause_all,
                                            "climate": self.pause_climate,
                                            "vmc": self.pause_vmc,
-                                           "shutter": self.pause_shutter}}
+                                           "shutter": self.pause_shutter},
+                                 "ds_peak": self.entry.options.get(
+                                     const.CONF_DS_PEAK)}
         events.fire_mode_changed(self.hass, self.entry, self.house_mode,
                                  self.zone_modes)
         if notify:                          # re-evaluate every module right away
