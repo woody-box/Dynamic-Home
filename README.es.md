@@ -48,26 +48,20 @@ y automatizada. Encaja si tienes:
 
 ## Módulos
 
-| Módulo | Entidad | Qué controla |
-|--------|---------|--------------|
-| **DC** · Dynamic Climate | `climate` | Calefacción y suelo refrescante (consigna por zona) |
-| **DV** · Dynamic Ventilation | `fan` | VMC de doble flujo (velocidad por calidad de aire) |
-| **DS** · Dynamic Shutter | `cover` | Persianas (posición por sol, clima y meteo) |
-| **Dynamic Weather** | `weather` | Opcional: proveedor meteo resiliente multi-fuente (forecast/alertas con fallback) |
-| **Dynamic Home · Zonas** | `select` · `sensor` | Hub de casa: zonas/grupos, modos, confort, presencia, changeover, pausa maestra, pico de persianas global |
-| **Dynamic Energy** | `sensor` | Cerebro de potencia: margen de ICP, estado de tarifa, escasez, totales kWh/€ — alimenta el presupuesto anti-pico |
+| | Módulo | Entidad | Qué controla |
+|---|--------|---------|--------------|
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="DC" width="72"> | **DC** · Dynamic Climate | `climate` | Calefacción y suelo refrescante (consigna por zona) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_ventilation.png" alt="DV" width="72"> | **DV** · Dynamic Ventilation | `fan` | VMC de doble flujo (velocidad por calidad de aire) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_shutter.png" alt="DS" width="72"> | **DS** · Dynamic Shutter | `cover` | Persianas (posición por sol, clima y meteo) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_weather.png" alt="Weather" width="72"> | **Dynamic Weather** | `weather` | Opcional: proveedor meteo resiliente multi-fuente (fallback) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_zones.png" alt="Zonas" width="72"> | **Dynamic Home · Zonas** | `select` · `sensor` | Hub de casa: zonas, modos, confort, presencia, changeover, pausa, pico de persianas global |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_energy.png" alt="Energía" width="72"> | **Dynamic Energy** | `sensor` | Cerebro de potencia: margen de ICP, tarifa, escasez, totales kWh/€ |
 
 Las dos últimas son hubs de coordinación **opcionales y únicos por casa**
 ("singleton"). Puedes usar DC/DV/DS por separado, o añadir Zonas/Energía para
 coordinar la casa entera.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
-  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
-  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
-</p>
-
-Los tres comparten el **bus SDHB** (en memoria). **DC es el cerebro**: al
+DC, DV y DS comparten el **bus SDHB** (en memoria). **DC es el cerebro**: al
 calentar pide a las persianas *ganancia solar* y al enfriar pide *protección
 solar*; DS y DV reaccionan. Cada persiana escucha en su **fachada**
 (`ds_f<azimut>`), así que una zona de clima puede pedir protección solo a la
@@ -80,6 +74,8 @@ fachada soleada y dejar el resto sin tocar. Todo esto antes vivía en miles de
 
 Por encima de los módulos por zona, dos hubs opcionales (uno por casa) coordinan
 la vivienda entera.
+
+<img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_zones.png" alt="Dynamic Home / Zonas" width="96" align="left">
 
 **Dynamic Home (Zonas)** — el cerebro de la casa:
 
@@ -103,6 +99,10 @@ la vivienda entera.
 - **Pico de persianas global** — pones el presupuesto de arranques de motor (máximo
   simultáneo / potencia / escalonado) **una sola vez** para todas las persianas.
 
+<br clear="left">
+
+<img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_energy.png" alt="Dynamic Energy" width="96" align="left">
+
 **Dynamic Energy** — el cerebro de potencia. Agrega y publica el contexto energético
 que leen los demás módulos (nunca manda — cada módulo soberano, la seguridad primero):
 
@@ -111,6 +111,8 @@ que leen los demás módulos (nunca manda — cada módulo soberano, la segurida
 - **Estado de tarifa** (`barata / normal / cara`) de un sensor de precio o tramos fijos.
 - Binario de **escasez** y **totales de casa kWh / €** que entran en el panel de Energía
   de Home Assistant. Los campos de FV / batería / VE existen pero están **gateados / experimentales**.
+
+<br clear="left">
 
 ---
 

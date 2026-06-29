@@ -11,6 +11,9 @@ Emblemas transparentes (sin texto) y assets de marca de Dynamic Home.
 | `dynamic_climate.png` | Emblema Climate (transparente, 512) |
 | `dynamic_ventilation.png` | Emblema Ventilation (transparente, 512) |
 | `dynamic_shutter.png` | Emblema Shutter (transparente, 512) |
+| `dynamic_weather.png` | Emblema Weather (transparente, 512) |
+| `dynamic_zones.png` | Emblema Home/Zonas (transparente, 512) |
+| `dynamic_energy.png` | Emblema Energy (transparente, 512) |
 
 ## Publicar el icono en Home Assistant / HACS
 
