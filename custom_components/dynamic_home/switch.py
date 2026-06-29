@@ -76,6 +76,10 @@ _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c: c.weather_protect,
         lambda c, v: setattr(c, "weather_protect", v)),
     _ToggleDesc(
+        "sim_exclude", "Exclude from presence simulation", "mdi:account-off",
+        lambda c: c.sim_excluded,
+        lambda c, v: setattr(c, "sim_excluded", v)),
+    _ToggleDesc(
         "peak", "Peak limiting", "mdi:flash-alert",
         lambda c: c.peak_enabled,
         lambda c, v: setattr(c, "peak_enabled", v)),
@@ -144,6 +148,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
     module = entry.data.get(const.CONF_MODULE)
+    if module == const.MODULE_ZONES:
+        async_add_entities([PresenceSimSwitch(coordinator, entry)])
+        return
     if module == const.MODULE_SHUTTER:
         descs = _SHUTTER_SWITCHES
     elif module == const.MODULE_CLIMATE:
@@ -188,3 +195,43 @@ class DsToggle(SwitchEntity, RestoreEntity):
         self._desc.setter(self._coordinator, False)
         await self._coordinator.async_request_refresh()
         self.async_write_ha_state()
+
+
+class PresenceSimSwitch(SwitchEntity, RestoreEntity):
+    """House-level presence simulation toggle (on the Zones entry).
+
+    When on and the house (or a zone) is in Away, the shutters mimic an occupant
+    (day open / night close, jittered) instead of staying static. Off by default.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "presence_sim"
+    _attr_icon = "mdi:account-clock"
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        self._coordinator = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_presence_sim"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None:
+            self._coordinator.presence_sim = last.state == "on"
+            self._coordinator.publish_modes()
+
+    @property
+    def is_on(self) -> bool:
+        return self._coordinator.presence_sim
+
+    async def _set(self, value: bool) -> None:
+        self._coordinator.presence_sim = value
+        self._coordinator.publish_modes()       # propagate to the shutters
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self._set(True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self._set(False)

@@ -171,6 +171,7 @@
           "clone": "Clonar de otra persiana",
           "cat_dawn": "Amanecer gradual (Avanzado)",
           "cat_night": "Aislamiento nocturno (Avanzado)",
+          "cat_sim": "Simulación de presencia (Avanzado)",
           "cat_alert": "Avisos meteo (Avanzado)",
           "cat_hood": "Campana extractora (Avanzado)",
           "cat_wx": "Fuentes y alertas (Avanzado)",
@@ -854,6 +855,20 @@
           "night_iso_open_pct": "Posición abierta de noche para purgar la masa térmica cuando el exterior está más fresco (frío)."
         }
       },
+      "cat_sim": {
+        "title": "Simulación de presencia",
+        "description": "Posiciones de la simulación de presencia en Away (día abierto / noche cerrado) y la ventana de aleatoriedad.",
+        "data": {
+          "sim_open_pct": "Sim día abierto (%)",
+          "sim_close_pct": "Sim noche cerrado (%)",
+          "sim_jitter_min": "Sim jitter (min)"
+        },
+        "data_description": {
+          "sim_open_pct": "Apertura de día simulando presencia (tope bajo para no forzar motores). (↑ = abre más)",
+          "sim_close_pct": "Posición de noche al simular presencia. (↓ = cierra más)",
+          "sim_jitter_min": "Ventana aleatoria tras amanecer/anochecer para que la hora varíe cada día. (↑ = más impredecible)"
+        }
+      },
       "cat_alert": {
         "title": "Avisos meteo",
         "description": "Posición de protección por alerta (genérica/granizo/viento) + cuánto mantenerla. Cap de seguridad por encima de la lógica solar.",
@@ -1373,6 +1388,8 @@
       "heat_shield": {"name": "Escudo térmico"},
       "sun_shield": {"name": "Escudo de sol directo"},
       "weather_protect": {"name": "Protección meteo"},
+      "sim_exclude": {"name": "Excluir de simulación"},
+      "presence_sim": {"name": "Simulación de presencia"},
       "peak": {"name": "Limitación de pico"},
       "adaptive": {"name": "Umbrales adaptativos"},
       "bootstrap": {"name": "Arranque inicial"},

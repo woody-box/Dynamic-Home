@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.69.0] — 2026-06-29
+
+### Added
+- **DS · Simulación de presencia (anti‑okupa) en modo Away.** Con el switch global
+  **"Simulación de presencia"** (entrada Zonas, **OFF por defecto**), cuando la casa (o una
+  zona) está en **Away** las persianas **imitan a un ocupante**: abren de día y cierran de noche,
+  con la transición **aleatorizada ±jitter** (distinta por persiana y por día → escalonada e
+  impredecible, estable dentro del día). Solo **2 movimientos/día** (poco motor). La meteo
+  (alerta/lluvia/viento) y lo manual **mandan por encima**. Switch **"Excluir de simulación"** por
+  persiana para dejar fuera las que quieras.
+- **DS · tunables de simulación** (categoría "Simulación de presencia"): `sim_open_pct` (día,
+  por defecto **50%** para no forzar motores), `sim_close_pct` (noche, 0%), `sim_jitter_min` (30).
+
+### Internal
+- `coordinator_zones.presence_sim` publicado en `DATA_MODE`; `PresenceSimSwitch` (Zonas) y toggle
+  `sim_exclude` (DS). `coordinator_ds._sim_step` (latch día/noche con jitter por fecha+persiana
+  vía `crc32`) → `DsInputs.sim_pos` → rama `presence_sim` en `decide_cover` (bajo seguridad/manual,
+  sobre el confort). `DsConfig.sim_*` + categoría `sim` en `options_spec`. `PLATFORMS_ZONES` += switch.
+  Tests de motor e integración (gating por modo/exclusión, latch con jitter). Traducciones es/en/strings.
+
 ## [0.68.0] — 2026-06-29
 
 ### Changed

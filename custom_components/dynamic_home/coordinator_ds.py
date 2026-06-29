@@ -8,6 +8,7 @@ consumes it and clamps the cover.
 from __future__ import annotations
 
 import logging
+import zlib
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
@@ -15,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, repairs, zones
+from . import const, energy, events, modes, repairs, zones
 from .bus import SdhbHub
 from .ds_engine import (
     DsConfig,
@@ -79,7 +80,12 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # facade even when the outdoor air is cooler (solar gain through glazing
         # still heats the room). Off by default (legacy: shade only when hotter out).
         self.sun_shield_enabled = False
-        # Direct-sun signal for this facade (impact 0..100); >0 = sun on it.
+        # Presence simulation (Away): exclude THIS shutter from the simulation when
+        # on (set/restored by its switch). Plus the jittered day/night latch state.
+        self.sim_excluded = False
+        self._sim_day: bool | None = None       # current simulated phase
+        self._sim_pending_since = 0.0           # when the sun started differing
+        self._sim_seed = zlib.crc32(entry.entry_id.encode())  # per-shutter jitter
         self.sun_impact = 0.0
         # Electrical-peak staging (F03): opt-in; stagger mass shutter starts.
         self.peak_enabled = False
@@ -321,6 +327,45 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                     else cfg.night_iso_close_pct)
         return None
 
+    def _sim_active(self) -> bool:
+        """Presence simulation runs for THIS shutter: global on + Away + included."""
+        data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE)
+        if not data or not data.get("presence_sim") or self.sim_excluded:
+            return False
+        return modes.is_away(
+            modes.effective_from_published(data, self.entry.entry_id))
+
+    def _sim_jitter_s(self, cfg: DsConfig, opening: bool, now_ts: float) -> float:
+        """Per-day, per-shutter delay (0..jitter) after dawn/dusk — stable within
+        the day, varying day to day, staggered across shutters."""
+        day = int(now_ts // 86400)
+        seed = (day * 2654435761 + self._sim_seed
+                + (40503 if opening else 0)) & 0xFFFFFFFF
+        return (seed % 1000) / 1000.0 * max(0.0, cfg.sim_jitter_min) * 60.0
+
+    def _sim_step(self, cfg: DsConfig, sun_above: bool,
+                  now_ts: float) -> int | None:
+        """Occupant-like position while in Away (day open / night close), with a
+        jittered delay on the dawn/dusk transitions. ``None`` when inactive."""
+        if not self._sim_active():
+            self._sim_day = None
+            self._sim_pending_since = 0.0
+            return None
+        raw_day = bool(sun_above)
+        if self._sim_day is None:               # first activation: snap, no jitter
+            self._sim_day = raw_day
+            self._sim_pending_since = 0.0
+        elif raw_day == self._sim_day:
+            self._sim_pending_since = 0.0
+        else:                                   # sun flipped -> hold for the jitter
+            if self._sim_pending_since == 0.0:
+                self._sim_pending_since = now_ts
+            if now_ts - self._sim_pending_since >= self._sim_jitter_s(
+                    cfg, raw_day, now_ts):
+                self._sim_day = raw_day
+                self._sim_pending_since = 0.0
+        return cfg.sim_open_pct if self._sim_day else cfg.sim_close_pct
+
     def _dawn_step(self, cfg: DsConfig, sun_el: float | None,
                    current_pos: int | None, now_ts: float) -> int | None:
         """Gradual sunrise (F19): stepped opening target, or None when inactive.
@@ -417,6 +462,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                        and t_in is not None and t_out is not None
                        and t_out <= t_in)
         alert_pos = self._weather_alert(cfg, now_ts)
+        sim_pos = self._sim_step(cfg, sun_above, now_ts)
         # Manual hold expiry: drop it once the "tiempo prudencial" elapses.
         if self.manual_pos is not None and now_ts >= self.manual_until:
             self.manual_pos = None
@@ -434,6 +480,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             dawn_pos=dawn_pos,
             night_pos=night_pos,
             night_purge=night_purge,
+            sim_pos=sim_pos,
             alert_pos=alert_pos,
             manual_pos=self.manual_pos,
             geo_shade=self.geo_shade_enabled,
