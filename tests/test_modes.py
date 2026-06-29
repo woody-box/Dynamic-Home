@@ -39,6 +39,15 @@ def test_dv_cap_and_flags():
     assert modes.is_away("away") and modes.is_boost("boost")
 
 
+def test_is_paused_global_and_per_module():
+    assert modes.is_paused(None, "climate") is False
+    assert modes.is_paused({"pause": {"shutter": True}}, "shutter") is True
+    assert modes.is_paused({"pause": {"shutter": True}}, "climate") is False
+    # Global pause hits every module.
+    assert modes.is_paused({"pause": {"all": True}}, "vmc") is True
+    assert modes.is_paused({"pause": {"all": True}}, "climate") is True
+
+
 # --- DV engine: mode cap / boost on the auto path ---
 def _dv():
     return _cfg(), DvState()

@@ -54,3 +54,12 @@ def is_away(mode: str) -> bool:
 
 def is_boost(mode: str) -> bool:
     return mode == "boost"
+
+
+def is_paused(data: dict | None, module: str) -> bool:
+    """Master pause for a module: the global switch or its own (from DATA_MODE).
+
+    ``module`` is the pause key: ``climate`` / ``vmc`` / ``shutter``.
+    """
+    p = (data or {}).get("pause") or {}
+    return bool(p.get("all") or p.get(module))

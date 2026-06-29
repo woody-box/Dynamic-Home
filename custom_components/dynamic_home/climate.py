@@ -153,8 +153,8 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
 
     # --- drive the real thermostat(s) ---
     async def _apply(self) -> None:
-        # Observe (dry-run): compute + publish to the bus, but never drive hardware.
-        if self.coordinator.observe_enabled:
+        # Observe (dry-run) or paused: compute but never drive hardware.
+        if self.coordinator.observe_effective:
             return
         # F25: multi-emitter zone -> drive each emitter by its command. An empty map
         # keeps the legacy single-device path below (back-compat, REQ-EMI-7).

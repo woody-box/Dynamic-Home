@@ -268,6 +268,16 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
 
+    def _paused(self) -> bool:
+        """Master pause for this module (global or per-module, from Zones)."""
+        return modes.is_paused(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE), "vmc")
+
+    @property
+    def observe_effective(self) -> bool:
+        """Don't actuate when in observe OR while paused."""
+        return self.observe_enabled or self._paused()
+
     def _cfg(self) -> DvConfig:
         cfg = DvConfig()
         apply_options(cfg, self.entry.options, const.MODULE_VMC)

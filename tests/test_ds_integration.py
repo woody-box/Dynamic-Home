@@ -128,6 +128,24 @@ async def test_presence_sim_step_gating_and_jitter(hass: HomeAssistant) -> None:
     assert co._sim_step(cfg, False, later) is None
 
 
+# --- Master pause (from the Zones entry) ---
+async def test_master_pause_gates_actuation(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.observe_effective is False           # nothing paused
+    # Per-module pause for shutters -> stops actuating.
+    hass.data[const.DOMAIN][const.DATA_MODE] = {"pause": {"shutter": True}}
+    assert co._paused() is True and co.observe_effective is True
+    # A pause of another module doesn't touch DS.
+    hass.data[const.DOMAIN][const.DATA_MODE] = {"pause": {"vmc": True}}
+    assert co._paused() is False and co.observe_effective is False
+    # Global pause hits DS too.
+    hass.data[const.DOMAIN][const.DATA_MODE] = {"pause": {"all": True}}
+    assert co.observe_effective is True
+
+
 # --- DS reacts to Sleep mode + Eco/Comfort preset ---
 async def test_sleep_mode_and_comfort_react_by_scope(hass: HomeAssistant) -> None:
     _seed(hass)

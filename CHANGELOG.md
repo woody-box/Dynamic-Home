@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.71.0] — 2026-06-29
+
+### Added
+- **Interruptor maestro de pausa** en la entrada **Dynamic Home (Zonas)**: cuatro switches —
+  **Pausa Dynamic Home** (global) + **Pausa Clima / Ventilación / Persianas** (por módulo),
+  **OFF por defecto**. Un módulo pausado **deja de actuar sobre el hardware** (termostatos /
+  relés / persianas) **y deja de influir en el bus** (un DC pausado ya no empuja órdenes solares
+  a las persianas). Sigue calculando y con sus sensores vivos. Pausa "total": equivale a un "Solo
+  observar" centralizado y por módulo. Ideal para **manejar los termostatos a mano** (Pausa Clima)
+  o **apagar Dynamic Home** entero o por módulo.
+
+### Internal
+- `modes.is_paused(data, module)`; `coordinator_zones` publica `pause:{all,climate,vmc,shutter}`
+  en `DATA_MODE`. Cada coordinator: `_paused()` + `observe_effective` (= observe o pausa), usado
+  en los gates de actuación (`climate.py`/`cover.py`/`fan.py`/`_drive_dehumidifier`). DC además
+  vacía sus slots del bus (`_publish`) y omite el `request_dry` al estar pausado. `switch.py`:
+  `ZonesPauseSwitch` (×4) + `PLATFORMS_ZONES` ya tenía switch. Tests (modes, gating DS).
+  Traducciones es/en/strings.
+
 ## [0.70.1] — 2026-06-29
 
 ### Fixed
