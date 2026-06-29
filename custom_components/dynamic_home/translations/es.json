@@ -5,12 +5,12 @@
         "title": "Dynamic Home",
         "description": "¿Qué módulo quieres añadir?",
         "menu_options": {
-          "vmc": "Ventilación (VMC)",
-          "shutter": "Persiana",
-          "climate": "Clima (zona)",
-          "weather": "Dynamic Weather",
-          "zones": "Dynamic Home · Zonas",
-          "energy": "Dynamic Home · Energía"
+          "vmc": "Dynamic Ventilation (VMC)",
+          "shutter": "Dynamic Shutter (Persiana)",
+          "climate": "Dynamic Climate (Zona)",
+          "weather": "Dynamic Weather (Tiempo)",
+          "zones": "Dynamic Home (Zonas)",
+          "energy": "Dynamic Energy (Energía)"
         }
       },
       "vmc": {

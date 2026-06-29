@@ -5,12 +5,12 @@
         "title": "Dynamic Home",
         "description": "Which module do you want to add?",
         "menu_options": {
-          "vmc": "Ventilation (VMC)",
-          "shutter": "Shutter",
-          "climate": "Climate (zone)",
+          "vmc": "Dynamic Ventilation (HRV)",
+          "shutter": "Dynamic Shutter (Blinds)",
+          "climate": "Dynamic Climate (Zone)",
           "weather": "Dynamic Weather",
-          "zones": "Dynamic Home · Zones",
-          "energy": "Dynamic Home · Energy"
+          "zones": "Dynamic Home (Zones)",
+          "energy": "Dynamic Energy"
         }
       },
       "vmc": {
