@@ -123,8 +123,8 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     async def _drive(self, position: int) -> None:
         self._last_pos = position
         target = self._entry.data.get(const.CONF_COVER)
-        # Observe (dry-run): track the target for display but never move the cover.
-        if target and not self.coordinator.observe_enabled:
+        # Observe (dry-run) or paused: track the target but never move the cover.
+        if target and not self.coordinator.observe_effective:
             await self.hass.services.async_call(
                 "cover", "set_cover_position",
                 {"entity_id": target, ATTR_POSITION: position}, blocking=True)

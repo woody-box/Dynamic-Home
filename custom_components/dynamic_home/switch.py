@@ -149,7 +149,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
     module = entry.data.get(const.CONF_MODULE)
     if module == const.MODULE_ZONES:
-        async_add_entities([PresenceSimSwitch(coordinator, entry)])
+        ents: list[SwitchEntity] = [
+            ZonesPauseSwitch(coordinator, entry, k, a, i)
+            for k, a, i in _PAUSE_SWITCHES]
+        ents.append(PresenceSimSwitch(coordinator, entry))
+        async_add_entities(ents)
         return
     if module == const.MODULE_SHUTTER:
         descs = _SHUTTER_SWITCHES
@@ -195,6 +199,58 @@ class DsToggle(SwitchEntity, RestoreEntity):
         self._desc.setter(self._coordinator, False)
         await self._coordinator.async_request_refresh()
         self.async_write_ha_state()
+
+
+# Master pause switches on the Zones (Dynamic Home) entry: (translation_key,
+# coordinator attribute, icon). Global first so it reads as the master.
+_PAUSE_SWITCHES: tuple[tuple[str, str, str], ...] = (
+    ("pause_all", "pause_all", "mdi:pause-octagon"),
+    ("pause_climate", "pause_climate", "mdi:thermostat-box"),
+    ("pause_vmc", "pause_vmc", "mdi:fan-off"),
+    ("pause_shutter", "pause_shutter", "mdi:window-shutter-alert"),
+)
+
+
+class ZonesPauseSwitch(SwitchEntity, RestoreEntity):
+    """Master pause (global or per-module) on the Zones entry.
+
+    On = that module(s) stop actuating hardware AND stop influencing the bus
+    (compute + sensors stay alive). Off by default.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator, entry: ConfigEntry, key: str, attr: str,
+                 icon: str) -> None:
+        self._coordinator = coordinator
+        self._attr = attr
+        self._attr_translation_key = key
+        self._attr_icon = icon
+        self._attr_unique_id = f"{entry.entry_id}_{key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None:
+            setattr(self._coordinator, self._attr, last.state == "on")
+            self._coordinator.publish_modes()
+
+    @property
+    def is_on(self) -> bool:
+        return getattr(self._coordinator, self._attr)
+
+    async def _set(self, value: bool) -> None:
+        setattr(self._coordinator, self._attr, value)
+        self._coordinator.publish_modes()       # propagate to the modules
+        self.async_write_ha_state()
+
+    async def async_turn_on(self, **kwargs) -> None:
+        await self._set(True)
+
+    async def async_turn_off(self, **kwargs) -> None:
+        await self._set(False)
 
 
 class PresenceSimSwitch(SwitchEntity, RestoreEntity):

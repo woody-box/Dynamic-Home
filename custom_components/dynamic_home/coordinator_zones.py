@@ -48,6 +48,12 @@ class ZonesCoordinator(DataUpdateCoordinator):
         # Presence simulation (anti-burglary): in Away, shutters mimic an occupant
         # (day open / night close, jittered). Set/restored by the switch; off by default.
         self.presence_sim = False
+        # Master pause (global + per-module). Paused = the module stops actuating
+        # AND stops influencing the bus. Set/restored by the switches; off by default.
+        self.pause_all = False
+        self.pause_climate = False
+        self.pause_vmc = False
+        self.pause_shutter = False
         # F32: presence fusion state.
         self.presence_zones: dict[str, presence.ZonePresenceState] = {}
         self.presence_occupied: dict[str, bool] = {}
@@ -86,7 +92,11 @@ class ZonesCoordinator(DataUpdateCoordinator):
                                  "caps": self.mode_caps, "tree": self.tree,
                                  "comfort": self.comfort_global,
                                  "zone_comfort": dict(self.zone_comfort),
-                                 "presence_sim": self.presence_sim}
+                                 "presence_sim": self.presence_sim,
+                                 "pause": {"all": self.pause_all,
+                                           "climate": self.pause_climate,
+                                           "vmc": self.pause_vmc,
+                                           "shutter": self.pause_shutter}}
         events.fire_mode_changed(self.hass, self.entry, self.house_mode,
                                  self.zone_modes)
         if notify:                          # re-evaluate every module right away

@@ -124,6 +124,16 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
 
+    def _paused(self) -> bool:
+        """Master pause for this module (global or per-module, from Zones)."""
+        return modes.is_paused(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE), "shutter")
+
+    @property
+    def observe_effective(self) -> bool:
+        """Don't actuate when in observe OR while paused."""
+        return self.observe_enabled or self._paused()
+
     def _num(self, key: str) -> float | None:
         ent = self._hw(key)
         if not ent:

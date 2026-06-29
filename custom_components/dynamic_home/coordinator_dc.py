@@ -617,9 +617,11 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 translation_placeholders={"name": self.entry.title,
                                           "index": str(round(self.mold_index, 1))},
                 learn_more_url=const.LEARN_MORE_URL)
-            # Drying via the bus (DV applies its own dp_diff gate).
-            self.hub.publish(source=self._mold_source, intent="request_dry",
-                             target="dv", priority=60, ttl_s=1800, now_ts=now_ts)
+            # Drying via the bus (DV applies its own dp_diff gate). Skipped while
+            # paused so a paused DC doesn't nudge the VMC.
+            if not self._paused():
+                self.hub.publish(source=self._mold_source, intent="request_dry",
+                                 target="dv", priority=60, ttl_s=1800, now_ts=now_ts)
             self._drive_dehumidifier(True)
         elif was:
             ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
@@ -699,7 +701,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     def _drive_dehumidifier(self, on: bool) -> None:
         """Turn a configured dehumidifier on/off (skipped in observe/dry-run)."""
         ent = self._hw(const.CONF_DC_DEHUMIDIFIER)
-        if not ent or self.observe_enabled:
+        if not ent or self.observe_effective:
             return
         service = "turn_on" if on else "turn_off"
         self.hass.async_create_task(self.hass.services.async_call(
@@ -729,6 +731,16 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
     def _hw(self, key: str) -> str | None:
         return self.entry.data.get(key)
+
+    def _paused(self) -> bool:
+        """Master pause for this module (global or per-module, from Zones)."""
+        return modes.is_paused(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE), "climate")
+
+    @property
+    def observe_effective(self) -> bool:
+        """Don't actuate when in observe OR while paused."""
+        return self.observe_enabled or self._paused()
 
     def _num(self, key: str) -> float | None:
         ent = self._hw(key)
@@ -785,6 +797,8 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
     def _publish(self, desired: dict, now_ts: float | None = None) -> None:
         """Reconcile the bus slots this DC owns with ``desired`` (key->(intent,target))."""
+        if self._paused():              # paused: stop influencing the bus (clear slots)
+            desired = {}
         for stale in self._active_sources - set(desired):
             self.hub.clear(stale)
         for src, (intent, target) in desired.items():
