@@ -998,3 +998,77 @@ async def test_hardware_step_edits_entities(hass: HomeAssistant) -> None:
     assert entry.data[const.CONF_HOOD_V1] == "switch.hood1"   # added
     assert const.CONF_T_IN not in entry.data                  # cleared
     assert entry.data[const.CONF_MODULE] == const.MODULE_VMC  # preserved
+
+
+async def test_dew_point_sensors_present_with_temp_and_humidity(
+        hass: HomeAssistant) -> None:
+    """Dew point sensors appear when temp+RH are configured on each side."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    hass.states.async_set("sensor.t_in", "26")
+    hass.states.async_set("sensor.rh_in", "50")
+    hass.states.async_set("sensor.t_ext", "21")
+    hass.states.async_set("sensor.rh_ext", "65")
+    entry = MockConfigEntry(domain=const.DOMAIN, title="VMC", options={}, data={
+        **HW, const.CONF_MODULE: const.MODULE_VMC,
+        const.CONF_T_IN: "sensor.t_in", const.CONF_HUM_IN: "sensor.rh_in",
+        const.CONF_T_EXT: "sensor.t_ext", const.CONF_HUM_EXT: "sensor.rh_ext",
+    })
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co.has_dew_in() and co.has_dew_out()
+    # 26°C/50% -> ~14.8; 21°C/65% -> ~14.2; diff > 0 (outside slightly drier).
+    assert co.dew_point_in is not None and co.dew_point_out is not None
+    assert co.dew_point_diff == round(co.dew_point_in - co.dew_point_out, 2)
+
+    reg = er.async_get(hass)
+    for key in ("dew_point_in", "dew_point_out", "dew_point_diff"):
+        assert reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is not None
+
+
+async def test_dew_point_sensors_absent_without_humidity(
+        hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    entry = await _setup_entry(hass)          # no temp/RH configured
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.has_dew_in() is False and co.has_dew_out() is False
+    reg = er.async_get(hass)
+    for key in ("dew_point_in", "dew_point_out", "dew_point_diff"):
+        assert reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is None
+
+
+async def test_mirror_rounds_concentrations_to_integer(
+        hass: HomeAssistant) -> None:
+    """F36 mirrors: PM/CO₂ drop decimals (and float32 noise); temp keeps 1."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "switch", "turn_on")
+    async_mock_service(hass, "switch", "turn_off")
+    _seed_states(hass)
+    hass.states.async_set("sensor.pm25", "1.20000004768372")
+    hass.states.async_set("sensor.t_in", "21.4")
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, title="VMC",
+        options={const.CONF_EXPOSE_MIRRORS: True},
+        data={**HW, const.CONF_MODULE: const.MODULE_VMC,
+              const.CONF_T_IN: "sensor.t_in"})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    reg = er.async_get(hass)
+    pm_eid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mirror_{const.CONF_PM25}")
+    t_eid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_mirror_{const.CONF_T_IN}")
+    assert float(hass.states.get(pm_eid).state) == 1.0      # rounded, no noise
+    assert float(hass.states.get(t_eid).state) == 21.4      # one decimal kept

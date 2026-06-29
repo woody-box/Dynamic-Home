@@ -190,6 +190,27 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
     def hrv_state(self) -> str | None:
         return hrv_state(*self._hrv_temps(), self._cfg())
 
+    # --- Dew points (observability): the dry-mode (F13) gate at a glance ---
+    def has_dew_in(self) -> bool:
+        return bool(self._hw(const.CONF_T_IN) and self._hw(const.CONF_HUM_IN))
+
+    def has_dew_out(self) -> bool:
+        return bool(self._hw(const.CONF_T_EXT) and self._hw(const.CONF_HUM_EXT))
+
+    @property
+    def dew_point_in(self) -> float | None:
+        return dew_point(self._num(const.CONF_T_IN), self._num(const.CONF_HUM_IN))
+
+    @property
+    def dew_point_out(self) -> float | None:
+        return dew_point(self._num(const.CONF_T_EXT), self._num(const.CONF_HUM_EXT))
+
+    @property
+    def dew_point_diff(self) -> float | None:
+        """dp_in - dp_out: > dry_margin means outside is drier (drying works)."""
+        dp_in, dp_out = self.dew_point_in, self.dew_point_out
+        return None if (dp_in is None or dp_out is None) else round(dp_in - dp_out, 2)
+
     # --- Extended IAQ (F30): VOC/NOx are observation-only, never enter decide() ---
     def has_voc(self) -> bool:
         return bool(self._hw(const.CONF_VOC))

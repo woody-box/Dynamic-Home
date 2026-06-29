@@ -107,6 +107,17 @@ _HRV_TEMPS: tuple[tuple[str, str, str], ...] = (
 )
 
 
+# Display precision per mirrored role: concentrations are integers (a decimal of
+# a µg/m³ or ppm is noise), temperatures and humidity keep one decimal. This also
+# strips the float32 representation artifacts of the raw source (e.g. 1.20000004).
+_MIRROR_PRECISION: dict[str, int] = {
+    const.CONF_CO2: 0, const.CONF_PM25: 0, const.CONF_AQI: 0,
+    const.CONF_VOC: 0, const.CONF_NOX: 0, const.CONF_DC_WIND: 0,
+    const.CONF_WIND: 0,
+}
+_MIRROR_PRECISION_DEFAULT = 1   # temperatures, humidity, HRV probes
+
+
 def _mirror_sensors(entry: ConfigEntry, module: str) -> list[SensorEntity]:
     """F36: a stable mirror sensor per configured input role (opt-in)."""
     if not entry.options.get(const.CONF_EXPOSE_MIRRORS, False):
@@ -115,7 +126,8 @@ def _mirror_sensors(entry: ConfigEntry, module: str) -> list[SensorEntity]:
     for role, name in _MIRROR_ROLES.get(module, ()):
         source = entry.data.get(role)
         if source:
-            out.append(HwMirrorSensor(entry, role, name, source))
+            precision = _MIRROR_PRECISION.get(role, _MIRROR_PRECISION_DEFAULT)
+            out.append(HwMirrorSensor(entry, role, name, source, precision))
     return out
 
 
@@ -202,6 +214,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         entities.append(VocSensor(coordinator, entry))
     if coordinator.has_nox():
         entities.append(NoxSensor(coordinator, entry))
+    if coordinator.has_dew_in():
+        entities.append(DewPointSensor(coordinator, entry, _DEW_IN))
+    if coordinator.has_dew_out():
+        entities.append(DewPointSensor(coordinator, entry, _DEW_OUT))
+    if coordinator.has_dew_in() and coordinator.has_dew_out():
+        entities.append(DewPointSensor(coordinator, entry, _DEW_DIFF))
     entities.append(BusSensor(coordinator, entry))
     entities.append(EnergySensor(coordinator, entry))
     entities.append(PowerSensor(coordinator, entry))
@@ -465,10 +483,13 @@ class HwMirrorSensor(SensorEntity):
     _attr_should_poll = False
 
     def __init__(self, entry: ConfigEntry, role: str, name: str,
-                 source: str) -> None:
+                 source: str, precision: int | None = None) -> None:
         self._source = source
+        self._precision = precision
         self._attr_name = f"{name} (espejo)"
         self._attr_unique_id = f"{entry.entry_id}_mirror_{role}"
+        if precision is not None:
+            self._attr_suggested_display_precision = precision
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)})
 
@@ -496,9 +517,12 @@ class HwMirrorSensor(SensorEntity):
         if st is None:
             return None
         try:
-            return float(st.state)
+            val = float(st.state)
         except (TypeError, ValueError):
             return st.state
+        # Round to the role precision: kills float32 noise (1.20000004 -> 1.2)
+        # and drops meaningless decimals on concentrations.
+        return val if self._precision is None else round(val, self._precision)
 
     @property
     def native_unit_of_measurement(self):
@@ -900,6 +924,47 @@ class SpeedSensor(_Base):
     @property
     def native_value(self) -> int:
         return self.coordinator.current_speed
+
+
+@dataclass(frozen=True)
+class _DewDesc:
+    key: str
+    getter: Callable
+    device_class: SensorDeviceClass | None
+    icon: str
+
+
+# Dew points expose the dry-mode (F13) gate: drying ventilates effectively when
+# the Δ (dp_in - dp_out) clears the drying margin (outside air is drier).
+_DEW_IN = _DewDesc("dew_point_in", lambda c: c.dew_point_in,
+                   SensorDeviceClass.TEMPERATURE, "mdi:water-thermometer")
+_DEW_OUT = _DewDesc("dew_point_out", lambda c: c.dew_point_out,
+                    SensorDeviceClass.TEMPERATURE, "mdi:water-thermometer-outline")
+# The Δ is a temperature spread, not an absolute temperature -> no device_class.
+_DEW_DIFF = _DewDesc("dew_point_diff", lambda c: c.dew_point_diff,
+                     None, "mdi:delta")
+
+
+class DewPointSensor(_Base):
+    """Dew point (°C) indoors/outdoors, and their spread, for the F13 gate."""
+
+    _attr_native_unit_of_measurement = "°C"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator: DvCoordinator, entry: ConfigEntry,
+                 desc: _DewDesc) -> None:
+        super().__init__(coordinator, entry, desc.key)
+        self._desc = desc
+        self._attr_translation_key = desc.key
+        self._attr_icon = desc.icon
+        if desc.device_class is not None:
+            self._attr_device_class = desc.device_class
+
+    @property
+    def native_value(self) -> float | None:
+        return self._desc.getter(self.coordinator)
 
 
 class ReasonSensor(_Base):
