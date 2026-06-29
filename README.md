@@ -52,7 +52,12 @@ It is **not** a plug-and-forget solution. It is not a good fit if you:
 | **DC** · Dynamic Climate | `climate` | Heating and radiant cooling (per-zone setpoint) |
 | **DV** · Dynamic Ventilation | `fan` | Dual-flow HRV (speed by air quality) |
 | **DS** · Dynamic Shutter | `cover` | Shutters (position by sun, climate and weather) |
-| **Weather** · Dynamic Weather | `weather` | Optional: resilient multi-source forecast/alert provider (fallback) |
+| **Dynamic Weather** | `weather` | Optional: resilient multi-source forecast/alert provider (fallback) |
+| **Dynamic Home · Zones** | `select` · `sensor` | House hub: zones/groups, modes, comfort, presence, changeover, master pause, global shutter peak |
+| **Dynamic Energy** | `sensor` | House power brain: ICP headroom, tariff state, scarcity, kWh/€ totals — feeds the anti-peak budget |
+
+The last two are optional, **one-per-house** ("singleton") coordination hubs. You
+can run DC/DV/DS standalone, or add Zones/Energy to coordinate the whole house.
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
@@ -66,6 +71,43 @@ shield*; DS and DV react. Each shutter listens on its **facade**
 (`ds_f<azimuth>`), so a climate zone can request shielding only on the sunlit
 facade and leave the rest untouched. This logic used to live in thousands of YAML
 helpers; it is now a native integration you add from the UI.
+
+---
+
+## House coordination & energy
+
+Beyond the per-zone modules, two optional singleton hubs coordinate the whole house.
+
+**Dynamic Home (Zones)** — the house brain:
+
+- **Zones & groups** — organize modules into a `zone → group → house` hierarchy so
+  the settings below can target a room, not just the whole house.
+- **House modes** (`Home / Away / Sleep / Boost / Eco`, global + per-zone override):
+  DC enters vacation on *Away*, DV caps its speed, and DS reacts too — *Away* runs
+  **presence simulation** and *Sleep* closes the shutters in that scope.
+- **Comfort presets** (`Eco / Balanced / Comfort`) scale the aggressiveness of DC
+  (bands, lead) and DV (thresholds), and DS solar shading, per scope.
+- **Presence** — fuses occupancy sensors (PIR / mmWave / door / phones) into per-zone
+  and house presence, and can drive the house mode.
+- **Presence simulation** (anti-burglary) — in *Away*, shutters mimic an occupant
+  (open by day, close by night, jittered & staggered); weather and manual still win.
+- **Community changeover** — for 2-pipe shared radiant systems, a seasonal water
+  direction (`heat / cool / off`) that the *community* climate zones follow.
+- **Master pause** (global + per-module) — stop DC / DV / DS actuating **and**
+  influencing the bus (a centralized, per-module *Observe only*) — e.g. to drive the
+  thermostats by hand.
+- **Global shutter peak limiting** — set the motor-inrush budget (max simultaneous
+  starts / power / stagger) **once** for every shutter.
+
+**Dynamic Energy** — the house power brain. It aggregates and publishes energy
+context that the other modules read (it never commands — each module stays sovereign,
+safety first):
+
+- **Import headroom** under the contracted power (ICP) — tightens the **electric
+  peak-shaving** budget of climate zones so several loads don't trip the breaker.
+- **Tariff state** (`cheap / normal / peak`) from a price sensor or fixed bands.
+- **Scarcity** binary, and **house kWh / € totals** that feed Home Assistant's Energy
+  dashboard. PV / battery / EV fields exist but are **gated / experimental**.
 
 ---
 
@@ -97,14 +139,19 @@ dependency** (`*_engine.py`); the HA wrappers only translate state.
 
 ## Project status
 
+Current release: **v0.72.0**.
+
 | Area | Status | Notes |
 |------|--------|-------|
 | HACS install | Beta | Installable as a custom integration |
-| Dynamic Climate (DC) | Beta | Per-zone climate, biases, adaptive lead |
-| Dynamic Ventilation (DV) | Beta | VMC speed by IAQ and humidity |
-| Dynamic Shutter (DS) | Beta | Shutter position by facade/sun/weather |
+| Dynamic Climate (DC) | Beta | Per-zone climate, biases, adaptive lead, install profiles |
+| Dynamic Ventilation (DV) | Beta | VMC speed by IAQ, humidity, dew point |
+| Dynamic Shutter (DS) | Beta | Position by facade/sun/weather; modes, presence sim, global peak |
+| Dynamic Home (Zones) | Beta | Zones, house modes, comfort, presence, changeover, master pause |
+| Dynamic Energy | Beta | ICP headroom, tariff, scarcity, kWh/€ totals, anti-peak budget |
 | SDHB bus | Beta | In-memory intent arbitration |
-| Config flow (UI) | Functional | Setup + options grouped by category |
+| Config flow (UI) | Functional | Setup + options grouped by category; reconfigure & clone |
+| PV / battery / EV | Experimental | Fields present but gated; not validated by the author |
 | Example dashboards | Pending | Not packaged yet |
 | Screenshots | Pending | To be added |
 
@@ -195,8 +242,9 @@ unit tests; the HA wrappers only translate state. CI runs the full suite, `ruff`
   higher-priority intent can mask a concurrent one on the same target.
 - **Mold and open-window inference are heuristics** (humidity hours with decay /
   temperature trend against demand), not certified safety functions.
-- **Energy / PV / battery / EV** features are still on the roadmap and not
-  validated by the author.
+- **Dynamic Energy** provides tariff state, ICP import headroom and electric
+  peak-shaving; **PV / battery / EV** fields are present but **gated and not
+  validated** by the author.
 - **No example dashboards** are packaged yet (screenshots pending).
 - Deep technical docs (`SPEC_*`, `REQUIREMENTS`, `BACKLOG`) are in Spanish.
 
