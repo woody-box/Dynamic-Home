@@ -383,6 +383,7 @@
         "description": "Las posiciones objetivo por situación (lluvia, escudo de verano, noche, alerta…). Definen a qué % va la persiana en cada rama.",
         "data": {
           "rain_close_pct": "Cierre por lluvia (%)",
+          "sleep_pct": "Cierre en Sleep (%)",
           "override_hours": "Override manual (h, 0=∞)",
           "freecool_max_open_pct": "Free-cool máx. (%)",
           "summer_min_open_pct": "Verano mín. (%)",
@@ -392,6 +393,7 @@
         },
         "data_description": {
           "rain_close_pct": "Posición de la persiana cuando llueve (protección). (↓ = más cerrada, más protección)",
+          "sleep_pct": "Posición cuando la zona (o la casa) está en modo Sleep. (↓ = más cerrada). Solo afecta a las persianas cuyo ámbito está en Sleep.",
           "override_hours": "Tras moverla a mano, la persiana mantiene tu posición y pausa el automático estas horas (0 = hasta que pulses «Reanudar automático»).",
           "freecool_max_open_pct": "Apertura máx. permitida durante el free-cooling. (↑ = permite abrir más)",
           "summer_min_open_pct": "Apertura mínima que se mantiene en verano. (↑ = no cierra tanto en verano)",

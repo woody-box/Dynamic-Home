@@ -128,6 +128,28 @@ async def test_presence_sim_step_gating_and_jitter(hass: HomeAssistant) -> None:
     assert co._sim_step(cfg, False, later) is None
 
 
+# --- DS reacts to Sleep mode + Eco/Comfort preset ---
+async def test_sleep_mode_and_comfort_react_by_scope(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # No mode published -> no sleep, comfort = balanced (identity).
+    assert co._sleep_pos(co._cfg()) is None
+    base_floor = co._cfg().summer_min_open_pct
+
+    # House in Sleep -> close to sleep_pct.
+    hass.data[const.DOMAIN][const.DATA_MODE] = {
+        "house": "sleep", "zones": {}, "tree": {}}
+    assert co._sleep_pos(co._cfg()) == co._cfg().sleep_pct
+
+    # Eco comfort -> shades harder (summer floor drops vs balanced).
+    hass.data[const.DOMAIN][const.DATA_MODE] = {
+        "house": "home", "zones": {}, "tree": {}, "comfort": "eco"}
+    assert co._sleep_pos(co._cfg()) is None
+    assert co._cfg().summer_min_open_pct < base_floor
+
+
 # --- F16: seasonal night insulation ---
 async def test_night_insulation_heat_and_cool(hass: HomeAssistant) -> None:
     _seed(hass)

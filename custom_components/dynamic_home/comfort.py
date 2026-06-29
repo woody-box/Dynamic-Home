@@ -94,3 +94,17 @@ def apply_dv(cfg, level: str) -> None:
         cfg.co2_v3 = max(cfg.co2_v2 + 100.0, cfg.co2_v3 - 150.0)
         cfg.pm_v2 = max(2.0, cfg.pm_v2 - 3.0)
         cfg.pm_v3 = max(cfg.pm_v2 + 5.0, cfg.pm_v3 - 10.0)
+
+
+def apply_ds(cfg, level: str) -> None:
+    """Shift a DsConfig for the comfort level (in place). balanced is identity.
+
+    Scales the cooling-season solar aggressiveness: eco shades harder (less open
+    against the sun -> less AC load), comfort favours light/views (opens more).
+    """
+    if level == "eco":
+        cfg.heat_shield_pct = max(0, cfg.heat_shield_pct - 15)
+        cfg.summer_min_open_pct = max(0, cfg.summer_min_open_pct - 10)
+    elif level == "comfort":
+        cfg.heat_shield_pct = min(100, cfg.heat_shield_pct + 15)
+        cfg.summer_min_open_pct = min(100, cfg.summer_min_open_pct + 10)

@@ -27,6 +27,7 @@ class DsConfig:
     sim_open_pct: int = 50
     sim_close_pct: int = 0
     sim_jitter_min: float = 30.0
+    sleep_pct: int = 0                   # Sleep mode: closed for rest/privacy
     privacy_pos_pct: int = 40
     override_hours: float = 4.0         # manual command holds this long (0 = forever)
     freecool_max_open_pct: int = 60
@@ -147,6 +148,8 @@ class DsInputs:
     night_purge: bool = False
     # Presence simulation (Away): occupant-like position while active, else None.
     sim_pos: int | None = None
+    # Sleep mode: closed position while the scope is in Sleep, else None.
+    sleep_pos: int | None = None
 
     # Geometric shading (F15): opt-in. When True, the summer solar-shield branch
     # uses the real solar-penetration model instead of the fixed impact shield.
@@ -367,6 +370,9 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # the comfort layers it replaces while away.
     elif ins.sim_pos is not None:
         pos, reason = ins.sim_pos, "presence_sim"
+    # 2d) Sleep mode: close for rest/privacy while the scope is in Sleep.
+    elif ins.sleep_pos is not None:
+        pos, reason = ins.sleep_pos, "mode_sleep"
     # 3) Privacy by time
     elif ins.privacy_active:
         pos, reason = cfg.privacy_pos_pct, "privacy_time"

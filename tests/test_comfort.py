@@ -12,6 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..",
 import comfort  # noqa: E402
 import zones  # noqa: E402
 from dc_engine import DcConfig  # noqa: E402
+from ds_engine import DsConfig  # noqa: E402
 from dv_engine import DvConfig  # noqa: E402
 
 
@@ -62,6 +63,20 @@ def test_apply_dc_comfort_tightens_and_anticipates():
     assert cfg.base_cool_day < base.base_cool_day
     assert cfg.delta_night < base.delta_night
     assert cfg.lead_base_h > base.lead_base_h          # more anticipation
+
+
+def test_apply_ds_eco_shades_more_comfort_opens_more():
+    base = DsConfig()
+    eco = DsConfig()
+    comfort.apply_ds(eco, "eco")
+    assert eco.summer_min_open_pct < base.summer_min_open_pct   # shade harder
+    comf = DsConfig()
+    comfort.apply_ds(comf, "comfort")
+    assert comf.summer_min_open_pct > base.summer_min_open_pct  # open more
+    assert comf.heat_shield_pct > base.heat_shield_pct          # more open cooling
+    ident = DsConfig()
+    comfort.apply_ds(ident, "balanced")
+    assert ident.summer_min_open_pct == base.summer_min_open_pct  # identity
 
 
 def test_apply_dc_balanced_is_identity():

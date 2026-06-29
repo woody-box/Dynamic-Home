@@ -16,7 +16,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
-from . import const, energy, events, modes, repairs, zones
+from . import comfort, const, energy, events, modes, repairs, zones
 from .bus import SdhbHub
 from .ds_engine import (
     DsConfig,
@@ -148,6 +148,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         if az is not None:
             cfg.facade_azimuth_deg = float(az)
         cfg.facade_span_deg = self.facade_span
+        # F23: comfort↔economy preset scales the solar aggressiveness by scope.
+        comfort.apply_ds(cfg, comfort.effective_from_published(
+            self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE),
+            self.entry.entry_id))
         return cfg
 
     def arm_manual_override(self, pos: int) -> None:
@@ -327,13 +331,21 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                     else cfg.night_iso_close_pct)
         return None
 
+    def _mode(self) -> str:
+        """Effective house/zone mode for this shutter (home/away/sleep/...)."""
+        data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE)
+        return modes.effective_from_published(data, self.entry.entry_id)
+
     def _sim_active(self) -> bool:
         """Presence simulation runs for THIS shutter: global on + Away + included."""
         data = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_MODE)
         if not data or not data.get("presence_sim") or self.sim_excluded:
             return False
-        return modes.is_away(
-            modes.effective_from_published(data, self.entry.entry_id))
+        return modes.is_away(self._mode())
+
+    def _sleep_pos(self, cfg: DsConfig) -> int | None:
+        """Closed position while the shutter's scope is in Sleep, else None."""
+        return cfg.sleep_pct if self._mode() == "sleep" else None
 
     def _sim_jitter_s(self, cfg: DsConfig, opening: bool, now_ts: float) -> float:
         """Per-day, per-shutter delay (0..jitter) after dawn/dusk — stable within
@@ -463,6 +475,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                        and t_out <= t_in)
         alert_pos = self._weather_alert(cfg, now_ts)
         sim_pos = self._sim_step(cfg, sun_above, now_ts)
+        sleep_pos = self._sleep_pos(cfg)
         # Manual hold expiry: drop it once the "tiempo prudencial" elapses.
         if self.manual_pos is not None and now_ts >= self.manual_until:
             self.manual_pos = None
@@ -481,6 +494,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             night_pos=night_pos,
             night_purge=night_purge,
             sim_pos=sim_pos,
+            sleep_pos=sleep_pos,
             alert_pos=alert_pos,
             manual_pos=self.manual_pos,
             geo_shade=self.geo_shade_enabled,
