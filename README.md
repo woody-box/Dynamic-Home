@@ -47,25 +47,19 @@ It is **not** a plug-and-forget solution. It is not a good fit if you:
 
 ## Modules
 
-| Module | Entity | Controls |
-|--------|--------|----------|
-| **DC** · Dynamic Climate | `climate` | Heating and radiant cooling (per-zone setpoint) |
-| **DV** · Dynamic Ventilation | `fan` | Dual-flow HRV (speed by air quality) |
-| **DS** · Dynamic Shutter | `cover` | Shutters (position by sun, climate and weather) |
-| **Dynamic Weather** | `weather` | Optional: resilient multi-source forecast/alert provider (fallback) |
-| **Dynamic Home · Zones** | `select` · `sensor` | House hub: zones/groups, modes, comfort, presence, changeover, master pause, global shutter peak |
-| **Dynamic Energy** | `sensor` | House power brain: ICP headroom, tariff state, scarcity, kWh/€ totals — feeds the anti-peak budget |
+| | Module | Entity | Controls |
+|---|--------|--------|----------|
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="DC" width="72"> | **DC** · Dynamic Climate | `climate` | Heating and radiant cooling (per-zone setpoint) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_ventilation.png" alt="DV" width="72"> | **DV** · Dynamic Ventilation | `fan` | Dual-flow HRV (speed by air quality) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_shutter.png" alt="DS" width="72"> | **DS** · Dynamic Shutter | `cover` | Shutters (position by sun, climate and weather) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_weather.png" alt="Weather" width="72"> | **Dynamic Weather** | `weather` | Optional: resilient multi-source forecast/alert provider (fallback) |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_zones.png" alt="Zones" width="72"> | **Dynamic Home · Zones** | `select` · `sensor` | House hub: zones, modes, comfort, presence, changeover, pause, global shutter peak |
+| <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_energy.png" alt="Energy" width="72"> | **Dynamic Energy** | `sensor` | House power brain: ICP headroom, tariff, scarcity, kWh/€ totals |
 
 The last two are optional, **one-per-house** ("singleton") coordination hubs. You
 can run DC/DV/DS standalone, or add Zones/Energy to coordinate the whole house.
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_climate.png" alt="Dynamic Climate" width="120">
-  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_ventilation.png" alt="Dynamic Ventilation" width="120">
-  <img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_shutter.png" alt="Dynamic Shutter" width="120">
-</p>
-
-All three share the **SDHB** bus (in memory). **DC is the brain**: while heating
+DC, DV and DS share the **SDHB** bus (in memory). **DC is the brain**: while heating
 it asks the shutters for *solar gain*, and while cooling it asks for *solar
 shield*; DS and DV react. Each shutter listens on its **facade**
 (`ds_f<azimuth>`), so a climate zone can request shielding only on the sunlit
@@ -77,6 +71,8 @@ helpers; it is now a native integration you add from the UI.
 ## House coordination & energy
 
 Beyond the per-zone modules, two optional singleton hubs coordinate the whole house.
+
+<img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_zones.png" alt="Dynamic Home / Zones" width="96" align="left">
 
 **Dynamic Home (Zones)** — the house brain:
 
@@ -99,6 +95,10 @@ Beyond the per-zone modules, two optional singleton hubs coordinate the whole ho
 - **Global shutter peak limiting** — set the motor-inrush budget (max simultaneous
   starts / power / stagger) **once** for every shutter.
 
+<br clear="left">
+
+<img src="https://raw.githubusercontent.com/woody-box/Dynamic-Home/main/docs/brand/dynamic_energy.png" alt="Dynamic Energy" width="96" align="left">
+
 **Dynamic Energy** — the house power brain. It aggregates and publishes energy
 context that the other modules read (it never commands — each module stays sovereign,
 safety first):
@@ -108,6 +108,8 @@ safety first):
 - **Tariff state** (`cheap / normal / peak`) from a price sensor or fixed bands.
 - **Scarcity** binary, and **house kWh / € totals** that feed Home Assistant's Energy
   dashboard. PV / battery / EV fields exist but are **gated / experimental**.
+
+<br clear="left">
 
 ---
 
