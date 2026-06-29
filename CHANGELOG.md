@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.70.0] — 2026-06-29
+
+### Added
+- **DS · las persianas reaccionan a Sleep y a Eco/Confort** (por ámbito de zona, como DC/DV).
+  - **Sleep** → la persiana cierra a `sleep_pct` (**0% por defecto**), motivo `mode_sleep`. Por
+    ámbito: pon en Sleep solo las **zonas de dormitorio** (con tu automatización por horario) y
+    cierran solo esas. La meteo y lo manual siguen mandando por encima.
+  - **Eco / Confort** → escala la **agresividad solar**: `eco` sombrea más (cierra más contra el
+    sol → menos AC), `confort` abre más (prioriza luz). `equilibrado` = sin cambios.
+  - Nuevo tunable `sleep_pct` (categoría "Posiciones de persiana").
+
+### Internal
+- `comfort.apply_ds` (deltas en `summer_min_open_pct`/`heat_shield_pct`). `coordinator_ds`:
+  `_mode()`/`_sleep_pos()`, `comfort.apply_ds` en `_cfg()`. `DsConfig.sleep_pct`, `DsInputs.sleep_pos`,
+  rama `mode_sleep` en `decide_cover` (bajo seguridad/manual, sobre el confort). Tests de motor,
+  comfort e integración. Traducciones es/en/strings.
+
 ## [0.69.1] — 2026-06-29
 
 ### Fixed

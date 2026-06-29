@@ -227,6 +227,18 @@ def test_presence_sim_yields_to_weather():
     assert d.reason == "meteo_rain"
 
 
+def test_sleep_mode_closes():
+    d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(sleep_pos=0))
+    assert d.pos == 0 and d.reason == "mode_sleep"
+
+
+def test_sleep_yields_to_weather():
+    d = decide_cover(_cfg(rain_close_pct=0, slew_enabled=False), DsState(),
+                     DsInputs(sleep_pos=0, weather_protect_enabled=True,
+                              raining=True))
+    assert d.reason == "meteo_rain"
+
+
 def test_night_purge_reason_when_opening():
     # F16: opening to vent the thermal mass reads night_purge (vs night_insulate
     # when closing), so the Motivo tells the two apart.
