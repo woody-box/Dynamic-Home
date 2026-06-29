@@ -213,6 +213,14 @@ def test_night_insulate_drives_position():
     assert d.pos == 0 and d.reason == "night_insulate"
 
 
+def test_night_purge_reason_when_opening():
+    # F16: opening to vent the thermal mass reads night_purge (vs night_insulate
+    # when closing), so the Motivo tells the two apart.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(night_pos=100, night_purge=True))
+    assert d.pos == 100 and d.reason == "night_purge"
+
+
 def test_night_insulate_yields_to_safety():
     d = decide_cover(_cfg(rain_close_pct=0, slew_enabled=False), DsState(),
                      DsInputs(night_pos=100, weather_protect_enabled=True,

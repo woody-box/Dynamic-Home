@@ -409,7 +409,13 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         dawn_pos = self._dawn_step(cfg, sun_el, current_pos, now_ts)
         t_in = self._num(const.CONF_DS_T_IN)
         t_out = self._num(const.CONF_DS_T_OUT)
-        night_pos = self._night_iso(cfg, self._hvac_mode(), sun_el, t_in, t_out)
+        hvac = self._hvac_mode()
+        night_pos = self._night_iso(cfg, hvac, sun_el, t_in, t_out)
+        # Purge = cool night opening because the outside is cooler (vents heat);
+        # any other active night case closes to insulate/protect.
+        night_purge = (night_pos is not None and hvac == "cool"
+                       and t_in is not None and t_out is not None
+                       and t_out <= t_in)
         alert_pos = self._weather_alert(cfg, now_ts)
         # Manual hold expiry: drop it once the "tiempo prudencial" elapses.
         if self.manual_pos is not None and now_ts >= self.manual_until:
@@ -417,7 +423,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.manual_until = 0.0
 
         ins = DsInputs(
-            hvac_mode=self._hvac_mode(),
+            hvac_mode=hvac,
             t_in=t_in,
             t_out=t_out,
             weather_protect_enabled=(self.weather_protect and bool(
@@ -427,6 +433,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             current_pos=current_pos,
             dawn_pos=dawn_pos,
             night_pos=night_pos,
+            night_purge=night_purge,
             alert_pos=alert_pos,
             manual_pos=self.manual_pos,
             geo_shade=self.geo_shade_enabled,

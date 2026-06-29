@@ -137,6 +137,9 @@ class DsInputs:
 
     # Seasonal night insulation (F16): position while active at night, else None.
     night_pos: int | None = None
+    # True when night_pos is opening to vent (purge) vs closing to insulate, so
+    # the reason reads night_purge instead of night_insulate.
+    night_purge: bool = False
 
     # Geometric shading (F15): opt-in. When True, the summer solar-shield branch
     # uses the real solar-penetration model instead of the fixed impact shield.
@@ -362,8 +365,11 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     elif ins.dawn_pos is not None and not cool_protect:
         pos, reason = ins.dawn_pos, "dawn_ramp"
     # 5) Seasonal night insulation (F16): owns the night strategy when enabled.
+    # Opening to vent the thermal mass reads night_purge; closing to insulate or
+    # protect reads night_insulate — so the Motivo tells the two apart.
     elif ins.night_pos is not None:
-        pos, reason = ins.night_pos, "night_insulate"
+        pos = ins.night_pos
+        reason = "night_purge" if ins.night_purge else "night_insulate"
     else:
         free_ok = (is_cool and ins.night and temps_ok
                    and ins.t_out <= ins.t_in - cfg.freecool_delta)

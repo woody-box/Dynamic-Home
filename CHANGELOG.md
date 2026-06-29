@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.66.0] — 2026-06-29
+
+### Changed
+- **DS · el "Motivo" distingue purga nocturna de aislamiento.** La rama de aislamiento
+  nocturno (F16) ahora marca **`night_purge`** cuando **abre** para ventilar la masa térmica
+  (noche en `cool` con el exterior más fresco que el interior) y mantiene **`night_insulate`**
+  cuando **cierra** para aislar/proteger (invierno, o verano con el exterior más caliente). Antes
+  ambos casos compartían `night_insulate`, lo que confundía (parecía que solo cerraba). Solo
+  cambia la etiqueta del sensor "Motivo"; el comportamiento de la persiana es idéntico.
+
+### Internal
+- `ds_engine.DsInputs.night_purge` (bool); la rama F16 de `decide_cover` elige el reason según
+  ese flag. `coordinator_ds` lo calcula (`hvac == cool and t_out <= t_in`) y lo pasa a las
+  entradas. Test de motor para `night_purge`.
+
 ## [0.65.1] — 2026-06-28
 
 ### Changed
