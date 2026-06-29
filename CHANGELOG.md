@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.67.0] — 2026-06-29
+
+### Added
+- **DV · sensores de punto de rocío** (diagnóstico, solo si hay Tª+HR de cada lado):
+  **Punto de rocío interior**, **exterior** y **Δ punto de rocío** (`dp_in − dp_out`). El Δ es la
+  señal del gate de secado (F13): cuando supera el margen de secado, ventilar **seca** (el aire de
+  fuera está más seco). Reusan el `dew_point` (Magnus) que ya usa el motor; no cambian la lógica.
+
+### Changed
+- **DV/DC/DS · los espejos de hardware (F36) redondean por rol.** Concentraciones (CO₂, PM2.5,
+  VOC, NOx, viento) se muestran **sin decimales**; temperaturas y humedad con **1 decimal**. Antes
+  el espejo copiaba el valor crudo del sensor de origen y arrastraba el ruido de coma flotante de
+  32 bits (p. ej. `1.20000004768372 µg/m³`). Ahora redondea (`suggested_display_precision` + valor).
+
+### Internal
+- `coordinator_dv`: `dew_point_in/out/diff`, `has_dew_in/out`. `sensor.py`: `DewPointSensor`
+  (×3, gated) y `_MIRROR_PRECISION` por rol en `HwMirrorSensor`. Traducciones es/en/strings.
+  Tests de integración (presencia/ausencia de los sensores de rocío y redondeo del espejo).
+
 ## [0.66.0] — 2026-06-29
 
 ### Changed
