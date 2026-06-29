@@ -192,10 +192,25 @@
           "group_add": "Añadir grupo",
           "group_edit": "Editar grupo",
           "mode_caps": "Cap de velocidad por modo",
+          "ds_peak": "Pico de persianas (global)",
           "presence": "Presencia",
           "presence_house": "Presencia · ajustes de casa",
           "presence_zone": "Presencia · fuentes por zona",
           "changeover": "Changeover comunitario"
+        }
+      },
+      "ds_peak": {
+        "title": "Pico de persianas (global)",
+        "description": "Límite de arranques simultáneos de motores de persiana para toda la casa (evita el golpe de corriente de mover varias a la vez). Lo pones una vez aquí y lo usan todas las persianas con «Limitación de pico» activada. Si no lo configuras, cada persiana usa sus propios valores.",
+        "data": {
+          "max_zones": "Máx arranques simultáneos",
+          "max_power_w": "Presupuesto de potencia (W, 0 = conteo)",
+          "stagger_s": "Escalonado entre arranques (s)"
+        },
+        "data_description": {
+          "max_zones": "Cuántas persianas pueden moverse a la vez antes de diferir nuevos arranques (modo conteo).",
+          "max_power_w": "Si es mayor que 0, limita por vatios totales en vez de por número. 0 = modo conteo.",
+          "stagger_s": "Hueco mínimo entre arranques nuevos, para que una ráfaga arranque de una en una. (↑ = separa más)"
         }
       },
       "changeover": {

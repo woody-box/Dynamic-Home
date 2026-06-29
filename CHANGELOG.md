@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.72.0] — 2026-06-29
+
+### Added
+- **DS · configuración de pico de persianas GLOBAL** (en la entrada **Dynamic Home (Zonas)**):
+  pones **una vez** los 3 valores (Máx arranques / Presupuesto de potencia / Escalonado) y los usan
+  **todas** las persianas con "Limitación de pico" activada. El switch por persiana decide **quién
+  participa**; los valores ya no se teclean ventana a ventana. **Fallback**: si no configuras el
+  global (o no tienes entrada Zonas), cada persiana usa **sus propios** valores (como hasta ahora) —
+  así un usuario solo-persianas no queda excluido (y puede usar "Clonar de otra persiana").
+
+### Internal
+- `CONF_DS_PEAK` (dict en options de Zonas); `coordinator_zones` lo publica en `DATA_MODE.ds_peak`.
+  `coordinator_ds._peak_params(cfg)` (global > propio) alimenta el `PeakLoadHub`. Paso
+  `ds_peak` en `ZonesOptionsFlow`. Tests (global gana sobre propio). Traducciones es/en/strings.
+
 ## [0.71.0] — 2026-06-29
 
 ### Added

@@ -792,9 +792,29 @@ class ZonesOptionsFlow(OptionsFlow):
         if self._tree["groups"]:
             menu.append("group_edit")
         menu.append("mode_caps")
+        menu.append("ds_peak")
         menu.append("presence")
         menu.append("changeover")
         return self.async_show_menu(step_id="init", menu_options=menu)
+
+    async def async_step_ds_peak(self, user_input=None):
+        """Global shutter peak limit: all participating shutters read this."""
+        if user_input is not None:
+            peak = {"max_zones": int(user_input["max_zones"]),
+                    "max_power_w": float(user_input["max_power_w"]),
+                    "stagger_s": float(user_input["stagger_s"])}
+            return self.async_create_entry(
+                title="", data={**self.entry.options, const.CONF_DS_PEAK: peak})
+        cur = self.entry.options.get(const.CONF_DS_PEAK) or {}
+        schema = vol.Schema({
+            vol.Required("max_zones", default=cur.get("max_zones", 2)):
+                vol.All(vol.Coerce(int), vol.Range(min=1, max=20)),
+            vol.Required("max_power_w", default=cur.get("max_power_w", 0.0)):
+                vol.All(vol.Coerce(float), vol.Range(min=0, max=10000)),
+            vol.Required("stagger_s", default=cur.get("stagger_s", 10.0)):
+                vol.All(vol.Coerce(float), vol.Range(min=0, max=120)),
+        })
+        return self.async_show_form(step_id="ds_peak", data_schema=schema)
 
     # --- F37 community changeover (supply-water sensor + thresholds) ---
     async def async_step_changeover(self, user_input=None):

@@ -192,10 +192,25 @@
           "group_add": "Add group",
           "group_edit": "Edit group",
           "mode_caps": "Mode speed caps",
+          "ds_peak": "Shutter peak (global)",
           "presence": "Presence",
           "presence_house": "Presence · house settings",
           "presence_zone": "Presence · zone sources",
           "changeover": "Community changeover"
+        }
+      },
+      "ds_peak": {
+        "title": "Shutter peak (global)",
+        "description": "House-wide limit on simultaneous shutter-motor starts (avoids the inrush of moving several at once). Set it once here and every shutter with «Peak limiting» on uses it. If unset, each shutter uses its own values.",
+        "data": {
+          "max_zones": "Max simultaneous starts",
+          "max_power_w": "Power budget (W, 0 = count)",
+          "stagger_s": "Stagger between starts (s)"
+        },
+        "data_description": {
+          "max_zones": "How many shutters may move at once before deferring new starts (count mode).",
+          "max_power_w": "If above 0, limits by total watts instead of by number. 0 = count mode.",
+          "stagger_s": "Minimum gap between new starts so a burst starts one at a time. (↑ = more spacing)"
         }
       },
       "changeover": {

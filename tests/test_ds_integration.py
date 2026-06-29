@@ -128,6 +128,22 @@ async def test_presence_sim_step_gating_and_jitter(hass: HomeAssistant) -> None:
     assert co._sim_step(cfg, False, later) is None
 
 
+# --- Global shutter peak config (from the Zones entry) ---
+async def test_global_peak_overrides_per_shutter(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()                       # own: max_zones 2, power 0, stagger 10
+
+    # No global -> the shutter's own values.
+    assert co._peak_params(cfg) == (cfg.peak_max_zones, cfg.peak_max_power_w,
+                                    cfg.peak_stagger_s)
+    # Global config published by Zones -> it wins for every shutter.
+    hass.data[const.DOMAIN][const.DATA_MODE] = {
+        "ds_peak": {"max_zones": 4, "max_power_w": 0.0, "stagger_s": 3.0}}
+    assert co._peak_params(cfg) == (4, 0.0, 3.0)
+
+
 # --- Master pause (from the Zones entry) ---
 async def test_master_pause_gates_actuation(hass: HomeAssistant) -> None:
     _seed(hass)

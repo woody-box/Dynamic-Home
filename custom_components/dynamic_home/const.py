@@ -125,6 +125,7 @@ DATA_ZONES = "_zones_tree"         # published in hass.data[DOMAIN] for consumer
 
 # --- F01 House modes (live on the zones entry; bias modules by scope) ---
 CONF_MODE_CAPS = "mode_caps"       # per-mode VMC speed cap (options dict)
+CONF_DS_PEAK = "ds_peak"           # global shutter peak limit (Zones options dict)
 DATA_MODE = "_mode"                # resolved modes published in hass.data[DOMAIN]
 EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
 
