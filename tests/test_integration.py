@@ -1072,3 +1072,6 @@ async def test_mirror_rounds_concentrations_to_integer(
         "sensor", const.DOMAIN, f"{entry.entry_id}_mirror_{const.CONF_T_IN}")
     assert float(hass.states.get(pm_eid).state) == 1.0      # rounded, no noise
     assert float(hass.states.get(t_eid).state) == 21.4      # one decimal kept
+    # Mirror name carries the module convention tag (DH-DV for VMC).
+    fn = hass.states.get(pm_eid).attributes["friendly_name"]
+    assert "DH-DV" in fn and "(espejo)" in fn

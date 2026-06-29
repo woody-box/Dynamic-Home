@@ -117,17 +117,27 @@ _MIRROR_PRECISION: dict[str, int] = {
 }
 _MIRROR_PRECISION_DEFAULT = 1   # temperatures, humidity, HRV probes
 
+# Module tag prefixed to the mirror name, so all mirrors carry the Dynamic Home
+# convention (DH-DV/DH-DS/DH-DC) and group/search cleanly.
+_MIRROR_TAG: dict[str, str] = {
+    const.MODULE_VMC: "DH-DV",
+    const.MODULE_SHUTTER: "DH-DS",
+    const.MODULE_CLIMATE: "DH-DC",
+}
+
 
 def _mirror_sensors(entry: ConfigEntry, module: str) -> list[SensorEntity]:
     """F36: a stable mirror sensor per configured input role (opt-in)."""
     if not entry.options.get(const.CONF_EXPOSE_MIRRORS, False):
         return []
+    tag = _MIRROR_TAG.get(module, "DH")
     out: list[SensorEntity] = []
     for role, name in _MIRROR_ROLES.get(module, ()):
         source = entry.data.get(role)
         if source:
             precision = _MIRROR_PRECISION.get(role, _MIRROR_PRECISION_DEFAULT)
-            out.append(HwMirrorSensor(entry, role, name, source, precision))
+            out.append(
+                HwMirrorSensor(entry, role, f"{tag} {name}", source, precision))
     return out
 
 
@@ -269,7 +279,8 @@ class HeadroomSensor(CoordinatorEntity, SensorEntity):
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_headroom"
         self._attr_device_info = DeviceInfo(
-            identifiers={(const.DOMAIN, entry.entry_id)})
+            identifiers={(const.DOMAIN, entry.entry_id)},
+            manufacturer="Dynamic Home", model="Dynamic Energy")
 
     @property
     def native_value(self) -> float | None:
@@ -418,7 +429,8 @@ class ZonesSensor(CoordinatorEntity, SensorEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_zones"
         self._attr_device_info = DeviceInfo(
-            identifiers={(const.DOMAIN, entry.entry_id)})
+            identifiers={(const.DOMAIN, entry.entry_id)},
+            manufacturer="Dynamic Home", model="Dynamic Home")
 
     def _titles(self) -> dict:
         return {e.entry_id: e.title

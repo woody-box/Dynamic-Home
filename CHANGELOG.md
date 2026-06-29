@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.68.0] — 2026-06-29
+
+### Changed
+- **Nombres de los módulos en el menú de alta** coherentes con la convención de marca:
+  *Dynamic Ventilation (VMC)*, *Dynamic Shutter (Persiana)*, *Dynamic Climate (Zona)*,
+  *Dynamic Weather (Tiempo)*, *Dynamic Home (Zonas)*, *Dynamic Energy (Energía)*. El paréntesis
+  se localiza (es/en). Solo afecta al diálogo "¿Qué módulo añadir?", no a los dispositivos ya
+  creados (esos nombres son del usuario y se renombran en la UI).
+- **Espejos de hardware (F36): el nombre lleva el tag del módulo** — `DH-DV` (VMC), `DH-DS`
+  (persiana), `DH-DC` (clima). P. ej. *"DH-DV CO₂ (espejo)"*. El `unique_id` no cambia (los
+  espejos existentes conservan su id; solo cambia el nombre visible).
+- **Subtítulo "model"** de los dispositivos de **Energía** y **Zonas**: ahora muestran
+  *Dynamic Energy* / *Dynamic Home* (antes sin modelo), para igualar a DV/DS/DC/Weather.
+
+### Internal
+- `_MIRROR_TAG` por módulo en `sensor.py`; `DeviceInfo(model=…)` en `HeadroomSensor`/`ZonesSensor`.
+  Etiquetas `menu_options` en strings/en/es. Test del prefijo `DH-DV` en el espejo.
+
 ## [0.67.0] — 2026-06-29
 
 ### Added
