@@ -213,6 +213,20 @@ def test_night_insulate_drives_position():
     assert d.pos == 0 and d.reason == "night_insulate"
 
 
+def test_presence_sim_drives_position():
+    # Away presence simulation sets the position with its own reason.
+    d = decide_cover(_cfg(slew_enabled=False), DsState(), DsInputs(sim_pos=50))
+    assert d.pos == 50 and d.reason == "presence_sim"
+
+
+def test_presence_sim_yields_to_weather():
+    # Rain (safety) wins over the simulation.
+    d = decide_cover(_cfg(rain_close_pct=0, slew_enabled=False), DsState(),
+                     DsInputs(sim_pos=50, weather_protect_enabled=True,
+                              raining=True))
+    assert d.reason == "meteo_rain"
+
+
 def test_night_purge_reason_when_opening():
     # F16: opening to vent the thermal mass reads night_purge (vs night_insulate
     # when closing), so the Motivo tells the two apart.

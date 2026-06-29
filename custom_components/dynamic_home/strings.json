@@ -171,6 +171,7 @@
           "clone": "Clone from another shutter",
           "cat_dawn": "Gradual sunrise (Advanced)",
           "cat_night": "Night insulation (Advanced)",
+          "cat_sim": "Presence simulation (Advanced)",
           "cat_alert": "Weather alerts (Advanced)",
           "cat_hood": "Extractor hood (Advanced)",
           "cat_wx": "Sources & alerts (Advanced)",
@@ -854,6 +855,20 @@
           "night_iso_open_pct": "Open position at night to purge the thermal mass when the outside is cooler (cool)."
         }
       },
+      "cat_sim": {
+        "title": "Presence simulation",
+        "description": "Presence-simulation positions while Away (day open / night close) and the randomisation window.",
+        "data": {
+          "sim_open_pct": "Sim day open (%)",
+          "sim_close_pct": "Sim night close (%)",
+          "sim_jitter_min": "Sim jitter (min)"
+        },
+        "data_description": {
+          "sim_open_pct": "Daytime opening that fakes presence (kept low to spare the motor). (↑ = opens more)",
+          "sim_close_pct": "Night position while simulating presence. (↓ = closes more)",
+          "sim_jitter_min": "Random window after dawn/dusk so the time varies each day. (↑ = more unpredictable)"
+        }
+      },
       "cat_alert": {
         "title": "Weather alerts",
         "description": "Protection position per alert (generic/hail/wind) + how long to hold it. A safety cap above the solar logic.",
@@ -1373,6 +1388,8 @@
       "heat_shield": {"name": "Thermal shield"},
       "sun_shield": {"name": "Direct-sun shield"},
       "weather_protect": {"name": "Weather protection"},
+      "sim_exclude": {"name": "Exclude from presence simulation"},
+      "presence_sim": {"name": "Presence simulation"},
       "peak": {"name": "Peak limiting"},
       "adaptive": {"name": "Adaptive thresholds"},
       "bootstrap": {"name": "Startup kick"},

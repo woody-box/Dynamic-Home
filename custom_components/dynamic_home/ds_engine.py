@@ -22,6 +22,11 @@ class DsConfig:
     """Tunables. Defaults mirror the YAML ``initial:`` values."""
 
     rain_close_pct: int = 0
+    # Presence simulation (Away): day open / night close, capped low to spare the
+    # motor; the jitter window lives in the coordinator.
+    sim_open_pct: int = 50
+    sim_close_pct: int = 0
+    sim_jitter_min: float = 30.0
     privacy_pos_pct: int = 40
     override_hours: float = 4.0         # manual command holds this long (0 = forever)
     freecool_max_open_pct: int = 60
@@ -140,6 +145,8 @@ class DsInputs:
     # True when night_pos is opening to vent (purge) vs closing to insulate, so
     # the reason reads night_purge instead of night_insulate.
     night_purge: bool = False
+    # Presence simulation (Away): occupant-like position while active, else None.
+    sim_pos: int | None = None
 
     # Geometric shading (F15): opt-in. When True, the summer solar-shield branch
     # uses the real solar-penetration model instead of the fixed impact shield.
@@ -355,6 +362,11 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # Sits below the safety layers (override/alert/rain) and above all comfort.
     elif ins.manual_pos is not None:
         pos, reason = ins.manual_pos, "manual_hold"
+    # 2c) Presence simulation (Away): mimic an occupant (day open / night close,
+    # jittered). Below the safety/manual layers (weather still protects), above
+    # the comfort layers it replaces while away.
+    elif ins.sim_pos is not None:
+        pos, reason = ins.sim_pos, "presence_sim"
     # 3) Privacy by time
     elif ins.privacy_active:
         pos, reason = cfg.privacy_pos_pct, "privacy_time"

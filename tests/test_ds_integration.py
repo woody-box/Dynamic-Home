@@ -102,6 +102,32 @@ async def test_rain_reads_binary_sensor(hass: HomeAssistant) -> None:
     assert co._is_on(const.CONF_RAIN) is True
 
 
+# --- Presence simulation (Away) ---
+async def test_presence_sim_step_gating_and_jitter(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()                       # sim_open 50, close 0, jitter 30 min
+
+    # No mode published -> inactive.
+    assert co._sim_step(cfg, True, 1000.0) is None
+    # Not Away (home) -> inactive even with sim on.
+    hass.data[const.DOMAIN][const.DATA_MODE] = {
+        "house": "home", "zones": {}, "tree": {}, "presence_sim": True}
+    assert co._sim_step(cfg, True, 1000.0) is None
+    # Away + sim on -> active; first call snaps to the real sun phase (day open).
+    hass.data[const.DOMAIN][const.DATA_MODE]["house"] = "away"
+    assert co._sim_step(cfg, True, 1000.0) == cfg.sim_open_pct
+    # Sun sets -> holds the day position until the jitter window elapses...
+    assert co._sim_step(cfg, False, 1000.0) == cfg.sim_open_pct
+    # ...then closes once past the max jitter.
+    later = 1000.0 + cfg.sim_jitter_min * 60 + 1
+    assert co._sim_step(cfg, False, later) == cfg.sim_close_pct
+    # Excluded shutter -> inactive.
+    co.sim_excluded = True
+    assert co._sim_step(cfg, False, later) is None
+
+
 # --- F16: seasonal night insulation ---
 async def test_night_insulation_heat_and_cool(hass: HomeAssistant) -> None:
     _seed(hass)

@@ -67,6 +67,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "adjacent": ("Adjacent space", "Espacio adyacente"),
     "dawn": ("Gradual sunrise", "Amanecer gradual"),
     "night": ("Night insulation", "Aislamiento nocturno"),
+    "sim": ("Presence simulation", "Simulación de presencia"),
     "alert": ("Weather alerts", "Avisos meteo"),
     "hood": ("Extractor hood", "Campana extractora"),
     "wx": ("Sources & alerts", "Fuentes y alertas"),
@@ -232,6 +233,11 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "night": [
             _v("night_iso_close_pct", "Night close (%)", "Cierre noche (%)"),
             _v("night_iso_open_pct", "Night purge open (%)", "Apertura purga noche (%)"),
+        ],
+        "sim": [
+            _v("sim_open_pct", "Sim day open (%)", "Sim día abierto (%)"),
+            _v("sim_close_pct", "Sim night close (%)", "Sim noche cerrado (%)"),
+            _v("sim_jitter_min", "Sim jitter (min)", "Sim jitter (min)"),
         ],
         "alert": [
             _v("alert_pct", "Alert protect (%)", "Protección alerta (%)"),

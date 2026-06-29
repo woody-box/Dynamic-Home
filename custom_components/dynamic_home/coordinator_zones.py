@@ -45,6 +45,9 @@ class ZonesCoordinator(DataUpdateCoordinator):
         # F23: comfort↔economy preset (global + per-zone overrides), same selects.
         self.comfort_global = "balanced"
         self.zone_comfort: dict[str, str] = {}
+        # Presence simulation (anti-burglary): in Away, shutters mimic an occupant
+        # (day open / night close, jittered). Set/restored by the switch; off by default.
+        self.presence_sim = False
         # F32: presence fusion state.
         self.presence_zones: dict[str, presence.ZonePresenceState] = {}
         self.presence_occupied: dict[str, bool] = {}
@@ -82,7 +85,8 @@ class ZonesCoordinator(DataUpdateCoordinator):
                                  "zones": dict(self.zone_modes),
                                  "caps": self.mode_caps, "tree": self.tree,
                                  "comfort": self.comfort_global,
-                                 "zone_comfort": dict(self.zone_comfort)}
+                                 "zone_comfort": dict(self.zone_comfort),
+                                 "presence_sim": self.presence_sim}
         events.fire_mode_changed(self.hass, self.entry, self.house_mode,
                                  self.zone_modes)
         if notify:                          # re-evaluate every module right away

@@ -20,7 +20,7 @@ PLATFORMS_SHUTTER: list[str] = ["cover", "switch", "number", "sensor",
                                 "binary_sensor", "button"]
 PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
-PLATFORMS_ZONES: list[str] = ["sensor", "select", "binary_sensor"]
+PLATFORMS_ZONES: list[str] = ["sensor", "select", "binary_sensor", "switch"]
 PLATFORMS_ENERGY: list[str] = ["sensor", "binary_sensor"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
