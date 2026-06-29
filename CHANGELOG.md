@@ -4,6 +4,13 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.69.1] — 2026-06-29
+
+### Fixed
+- **Dynamic Home (Zonas) y Dynamic Energy ya no salen como "dispositivo sin nombre".** Sus
+  dispositivos heredan el título de la entrada (como ya hacía Dynamic Weather). No pisa el
+  nombre que hayas puesto a mano (HA respeta el renombrado del usuario).
+
 ## [0.69.0] — 2026-06-29
 
 ### Added

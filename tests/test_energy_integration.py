@@ -3,6 +3,7 @@
 from types import SimpleNamespace
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -38,6 +39,11 @@ async def test_energy_publishes_context_grid_and_price(
         kind = "binary_sensor" if uid == "scarcity" else "sensor"
         assert reg.async_get_entity_id(
             kind, const.DOMAIN, f"{entry.entry_id}_{uid}") is not None
+
+    # The device carries a name (entry title) — no more "unnamed device".
+    dev = dr.async_get(hass).async_get_device(
+        identifiers={(const.DOMAIN, entry.entry_id)})
+    assert dev is not None and dev.name == "Energía"
     # The PV surplus sensor is gated off (no PV entity).
     assert reg.async_get_entity_id(
         "sensor", const.DOMAIN, f"{entry.entry_id}_surplus") is None
