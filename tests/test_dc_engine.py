@@ -275,6 +275,20 @@ def test_dew_risk_only_in_cool_and_near_dewpoint():
     assert dew_risk(cfg, "heat", 24, 95) is False
 
 
+def test_dew_risk_cold_surface_with_margin():
+    # With a floor/water temp the check is against the cold surface, not the air.
+    cfg = _cfg(cond_margin_c=0.3)
+    # Air is far from the dew point (24 vs ~17.0 @65%) -> the legacy air check would
+    # say "dry", but the cold floor at 17.2 is only 0.2 above it: 0.2 < 0.3 -> WET.
+    assert dew_risk(cfg, "cool", 24, 65, floor_temp=17.2) is True
+    # Warmer floor: spread 2.0 > margin -> dry.
+    assert dew_risk(cfg, "cool", 24, 65, floor_temp=19.0) is False
+    # A bigger safety margin stops the zone earlier (same floor now wet).
+    assert dew_risk(_cfg(cond_margin_c=2.5), "cool", 24, 65, floor_temp=19.0) is True
+    # heat -> never, even with a cold floor.
+    assert dew_risk(cfg, "heat", 24, 65, floor_temp=10.0) is False
+
+
 def test_decide_dew_risk_forces_off_via_engine():
     # cool with high humidity -> engine off_dew when caller passes dew_risk
     cfg = _cfg()

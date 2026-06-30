@@ -345,6 +345,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         ],
         "condensation": [
             _v("dew_spread_min", "Dew-point margin (°C)", "Margen punto rocío (°C)"),
+            _v("cond_margin_c", "Cold-surface safety margin (°C)",
+               "Margen de seguridad superficie (°C)"),
         ],
         "facade": [
             _v("facade_gain_heat", "Facade gain heat (°C)", "Ganancia fachada calor (°C)"),

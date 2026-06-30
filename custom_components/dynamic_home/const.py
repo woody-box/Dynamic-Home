@@ -92,6 +92,7 @@ CONF_DC_TARGET = "ds_target"      # shutter target the zone drives (default "ds"
 CONF_DC_CLIMATE = "dc_climate"    # optional: real thermostat DC drives
 CONF_DC_VMC = "dc_vmc"            # optional: VMC fan/sensor for the VMC bias
 CONF_DC_HUMIDITY = "dc_humidity"  # optional: indoor RH for dew-point protection
+CONF_DC_WATER_TEMP = "dc_water_temp"  # optional: radiant water/floor temp (cold surface)
 CONF_DC_WEATHER = "dc_weather"    # optional: weather entity for forecast bias
 CONF_DC_WIND = "dc_wind"          # optional: wind sensor for the lead model
 CONF_DC_WINDOW = "dc_window"      # optional: window binary_sensor -> lockout

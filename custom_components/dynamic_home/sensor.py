@@ -164,6 +164,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         ents: list[SensorEntity] = [DcSensor(coordinator, entry, d)
                                     for d in _DC_SENSORS]
         ents += [DcLearnSensor(coordinator, entry, d) for d in _DC_LEARN]
+        if coordinator.has_water():
+            ents += [DcSensor(coordinator, entry, d) for d in _DC_COND_SENSORS]
         if coordinator.has_mold():
             ents.append(MoldIndexSensor(coordinator, entry))
         if coordinator.has_adjacent():
@@ -1282,6 +1284,28 @@ _DC_SENSORS: tuple[_DcDesc, ...] = (
     _DcDesc("sdhb_bias", "Bias bus", "mdi:transit-connection-variant",
             lambda c: _detail(c, "sdhb_bias"), UnitOfTemperature.CELSIUS,
             diagnostic=True),
+)
+
+
+# Cold-surface condensation breakdown — only when a floor/water temp is set.
+# "cond_margin" is the decisive value (corrected): negative => wet => zone off.
+_DC_COND_SENSORS: tuple[_DcDesc, ...] = (
+    _DcDesc("floor_temp", "Temperatura de suelo", "mdi:heating-coil",
+            lambda c: c.floor_temp_c, UnitOfTemperature.CELSIUS),
+    _DcDesc("cond_spread", "Desvío real condensación", "mdi:arrow-expand-vertical",
+            lambda c: c.cond_spread_real, UnitOfTemperature.CELSIUS,
+            diagnostic=True),
+    _DcDesc("cond_margin", "Margen de condensación", "mdi:water-thermometer",
+            lambda c: c.cond_margin_corrected, UnitOfTemperature.CELSIUS,
+            diagnostic=True,
+            attrs=lambda c: {
+                "margen_establecido": c._cond_margin_set,
+                "desvio_real": c.cond_spread_real,
+                "temperatura_suelo": c.floor_temp_c,
+                "punto_rocio": c.dew_point_c,
+                "humedo": (c.cond_margin_corrected is not None
+                           and c.cond_margin_corrected < 0),
+            }),
 )
 
 

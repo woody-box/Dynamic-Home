@@ -95,6 +95,43 @@ async def test_setup_creates_climate(hass: HomeAssistant) -> None:
     assert hass.states.get("climate.salon") is not None
 
 
+async def test_cold_surface_condensation_breakdown(hass: HomeAssistant) -> None:
+    """A floor/water temp drives the cold-surface condensation check + sensors."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    hass.states.async_set("sensor.salon_rh", "65")
+    hass.states.async_set("sensor.floor", "17.2")
+    cfg = {**CLIMATE, const.CONF_DC_HUMIDITY: "sensor.salon_rh",
+           const.CONF_DC_WATER_TEMP: "sensor.floor"}
+    entry = await _add(hass, cfg, "Salon")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.COOL}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    # Floor 17.2 vs dew point ~17.0 -> real spread ~0.2 < 0.3 margin -> WET -> off.
+    assert co.has_water() is True
+    assert co.floor_temp_c == 17.2
+    assert co.cond_spread_real is not None and co.cond_spread_real < 0.3
+    assert co.cond_margin_corrected < 0          # corrected margin negative -> wet
+    assert co.dew_risk_active is True            # zone stopped on condensation
+
+    # The three breakdown sensors exist (gated on the floor temp).
+    reg = er.async_get(hass)
+    for key in ("floor_temp", "cond_spread", "cond_margin"):
+        assert reg.async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is not None
+
+    # Warmer floor -> spread above the margin -> dry -> the gate releases.
+    hass.states.async_set("sensor.floor", "21.0")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.dew_risk_active is False
+
+
 async def test_full_triangle_dc_drives_ds(hass: HomeAssistant) -> None:
     """DC (cool) -> bus request_solar_shield -> DS cover clamps to 30%."""
     _seed(hass)
