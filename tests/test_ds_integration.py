@@ -41,6 +41,37 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+async def test_external_cover_move_arms_override(hass: HomeAssistant) -> None:
+    """A move of the underlying cover DH didn't command -> manual override."""
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass, position=50)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    # DH settled on its own decision; no manual override yet.
+    assert co.manual_pos is None
+    target = co.data.pos if co.data else 100
+    external = 5 if (target or 0) >= 50 else 95   # clearly different from DH's pos
+
+    # Someone moves the physical cover directly (a button/automation/wall switch).
+    hass.states.async_set("cover.salon_real", "open",
+                          {"current_position": external, "supported_features": 15})
+    await hass.async_block_till_done()
+    assert co.manual_pos == external             # detected -> timed override armed
+
+    # With the toggle off, a further external move is ignored.
+    co.track_external = False
+    co.clear_manual_override()
+    await hass.async_block_till_done()
+    other = 95 if external < 50 else 5
+    hass.states.async_set("cover.salon_real", "open",
+                          {"current_position": other, "supported_features": 15})
+    await hass.async_block_till_done()
+    assert co.manual_pos is None                 # not re-armed when tracking is off
+
+
 # --- F17: anticipatory weather-alert protection ---
 ALERTS = {
     **SHUTTER,

@@ -76,6 +76,10 @@ _SHUTTER_SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c: c.weather_protect,
         lambda c, v: setattr(c, "weather_protect", v)),
     _ToggleDesc(
+        "track_external", "Follow manual moves", "mdi:gesture-tap",
+        lambda c: c.track_external,
+        lambda c, v: setattr(c, "track_external", v)),
+    _ToggleDesc(
         "sim_exclude", "Exclude from presence simulation", "mdi:account-off",
         lambda c: c.sim_excluded,
         lambda c, v: setattr(c, "sim_excluded", v)),

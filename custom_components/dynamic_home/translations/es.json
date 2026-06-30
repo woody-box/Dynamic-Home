@@ -1413,6 +1413,7 @@
       "heat_shield": {"name": "Escudo térmico"},
       "sun_shield": {"name": "Escudo de sol directo"},
       "weather_protect": {"name": "Protección meteo"},
+      "track_external": {"name": "Seguir movimientos manuales"},
       "sim_exclude": {"name": "Excluir de simulación"},
       "presence_sim": {"name": "Simulación de presencia"},
       "pause_all": {"name": "Pausa Dynamic Home"},

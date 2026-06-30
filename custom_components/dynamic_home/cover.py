@@ -23,6 +23,10 @@ from homeassistant.util import slugify
 from . import const
 from .coordinator import DsCoordinator
 
+# A settled position within this many % of DH's last command counts as "our move"
+# (covers don't always land on the exact target); beyond it, it was external.
+_EXTERNAL_TOL_PCT = 4
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
@@ -65,13 +69,42 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         await super().async_added_to_hass()
         target = self._entry.data.get(const.CONF_COVER)
         if target:
+            # Baseline so the first external move has a reference to compare against.
+            self._last_pos = self._real_position()
             self.async_on_remove(
                 async_track_state_change_event(
                     self.hass, [target], self._on_real_cover_change))
 
     @callback
-    def _on_real_cover_change(self, _event) -> None:
+    def _on_real_cover_change(self, event) -> None:
         self.async_write_ha_state()
+        if self.coordinator.track_external:
+            self._detect_external_move(event)
+
+    @callback
+    def _detect_external_move(self, event) -> None:
+        """Arm a manual override when the cover settles where DH didn't ask.
+
+        Any command from outside the integration (a physical button, a wall
+        switch, another automation) moves the underlying cover directly. DH only
+        drives that cover, so it never sees those as 'manual'. Here we compare the
+        settled position against the last one DH commanded (``_last_pos``): a
+        mismatch means someone else moved it, so we pause the comfort logic with a
+        timed override (it expires on its own, like the integration button).
+        """
+        new = event.data.get("new_state")
+        if new is None or new.state in (
+                "opening", "closing", "unavailable", "unknown"):
+            return                          # mid-travel or no usable state yet
+        pos = new.attributes.get("current_position")
+        real = int(pos) if pos is not None else (0 if new.state == "closed" else 100)
+        if self._last_pos is None:
+            self._last_pos = real           # first reading: just take the baseline
+            return
+        if abs(real - self._last_pos) <= _EXTERNAL_TOL_PCT:
+            return                          # settled where DH asked -> our own move
+        self._last_pos = real               # adopt it so we don't re-fire/re-drive
+        self.coordinator.arm_manual_override(real)
 
     def _real_position(self) -> int | None:
         """Actual position reported by the physical cover (None if unknown)."""

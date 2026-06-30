@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.76.0] — 2026-06-30
+
+### Added
+- **DS · detección de movimiento externo → override automático.** Hasta ahora solo el botón
+  de la propia integración armaba el override manual; si movías la persiana por **otra vía**
+  (un botón BLE/inteligente, un interruptor de pared, otra automatización que actúa sobre el
+  cover **físico**), Dynamic Home no lo registraba y su lógica de confort podía deshacer tu
+  movimiento. Ahora DS **observa la persiana física** y, cuando ésta **acaba** en una posición
+  que DH **no ordenó**, lo interpreta como mando manual y **arma el override temporal** (igual
+  que su botón; expira solo según `override_hours`). Así **cualquier** movimiento manual pausa
+  el confort, sin tener que reapuntar tus automatizaciones a la entidad de DH.
+- Nuevo interruptor por persiana **"Seguir movimientos manuales"** (activado por defecto) para
+  desactivarlo si en alguna persiana prefieres que DH ignore los movimientos externos.
+
+### Internal
+- `DsCoordinator.track_external` (default True, RestoreEntity vía switch). `cover.py`:
+  baseline de `_last_pos` en `async_added_to_hass` y `_detect_external_move` (compara la posición
+  asentada contra la última ordenada, tolerancia `_EXTERNAL_TOL_PCT=4`, ignora tránsito
+  opening/closing → `arm_manual_override`). Traducciones es/en/strings. Test de integración
+  (movimiento externo arma override; con el toggle off, se ignora).
+
 ## [0.75.1] — 2026-06-30
 
 ### Changed
