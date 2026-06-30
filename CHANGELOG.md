@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.83.0] — 2026-06-30
+
+### Changed
+- **DS · las alertas meteo aceptan sensores de Google Weather (no solo `binary_sensor`).**
+  Los tres campos de alerta (meteo / granizo-tormenta / viento) ya admiten también un
+  **sensor numérico** o un sensor de **condición**/`weather`, además del `binary_sensor`
+  de siempre. Un único intérprete decide si la alerta está activa según la forma del dato:
+  binario (`on`/`off`), numérico (umbral: **racha km/h** en la de viento, **probabilidad %**
+  en las otras) o texto de condición HA (`lightning`, `hail`, `windy`, `rainy`…). Así se
+  pueden enchufar directamente los sensores de Google Weather, que no expone binarios.
+  Compatible hacia atrás: los binarios de Open-Meteo siguen funcionando igual.
+
+### Internal
+- `ds_engine.alert_active(state, kind, cfg)` puro y testeable + sets de condiciones
+  (`ALERT_HAIL/WIND/GENERIC_CONDITIONS`); `DsConfig.alert_gust_kmh` (50) y `alert_prob_pct`
+  (70) como umbrales. `coordinator_ds._alert_on()` lee el estado crudo y delega.
+  Selectores del config flow ampliados a `binary_sensor`/`input_boolean`/`sensor`/`weather`.
+  Tests puros (binario/numérico/condición) + integración (gust + condición).
+
 ## [0.82.0] — 2026-06-30
 
 ### Added

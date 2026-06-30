@@ -171,6 +171,35 @@ async def test_weather_alert_absent_without_sensors(hass: HomeAssistant) -> None
     assert co._weather_alert(co._cfg(), 1000.0) is None
 
 
+async def test_weather_alert_reads_numeric_and_condition(
+        hass: HomeAssistant) -> None:
+    # Google Weather has no binary_sensors: the alert slots also take a numeric
+    # sensor (gust km/h / probability %) or a condition/weather sensor.
+    _seed(hass)
+    data = {
+        **SHUTTER,
+        const.CONF_DS_ALERT_WIND: "sensor.google_gust",       # numeric km/h
+        const.CONF_DS_ALERT_HAIL: "weather.google_casa",      # condition string
+    }
+    hass.states.async_set("sensor.google_gust", "10")
+    hass.states.async_set("weather.google_casa", "sunny")
+    entry = MockConfigEntry(domain=const.DOMAIN, data=data, title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()  # gust threshold 50 km/h, hail pos 0, wind pos 50
+
+    # Calm + clear -> no alert.
+    assert co._weather_alert(cfg, 1000.0) is None
+    # Gust above threshold -> wind protection position (50).
+    hass.states.async_set("sensor.google_gust", "62")
+    assert co._weather_alert(cfg, 1000.0) == 50
+    # Condition turns to a storm -> hail protection (0) wins (most protective).
+    hass.states.async_set("weather.google_casa", "lightning")
+    assert co._weather_alert(cfg, 1000.0) == 0
+
+
 # --- Rain source: binary_sensor on/off only ---
 async def test_rain_reads_binary_sensor(hass: HomeAssistant) -> None:
     _seed(hass)

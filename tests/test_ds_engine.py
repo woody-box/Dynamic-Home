@@ -14,6 +14,7 @@ from ds_engine import (  # noqa: E402
     DsConfig,
     DsInputs,
     DsState,
+    alert_active,
     decide_cover,
     geo_shade_pos,
     quantize10,
@@ -218,6 +219,39 @@ def test_weather_alert_protects_and_is_protected():
     d = decide_cover(_cfg(slew_enabled=True, slew_step_pct=10), DsState(),
                      DsInputs(alert_pos=0, current_pos=100))
     assert d.pos == 0 and d.reason == "meteo_alert"
+
+
+def test_alert_active_binary():
+    # binary_sensor / input_boolean shapes (back-compat with Open-Meteo).
+    cfg = DsConfig()
+    assert alert_active("on", "generic", cfg) is True
+    assert alert_active("off", "wind", cfg) is False
+    assert alert_active(None, "hail", cfg) is False
+    for s in ("unknown", "unavailable", "none", ""):
+        assert alert_active(s, "generic", cfg) is False
+
+
+def test_alert_active_numeric_threshold():
+    # Numeric sensor (e.g. Google Weather): wind -> gust km/h, else probability %.
+    cfg = DsConfig(alert_gust_kmh=50.0, alert_prob_pct=70.0)
+    assert alert_active("55", "wind", cfg) is True       # gust over threshold
+    assert alert_active("40", "wind", cfg) is False
+    assert alert_active("80", "hail", cfg) is True       # probability over threshold
+    assert alert_active("60", "generic", cfg) is False
+    # 0 disables the numeric threshold.
+    assert alert_active("90", "wind", DsConfig(alert_gust_kmh=0.0)) is False
+
+
+def test_alert_active_condition_keyword():
+    # Condition/weather sensor: HA condition vocabulary per kind.
+    cfg = DsConfig()
+    assert alert_active("lightning", "hail", cfg) is True
+    assert alert_active("hail", "hail", cfg) is True
+    assert alert_active("windy", "wind", cfg) is True
+    assert alert_active("windy", "hail", cfg) is False   # wrong kind
+    assert alert_active("rainy", "generic", cfg) is True
+    assert alert_active("sunny", "generic", cfg) is False
+    assert alert_active("Lightning-Rainy", "hail", cfg) is True  # case-insensitive
 
 
 def test_weather_alert_yields_to_override():
