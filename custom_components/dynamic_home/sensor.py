@@ -118,12 +118,9 @@ _MIRROR_PRECISION: dict[str, int] = {
 _MIRROR_PRECISION_DEFAULT = 1   # temperatures, humidity, HRV probes
 
 # Module tag prefixed to the mirror name, so all mirrors carry the Dynamic Home
-# convention (DH-DV/DH-DS/DH-DC) and group/search cleanly.
-_MIRROR_TAG: dict[str, str] = {
-    const.MODULE_VMC: "DH-DV",
-    const.MODULE_SHUTTER: "DH-DS",
-    const.MODULE_CLIMATE: "DH-DC",
-}
+# convention (DH-DV/DH-DS/DH-DC) and group/search cleanly. Single source of truth
+# in const, shared with the primary-entity suffix.
+_MIRROR_TAG = const.MODULE_TAG
 
 
 def _mirror_sensors(entry: ConfigEntry, module: str) -> list[SensorEntity]:
