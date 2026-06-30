@@ -128,6 +128,16 @@ CONF_WX_SOURCE_3 = "wx_source_3"   # tertiary (fallback)
 CONF_WX_TEMP = "wx_temp"           # raw-sensor fallback: temperature
 CONF_WX_WIND = "wx_wind"           # raw-sensor fallback: wind (km/h)
 CONF_WX_PRECIP = "wx_precip"       # raw-sensor fallback: precipitation (mm)
+# Per-field raw-sensor inputs (optional): fill a value the active providers don't
+# expose, or plug a dedicated sensor (e.g. Google Weather's individual sensors).
+CONF_WX_HUMIDITY = "wx_humidity"        # %
+CONF_WX_PRESSURE = "wx_pressure"        # hPa
+CONF_WX_GUST = "wx_gust"                # wind gust (km/h)
+CONF_WX_UV = "wx_uv"                    # UV index
+CONF_WX_CLOUD = "wx_cloud"              # cloud coverage (%)
+CONF_WX_DEWPOINT = "wx_dewpoint"        # dew point (°C)
+CONF_WX_STORM_PROB = "wx_storm_prob"    # thunderstorm probability (%)
+CONF_WX_PRECIP_PROB = "wx_precip_prob"  # precipitation probability (%)
 EVENT_WEATHER_SOURCE = f"{DOMAIN}_weather_source"  # active source changed
 
 # --- F24 Zones/groups hierarchy (own structure, not HA Areas) ---

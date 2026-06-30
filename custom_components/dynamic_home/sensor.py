@@ -148,10 +148,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
     module = entry.data.get(const.CONF_MODULE)
     if module == const.MODULE_WEATHER:
         wx_ents: list[SensorEntity] = [WeatherSourceSensor(coordinator, entry)]
-        # Individual values from the active provider (failover-backed). Precip
-        # only when a raw precip source is configured (providers rarely expose it).
+        # Per-field values (failover-backed). The raw-only ones (precip, storm /
+        # precip probability) only appear when their raw source is configured.
         wx_ents += [WxValueSensor(coordinator, entry, d) for d in _WX_VALUES
-                    if d.key != "wx_precip" or coordinator.has_precip()]
+                    if d.requires_conf is None or coordinator._hw(d.requires_conf)]
         async_add_entities(wx_ents)
         return
     if module == const.MODULE_ZONES:
@@ -492,38 +492,50 @@ class WeatherSourceSensor(CoordinatorEntity, SensorEntity):
 
 @dataclass(frozen=True)
 class _WxValDesc:
-    key: str
+    key: str                    # translation key + unique_id suffix
+    field: str                  # WxData.values key
     icon: str
-    getter: Callable[[object], float | None]
     device_class: SensorDeviceClass | None = None
     unit: str | None = None
+    diagnostic: bool = False
+    requires_conf: str | None = None   # only create when this raw source is set
 
 
-# Individual weather values pulled from the *active* source (with failover), so
-# they survive a provider going down — directly usable in dashboards/automations.
+# Individual weather values resolved per-field from the configured providers
+# (with failover), so they survive a provider going down and are directly usable
+# in dashboards/automations. The "rich" extras land under Diagnostics.
 _WX_VALUES: tuple[_WxValDesc, ...] = (
-    _WxValDesc("wx_temperature", "mdi:thermometer",
-               lambda d: d.temperature if d else None,
+    _WxValDesc("wx_temperature", "temperature", "mdi:thermometer",
                SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS),
-    _WxValDesc("wx_humidity", "mdi:water-percent",
-               lambda d: d.humidity if d else None,
+    _WxValDesc("wx_humidity", "humidity", "mdi:water-percent",
                SensorDeviceClass.HUMIDITY, PERCENTAGE),
-    _WxValDesc("wx_pressure", "mdi:gauge",
-               lambda d: d.pressure if d else None,
+    _WxValDesc("wx_pressure", "pressure", "mdi:gauge",
                SensorDeviceClass.ATMOSPHERIC_PRESSURE, UnitOfPressure.HPA),
-    _WxValDesc("wx_wind", "mdi:weather-windy",
-               lambda d: d.wind_kmh if d else None,
+    _WxValDesc("wx_wind", "wind", "mdi:weather-windy",
                SensorDeviceClass.WIND_SPEED, UnitOfSpeed.KILOMETERS_PER_HOUR),
-    _WxValDesc("wx_wind_bearing", "mdi:compass",
-               lambda d: d.wind_bearing if d else None, None, DEGREE),
-    _WxValDesc("wx_precip", "mdi:weather-pouring",
-               lambda d: d.precip if d else None,
-               SensorDeviceClass.PRECIPITATION, UnitOfPrecipitationDepth.MILLIMETERS),
+    _WxValDesc("wx_wind_bearing", "wind_bearing", "mdi:compass", None, DEGREE),
+    _WxValDesc("wx_precip", "precip", "mdi:weather-pouring",
+               SensorDeviceClass.PRECIPITATION, UnitOfPrecipitationDepth.MILLIMETERS,
+               requires_conf=const.CONF_WX_PRECIP),
+    _WxValDesc("wx_gust", "gust", "mdi:weather-windy-variant",
+               SensorDeviceClass.WIND_SPEED, UnitOfSpeed.KILOMETERS_PER_HOUR,
+               diagnostic=True),
+    _WxValDesc("wx_uv", "uv", "mdi:weather-sunny-alert", None, None,
+               diagnostic=True),
+    _WxValDesc("wx_cloud", "cloud", "mdi:weather-cloudy", None, PERCENTAGE,
+               diagnostic=True),
+    _WxValDesc("wx_dewpoint", "dewpoint", "mdi:thermometer-water",
+               SensorDeviceClass.TEMPERATURE, UnitOfTemperature.CELSIUS,
+               diagnostic=True),
+    _WxValDesc("wx_storm_prob", "storm_prob", "mdi:weather-lightning", None,
+               PERCENTAGE, diagnostic=True, requires_conf=const.CONF_WX_STORM_PROB),
+    _WxValDesc("wx_precip_prob", "precip_prob", "mdi:weather-rainy", None,
+               PERCENTAGE, diagnostic=True, requires_conf=const.CONF_WX_PRECIP_PROB),
 )
 
 
 class WxValueSensor(CoordinatorEntity, SensorEntity):
-    """A single weather value from the active source (temp/humidity/wind/…)."""
+    """A single weather value, resolved per-field across providers (failover)."""
 
     _attr_has_entity_name = True
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -536,16 +548,24 @@ class WxValueSensor(CoordinatorEntity, SensorEntity):
         self._attr_device_class = desc.device_class
         self._attr_native_unit_of_measurement = desc.unit
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"
+        if desc.diagnostic:
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)})
 
     @property
     def native_value(self) -> float | None:
-        return self._desc.getter(self.coordinator.data)
+        d = self.coordinator.data
+        return d.values.get(self._desc.field) if d else None
 
     @property
     def available(self) -> bool:
         return self.native_value is not None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        d = self.coordinator.data
+        return {"source": d.sources.get(self._desc.field) if d else None}
 
 
 class HwMirrorSensor(SensorEntity):

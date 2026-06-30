@@ -144,6 +144,14 @@ STEP_WEATHER_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_WX_TEMP): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_WX_WIND): _entity("sensor"),
         vol.Optional(const.CONF_WX_PRECIP): _entity("sensor"),
+        vol.Optional(const.CONF_WX_HUMIDITY): _entity("sensor", "humidity"),
+        vol.Optional(const.CONF_WX_PRESSURE): _entity("sensor"),
+        vol.Optional(const.CONF_WX_GUST): _entity("sensor"),
+        vol.Optional(const.CONF_WX_UV): _entity("sensor"),
+        vol.Optional(const.CONF_WX_CLOUD): _entity("sensor"),
+        vol.Optional(const.CONF_WX_DEWPOINT): _entity("sensor", "temperature"),
+        vol.Optional(const.CONF_WX_STORM_PROB): _entity("sensor"),
+        vol.Optional(const.CONF_WX_PRECIP_PROB): _entity("sensor"),
     }
 )
 
