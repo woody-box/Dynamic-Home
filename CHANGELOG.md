@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.81.1] — 2026-06-30
+
+### Changed
+- **DC · magnitudes de los biases alineadas con el legacy v4.2.** Auditando el YAML original
+  contra el port se vio que el port había **inflado casi todos los biases ×2-3** (exterior
+  efectivo 0,18→0,5 al perder el factor de aislamiento 0,6→1,0; VMC ×2; fachada ×2; umbrales del
+  freno desplazados; `apply_min_delta` 0,2→0 perdido). Se **restauran los valores legacy**
+  manteniendo el **signo ya corregido** de 0.81.0 (frío compensa). Resultado, validado en 50
+  escenarios simulados: la compensación queda en **±0,5 °C** en extremos (antes ±1,0 tocando el
+  cap), con el cap **±0,8** y el freno/tope de tendencia **±0,25** como red de seguridad, no como
+  muleta. Todo sigue siendo configurable y el preset Confort estrecha.
+- Defaults: exterior 0,5→0,3 / 0,2→0,15; `insulation_factor` 1,0→0,6; `ext_cold_threshold`
+  0→5; VMC (0,1;0,2;0,3)→(0,05;0,1;0,15); fachada 0,3→0,15; `forecast_gain` 0,1→0,08 /
+  `forecast_cap` 0,5→0,8; `trend_max_shift` 0,25→0,2; freno umbrales (0,3;0,6;1,0)→(0,2;0,3;0,5)
+  y biases (0,1;0,2;0,3)→(0,1;0,2;0,4); `apply_min_delta` 0→0,2.
+
 ## [0.81.0] — 2026-06-30
 
 ### Fixed

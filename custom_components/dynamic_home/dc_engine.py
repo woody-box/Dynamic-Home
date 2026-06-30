@@ -53,28 +53,29 @@ class DcConfig:
     max_mods_cool: float = 0.8
     # Minimum change vs the last applied setpoint before pushing a new one to the
     # thermostat (anti-jitter). 0 = always apply (the engine already quantizes).
-    apply_min_delta: float = 0.0
+    apply_min_delta: float = 0.2
 
-    # Exterior bias thresholds / magnitudes
-    ext_cold_threshold: float = 0.0    # u_frio
+    # Exterior bias thresholds / magnitudes (legacy v4.2 values; the cool branch
+    # is negated in bias_exterior so it COMPENSATES — hotter outside cools more).
+    ext_cold_threshold: float = 5.0    # u_frio
     ext_hot_threshold: float = 30.0    # u_calor
-    bias_ext_heat_strong: float = 0.5
-    bias_ext_heat_mild: float = 0.2
-    bias_ext_cool_strong: float = 0.5
-    bias_ext_cool_mild: float = 0.2
-    insulation_factor: float = 1.0     # aislamiento
+    bias_ext_heat_strong: float = 0.3
+    bias_ext_heat_mild: float = 0.15
+    bias_ext_cool_strong: float = 0.3
+    bias_ext_cool_mild: float = 0.15
+    insulation_factor: float = 0.6     # aislamiento (damps the exterior bias)
 
     # Self-bias applied when DC *consumes* a solar intent targeted at it.
     sdhb_bias_solar_gain_heat: float = -0.5
     sdhb_bias_solar_shield_cool: float = 0.5
 
     # VMC compensation bias (°C, per speed) — abs magnitudes.
-    vmc_bias_heat: tuple = (0.1, 0.2, 0.3)   # v1, v2, v3
-    vmc_bias_cool: tuple = (0.1, 0.2, 0.3)
+    vmc_bias_heat: tuple = (0.05, 0.1, 0.15)   # v1, v2, v3 (legacy v4.2)
+    vmc_bias_cool: tuple = (0.05, 0.1, 0.15)
 
     # Trend (tendencia) anticipation + brake (freno)
     trend_lead_h: float = 1.0          # fallback lead when temps unavailable
-    trend_max_shift: float = 0.25
+    trend_max_shift: float = 0.2
     # Dynamic lead: more anticipation with more thermal inertia (bigger ΔT).
     lead_base_h: float = 1.0
     lead_per_degree_h: float = 0.05
@@ -88,14 +89,14 @@ class DcConfig:
     tariff_lead_cheap_mult: float = 1.5   # cheap -> more anticipation (preheat/cool)
     tariff_lead_peak_mult: float = 0.6    # peak  -> less anticipation (avoid ramp)
     tariff_bias_c: float = 0.0            # °C base nudge (0 = off; cheap loads mass)
-    trend_deadband_cph: float = 0.1          # °C/h below which trend is ignored
-    trend_ema_alpha: float = 0.3
-    brake_thresholds: tuple = (0.3, 0.6, 1.0)  # th1, th2, th3 (°C/h)
-    brake_biases: tuple = (0.1, 0.2, 0.3)      # b1, b2, b3
+    trend_deadband_cph: float = 0.12         # °C/h below which trend is ignored
+    trend_ema_alpha: float = 0.25
+    brake_thresholds: tuple = (0.2, 0.3, 0.5)  # th1, th2, th3 (°C/h, legacy v4.2)
+    brake_biases: tuple = (0.1, 0.2, 0.4)      # b1, b2, b3
 
-    # Forecast anticipation
-    forecast_gain: float = 0.1
-    forecast_cap: float = 0.5
+    # Forecast anticipation (legacy v4.2)
+    forecast_gain: float = 0.08
+    forecast_cap: float = 0.8
     forecast_window_h: float = 6.0
 
     # Adaptive lead (learned from real ON/OFF cycles) — opt-in. Port of the v4.2
@@ -151,8 +152,8 @@ class DcConfig:
     adj_alarm_dt: float = 4.0
 
     # Facade solar-gain bias: max °C correction at full openness on sunlit facades.
-    facade_gain_heat: float = 0.3
-    facade_gain_cool: float = 0.3
+    facade_gain_heat: float = 0.15     # legacy v4.2
+    facade_gain_cool: float = 0.15
 
     # Energy (F06): estimated power (W) while the zone is calling for heat/cool,
     # used when no real power meter is configured (idle draws nothing).

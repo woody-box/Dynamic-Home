@@ -148,7 +148,8 @@ def test_base_active_vacation():
 
 
 def test_bias_exterior_heat_cold():
-    cfg = _cfg(ext_cold_threshold=0, bias_ext_heat_strong=0.5, bias_ext_heat_mild=0.2)
+    cfg = _cfg(ext_cold_threshold=0, bias_ext_heat_strong=0.5, bias_ext_heat_mild=0.2,
+               insulation_factor=1)
     assert bias_exterior(cfg, "heat", -2) == 0.5   # very cold
     assert bias_exterior(cfg, "heat", 3) == 0.2    # mild (<= 0+5)
     assert bias_exterior(cfg, "heat", 10) == 0.0   # warm enough
@@ -156,7 +157,8 @@ def test_bias_exterior_heat_cold():
 
 def test_bias_exterior_cool_hot():
     # Compensation: hotter outside -> NEGATIVE bias -> cool more (mirror of heat).
-    cfg = _cfg(ext_hot_threshold=30, bias_ext_cool_strong=0.5, bias_ext_cool_mild=0.2)
+    cfg = _cfg(ext_hot_threshold=30, bias_ext_cool_strong=0.5, bias_ext_cool_mild=0.2,
+               insulation_factor=1)
     assert bias_exterior(cfg, "cool", 32) == -0.5
     assert bias_exterior(cfg, "cool", 27) == -0.2   # >= 30-5
     assert bias_exterior(cfg, "cool", 20) == 0.0
@@ -421,7 +423,8 @@ def test_decide_window_lockout_off():
 
 
 def test_decide_heat_computes_target_and_publishes_gain():
-    cfg = _cfg(base_heat_day=22.5, step=0.5)
+    cfg = _cfg(base_heat_day=22.5, step=0.5, bias_ext_heat_strong=0.5,
+               insulation_factor=1)
     d = decide(cfg, DcInputs(hvac_mode="heat", t_ext=-5, t_int=20,
                              sun_elevation=20))
     assert d.action == "heat"
