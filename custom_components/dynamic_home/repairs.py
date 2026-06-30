@@ -38,6 +38,66 @@ REQUIRED_LABELS: dict[str, dict[str, str]] = {
     },
 }
 
+# Friendly Spanish labels for *every* configurable source per module, used by the
+# live health breakdown (:meth:`DegradedTracker.health_report`) so a user can see
+# at a glance why something reads "No disponible": configured-but-down vs simply
+# not configured. Ordered required-first. Roles absent here (pure config like the
+# facade azimuth or the bus target) are intentionally skipped.
+SOURCE_LABELS: dict[str, dict[str, str]] = {
+    const.MODULE_VMC: {
+        const.CONF_SW_PWR: "Relé de potencia",
+        const.CONF_SW_V2: "Relé V2",
+        const.CONF_SW_V3: "Relé V3",
+        const.CONF_CO2: "CO₂",
+        const.CONF_PM25: "PM2.5",
+        const.CONF_T_IN: "Temperatura interior",
+        const.CONF_T_EXT: "Temperatura exterior",
+        const.CONF_AQI: "AQI exterior",
+        const.CONF_HUM_IN: "Humedad interior",
+        const.CONF_HUM_BATH: "Humedad baño",
+        const.CONF_HUM_EXT: "Humedad exterior",
+        const.CONF_HRV_SUPPLY: "HRV impulsión",
+        const.CONF_HRV_INTAKE: "HRV toma exterior",
+        const.CONF_HRV_EXTRACT: "HRV extracción",
+        const.CONF_HRV_EXHAUST: "HRV expulsión",
+        const.CONF_VOC: "VOC",
+        const.CONF_NOX: "NOx",
+        const.CONF_HOOD_V1: "Campana V1",
+        const.CONF_HOOD_V2: "Campana V2",
+        const.CONF_HOOD_V3: "Campana V3",
+        const.CONF_POWER_METER: "Medidor de potencia",
+    },
+    const.MODULE_SHUTTER: {
+        const.CONF_COVER: "Persiana",
+        const.CONF_CLIMATE: "Clima (modo/consigna)",
+        const.CONF_DS_T_IN: "Temperatura interior",
+        const.CONF_DS_T_OUT: "Temperatura exterior",
+        const.CONF_WIND: "Viento",
+        const.CONF_RAIN: "Lluvia",
+        const.CONF_DS_ALERT: "Alerta meteo",
+        const.CONF_DS_ALERT_HAIL: "Alerta granizo",
+        const.CONF_DS_ALERT_WIND: "Alerta viento",
+        const.CONF_POWER_METER: "Medidor de potencia",
+    },
+    const.MODULE_CLIMATE: {
+        const.CONF_DC_T_INT: "Temperatura interior",
+        const.CONF_DC_T_EXT: "Temperatura exterior",
+        const.CONF_DC_CLIMATE: "Termostato (climate)",
+        const.CONF_DC_VMC: "VMC asociada",
+        const.CONF_DC_HUMIDITY: "Humedad",
+        const.CONF_DC_WEATHER: "Weather",
+        const.CONF_DC_WIND: "Viento",
+        const.CONF_DC_WINDOW: "Ventana",
+        const.CONF_DC_VALVE: "Válvula/relé real",
+        const.CONF_DC_DEMAND_HEAT: "Demanda calor",
+        const.CONF_DC_DEMAND_COOL: "Demanda frío",
+        const.CONF_DC_DEHUMIDIFIER: "Deshumidificador",
+        const.CONF_DC_ADJ_TEMP: "Temperatura adyacente",
+        const.CONF_DC_ADJ_DOOR: "Puerta adyacente",
+        const.CONF_POWER_METER: "Medidor de potencia",
+    },
+}
+
 
 class DegradedTracker:
     """Mixin that raises/clears a Repairs issue for missing required sources.
@@ -69,6 +129,45 @@ class DegradedTracker:
         """Human labels of this module's required sources that are dead."""
         labels = REQUIRED_LABELS.get(self._module, {})
         return [lbl for key, lbl in labels.items() if self._source_dead(key)]
+
+    def health_report(self) -> dict:
+        """Per-source status so a user can tell *why* something reads unavailable.
+
+        Walks every configurable source of this module (see :data:`SOURCE_LABELS`)
+        and classifies it: ``ok`` (configured and live), ``no disponible``
+        (configured but missing/renamed or ``unavailable``/``unknown``), or
+        ``sin configurar`` (optional role left blank — the usual reason a derived
+        entity never appears). Returned as plain dicts/lists so it can sit on a
+        diagnostic entity's attributes (no translation layer needed).
+        """
+        labels = SOURCE_LABELS.get(self._module, {})
+        fuentes: dict[str, str] = {}
+        sin_configurar: list[str] = []
+        no_disponibles: list[str] = []
+        for key, lbl in labels.items():
+            ent = self._hw(key)
+            if not ent:
+                sin_configurar.append(lbl)
+                continue
+            st = self.hass.states.get(ent)
+            if st is None or st.state in _DEAD_STATES:
+                fuentes[lbl] = "no disponible"
+                no_disponibles.append(lbl)
+            else:
+                fuentes[lbl] = "ok"
+        ok_n = sum(1 for v in fuentes.values() if v == "ok")
+        if no_disponibles:
+            resumen = f"{len(no_disponibles)} sin datos: " + ", ".join(no_disponibles)
+        elif fuentes:
+            resumen = f"{ok_n} fuentes OK"
+        else:
+            resumen = "sin fuentes configuradas"
+        return {
+            "resumen": resumen,
+            "fuentes": fuentes,
+            "no_disponibles": no_disponibles,
+            "sin_configurar": sin_configurar,
+        }
 
     def _update_degraded(self, missing: list[str], now_ts: float) -> bool:
         """Track the degraded state: fire on transition, raise a repair if sustained.

@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.73.1] — 2026-06-30
+
+### Added
+- **DS/DV/DC · desglose de "por qué No disponible"** en el sensor de diagnóstico
+  **Estado** (Degradado): nuevos atributos que clasifican **cada fuente** del módulo —
+  `ok`, `no disponible` (configurada pero caída/renombrada o `unavailable`) o
+  `sin configurar` (rol opcional en blanco, la causa habitual de que una entidad derivada
+  no aparezca) — más un `resumen` legible. Así, ante un "No disponible", se ve de un vistazo
+  si falta configurar la fuente o si la entidad existe pero está caída, sin adivinar.
+
+### Internal
+- `repairs.SOURCE_LABELS` (etiquetas es de todas las fuentes por módulo) +
+  `DegradedTracker.health_report()`; `DegradedBinarySensor.extra_state_attributes` lo expone.
+  Reusa el mixin F07 (sin entidades nuevas). Test: clasifica ok/no disponible/sin configurar.
+
 ## [0.73.0] — 2026-06-30
 
 ### Changed
