@@ -16,6 +16,51 @@ from dataclasses import dataclass, field
 PROTECTED = {"ov_lock", "ov_hold", "ov_ttl", "meteo_rain",
              "meteo_wind_cap", "meteo_alert", "privacy_time", "manual_hold"}
 
+# Weather-condition vocabulary (HA standard, lowercased) that counts as an alert
+# when the alert source is a condition/weather sensor (e.g. Google Weather) rather
+# than a binary_sensor. Used by ``alert_active`` so the same DS alert slots accept
+# binary, numeric (threshold) or condition-string sources interchangeably.
+ALERT_HAIL_CONDITIONS = frozenset(
+    {"hail", "lightning", "lightning-rainy", "exceptional"})
+ALERT_WIND_CONDITIONS = frozenset({"windy", "windy-variant"})
+ALERT_RAIN_CONDITIONS = frozenset({"rainy", "pouring", "snowy-rainy"})
+# Generic alert = any severe condition.
+ALERT_GENERIC_CONDITIONS = (
+    ALERT_HAIL_CONDITIONS | ALERT_WIND_CONDITIONS | ALERT_RAIN_CONDITIONS
+    | {"snowy"})
+_ALERT_CONDITIONS = {
+    "hail": ALERT_HAIL_CONDITIONS,
+    "wind": ALERT_WIND_CONDITIONS,
+    "generic": ALERT_GENERIC_CONDITIONS,
+}
+
+
+def alert_active(state, kind: str, cfg: DsConfig) -> bool:
+    """Decide whether a weather-alert source is firing, from its raw state.
+
+    One interpreter for three shapes so the DS alert slots can take a
+    ``binary_sensor``/``input_boolean`` (on/off), a numeric ``sensor`` (a
+    threshold: wind gust km/h for ``wind``, probability % otherwise) or a
+    condition/``weather`` sensor (a keyword like ``hail``/``windy``/``rainy``).
+    ``kind`` is ``"generic"``, ``"hail"`` or ``"wind"``. Unknown/empty -> False.
+    """
+    if state is None:
+        return False
+    s = str(state).strip().lower()
+    if s in ("", "unknown", "unavailable", "none"):
+        return False
+    if s in ("on", "true", "yes"):          # binary_sensor / input_boolean
+        return True
+    if s in ("off", "false", "no"):
+        return False
+    try:
+        v = float(s)
+    except ValueError:                      # textual condition keyword
+        return s in _ALERT_CONDITIONS.get(kind, ALERT_GENERIC_CONDITIONS)
+    if kind == "wind":                      # numeric: wind gust km/h
+        return cfg.alert_gust_kmh > 0 and v >= cfg.alert_gust_kmh
+    return cfg.alert_prob_pct > 0 and v >= cfg.alert_prob_pct  # probability %
+
 
 @dataclass
 class DsConfig:
@@ -77,6 +122,10 @@ class DsConfig:
     # Anticipatory thresholds on the Dynamic Weather probabilities (0 = off).
     storm_prob_alert: float = 60.0      # %: storm probability -> close (alert_pct)
     precip_prob_alert: float = 80.0     # %: rain probability -> rain protection
+    # Thresholds when an alert slot is fed a numeric sensor (e.g. Google Weather)
+    # instead of a binary_sensor: wind gust km/h and probability % (0 = off).
+    alert_gust_kmh: float = 50.0        # km/h: wind-alert slot numeric threshold
+    alert_prob_pct: float = 70.0        # %: generic/hail slot numeric threshold
 
     # Facade geometry (solar impact model)
     facade_azimuth_deg: float = 180.0   # window orientation

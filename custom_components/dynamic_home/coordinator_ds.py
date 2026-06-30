@@ -23,6 +23,7 @@ from .ds_engine import (
     DsDecision,
     DsInputs,
     DsState,
+    alert_active,
     decide_cover,
     solar_impact,
 )
@@ -163,6 +164,15 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     def _is_on(self, key: str) -> bool:
         ent = self._hw(key)
         return bool(ent) and self.hass.states.is_state(ent, "on")
+
+    def _alert_on(self, key: str, kind: str, cfg: DsConfig) -> bool:
+        """Is the alert source for ``key`` firing? Accepts a binary_sensor,
+        a numeric sensor (threshold) or a condition/weather sensor (keyword)."""
+        ent = self._hw(key)
+        if not ent:
+            return False
+        st = self.hass.states.get(ent)
+        return alert_active(st.state if st else None, kind, cfg)
 
     def _cfg(self) -> DsConfig:
         cfg = DsConfig()
@@ -311,11 +321,11 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.alert_source = "off"
             return None
         positions: list[int] = []
-        if self._is_on(const.CONF_DS_ALERT):
+        if self._alert_on(const.CONF_DS_ALERT, "generic", cfg):
             positions.append(cfg.alert_pct)
-        if self._is_on(const.CONF_DS_ALERT_HAIL):
+        if self._alert_on(const.CONF_DS_ALERT_HAIL, "hail", cfg):
             positions.append(cfg.alert_hail_pct)
-        if self._is_on(const.CONF_DS_ALERT_WIND):
+        if self._alert_on(const.CONF_DS_ALERT_WIND, "wind", cfg):
             positions.append(cfg.alert_wind_pct)
         # Auto: with no per-shutter alert sensor configured, follow the Dynamic
         # Weather module's alert if one exists (a local alert always overrides).
