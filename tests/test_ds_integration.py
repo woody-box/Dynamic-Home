@@ -72,6 +72,41 @@ async def test_external_cover_move_arms_override(hass: HomeAssistant) -> None:
     assert co.manual_pos is None                 # not re-armed when tracking is off
 
 
+async def test_dw_probabilities_and_gust_drive_ds(hass: HomeAssistant) -> None:
+    """Dynamic Weather gust -> wind cap; storm/rain probability -> alert."""
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
+    dw = const.DATA_WEATHER
+
+    # No DW data -> no anticipatory alert.
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {}}
+    co._alert_hold_until = 0.0
+    assert co._weather_alert(cfg, 1000.0) is None
+
+    # High storm probability -> protective close (alert_pct).
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"storm_prob": 70}}
+    assert co._weather_alert(cfg, 1000.0) == cfg.alert_pct
+
+    # High rain probability -> rain protection position.
+    co._alert_hold_until = 0.0
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"precip_prob": 90}}
+    assert co._weather_alert(cfg, 2000.0) == cfg.rain_close_pct
+
+    # Both below their thresholds -> nothing.
+    co._alert_hold_until = 0.0
+    hass.data[const.DOMAIN][dw] = {"alert": False,
+                                   "values": {"storm_prob": 10, "precip_prob": 10}}
+    assert co._weather_alert(cfg, 3000.0) is None
+
+    # A strong gust caps the opening even with no local wind sensor.
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"gust": 80}}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "meteo_wind_cap"
+
+
 # --- F17: anticipatory weather-alert protection ---
 ALERTS = {
     **SHUTTER,

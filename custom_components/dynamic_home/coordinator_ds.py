@@ -326,8 +326,21 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.alert_source = ("local" if local_alert
                              else "dynamic_weather" if const.DATA_WEATHER in
                              self.hass.data.get(const.DOMAIN, {}) else "none")
-        if not local_alert and wx.get("alert"):
-            positions.append(cfg.alert_pct)
+        if not local_alert:
+            if wx.get("alert"):
+                positions.append(cfg.alert_pct)
+            # Anticipatory protection from the Dynamic Weather probabilities: a high
+            # storm chance closes (alert_pct), a high rain chance takes the rain
+            # protection position — both before the phenomenon, with the same hold.
+            wxv = wx.get("values") or {}
+            storm = wxv.get("storm_prob")
+            rain = wxv.get("precip_prob")
+            if (cfg.storm_prob_alert > 0 and storm is not None
+                    and storm >= cfg.storm_prob_alert):
+                positions.append(cfg.alert_pct)
+            if (cfg.precip_prob_alert > 0 and rain is not None
+                    and rain >= cfg.precip_prob_alert):
+                positions.append(cfg.rain_close_pct)
         if positions:
             self._last_alert_pos = min(positions)        # most protective wins
             self._alert_hold_until = now_ts + cfg.alert_hold_min * 60.0
@@ -506,14 +519,21 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.manual_pos = None
             self.manual_until = 0.0
 
+        wxv = ((self.hass.data.get(const.DOMAIN, {}).get(const.DATA_WEATHER) or {})
+               .get("values") or {})
+        gust = wxv.get("gust")
         ins = DsInputs(
             hvac_mode=hvac,
             t_in=t_in,
             t_out=t_out,
+            # Weather protection runs when a local wind/rain sensor is set, or when
+            # Dynamic Weather supplies a gust (so it protects even with no local wind).
             weather_protect_enabled=(self.weather_protect and bool(
-                self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN))),
+                self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN)
+                or gust is not None)),
             raining=self._is_on(const.CONF_RAIN),
             wind=self._num(const.CONF_WIND),
+            gust=gust,
             current_pos=current_pos,
             dawn_pos=dawn_pos,
             night_pos=night_pos,

@@ -452,6 +452,20 @@ def test_wind_cap_limits_opening():
     assert d.pos == 30 and d.reason == "meteo_wind_cap"
 
 
+def test_wind_cap_reacts_to_gust():
+    # The cap reacts to the worst of steady wind and gust: a strong gust caps
+    # even with the mean wind below the limit (no local wind sensor needed).
+    cfg = _cfg(wind_limit_kmh=40, wind_cap_span_kmh=20, weather_max_open_pct=30,
+               slew_enabled=False)
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(weather_protect_enabled=True, wind=10, gust=60))
+    assert d.pos == 30 and d.reason == "meteo_wind_cap"
+    # Calm gust, calm wind -> no cap.
+    d2 = decide_cover(cfg, DsState(),
+                      DsInputs(weather_protect_enabled=True, wind=10, gust=20))
+    assert d2.reason != "meteo_wind_cap"
+
+
 def test_wind_cap_hysteresis():
     cfg = _cfg(wind_limit_kmh=40, wind_cap_hyst_kmh=5)
     st = DsState()

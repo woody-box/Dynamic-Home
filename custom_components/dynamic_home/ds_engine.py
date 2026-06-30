@@ -74,6 +74,9 @@ class DsConfig:
     alert_hail_pct: int = 0             # hail/storm (fully closed protects best)
     alert_wind_pct: int = 50            # wind (a mid position protects the slats)
     alert_hold_min: float = 30.0        # keep protecting after the alert clears
+    # Anticipatory thresholds on the Dynamic Weather probabilities (0 = off).
+    storm_prob_alert: float = 60.0      # %: storm probability -> close (alert_pct)
+    precip_prob_alert: float = 80.0     # %: rain probability -> rain protection
 
     # Facade geometry (solar impact model)
     facade_azimuth_deg: float = 180.0   # window orientation
@@ -131,6 +134,7 @@ class DsInputs:
     weather_protect_enabled: bool = False
     raining: bool = False
     wind: float | None = None
+    gust: float | None = None           # wind gust (e.g. from Dynamic Weather)
 
     # Privacy (time window resolved by the caller)
     privacy_active: bool = False
@@ -294,14 +298,25 @@ def geo_shade_pos(cfg: DsConfig, sun_azimuth: float | None,
     return max(cfg.summer_min_open_pct, min(100, quant))
 
 
+def effective_wind(ins: DsInputs) -> float | None:
+    """The wind the cap reacts to: the worst of the steady wind and the gust.
+
+    Gusts damage slats/awnings more than the average, so a strong gust from
+    Dynamic Weather triggers protection even when the mean wind is below the limit.
+    """
+    vals = [v for v in (ins.wind, ins.gust) if v is not None]
+    return max(vals) if vals else None
+
+
 def compute_wind_cap(cfg: DsConfig, ins: DsInputs) -> int:
     """Wind cap percentage (100 = no cap). Port of the wind-cap ramp."""
-    if not ins.weather_protect_enabled or ins.wind is None:
+    w = effective_wind(ins)
+    if not ins.weather_protect_enabled or w is None:
         return 100
-    if ins.wind < cfg.wind_limit_kmh:
+    if w < cfg.wind_limit_kmh:
         return 100
     if cfg.wind_cap_span_kmh > 0:
-        ratio = (ins.wind - cfg.wind_limit_kmh) / cfg.wind_cap_span_kmh
+        ratio = (w - cfg.wind_limit_kmh) / cfg.wind_cap_span_kmh
         ratio = max(0.0, min(1.0, ratio))
         raw = 100 - ratio * (100 - cfg.weather_max_open_pct)
         raw = max(cfg.weather_max_open_pct, min(100, raw))
@@ -311,14 +326,15 @@ def compute_wind_cap(cfg: DsConfig, ins: DsInputs) -> int:
 
 def update_wind_cap_active(state: DsState, cfg: DsConfig, ins: DsInputs) -> bool:
     """Wind-cap activation with hysteresis (start vs start-hyst release)."""
-    if not ins.weather_protect_enabled or ins.wind is None:
+    w = effective_wind(ins)
+    if not ins.weather_protect_enabled or w is None:
         state.wind_cap_active = False
         return False
     if state.wind_cap_active:
-        if ins.wind < cfg.wind_limit_kmh - cfg.wind_cap_hyst_kmh:
+        if w < cfg.wind_limit_kmh - cfg.wind_cap_hyst_kmh:
             state.wind_cap_active = False
     else:
-        if ins.wind >= cfg.wind_limit_kmh:
+        if w >= cfg.wind_limit_kmh:
             state.wind_cap_active = True
     return state.wind_cap_active
 

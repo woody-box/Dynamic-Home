@@ -4,6 +4,30 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.79.0] — 2026-06-30
+
+### Added
+- **DS aprovecha los datos ricos de Dynamic Weather (0.78.0).** Lo que antes solo se veía,
+  ahora **actúa**:
+  - **Ráfagas → protección de viento.** El tope de viento de las persianas reacciona ahora al
+    **peor** valor entre el viento medio (sensor local) y la **ráfaga** que publica Dynamic
+    Weather. Una ráfaga fuerte protege aunque la media esté por debajo del límite — **y funciona
+    aunque no tengas sensor de viento local** (basta la ráfaga de DW).
+  - **Probabilidad de tormenta/lluvia → alerta anticipada.** Con probabilidad de **tormenta** ≥
+    umbral, la persiana **cierra** (posición de alerta); con probabilidad de **lluvia** ≥ umbral,
+    va a la **posición de protección de lluvia** — *antes* de que ocurra, con el mismo *hold* que
+    el resto de avisos. Solo en modo automático (si configuras sensores de alerta locales, mandan
+    ellos).
+- Dos umbrales configurables en DS → Avisos meteo: **Aviso prob. tormenta (%)** (60 por defecto)
+  y **Aviso prob. lluvia (%)** (80). 0 = desactivado.
+
+### Internal
+- `DsConfig.storm_prob_alert`/`precip_prob_alert`; `DsInputs.gust`; `ds_engine.effective_wind`
+  (max viento/ráfaga) en `compute_wind_cap`/`update_wind_cap_active`. `coordinator_ds` lee
+  `DATA_WEATHER.values` (gust → cap + habilita weather_protect; storm/precip_prob → `_weather_alert`).
+  Opciones `storm_prob_alert`/`precip_prob_alert`. Tests motor (ráfaga capa) + integración
+  (probabilidades arman alerta, ráfaga sin sensor local capa).
+
 ## [0.78.0] — 2026-06-30
 
 ### Added
