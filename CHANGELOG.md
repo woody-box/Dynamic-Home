@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.73.0] — 2026-06-30
+
+### Changed
+- **DS · el amanecer gradual cede ante el escudo de sol directo** (fachadas al este/refresco):
+  en modo refresco, con sol incidiendo en la fachada y el **"Escudo de sol directo"** activado,
+  la rampa de amanecer ya **no abre** la persiana — cede al escudo solar, que la protege por
+  geometría desde el primer rayo. Evita el ciclo "abre a 100% y vuelve a cerrar" en cuanto el sol
+  empieza a calentar. **Invierno (calefacción) intacto**: el amanecer sigue abriendo para ganancia
+  solar/luz; sin sol en la fachada o sin el escudo activado, la rampa abre como siempre (legacy).
+
+### Internal
+- `ds_engine.decide_cover`: nuevo `sun_protect = is_cool and impact > 0 and sun_gain_shield`
+  añadido al gate del `dawn_ramp` (junto a `cool_protect`). Tests: cede con el escudo y sol antes
+  de que caliente; sigue abriendo sin el opt-in.
+
 ## [0.72.0] — 2026-06-29
 
 ### Added

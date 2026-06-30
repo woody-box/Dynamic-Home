@@ -346,6 +346,13 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # yields to this, so the morning opening doesn't let the sun/heat in. Winter
     # is unaffected — a gradual sunrise still gives morning light/solar gain.
     cool_protect = is_cool and hot_out and (impact > 0 or ins.heat_shield)
+    # Direct sun already striking a cooling facade with the direct-sun shield
+    # armed: the morning ramp yields even before the air outside turns hot, so it
+    # never opens into the rising sun only to claw back closed minutes later (the
+    # east-facade dawn problem). The shield branch below then shades it (geometric
+    # or fixed). Heating season and facades without sun/opt-in keep the ramp, so a
+    # winter sunrise still opens for light/solar gain.
+    sun_protect = is_cool and impact > 0 and ins.sun_gain_shield
 
     # 1) Override (lock / hold / ttl)
     if ins.override_mode == "lock":
@@ -378,9 +385,10 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         pos, reason = cfg.privacy_pos_pct, "privacy_time"
     # 4) Gradual sunrise ramp (F19): drives the morning opening in steps. Yields
     # to override/rain/privacy above; also yields to cooling-season protection
-    # (cool_protect) so it never opens into the morning sun/heat. The coordinator
-    # only sets dawn_pos while the ramp is active (never below the current pos).
-    elif ins.dawn_pos is not None and not cool_protect:
+    # (cool_protect / sun_protect) so it never opens into the morning sun/heat.
+    # The coordinator only sets dawn_pos while the ramp is active (never below
+    # the current pos).
+    elif ins.dawn_pos is not None and not cool_protect and not sun_protect:
         pos, reason = ins.dawn_pos, "dawn_ramp"
     # 5) Seasonal night insulation (F16): owns the night strategy when enabled.
     # Opening to vent the thermal mass reads night_purge; closing to insulate or
