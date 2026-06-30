@@ -245,6 +245,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("alert_hail_pct", "Hail protect (%)", "Protección granizo (%)"),
             _v("alert_wind_pct", "Wind protect (%)", "Protección viento (%)"),
             _v("alert_hold_min", "Alert hold (min)", "Hold alerta (min)"),
+            _v("storm_prob_alert", "Storm probability alert (%)",
+               "Aviso prob. tormenta (%)"),
+            _v("precip_prob_alert", "Rain probability alert (%)",
+               "Aviso prob. lluvia (%)"),
         ],
         "dawn": [
             _v("dawn_step_pct", "Sunrise step (%)", "Paso amanecer (%)"),
