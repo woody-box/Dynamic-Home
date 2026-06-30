@@ -1486,6 +1486,7 @@
       "position": {"name": "Position"},
       "target_position": {"name": "Target position"},
       "reason": {"name": "Reason"},
+      "reason_human": {"name": "Reason (text)"},
       "ds_indoor_temp": {"name": "Indoor temperature"},
       "ds_outdoor_temp": {"name": "Outdoor temperature"},
       "ds_climate_mode": {"name": "Climate mode"},
