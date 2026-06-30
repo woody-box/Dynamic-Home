@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.77.0] — 2026-06-30
+
+### Added
+- **Dynamic Weather · sensores individuales del proveedor activo.** Además del `weather`,
+  la alerta y la fuente activa, DW ahora expone cada dato por separado, tomado del **proveedor
+  activo (con failover)**: **Temperatura exterior, Humedad exterior, Presión, Velocidad del
+  viento, Dirección del viento** y **Precipitación** (esta última solo si configuras un sensor
+  de lluvia). Así puedes usar el dato **directamente** en un dashboard o automatización, y si
+  el primer proveedor cae, el sensor sigue dando valor desde el segundo/tercero — sin tener que
+  apuntar a la entidad del proveedor concreto. Cada sensor queda "no disponible" si el proveedor
+  activo no aporta ese dato.
+
+### Internal
+- `WxData` gana `wind_bearing`/`precip`; el coordinador lee `wind_bearing` del proveedor y
+  `has_precip()`. `_WX_VALUES` + `WxValueSensor` (CoordinatorEntity, `MEASUREMENT`, device_class
+  por magnitud, `available` = dato presente) en la rama `MODULE_WEATHER`. Traducciones es/en/
+  strings. Test de integración (sensores presentes, valores del activo, siguen al failover).
+
 ## [0.76.0] — 2026-06-30
 
 ### Added

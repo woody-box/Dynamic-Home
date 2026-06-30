@@ -88,6 +88,39 @@ async def test_weather_entities_and_primary_active(hass: HomeAssistant) -> None:
     assert co.data.condition == "sunny" and co.data.temperature == 20.0
 
 
+async def test_weather_value_sensors_follow_active_source(
+        hass: HomeAssistant) -> None:
+    """Individual value sensors expose the active provider and survive failover."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = er.async_get(hass)
+
+    def eid(key):
+        return reg.async_get_entity_id("sensor", const.DOMAIN,
+                                       f"{entry.entry_id}_{key}")
+
+    # The value sensors exist; precip is absent (no raw precip source configured).
+    for key in ("wx_temperature", "wx_humidity", "wx_pressure", "wx_wind",
+                "wx_wind_bearing"):
+        assert eid(key) is not None
+    assert eid("wx_precip") is None
+
+    # Values come from the primary source; missing attrs -> unavailable.
+    assert float(hass.states.get(eid("wx_temperature")).state) == 20.0
+    assert float(hass.states.get(eid("wx_humidity")).state) == 50.0
+    assert float(hass.states.get(eid("wx_wind")).state) == 10.0
+    assert hass.states.get(eid("wx_pressure")).state == "unavailable"
+
+    # Primary down -> the value sensors follow the secondary (temp 19.0).
+    hass.states.async_set("weather.primary", "unavailable")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.active_label == "weather.secondary"
+    assert float(hass.states.get(eid("wx_temperature")).state) == 19.0
+
+
 async def test_weather_falls_back_to_secondary_then_sensors(
         hass: HomeAssistant) -> None:
     _seed(hass)
