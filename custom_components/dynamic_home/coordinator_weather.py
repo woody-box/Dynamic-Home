@@ -36,6 +36,8 @@ class WxData:
     humidity: float | None
     pressure: float | None
     wind_kmh: float | None
+    wind_bearing: float | None = None
+    precip: float | None = None
 
 
 class WxCoordinator(DataUpdateCoordinator):
@@ -79,6 +81,9 @@ class WxCoordinator(DataUpdateCoordinator):
     def has_raw(self) -> bool:
         return bool(self._hw(const.CONF_WX_TEMP))
 
+    def has_precip(self) -> bool:
+        return bool(self._hw(const.CONF_WX_PRECIP))
+
     def _source_ok(self, entity_id: str, now_ts: float, cfg: WxConfig) -> bool:
         st = self.hass.states.get(entity_id)
         if st is None or st.state in _UNAVAILABLE:
@@ -97,7 +102,7 @@ class WxCoordinator(DataUpdateCoordinator):
         idx = pick_source(avail)
 
         label, active_entity = "none", None
-        condition = temperature = humidity = pressure = wind = None
+        condition = temperature = humidity = pressure = wind = bearing = None
         if idx is not None and idx < len(sources):
             active_entity = sources[idx]
             label = active_entity
@@ -108,6 +113,7 @@ class WxCoordinator(DataUpdateCoordinator):
             humidity = a.get("humidity")
             pressure = a.get("pressure")
             wind = a.get("wind_speed")
+            bearing = a.get("wind_bearing")
         elif idx is not None:                       # raw-sensor fallback
             label = "sensors"
             temperature = self._num(const.CONF_WX_TEMP)
@@ -135,7 +141,8 @@ class WxCoordinator(DataUpdateCoordinator):
             active_label=label, active_entity=active_entity,
             alert=self.alert_active, condition=condition,
             temperature=_f(temperature), humidity=_f(humidity),
-            pressure=_f(pressure), wind_kmh=_f(wind))
+            pressure=_f(pressure), wind_kmh=_f(wind),
+            wind_bearing=_f(bearing), precip=_f(precip))
 
 
 def _f(v) -> float | None:
