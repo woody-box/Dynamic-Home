@@ -270,10 +270,13 @@ def bias_exterior(cfg: DcConfig, hvac: str, t_ext: float | None) -> float:
             return cfg.bias_ext_heat_mild * ais
         return 0.0
     if hvac == "cool":
+        # Compensation, symmetric with heating: the hotter it is outside, the more
+        # heat leaks in, so push the cooling setpoint DOWN (negative bias) to keep
+        # up — never UP, which would ease cooling exactly when it's hottest.
         if t_ext >= cfg.ext_hot_threshold:
-            return cfg.bias_ext_cool_strong * ais
+            return -cfg.bias_ext_cool_strong * ais
         if t_ext >= cfg.ext_hot_threshold - 5:
-            return cfg.bias_ext_cool_mild * ais
+            return -cfg.bias_ext_cool_mild * ais
         return 0.0
     return 0.0
 
@@ -650,6 +653,13 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
     b_trend = trend_bias(cfg, ins.trend_cph, lead)
     b_brake = brake_bias(cfg, ins.hvac_mode, ins.trend_cph)
     b_forecast = forecast_bias(cfg, ins.hvac_mode, ins.t_ext, ins.forecast_temp)
+    # Don't coast on a milder forecast while the room is still behind the base:
+    # the forecast may only EASE (cool less / heat less), never when overheating
+    # (cool) or undercooling (heat) right now. Reaching comfort beats anticipating.
+    if ins.t_int is not None and (
+            (ins.hvac_mode == "cool" and b_forecast > 0 and ins.t_int > base)
+            or (ins.hvac_mode == "heat" and b_forecast < 0 and ins.t_int < base)):
+        b_forecast = 0.0
     b_tariff = tariff_bias(cfg, ins.hvac_mode, ins.tariff_state)
     mods = (b_ext + b_vmc + b_trend + b_brake + b_forecast + b_tariff
             + ins.extra_bias)

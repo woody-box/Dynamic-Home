@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.81.0] — 2026-06-30
+
+### Fixed
+- **DC · el bias exterior de frío iba al revés.** En calefacción, cuanto más frío hace fuera
+  más calienta (compensa las pérdidas); en refrigeración hacía **lo contrario** — cuanto más
+  calor fuera, **enfriaba menos** (subía la consigna), justo cuando más aprieta. Ahora **compensa
+  de forma simétrica**: más calor fuera → consigna **baja** → **enfría más**. Esto quita la
+  desviación de ~+1 °C que mantenía la sala caldeada en pleno calor.
+
+### Changed
+- **DC · el forecast no aplaza el frío si la sala está caliente.** La anticipación por previsión
+  (aflojar porque va a refrescar) ya **no actúa mientras la sala está por encima de la base** en
+  frío (ni por debajo en calor): primero llegar a consigna, luego anticipar. Antes, en las tardes
+  de verano, sumaba al "enfría menos".
+
+### Internal
+- `dc_engine.bias_exterior` (rama cool negada, compensación); gate del `forecast_bias` en
+  `decide` por `t_int` vs `base`. Tests motor actualizados (signo cool) + gate del forecast.
+
 ## [0.80.0] — 2026-06-30
 
 ### Changed
