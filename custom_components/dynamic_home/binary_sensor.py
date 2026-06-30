@@ -241,6 +241,13 @@ class DegradedBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def is_on(self) -> bool:
         return self.coordinator.degraded
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        # Per-source breakdown so the user can see *why* something is unavailable
+        # (configured-but-down vs simply not configured) without guessing.
+        report = getattr(self.coordinator, "health_report", None)
+        return report() if report else {}
+
 
 class InSunBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """DS: ON when direct sun is reaching this facade (impact > 0).

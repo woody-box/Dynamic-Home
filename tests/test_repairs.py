@@ -226,3 +226,26 @@ async def test_ds_cover_degrades_and_recovers(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert co.degraded is False
     assert reg.async_get_issue(const.DOMAIN, co._issue_id) is None
+
+
+async def test_health_report_classifies_sources(hass: HomeAssistant) -> None:
+    # The cover is configured (live); every other DS source is left blank.
+    entry = await _add_ds(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    rep = co.health_report()
+    # Configured + live -> ok.
+    assert rep["fuentes"]["Persiana"] == "ok"
+    assert "Persiana" not in rep["no_disponibles"]
+    # Optional roles left blank -> "sin configurar", never reported as a problem.
+    assert "Viento" in rep["sin_configurar"]
+    assert "Lluvia" in rep["sin_configurar"]
+
+    # Cover goes unavailable -> configured-but-down, surfaced as no disponible.
+    hass.states.async_set("cover.salon", "unavailable")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    rep = co.health_report()
+    assert rep["fuentes"]["Persiana"] == "no disponible"
+    assert "Persiana" in rep["no_disponibles"]
+    assert rep["resumen"].startswith("1 sin datos")
