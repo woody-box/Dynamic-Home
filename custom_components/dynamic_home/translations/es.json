@@ -1338,6 +1338,10 @@
       "title": "{name}: riesgo de moho sostenido",
       "description": "La zona \"{name}\" ha tenido una humedad relativa alta de forma sostenida (índice de moho {index} h). Se solicita secado por ventilación cuando el aire exterior está más seco y se enciende un deshumidificador (si está configurado). Considera ventilar la estancia o revisar fuentes de humedad."
     },
+    "cond_unprotected": {
+      "title": "{name}: refrigerando sin protección anticondensación de superficie",
+      "description": "La zona \"{name}\" está refrigerando una superficie fría (suelo/techo radiante) sin un sensor de temperatura de agua/suelo. El chequeo por aire (punto de rocío) no es fiable aquí: puede marcar \"seco\" mientras la superficie fría ya está condensando. Añade una fuente \"Temperatura de agua/suelo radiante\" (Configurar) para una protección real, o asume el riesgo si tu instalación no puede condensar."
+    },
     "filter_due": {
       "title": "{name}: filtro pendiente de cambio",
       "description": "La VMC \"{name}\" ha alcanzado el umbral de vida del filtro (queda {pct}% de {life} h). Cambia o limpia el filtro y luego pulsa su botón \"Reset filter hours\" (o llama al servicio dynamic_home.reset_filter) para borrar este aviso."

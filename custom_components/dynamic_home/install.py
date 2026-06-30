@@ -66,6 +66,12 @@ EMISSIONS: dict[str, tuple[str, str, str]] = {
     "ducts_cooling": ("Ducted air (cooling)", "Conductos (frío)", "low"),
 }
 
+# Emitters that cool through a chilled surface, where condensation forms on the
+# surface itself (radiant floor/ceiling). For these, an air-only dew check is a
+# false sense of security — they want a floor/water temperature sensor.
+COLD_SURFACE_EMITTERS = frozenset({"underfloor", "ceiling_radiant",
+                                   "radiant_cooling"})
+
 # Compressor-driven generators (heat pumps).
 HEATPUMPS = frozenset({"heatpump_air_water", "heatpump_geothermal",
                        "heatpump_air_air"})
@@ -79,6 +85,11 @@ def is_generator(gen: str) -> bool:
 
 def is_emission(emission: str) -> bool:
     return emission in EMISSIONS
+
+
+def is_cold_surface(emission: str | None) -> bool:
+    """Whether this emitter cools via a chilled surface (radiant floor/ceiling)."""
+    return emission in COLD_SURFACE_EMITTERS
 
 
 def forced_individual(gen: str) -> bool:

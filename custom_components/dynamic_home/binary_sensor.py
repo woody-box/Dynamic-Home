@@ -143,8 +143,22 @@ class DewRiskBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):
             identifiers={(const.DOMAIN, entry.entry_id)})
 
     @property
+    def available(self) -> bool:
+        # Don't show a reassuring "Dry" we can't back up: a cold-surface zone
+        # cooling without a floor/water temp has no real anti-condensation
+        # protection. Mark it unavailable (a Repairs warning explains why).
+        return not self.coordinator.cond_unprotected
+
+    @property
     def is_on(self) -> bool:
         return self.coordinator.dew_risk_active
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "proteccion": self.coordinator.cond_protection,
+            "sin_proteccion_superficie": self.coordinator.cond_unprotected,
+        }
 
 
 class RealDemandBinarySensor(CoordinatorEntity[DcCoordinator], BinarySensorEntity):

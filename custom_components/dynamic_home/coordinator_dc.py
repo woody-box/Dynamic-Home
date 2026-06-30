@@ -117,6 +117,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.cond_spread_real: float | None = None
         self.cond_margin_corrected: float | None = None
         self._cond_margin_set: float = 0.3
+        self._cond_issue_id = f"cond_unprot_{entry.entry_id}"
         # Energy (F06): cumulative kWh while calling for heat/cool (real or est.).
         self.energy_kwh = 0.0
         self.power_w = 0.0              # F06/REQ-ENE-5: instantaneous power (W)
@@ -603,6 +604,45 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         """Whether a floor/water temp is configured (cold-surface condensation)."""
         return bool(self._hw(const.CONF_DC_WATER_TEMP))
 
+    @property
+    def cond_protection(self) -> str:
+        """Condensation protection level: surface / air / none.
+
+        ``surface`` = a floor/water temp drives the cold-surface check (real);
+        ``air`` = only an indoor humidity source (air-based, weak); ``none`` =
+        nothing to compute a dew point with.
+        """
+        if self.has_water():
+            return "surface"
+        if self._hw(const.CONF_DC_HUMIDITY):
+            return "air"
+        return "none"
+
+    @property
+    def cond_unprotected(self) -> bool:
+        """True when this zone cools a cold surface with no surface protection.
+
+        Option A: only flag radiant cold-surface emitters (underfloor/ceiling/
+        radiant-cooling) or an *undeclared* emitter (we can't rule it out). A
+        declared non-radiant zone (split/fan-coil/ducts) is fine on the air check.
+        """
+        if self.has_water() or self.hvac_mode != "cool":
+            return False
+        emission = self.entry.options.get(const.CONF_EMISSION)
+        return emission is None or install.is_cold_surface(emission)
+
+    def _update_cond_warning(self) -> None:
+        """Raise/clear the 'cooling without surface anti-condensation' repair."""
+        if self.cond_unprotected:
+            ir.async_create_issue(
+                self.hass, const.DOMAIN, self._cond_issue_id,
+                is_fixable=False, severity=ir.IssueSeverity.WARNING,
+                translation_key=const.ISSUE_COND_UNPROTECTED,
+                translation_placeholders={"name": self.entry.title},
+                learn_more_url=const.LEARN_MORE_URL)
+        else:
+            ir.async_delete_issue(self.hass, const.DOMAIN, self._cond_issue_id)
+
     def _mold_step(self, cfg: DcConfig, rh: float | None, now_ts: float) -> None:
         """Integrate the index, flip the hysteresis latch and arm/disarm actions."""
         if self._mold_ts is not None:
@@ -721,6 +761,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     def clear_mold(self) -> None:
         """Remove the mold repair issue and bus request (called on unload)."""
         ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
+        ir.async_delete_issue(self.hass, const.DOMAIN, self._cond_issue_id)
         self.hub.clear(self._mold_source)
 
     def clear_published(self) -> None:
@@ -926,6 +967,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.cond_spread_real = None
             self.cond_margin_corrected = None
         self._cond_margin_set = cfg.cond_margin_c
+        self._update_cond_warning()
 
         # Energy (F06): integrate before the decision (uses the demand signal).
         self._accumulate_energy(cfg, now_ts)

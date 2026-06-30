@@ -132,6 +132,66 @@ async def test_cold_surface_condensation_breakdown(hass: HomeAssistant) -> None:
     assert co.dew_risk_active is False
 
 
+async def test_cooling_without_surface_sensor_warns(hass: HomeAssistant) -> None:
+    """Radiant zone cooling without a floor temp -> warning + honest binary."""
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.helpers import issue_registry as ir
+    _seed(hass)
+    hass.states.async_set("sensor.salon_rh", "60")
+    # No floor/water temp; emitter declared as radiant underfloor (F26 -> options).
+    data = {**CLIMATE, const.CONF_DC_HUMIDITY: "sensor.salon_rh"}
+    opts = {const.CONF_GENERATOR: "heatpump_air_water",
+            const.CONF_EMISSION: "underfloor"}
+    entry = await _add_opts(hass, data, "Salon", opts)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.COOL}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    # Air-only protection on a cold surface -> flagged, repair raised, the binary
+    # refuses to claim "dry" (unavailable).
+    assert co.cond_protection == "air"
+    assert co.cond_unprotected is True
+    assert ir.async_get(hass).async_get_issue(
+        const.DOMAIN, co._cond_issue_id) is not None
+    eid = er.async_get(hass).async_get_entity_id(
+        "binary_sensor", const.DOMAIN, f"{entry.entry_id}_dew_risk")
+    assert hass.states.get(eid).state == "unavailable"
+
+    # Leaving cooling -> nothing to protect -> warning cleared.
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.HEAT}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.cond_unprotected is False
+    assert ir.async_get(hass).async_get_issue(
+        const.DOMAIN, co._cond_issue_id) is None
+
+
+async def test_cooling_non_radiant_emitter_not_warned(hass: HomeAssistant) -> None:
+    """A declared non-radiant emitter (split) is fine on the air check -> no warn."""
+    from homeassistant.helpers import issue_registry as ir
+    _seed(hass)
+    hass.states.async_set("sensor.salon_rh", "60")
+    data = {**CLIMATE, const.CONF_DC_HUMIDITY: "sensor.salon_rh"}
+    opts = {const.CONF_GENERATOR: "heatpump_air_air", const.CONF_EMISSION: "split"}
+    entry = await _add_opts(hass, data, "Salon", opts)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await hass.services.async_call(
+        "climate", "set_hvac_mode",
+        {"entity_id": "climate.salon", "hvac_mode": HVACMode.COOL}, blocking=True)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.cond_protection == "air"
+    assert co.cond_unprotected is False
+    assert ir.async_get(hass).async_get_issue(
+        const.DOMAIN, co._cond_issue_id) is None
+
+
 async def test_full_triangle_dc_drives_ds(hass: HomeAssistant) -> None:
     """DC (cool) -> bus request_solar_shield -> DS cover clamps to 30%."""
     _seed(hass)
