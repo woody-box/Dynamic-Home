@@ -33,8 +33,8 @@ def test_apply_scalar_and_tuple_options():
         "brake_thresholds_3": 1.5,
     }, const.MODULE_CLIMATE)
     assert cfg.base_heat_day == 21.0
-    assert cfg.vmc_bias_heat == (0.1, 0.55, 0.3)
-    assert cfg.brake_thresholds == (0.3, 0.6, 1.5)
+    assert cfg.vmc_bias_heat == (0.05, 0.55, 0.15)
+    assert cfg.brake_thresholds == (0.2, 0.3, 1.5)
 
 
 def test_apply_ignores_unknown_keys_and_keeps_defaults():
