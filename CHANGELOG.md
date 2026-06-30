@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.75.0] — 2026-06-30
+
+### Added
+- **DC · protección de condensación por superficie fría** (suelo radiante refrescante).
+  Nueva entrada opcional **"Temperatura de agua/suelo radiante"**: con ella, el riesgo de
+  condensación se evalúa contra la **superficie fría real** (el suelo ≈ Tª del agua), no
+  contra el aire — que es donde de verdad condensa. Nuevo **margen de seguridad
+  configurable** (`Margen de seguridad superficie`, 0,3 °C por defecto) que absorbe el
+  error de la fórmula de Magnus (presión) y de los sensores: el riesgo salta cuando
+  `(suelo − rocío) < margen`. Tres sensores nuevos para verlo: **Temperatura de suelo**,
+  **Desvío real** (suelo − rocío) y **Margen de condensación** (corregido = desvío − margen;
+  negativo ⇒ húmedo ⇒ zona parada), este último con el desglose completo en atributos.
+- **Compatibilidad**: sin configurar la Tª de suelo, el riesgo sigue como hasta ahora
+  (comparación con el aire, `dew_spread_min`).
+
+### Internal
+- `CONF_DC_WATER_TEMP`; `DcConfig.cond_margin_c=0.3`; `dew_risk(..., floor_temp)` con rama
+  de superficie fría. `coordinator_dc` calcula `floor_temp_c`/`cond_spread_real`/
+  `cond_margin_corrected` y `has_water()`. `_DC_COND_SENSORS` (gated). Opción `cond_margin_c`
+  en categoría condensación. Traducciones es/en/strings (paridad). Tests motor + integración.
+
 ## [0.74.0] — 2026-06-30
 
 ### Added

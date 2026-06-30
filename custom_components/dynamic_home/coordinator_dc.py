@@ -110,6 +110,13 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._prev_winner: str | None = None
         self.dew_point_c: float | None = None   # observability
         self.dew_risk_active = False
+        # Condensation breakdown (radiant cooling, when a floor/water temp is set):
+        # floor temp, real spread (floor − dew point), and corrected margin
+        # (spread − safety margin). Corrected < 0 => wet => zone stopped.
+        self.floor_temp_c: float | None = None
+        self.cond_spread_real: float | None = None
+        self.cond_margin_corrected: float | None = None
+        self._cond_margin_set: float = 0.3
         # Energy (F06): cumulative kWh while calling for heat/cool (real or est.).
         self.energy_kwh = 0.0
         self.power_w = 0.0              # F06/REQ-ENE-5: instantaneous power (W)
@@ -592,6 +599,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         """Whether the mold index can be computed (needs an indoor RH source)."""
         return bool(self._hw(const.CONF_DC_HUMIDITY))
 
+    def has_water(self) -> bool:
+        """Whether a floor/water temp is configured (cold-surface condensation)."""
+        return bool(self._hw(const.CONF_DC_WATER_TEMP))
+
     def _mold_step(self, cfg: DcConfig, rh: float | None, now_ts: float) -> None:
         """Integrate the index, flip the hysteresis latch and arm/disarm actions."""
         if self._mold_ts is not None:
@@ -903,7 +914,18 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.hvac_mode = co if co in ("heat", "cool") else "off"
 
         self.dew_point_c = dew_point(t_int, rh)
-        self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh)
+        self.floor_temp_c = self._num(const.CONF_DC_WATER_TEMP)
+        self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh,
+                                        self.floor_temp_c)
+        # Surface-based breakdown for the card (only meaningful with a floor temp).
+        if self.floor_temp_c is not None and self.dew_point_c is not None:
+            self.cond_spread_real = round(self.floor_temp_c - self.dew_point_c, 2)
+            self.cond_margin_corrected = round(
+                self.cond_spread_real - cfg.cond_margin_c, 2)
+        else:
+            self.cond_spread_real = None
+            self.cond_margin_corrected = None
+        self._cond_margin_set = cfg.cond_margin_c
 
         # Energy (F06): integrate before the decision (uses the demand signal).
         self._accumulate_energy(cfg, now_ts)

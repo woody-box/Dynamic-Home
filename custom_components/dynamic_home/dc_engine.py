@@ -116,6 +116,11 @@ class DcConfig:
     # Dew-point protection (radiant cooling): risk when indoor temp is within
     # this margin of the dew point.
     dew_spread_min: float = 2.0
+    # Safety margin applied to the COLD-SURFACE check (when a floor/water temp is
+    # configured): risk when (floor − dew point) drops below this. Absorbs Magnus
+    # formula error (atmospheric pressure) and sensor offset, so "dry" really is
+    # dry. Raise it to stop the zone earlier (more conservative).
+    cond_margin_c: float = 0.3
 
     # Real demand signal (F27): when the valve source (c) is numeric (power, W),
     # a reading above this means the valve/relay is active. Consumed by the
@@ -337,13 +342,21 @@ def dew_point(t_c: float | None, rh: float | None) -> float | None:
 
 
 def dew_risk(cfg: DcConfig, hvac: str, t_int: float | None,
-             rh: float | None) -> bool:
-    """Condensation risk for radiant cooling: only in cool, when the indoor
-    temperature is within ``dew_spread_min`` of the dew point."""
+             rh: float | None, floor_temp: float | None = None) -> bool:
+    """Condensation risk for radiant cooling (only in cool).
+
+    When a floor/water temperature is given, the check is against the actual
+    **cold surface** where condensation forms: risk when ``floor - dew_point`` is
+    below ``cond_margin_c`` (the configurable safety margin). Without it, falls
+    back to the legacy air-based check (``t_int - dp < dew_spread_min``)."""
     if hvac != "cool":
         return False
     dp = dew_point(t_int, rh)
-    if dp is None or t_int is None:
+    if dp is None:
+        return False
+    if floor_temp is not None:
+        return (floor_temp - dp) < cfg.cond_margin_c
+    if t_int is None:
         return False
     return (t_int - dp) < cfg.dew_spread_min
 
