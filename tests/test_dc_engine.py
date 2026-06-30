@@ -155,9 +155,10 @@ def test_bias_exterior_heat_cold():
 
 
 def test_bias_exterior_cool_hot():
+    # Compensation: hotter outside -> NEGATIVE bias -> cool more (mirror of heat).
     cfg = _cfg(ext_hot_threshold=30, bias_ext_cool_strong=0.5, bias_ext_cool_mild=0.2)
-    assert bias_exterior(cfg, "cool", 32) == 0.5
-    assert bias_exterior(cfg, "cool", 27) == 0.2   # >= 30-5
+    assert bias_exterior(cfg, "cool", 32) == -0.5
+    assert bias_exterior(cfg, "cool", 27) == -0.2   # >= 30-5
     assert bias_exterior(cfg, "cool", 20) == 0.0
 
 
@@ -255,6 +256,18 @@ def test_forecast_bias_brake_only():
     assert forecast_bias(cfg, "heat", 0, 20) == -0.5
     # no forecast data -> 0
     assert forecast_bias(cfg, "heat", 5, None) == 0.0
+
+
+def test_forecast_gate_while_overheating():
+    # cool, mild outside (no exterior bias), forecast 5° cooler -> would ease +0.5.
+    cfg = _cfg(forecast_gain=0.1, forecast_cap=0.5)
+    common = dict(hvac_mode="cool", t_ext=20.0, forecast_temp=15.0, sun_elevation=30)
+    # Room above the cool base (26.5): the ease is gated off (don't coast hot).
+    hot = decide(cfg, DcInputs(t_int=28.0, **common))
+    assert hot.details["bias_forecast"] == 0.0
+    # Room below base: the forecast eases normally.
+    cool_room = decide(cfg, DcInputs(t_int=24.0, **common))
+    assert cool_room.details["bias_forecast"] == 0.5
 
 
 def test_dew_point_magnus():
