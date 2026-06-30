@@ -68,6 +68,11 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Weather protection master switch for THIS shutter (rain + alert + wind cap).
         # On by default; turn off for a covered terrace that must never close on weather.
         self.weather_protect = True
+        # Treat a move of the underlying cover that DH didn't command (a physical
+        # button, a wall switch, another automation) as a manual override. On by
+        # default so any hand command pauses the comfort logic, like the integration
+        # button does.
+        self.track_external = True
         # Seasonal night insulation (F16): opt-in.
         self.night_iso_enabled = False
         # Geometric shading (F15): opt-in real solar-penetration model.
