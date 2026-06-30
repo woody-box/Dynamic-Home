@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.74.0] — 2026-06-30
+
+### Added
+- **Sufijo de marca `- DH-DV`/`- DH-DS`/`- DH-DC`** en el nombre de las entidades
+  principales que gestiona Dynamic Home (la VMC `fan`, la persiana `cover` y la zona
+  `climate`). Así se distinguen de un vistazo de la entidad **física** que controlan
+  (p. ej. "Persiana Salón Centro - DH-DS" vs el cover real) y se agrupan fácil en un
+  dashboard. **Es solo el nombre visible**: el `entity_id` se mantiene limpio
+  (`cover.persiana_salon_centro`) y estable, y renombrar el dispositivo sigue
+  propagándose a todas sus entidades.
+
+### Internal
+- `const.MODULE_TAG` (única fuente de verdad del tag, compartida con el prefijo de los
+  espejos). `cover`/`climate`/`fan` fijan `entity_id` al slug del dispositivo para que el
+  sufijo de nombre no cambie el `entity_id` (sin churn ni rotura para instalaciones
+  existentes). Test de friendly_name.
+
 ## [0.73.1] — 2026-06-30
 
 ### Added

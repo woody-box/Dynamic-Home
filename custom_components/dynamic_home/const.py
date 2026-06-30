@@ -13,6 +13,16 @@ MODULE_WEATHER = "weather"
 MODULE_ZONES = "zones"
 MODULE_ENERGY = "energy"
 
+# Short Dynamic Home tag per module. Prefixed onto the hardware mirrors and
+# suffixed onto the primary control entities (cover/climate/fan) so everything
+# Dynamic Home creates is greppable in dashboards/entity pickers and tells apart
+# from the underlying hardware entity it drives.
+MODULE_TAG: dict[str, str] = {
+    MODULE_VMC: "DH-DV",
+    MODULE_SHUTTER: "DH-DS",
+    MODULE_CLIMATE: "DH-DC",
+}
+
 # Platforms forwarded per module.
 PLATFORMS_VMC: list[str] = ["fan", "number", "sensor", "button", "switch",
                             "time", "binary_sensor"]

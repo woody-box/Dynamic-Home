@@ -21,6 +21,7 @@ from homeassistant.helpers.event import (
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 from homeassistant.util.percentage import (
     percentage_to_ranged_value,
     ranged_value_to_percentage,
@@ -183,7 +184,10 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     """Represents the VMC."""
 
     _attr_has_entity_name = True
-    _attr_name = None
+    # Suffix the Dynamic Home tag so this managed VMC is told apart from the
+    # physical relays/fan it drives (e.g. "VMC - DH-DV"). The device name still
+    # leads, so renaming the device propagates as usual.
+    _attr_name = f"- {const.MODULE_TAG[const.MODULE_VMC]}"
     _attr_speed_count = const.SPEED_COUNT
     _attr_preset_modes = const.PRESET_MODES
     _attr_supported_features = _SUPPORTED_FEATURES
@@ -192,6 +196,9 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_fan"
+        # Stable object_id (fan.<vmc>) despite the "- DH-DV" display suffix;
+        # existing entities keep their registered id.
+        self.entity_id = f"fan.{slugify(entry.title)}"
         self._preset = const.PRESET_AUTO
         self._bootstrapped = False
         self._override_unsub = None     # cancels a pending auto-revert to auto
