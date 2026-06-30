@@ -41,6 +41,26 @@ async def _setup(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
+async def test_reason_human_sensor(hass: HomeAssistant) -> None:
+    """The _human sensor shows the reason as text, with the raw code as attribute."""
+    from homeassistant.helpers import entity_registry as er
+
+    from custom_components.dynamic_home import reason_text
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_reason_human")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state not in (None, "unknown", "unavailable")
+    code = st.attributes["code"]
+    assert st.state == reason_text.humanize(const.MODULE_SHUTTER, code)
+
+
 async def test_external_cover_move_arms_override(hass: HomeAssistant) -> None:
     """A move of the underlying cover DH didn't command -> manual override."""
     async_mock_service(hass, "cover", "set_cover_position")

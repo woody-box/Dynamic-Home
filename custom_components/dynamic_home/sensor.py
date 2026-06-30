@@ -35,8 +35,9 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
+from homeassistant.util import slugify
 
-from . import const, schedule, zones
+from . import const, reason_text, schedule, zones
 from .coordinator import DvCoordinator
 
 
@@ -185,6 +186,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         ents.append(EnergySensor(coordinator, entry))
         ents.append(PowerSensor(coordinator, entry))
         ents.append(ScheduleSensor(coordinator, entry, is_vmc=False))
+        ents.append(ReasonHumanSensor(coordinator, entry, const.MODULE_CLIMATE))
         ents += _mirror_sensors(entry, module)
         async_add_entities(ents)
         return
@@ -195,6 +197,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             DsPositionSensor(coordinator, entry),
             DsTargetSensor(coordinator, entry),
             DsReasonSensor(coordinator, entry),
+            ReasonHumanSensor(coordinator, entry, const.MODULE_SHUTTER),
             DsOverrideRemainingSensor(coordinator, entry)]
         # First-class context sensors, to read the "why" at a glance — each only
         # when its source is configured.
@@ -217,6 +220,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         entities.append(Pm25Sensor(coordinator, entry))
     entities.append(SpeedSensor(coordinator, entry))
     entities.append(ReasonSensor(coordinator, entry))
+    entities.append(ReasonHumanSensor(coordinator, entry, const.MODULE_VMC))
     entities.append(ModeSensor(coordinator, entry))
     entities.append(StateSensor(coordinator, entry))
     entities.append(OverrideRemainingSensor(coordinator, entry))
@@ -488,6 +492,46 @@ class WeatherSourceSensor(CoordinatorEntity, SensorEntity):
         return {"alert": co.alert_active,
                 "since": dt_util.utc_from_timestamp(since).isoformat()
                 if since else None}
+
+
+class ReasonHumanSensor(CoordinatorEntity, SensorEntity):
+    """Human-readable text of the decision reason (companion to ``Motivo``).
+
+    Shows a phrase ("Refrigerando", "Apertura por amanecer"…) so a card can read
+    the *why* with no templating. Its entity_id mirrors the Motivo sensor's with a
+    ``_human`` suffix; the raw code stays available in the ``code`` attribute.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "reason_human"
+    _attr_icon = "mdi:message-text-outline"
+
+    def __init__(self, coordinator, entry: ConfigEntry, module: str) -> None:
+        super().__init__(coordinator)
+        self._module = module
+        self._attr_unique_id = f"{entry.entry_id}_reason_human"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+        # Pin the entity_id to "<Motivo sensor>_human" so it sits right next to it,
+        # whatever that sensor's (possibly legacy) object_id is. Falls back to a
+        # predictable slug if the Motivo sensor isn't registered yet (first setup).
+        from homeassistant.helpers import entity_registry as er
+        base = er.async_get(coordinator.hass).async_get_entity_id(
+            "sensor", const.DOMAIN, f"{entry.entry_id}_reason")
+        self.entity_id = (f"{base}_human" if base
+                          else f"sensor.{slugify(entry.title)}_motivo_human")
+
+    def _code(self) -> str | None:
+        d = self.coordinator.data
+        return getattr(d, "reason", None) if d is not None else None
+
+    @property
+    def native_value(self) -> str | None:
+        return reason_text.humanize(self._module, self._code())
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"code": self._code()}
 
 
 @dataclass(frozen=True)

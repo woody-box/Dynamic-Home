@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.82.0] — 2026-06-30
+
+### Added
+- **Motivo en texto humano (`_human`) en DC, DS y DV.** Junto a cada sensor de **Motivo**
+  (que muestra el código crudo: `cool`, `dawn_ramp`, `dry_mode`…) aparece un sensor gemelo
+  cuyo **estado es la frase legible** ("Refrigerando", "Apertura por amanecer", "Modo
+  secado"…), para soltarlo en una tarjeta **sin plantillas ni evaluar códigos**. Su
+  `entity_id` es el del Motivo con sufijo **`_human`** (p. ej. `sensor.vmc_reason_human`,
+  `sensor.persiana_salon_centro_motivo_human`); el código crudo queda en el atributo `code`.
+
+### Internal
+- `reason_text.py` (tablas DC/DS/DV código→texto es + `humanize`, fallback al código).
+  `ReasonHumanSensor` (clava su `entity_id` al del Motivo vía registro + `_human`). Alta en las
+  tres ramas de `sensor.py`. Traducciones es/en/strings. Tests del mapa + integración.
+
 ## [0.81.1] — 2026-06-30
 
 ### Changed
