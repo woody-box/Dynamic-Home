@@ -4,6 +4,29 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.75.1] — 2026-06-30
+
+### Changed
+- **DC · honestidad anticondensación sin sensor de suelo** (corrección de 0.75.0). El
+  chequeo de condensación por **aire** (cuando no hay Tª de agua/suelo) daba **falsa
+  sensación de seguridad** en suelo radiante: el aire suele estar lejísimos del rocío, así
+  que marcaba "Seco" mientras la superficie fría podía estar condensando. Ahora, en una
+  zona de **superficie fría** (emisor radiante en F26 — suelo/techo radiante/refrescante —
+  **o emisor sin declarar**) que refrigera **sin** sensor de Tª de agua/suelo:
+  - se levanta un **aviso en Reparaciones** ("refrigerando sin protección anticondensación
+    de superficie — añade la Tª de agua/suelo o asume el riesgo");
+  - el binario **"Riesgo de condensación"** deja de afirmar "Seco" y pasa a **no disponible**
+    (no se puede determinar sin la superficie), con atributos `proteccion`
+    (superficie/aire/ninguna) y `sin_proteccion_superficie`.
+  - **Zonas no radiantes declaradas** (split/fancoil/conductos) **no** se avisan: ahí el
+    chequeo por aire es razonable. Con sensor de agua/suelo, protección real (0.75.0).
+
+### Internal
+- `install.is_cold_surface` (+ `COLD_SURFACE_EMITTERS`); `coordinator_dc.cond_protection`,
+  `cond_unprotected`, `_update_cond_warning()` (issue `ISSUE_COND_UNPROTECTED`, limpiada en
+  unload). `DewRiskBinarySensor.available`/atributos. Traducciones es/en/strings. Tests
+  motor + integración (radiante avisa / no-radiante no / con agua limpia).
+
 ## [0.75.0] — 2026-06-30
 
 ### Added

@@ -36,6 +36,18 @@ def test_inertia_lookup():
     assert install.inertia("unknown") == "medium"   # safe default
 
 
+def test_is_cold_surface():
+    # Chilled-surface emitters (condensation forms on the surface).
+    assert install.is_cold_surface("underfloor") is True
+    assert install.is_cold_surface("ceiling_radiant") is True
+    assert install.is_cold_surface("radiant_cooling") is True
+    # Air/coil emitters: condensation is handled by the unit, not a surface.
+    assert install.is_cold_surface("fancoil") is False
+    assert install.is_cold_surface("split") is False
+    assert install.is_cold_surface("radiators") is False
+    assert install.is_cold_surface(None) is False
+
+
 def test_profile_central_shared_is_community_without_flags():
     # Gas, central/communal -> the occupant only opens a valve.
     p = install.profile("gas_boiler", "central_shared", "radiators")

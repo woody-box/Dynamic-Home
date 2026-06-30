@@ -220,6 +220,7 @@ ISSUE_FREECOOL_NO_CHANGEOVER = "freecool_no_changeover"
 ISSUE_STALE_S = 300.0
 # A DC zone whose mold-risk index stays armed raises a (health) repair issue.
 ISSUE_MOLD_RISK = "mold_risk"
+ISSUE_COND_UNPROTECTED = "cond_unprotected"
 # A VMC whose filter life crossed the replacement threshold raises a repair (F08).
 ISSUE_FILTER_DUE = "filter_due"
 LEARN_MORE_URL = "https://github.com/woody-box/dynamic-home"
