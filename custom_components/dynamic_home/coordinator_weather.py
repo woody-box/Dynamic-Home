@@ -19,11 +19,32 @@ from homeassistant.util import dt as dt_util
 
 from . import const
 from .options_spec import apply_options
-from .weather_engine import WxConfig, derive_alert, is_fresh, pick_source
+from .weather_engine import WxConfig, derive_alert, is_fresh
 
 _LOGGER = logging.getLogger(__name__)
 
 _UNAVAILABLE = ("unknown", "unavailable", "none", "")
+
+
+# Per-field resolution table: (field key, weather-entity attribute, raw-sensor
+# conf). Each field is resolved by per-field failover — the first *fresh* source
+# that actually has it wins — then the optional raw sensor. ``None`` means that
+# path doesn't apply. This is what squeezes every drop out of rich providers
+# (Google Weather, AEMET…): humidity from one, gusts/UV/cloud from another.
+WX_FIELDS: tuple[tuple[str, str | None, str | None], ...] = (
+    ("temperature", "temperature", const.CONF_WX_TEMP),
+    ("humidity", "humidity", const.CONF_WX_HUMIDITY),
+    ("pressure", "pressure", const.CONF_WX_PRESSURE),
+    ("wind", "wind_speed", const.CONF_WX_WIND),
+    ("wind_bearing", "wind_bearing", None),
+    ("gust", "wind_gust_speed", const.CONF_WX_GUST),
+    ("uv", "uv_index", const.CONF_WX_UV),
+    ("cloud", "cloud_coverage", const.CONF_WX_CLOUD),
+    ("dewpoint", "dew_point", const.CONF_WX_DEWPOINT),
+    ("precip", None, const.CONF_WX_PRECIP),
+    ("storm_prob", None, const.CONF_WX_STORM_PROB),
+    ("precip_prob", None, const.CONF_WX_PRECIP_PROB),
+)
 
 
 @dataclass
@@ -32,12 +53,33 @@ class WxData:
     active_entity: str | None  # active weather.* entity (forecast source), else None
     alert: bool
     condition: str | None
-    temperature: float | None
-    humidity: float | None
-    pressure: float | None
-    wind_kmh: float | None
-    wind_bearing: float | None = None
-    precip: float | None = None
+    values: dict               # field key -> float | None
+    sources: dict              # field key -> provider label that supplied it | None
+
+    # Back-compat accessors used across the codebase / the weather entity.
+    @property
+    def temperature(self) -> float | None:
+        return self.values.get("temperature")
+
+    @property
+    def humidity(self) -> float | None:
+        return self.values.get("humidity")
+
+    @property
+    def pressure(self) -> float | None:
+        return self.values.get("pressure")
+
+    @property
+    def wind_kmh(self) -> float | None:
+        return self.values.get("wind")
+
+    @property
+    def wind_bearing(self) -> float | None:
+        return self.values.get("wind_bearing")
+
+    @property
+    def precip(self) -> float | None:
+        return self.values.get("precip")
 
 
 class WxCoordinator(DataUpdateCoordinator):
@@ -91,36 +133,52 @@ class WxCoordinator(DataUpdateCoordinator):
         age = now_ts - st.last_updated.timestamp()
         return is_fresh(age, cfg)
 
+    def _resolve_field(self, attr: str | None, raw: str | None,
+                       fresh: list) -> tuple[float | None, str | None]:
+        """Per-field failover: first fresh source with the attribute, then raw."""
+        if attr:
+            for ent, st in fresh:
+                v = _f(st.attributes.get(attr))
+                if v is not None:
+                    return v, ent
+        if raw:
+            v = self._num(raw)
+            if v is not None:
+                return v, "sensors"
+        return None, None
+
     async def _async_update_data(self) -> WxData:
         cfg = self._cfg()
         now_ts = dt_util.utcnow().timestamp()
         sources = self._weather_sources()
 
-        avail = [self._source_ok(e, now_ts, cfg) for e in sources]
-        if self.has_raw():
-            avail.append(self._num(const.CONF_WX_TEMP) is not None)
-        idx = pick_source(avail)
+        # Fresh weather sources in priority order (each may fill different fields).
+        fresh = []
+        for e in sources:
+            if self._source_ok(e, now_ts, cfg):
+                st = self.hass.states.get(e)
+                if st is not None:
+                    fresh.append((e, st))
 
-        label, active_entity = "none", None
-        condition = temperature = humidity = pressure = wind = bearing = None
-        if idx is not None and idx < len(sources):
-            active_entity = sources[idx]
+        active_entity = fresh[0][0] if fresh else None
+        condition = fresh[0][1].state if fresh else None
+
+        values: dict = {}
+        field_sources: dict = {}
+        for key, attr, raw in WX_FIELDS:
+            val, src = self._resolve_field(attr, raw, fresh)
+            values[key] = val
+            field_sources[key] = src
+
+        if active_entity is not None:
             label = active_entity
-            st = self.hass.states.get(active_entity)
-            condition = st.state if st else None
-            a = st.attributes if st else {}
-            temperature = a.get("temperature")
-            humidity = a.get("humidity")
-            pressure = a.get("pressure")
-            wind = a.get("wind_speed")
-            bearing = a.get("wind_bearing")
-        elif idx is not None:                       # raw-sensor fallback
-            label = "sensors"
-            temperature = self._num(const.CONF_WX_TEMP)
-            wind = self._num(const.CONF_WX_WIND)
+        elif values.get("temperature") is not None:
+            label = "sensors"                       # all weather down, raw serves
+        else:
+            label = "none"
 
-        precip = self._num(const.CONF_WX_PRECIP)
-        self.alert_active = derive_alert(condition, wind, precip, cfg)
+        self.alert_active = derive_alert(
+            condition, values.get("wind"), values.get("precip"), cfg)
 
         if label != self.active_label:
             self.active_since = now_ts
@@ -135,14 +193,13 @@ class WxCoordinator(DataUpdateCoordinator):
         self.hass.data.setdefault(const.DOMAIN, {})[const.DATA_WEATHER] = {
             "source": active_entity,        # current best weather.* (for forecasts)
             "alert": self.alert_active,
+            "values": dict(values),         # full per-field view (gust/storm/…)
         }
 
         return WxData(
             active_label=label, active_entity=active_entity,
             alert=self.alert_active, condition=condition,
-            temperature=_f(temperature), humidity=_f(humidity),
-            pressure=_f(pressure), wind_kmh=_f(wind),
-            wind_bearing=_f(bearing), precip=_f(precip))
+            values=values, sources=field_sources)
 
 
 def _f(v) -> float | None:

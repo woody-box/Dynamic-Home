@@ -121,6 +121,58 @@ async def test_weather_value_sensors_follow_active_source(
     assert float(hass.states.get(eid("wx_temperature")).state) == 19.0
 
 
+async def test_per_field_failover_across_providers(hass: HomeAssistant) -> None:
+    """Each field is taken from the first provider that has it (not one source)."""
+    from homeassistant.helpers import entity_registry as er
+    # Primary has temp + gust but no humidity/pressure; secondary has those.
+    hass.states.async_set("weather.primary", "sunny",
+                          {"temperature": 20.0, "wind_speed": 10,
+                           "wind_gust_speed": 31})
+    hass.states.async_set("weather.secondary", "cloudy",
+                          {"temperature": 19.0, "humidity": 55, "pressure": 1015})
+    hass.states.async_set("sensor.wx_temp", "18.0")
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # Condition/forecast follow the primary, but the gaps are filled from secondary.
+    assert co.active_entity == "weather.primary"
+    assert co.data.values["temperature"] == 20.0
+    assert co.data.sources["temperature"] == "weather.primary"
+    assert co.data.values["humidity"] == 55.0
+    assert co.data.sources["humidity"] == "weather.secondary"
+    assert co.data.values["pressure"] == 1015.0
+    assert co.data.values["gust"] == 31.0          # rich field from the weather attr
+
+    # The humidity sensor exposes the value and which provider supplied it.
+    reg = er.async_get(hass)
+    h_id = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                   f"{entry.entry_id}_wx_humidity")
+    st = hass.states.get(h_id)
+    assert float(st.state) == 55.0
+    assert st.attributes["source"] == "weather.secondary"
+
+
+async def test_raw_only_fields_from_sensors(hass: HomeAssistant) -> None:
+    """Storm/precip probability come from raw sensors and are gated on config."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    hass.states.async_set("sensor.storm", "40")
+    data = {**WX, const.CONF_WX_STORM_PROB: "sensor.storm"}
+    entry = MockConfigEntry(domain=const.DOMAIN, data=data, title="Meteo")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = er.async_get(hass)
+
+    assert co.data.values["storm_prob"] == 40.0
+    assert reg.async_get_entity_id("sensor", const.DOMAIN,
+                                   f"{entry.entry_id}_wx_storm_prob") is not None
+    # precip probability not configured -> no sensor.
+    assert reg.async_get_entity_id("sensor", const.DOMAIN,
+                                   f"{entry.entry_id}_wx_precip_prob") is None
+
+
 async def test_weather_falls_back_to_secondary_then_sensors(
         hass: HomeAssistant) -> None:
     _seed(hass)

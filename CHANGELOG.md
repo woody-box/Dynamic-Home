@@ -4,6 +4,34 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.78.0] — 2026-06-30
+
+### Added
+- **Dynamic Weather · failover POR DATO + campos ricos (agregador real).** Antes los valores
+  salían de **una sola** fuente activa, así que si esa no publicaba humedad/presión, salían
+  "No disponible" aunque otro proveedor sí los tuviera. Ahora **cada magnitud se resuelve por
+  separado**, cogiéndola de la **primera fuente (por prioridad) que realmente la tenga** — y
+  cada sensor expone en un atributo **de qué proveedor** salió. Así exprimes a fondo
+  proveedores ricos como **Google Weather** o AEMET: la temperatura de uno, la humedad/presión
+  de otro.
+- **Nuevos sensores** además de los de 0.77.0: **Ráfagas de viento, Índice UV, Cobertura de
+  nubes, Punto de rocío** (leídos de los atributos del proveedor), y **Probabilidad de tormenta**
+  y **Probabilidad de precipitación** (de sensores que aportes, p. ej. los de Google Weather).
+  Los extras quedan bajo **Diagnóstico** para no saturar.
+- **Entradas crudas por campo** (opcionales) para enchufar sensores concretos: humedad, presión,
+  ráfagas, UV, nubes, punto de rocío, prob. tormenta, prob. precipitación.
+
+### Internal
+- 8 `CONF_WX_*` nuevos. `coordinator_weather` refactor: tabla `WX_FIELDS` + `_resolve_field`
+  (failover por campo sobre fuentes frescas → sensor crudo); `WxData` pasa a `values`/`sources`
+  con accesores de compat. `DATA_WEATHER` publica `values` (para DC/DS futuros). `_WX_VALUES`
+  table-driven con `source` por sensor y gating por `requires_conf`. Traducciones es/en/strings.
+  Tests: failover por campo (humedad del 2º proveedor) + campos solo-crudos gateados.
+
+### Diferido
+- Cablear **ráfagas → protección de viento de DS** y **prob. tormenta/lluvia → alerta
+  anticipada de DS** (cambios en la lógica de DS, siguiente ciclo).
+
 ## [0.77.0] — 2026-06-30
 
 ### Added
