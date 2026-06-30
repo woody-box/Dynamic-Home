@@ -183,6 +183,25 @@ def test_dawn_runs_when_no_cooling_threat():
     assert d.reason == "dawn_ramp" and d.pos == 50
 
 
+def test_dawn_yields_to_direct_sun_shield_before_it_is_hot():
+    # East facade at dawn: cooling + direct sun on the facade + direct-sun shield
+    # armed, but the air outside is NOT hotter yet. The ramp must still yield so it
+    # doesn't open into the rising sun only to claw back closed once it heats up.
+    d = decide_cover(_cfg(summer_min_open_pct=20, slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=70, t_in=26, t_out=24,
+                              sun_gain_shield=True, dawn_pos=50))
+    assert d.reason != "dawn_ramp" and d.pos != 50
+
+
+def test_dawn_runs_without_direct_sun_shield_optin():
+    # Same conditions but the direct-sun shield is OFF: with no opt-in to protect
+    # before it's hot, the ramp keeps opening (legacy behaviour preserved).
+    d = decide_cover(_cfg(slew_enabled=False), DsState(),
+                     DsInputs(hvac_mode="cool", impact=70, t_in=26, t_out=24,
+                              sun_gain_shield=False, dawn_pos=50))
+    assert d.reason == "dawn_ramp" and d.pos == 50
+
+
 def test_dawn_runs_in_heat_season():
     # Heating: the gradual sunrise still gives morning light/gain (unaffected).
     d = decide_cover(_cfg(slew_enabled=False), DsState(),
