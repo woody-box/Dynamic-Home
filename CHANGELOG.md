@@ -4,6 +4,16 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.80.0] — 2026-06-30
+
+### Changed
+- **Mantenimiento: re-publicación limpia.** La v0.79.0 quedó con un tag mal escrito
+  (`v.79.0`) que se borró; esta versión vuelve a publicar el mismo trabajo bajo un tag
+  correcto y sin ambigüedades para que HACS lo detecte con seguridad. **Sin cambios de
+  comportamiento respecto a 0.79.0** — incluye, como aquélla, que las persianas aprovechen
+  los datos ricos de Dynamic Weather (ráfagas → protección de viento; probabilidad de
+  tormenta/lluvia → alerta anticipada).
+
 ## [0.79.0] — 2026-06-30
 
 ### Added
