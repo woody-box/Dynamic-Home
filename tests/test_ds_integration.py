@@ -1107,3 +1107,35 @@ async def test_house_shutter_counts(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert count("covers_open") == 0
     assert count("covers_closed") == 2
+
+
+# --- Readable per-shutter sun sensor (day/night + elevation/azimuth + sun/shade)
+async def test_ds_sun_sensor(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    # Sun on the (south, 180°) facade: elevation 24.4, azimuth 180 -> in sun.
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 180.0, "elevation": 24.4})
+    entry = await _setup(hass)
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                  f"{entry.entry_id}_ds_sun")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state.startswith("Día · Elevación 24,4° · Azimut 180,0°")
+    assert "Persiana al Sol" in st.state
+    assert st.attributes["day"] is True
+    assert st.attributes["in_sun"] is True
+    assert st.attributes["elevation"] == 24.4
+
+    # Night: sun below horizon -> "Noche …" and in the shade.
+    hass.states.async_set("sun.sun", "below_horizon",
+                          {"azimuth": 10.0, "elevation": -8.0})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    st = hass.states.get(eid)
+    assert st.state.startswith("Noche ·")
+    assert "Persiana a la Sombra" in st.state
+    assert st.attributes["day"] is False and st.attributes["in_sun"] is False

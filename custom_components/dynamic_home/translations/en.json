@@ -1498,6 +1498,7 @@
       "ds_outdoor_temp": {"name": "Outdoor temperature"},
       "ds_temp_diff": {"name": "Indoor-outdoor differential"},
       "ds_control_mode": {"name": "Control mode", "state": {"auto": "Automatic", "manual": "Manual (override)"}},
+      "ds_sun": {"name": "Sol"},
       "ds_climate_mode": {"name": "Climate mode"},
       "ds_climate_setpoint": {"name": "Climate setpoint"},
       "ds_climate_temp": {"name": "Climate temperature"},
