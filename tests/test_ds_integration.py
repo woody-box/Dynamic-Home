@@ -1173,3 +1173,43 @@ async def test_shared_sun_sensors(hass: HomeAssistant) -> None:
     assert state("sunset").state == rng(
         "2026-07-01T19:44:00+00:00", "2026-07-01T20:19:00+00:00")
     assert state("sunrise").attributes["start"] is not None
+
+
+# --- Curated tunables as CONFIG numbers (in sync with the options menu) ---
+async def test_config_number_entities(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)
+    entry = await _setup(hass)
+    reg = er.async_get(hass)
+
+    def ent(key):
+        eid = reg.async_get_entity_id("number", const.DOMAIN,
+                                      f"{entry.entry_id}_{key}")
+        assert eid is not None, key
+        return eid
+
+    # The curated numbers exist, in the "config" entity category.
+    for key in ("wind_limit_kmh", "hot_delta", "weather_max_open_pct",
+                "override_hours", "lock_pct"):
+        assert reg.async_get(ent(key)).entity_category == er.EntityCategory.CONFIG
+
+    # Default values (from DsConfig): wind 40, hot ΔT 0.8, weather max 30.
+    assert float(hass.states.get(ent("wind_limit_kmh")).state) == 40.0
+    assert float(hass.states.get(ent("hot_delta")).state) == 0.8
+    assert float(hass.states.get(ent("weather_max_open_pct")).state) == 30.0
+    # Override shown in minutes (stored 4 h -> 240 min).
+    assert float(hass.states.get(ent("override_hours")).state) == 240.0
+
+    # Setting a number writes the same option the menu edits (in sync).
+    await hass.services.async_call(
+        "number", "set_value",
+        {"entity_id": ent("wind_limit_kmh"), "value": 55}, blocking=True)
+    await hass.async_block_till_done()
+    assert entry.options["wind_limit_kmh"] == 55
+    # Override set in minutes -> stored back in hours.
+    await hass.services.async_call(
+        "number", "set_value",
+        {"entity_id": ent("override_hours"), "value": 120}, blocking=True)
+    await hass.async_block_till_done()
+    assert entry.options["override_hours"] == 2.0

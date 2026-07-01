@@ -1457,6 +1457,17 @@
       "privacy_pct": {"name": "Posición privacidad"},
       "lock_pct": {"name": "Posición bloqueo"},
       "override_minutes": {"name": "Temporizador override"},
+      "override_hours": {"name": "Duración override"},
+      "wind_limit_kmh": {"name": "Límite de viento"},
+      "hot_delta": {"name": "ΔT calor"},
+      "cold_delta": {"name": "ΔT frío"},
+      "freecool_delta": {"name": "ΔT free-cool"},
+      "summer_min_open_pct": {"name": "Apertura mínima verano"},
+      "heat_shield_pct": {"name": "Apertura máx. refrigerando"},
+      "weather_max_open_pct": {"name": "Cierre máx. por meteo"},
+      "sleep_pct": {"name": "Cierre en Sleep"},
+      "rain_close_pct": {"name": "Cierre por lluvia"},
+      "dawn_target_pct": {"name": "Objetivo amanecer"},
       "quiet_max_level": {"name": "Nivel máx. en silencio"}
     },
     "sensor": {
