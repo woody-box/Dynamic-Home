@@ -670,9 +670,10 @@ class WxConditionSensor(CoordinatorEntity, SensorEntity):
         return {"source": d.active_entity if d else None}
 
 
-# 8-point compass. English abbreviations are the stable internal states; the
-# translations localise them (es: SW->SO, W->O, NW->NO).
-_WX_WIND_DIRS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+# 8-point compass. Lowercase keys are the stable internal states (hassfest requires
+# [a-z0-9-_] translation keys); the translations localise them to display form
+# (en: n->N, sw->SW…; es: sw->SO, w->O, nw->NO).
+_WX_WIND_DIRS = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
 
 
 class WxWindDirSensor(CoordinatorEntity, SensorEntity):

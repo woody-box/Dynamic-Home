@@ -1482,7 +1482,7 @@
       "wx_storm_prob": {"name": "Thunderstorm probability"},
       "wx_precip_prob": {"name": "Precipitation probability"},
       "wx_condition": {"name": "Weather condition"},
-      "wx_wind_dir": {"name": "Wind direction", "state": {"N":"N","NE":"NE","E":"E","SE":"SE","S":"S","SW":"SW","W":"W","NW":"NW"}},
+      "wx_wind_dir": {"name": "Wind direction", "state": {"n":"N","ne":"NE","e":"E","se":"SE","s":"S","sw":"SW","w":"W","nw":"NW"}},
       "energy": {"name": "Energy"},
       "power": {"name": "Power"},
       "energy_24h": {"name": "Energy (last 24 h)"},

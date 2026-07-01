@@ -176,15 +176,15 @@ async def test_wind_direction_sensor(hass: HomeAssistant) -> None:
                                   f"{entry.entry_id}_wx_wind_dir")
     assert eid is not None
     st = hass.states.get(eid)
-    assert st.state == "NE"                        # 45° -> NE
+    assert st.state == "ne"                        # 45° -> NE (localised in the UI)
     assert st.attributes["degrees"] == 45
 
-    # 350° wraps to N; 270° -> W (localised to "O" in the es UI, raw state stays W).
+    # 350° wraps to N (raw state stays lowercase; the UI shows the localised form).
     hass.states.async_set("weather.primary", "sunny",
                           {"temperature": 20.0, "wind_bearing": 350})
     await co.async_refresh()
     await hass.async_block_till_done()
-    assert hass.states.get(eid).state == "N"
+    assert hass.states.get(eid).state == "n"
 
 
 async def test_per_field_failover_across_providers(hass: HomeAssistant) -> None:
