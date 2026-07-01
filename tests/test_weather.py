@@ -121,6 +121,28 @@ async def test_weather_value_sensors_follow_active_source(
     assert float(hass.states.get(eid("wx_temperature")).state) == 19.0
 
 
+async def test_condition_sensor_follows_active_source(
+        hass: HomeAssistant) -> None:
+    """The condition sensor mirrors the active weather source and fails over."""
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                  f"{entry.entry_id}_wx_condition")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state == "sunny"                    # primary condition
+    assert st.attributes["source"] == "weather.primary"
+
+    # Primary down -> condition follows the secondary provider.
+    hass.states.async_set("weather.primary", "unavailable")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(eid).state == "cloudy"
+
+
 async def test_per_field_failover_across_providers(hass: HomeAssistant) -> None:
     """Each field is taken from the first provider that has it (not one source)."""
     from homeassistant.helpers import entity_registry as er
