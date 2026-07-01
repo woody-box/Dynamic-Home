@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.86.0] — 2026-07-01
+
+### Fixed
+- **DW · el sensor de Índice UV ahora muestra la unidad y sin decimales.** El sensor de UV
+  de Dynamic Weather se creaba **sin unidad** (mostraba p. ej. `3,0`) mientras que la fuente
+  (Google Weather) la muestra como `3 UV Index`. Ahora el sensor lleva la unidad **`UV Index`**
+  y **0 decimales** (el índice UV es entero), de modo que coincide con el proveedor.
+
+### Internal
+- `_WxValDesc` gana el campo `precision`; `WxValueSensor` fija
+  `suggested_display_precision` cuando está definido. `wx_uv` pasa a `unit="UV Index"`,
+  `precision=0`. Test que verifica la unidad y la precisión del sensor UV.
+
 ## [0.85.0] — 2026-07-01
 
 ### Changed
