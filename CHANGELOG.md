@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.85.0] — 2026-07-01
+
+### Changed
+- **DS · el campo de Lluvia también acepta sensores no binarios.** Igual que las alertas
+  (v0.83.0), el campo **Lluvia** admite ahora, además del `binary_sensor` de siempre, un
+  **sensor numérico de precipitación (mm)** o un sensor de **condición**/`weather`
+  (`rainy`/`pouring`/`snowy-rainy`). Así se puede enchufar directamente un sensor de
+  Google Weather. Umbral configurable `rain_mm_min` (0.1 mm). Compatible hacia atrás con
+  los binarios de Open-Meteo.
+
+### Internal
+- `ds_engine.alert_active` gana el `kind="rain"` (numérico = mm, condición =
+  `ALERT_RAIN_CONDITIONS`) + `DsConfig.rain_mm_min`. `coordinator_ds` lee la lluvia con
+  `_alert_on(CONF_RAIN, "rain", cfg)`. Selector del config flow ampliado a
+  `binary_sensor`/`input_boolean`/`sensor`/`weather`. Tests puros + integración.
+
 ## [0.84.0] — 2026-07-01
 
 ### Added

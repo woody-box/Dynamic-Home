@@ -200,7 +200,7 @@ async def test_weather_alert_reads_numeric_and_condition(
     assert co._weather_alert(cfg, 1000.0) == 0
 
 
-# --- Rain source: binary_sensor on/off only ---
+# --- Rain source: binary_sensor on/off (back-compat) ---
 async def test_rain_reads_binary_sensor(hass: HomeAssistant) -> None:
     _seed(hass)
     entry = MockConfigEntry(
@@ -211,10 +211,34 @@ async def test_rain_reads_binary_sensor(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()
     hass.states.async_set("binary_sensor.lluvia", "off")
-    assert co._is_on(const.CONF_RAIN) is False
+    assert co._alert_on(const.CONF_RAIN, "rain", cfg) is False
     hass.states.async_set("binary_sensor.lluvia", "on")
-    assert co._is_on(const.CONF_RAIN) is True
+    assert co._alert_on(const.CONF_RAIN, "rain", cfg) is True
+
+
+# --- Rain source: numeric (precip mm) and condition sensors (Google Weather) ---
+async def test_rain_reads_numeric_and_condition(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = MockConfigEntry(
+        domain=const.DOMAIN,
+        data={**SHUTTER, const.CONF_RAIN: "sensor.google_precip"},
+        title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    cfg = co._cfg()                        # rain_mm_min 0.1
+    hass.states.async_set("sensor.google_precip", "0.0")
+    assert co._alert_on(const.CONF_RAIN, "rain", cfg) is False
+    hass.states.async_set("sensor.google_precip", "0.6")   # mm over threshold
+    assert co._alert_on(const.CONF_RAIN, "rain", cfg) is True
+    # A condition/weather sensor works too.
+    hass.states.async_set("sensor.google_precip", "pouring")
+    assert co._alert_on(const.CONF_RAIN, "rain", cfg) is True
+    hass.states.async_set("sensor.google_precip", "sunny")
+    assert co._alert_on(const.CONF_RAIN, "rain", cfg) is False
 
 
 # --- Presence simulation (Away) ---

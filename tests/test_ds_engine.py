@@ -238,6 +238,9 @@ def test_alert_active_numeric_threshold():
     assert alert_active("40", "wind", cfg) is False
     assert alert_active("80", "hail", cfg) is True       # probability over threshold
     assert alert_active("60", "generic", cfg) is False
+    # rain -> precipitation mm over the (small) threshold.
+    assert alert_active("0.4", "rain", cfg) is True
+    assert alert_active("0.0", "rain", cfg) is False
     # 0 disables the numeric threshold.
     assert alert_active("90", "wind", DsConfig(alert_gust_kmh=0.0)) is False
 
@@ -252,6 +255,8 @@ def test_alert_active_condition_keyword():
     assert alert_active("rainy", "generic", cfg) is True
     assert alert_active("sunny", "generic", cfg) is False
     assert alert_active("Lightning-Rainy", "hail", cfg) is True  # case-insensitive
+    assert alert_active("pouring", "rain", cfg) is True
+    assert alert_active("cloudy", "rain", cfg) is False
 
 
 def test_weather_alert_yields_to_override():
