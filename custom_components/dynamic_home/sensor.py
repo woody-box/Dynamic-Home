@@ -219,6 +219,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ds_ents.append(DsClimateSetpointSensor(coordinator, entry))
             ds_ents.append(DsClimateTempSensor(coordinator, entry))
         ds_ents.extend(_mirror_sensors(entry, module))
+        # House-wide shutter counts: one shared set, owned by the first DS entry.
+        data = hass.data.setdefault(const.DOMAIN, {})
+        data.setdefault(const.DATA_DS_SUMMARY_OWNER, entry.entry_id)
+        if data[const.DATA_DS_SUMMARY_OWNER] == entry.entry_id:
+            ds_ents += [DsCoverCountSensor(coordinator, entry, key, icon, pred)
+                        for key, icon, pred in _DS_COVER_COUNTS]
         async_add_entities(ds_ents)
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
@@ -829,6 +835,85 @@ class BusSensor(CoordinatorEntity, SensorEntity):
                 "ttl_remaining_s": round(ttl) if ttl is not None else None,
                 "runner_up": ex.get("runner_up"),
                 "runner_up_priority": ex.get("runner_up_priority")}
+
+
+# House-wide shutter counts: each predicate buckets a cover's current position.
+_DS_COVER_COUNTS = (
+    ("covers_open", "mdi:window-open", lambda p: p == 100),
+    ("covers_closed", "mdi:window-closed", lambda p: p == 0),
+    ("covers_ajar", "mdi:window-shutter", lambda p: p is not None and 0 < p < 100),
+)
+
+
+class DsCoverCountSensor(CoordinatorEntity, SensorEntity):
+    """How many DS-managed covers are open / closed / ajar (house-wide).
+
+    Counts only the shutters this integration manages — not the raw physical
+    covers — so it never double-counts. One shared set of sensors under the
+    "Dynamic Home · Persianas" device, owned by the first DS entry; refreshes
+    whenever that entry's coordinator ticks.
+    """
+
+    _attr_has_entity_name = True
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    def __init__(self, coordinator, entry: ConfigEntry, key: str, icon: str,
+                 pred) -> None:
+        super().__init__(coordinator)
+        self._pred = pred
+        self._attr_translation_key = key
+        self._attr_icon = icon
+        self._attr_unique_id = f"{const.DOMAIN}_{key}"      # global (single set)
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)},
+            name="Dynamic Home · Persianas")
+        self._unsub_covers = None
+
+    def _ds_coordinators(self):
+        from .coordinator import DsCoordinator
+        return [co for co in self.hass.data.get(const.DOMAIN, {}).values()
+                if isinstance(co, DsCoordinator)]
+
+    def _cover_eids(self) -> list[str]:
+        return [e for e in (co._hw(const.CONF_COVER)
+                            for co in self._ds_coordinators()) if e]
+
+    def _positions(self):
+        return [co._current_pos() for co in self._ds_coordinators()]
+
+    @callback
+    def _track_covers(self) -> None:
+        """(Re)subscribe to the managed covers' state so the counts are live even
+        when a sibling shutter (not the owner) moves or is added later."""
+        if self._unsub_covers is not None:
+            self._unsub_covers()
+        eids = self._cover_eids()
+        self._unsub_covers = (async_track_state_change_event(
+            self.hass, eids, self._cover_changed) if eids else None)
+
+    @callback
+    def _cover_changed(self, event) -> None:
+        self.async_write_ha_state()
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._track_covers()
+        self.async_on_remove(
+            lambda: self._unsub_covers() if self._unsub_covers else None)
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        # The owner ticked: siblings may have appeared/gone -> re-arm tracking.
+        self._track_covers()
+        super()._handle_coordinator_update()
+
+    @property
+    def native_value(self) -> int:
+        return sum(1 for p in self._positions() if self._pred(p))
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"total": len(self._positions())}
 
 
 class _Base(CoordinatorEntity[DvCoordinator], SensorEntity):

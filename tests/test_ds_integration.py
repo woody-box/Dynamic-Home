@@ -1061,3 +1061,49 @@ async def test_hvac_mode_climate_entity_wins_then_falls_back(
     # Idle/off thermostat -> fall back to the house season.
     hass.states.async_set("climate.salon", "off")
     assert co._hvac_mode() == "cool"
+
+
+# --- House-wide shutter counts (open / closed / ajar), DS-managed covers only ---
+async def test_house_shutter_counts(hass: HomeAssistant) -> None:
+    """Three shared sensors count DS-managed covers by position, not raw covers."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("sun.sun", "below_horizon",
+                          {"azimuth": 180, "elevation": -10})
+    # Three managed shutters at 100 / 0 / 40 (open / closed / ajar).
+    positions = {"cover.a": 100, "cover.b": 0, "cover.c": 40}
+    for eid, pos in positions.items():
+        hass.states.async_set(eid, "open",
+                              {"supported_features": 15, "current_position": pos})
+    entries = []
+    for i, cover in enumerate(positions):
+        data = {**SHUTTER, const.CONF_COVER: cover, const.CONF_NAME: f"P{i}"}
+        e = MockConfigEntry(domain=const.DOMAIN, data=data, title=f"P{i}")
+        e.add_to_hass(hass)
+        assert await hass.config_entries.async_setup(e.entry_id)
+        entries.append(e)
+    await hass.async_block_till_done()
+    # First owner tick after all entries exist re-arms the cover tracking.
+    await hass.data[const.DOMAIN][entries[0].entry_id].async_refresh()
+    await hass.async_block_till_done()
+
+    reg = er.async_get(hass)
+
+    def count(key):
+        eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                      f"{const.DOMAIN}_{key}")
+        assert eid is not None, key
+        return int(hass.states.get(eid).state)
+
+    # One set only (owned by the first DS entry), counting the three managed covers.
+    assert count("covers_open") == 1
+    assert count("covers_closed") == 1
+    assert count("covers_ajar") == 1
+
+    # Move one open -> closed and re-tick the owner: the counts follow.
+    hass.states.async_set("cover.a", "closed",
+                          {"supported_features": 15, "current_position": 0})
+    await hass.data[const.DOMAIN][entries[0].entry_id].async_refresh()
+    await hass.async_block_till_done()
+    assert count("covers_open") == 0
+    assert count("covers_closed") == 2

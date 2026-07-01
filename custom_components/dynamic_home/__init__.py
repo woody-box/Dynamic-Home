@@ -122,6 +122,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ph = hass.data[const.DOMAIN].get("_peak_ds")
             if ph is not None:
                 ph.clear(entry.entry_id)
+            # If this entry owned the house-wide shutter-count sensors, release the
+            # marker so another DS entry claims them on its next setup/reload.
+            if (hass.data[const.DOMAIN].get(const.DATA_DS_SUMMARY_OWNER)
+                    == entry.entry_id):
+                hass.data[const.DOMAIN].pop(const.DATA_DS_SUMMARY_OWNER, None)
         # A VMC must not leave a filter-due repair issue for a removed entry (F08).
         if isinstance(coordinator, DvCoordinator):
             coordinator.clear_filter_issue()
