@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.91.0] — 2026-07-01
+
+### Added
+- **DS · sensor de Sol por persiana (legible).** Cada persiana gana un sensor cuyo estado
+  se lee de un vistazo, p. ej. **"Día · Elevación 24,4° · Azimut 136,5° · Persiana al Sol"**
+  (o "… a la Sombra" / "Noche …"): día/noche, posición del sol (elevación y azimut) y si el
+  sol está impactando en la fachada. Los datos van también como atributos estructurados
+  (`day`, `elevation`, `azimuth`, `in_sun`, `impact`) para automatizaciones.
+
+### Internal
+- `coordinator_ds` guarda `sun_az`/`sun_el`/`sun_above` (además del `sun_impact` ya
+  existente). `DsSunSensor` en `sensor.py` (estado en español, atributos estructurados),
+  alta en la rama DS. Traducciones es/en/strings. Test de integración (sol en fachada /
+  noche).
+
 ## [0.90.0] — 2026-07-01
 
 ### Added

@@ -97,6 +97,9 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._sim_pending_since = 0.0           # when the sun started differing
         self._sim_seed = zlib.crc32(entry.entry_id.encode())  # per-shutter jitter
         self.sun_impact = 0.0
+        self.sun_az: float | None = None        # last sun azimuth/elevation and
+        self.sun_el: float | None = None        # whether it's above the horizon,
+        self.sun_above = False                  # for the observability sun sensor
         # Electrical-peak staging (F03): opt-in; stagger mass shutter starts.
         self.peak_enabled = False
         self.peak_reason = "off"
@@ -514,6 +517,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.degraded = self._update_degraded(self._missing_required(), now_ts)
         winner = self.bus_explain["winner"]
         sun_az, sun_el, sun_above = self._sun()
+        self.sun_az, self.sun_el, self.sun_above = sun_az, sun_el, sun_above
         # Direct sun on this facade (orientation + horizon + overhang), for the
         # "In sun" binary sensor. 0 when the sun isn't reaching the window.
         self.sun_impact = (solar_impact(cfg, sun_az, sun_el, sun_above)

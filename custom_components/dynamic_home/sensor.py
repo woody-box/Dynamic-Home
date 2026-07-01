@@ -204,7 +204,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             DsReasonSensor(coordinator, entry),
             ReasonHumanSensor(coordinator, entry, const.MODULE_SHUTTER),
             DsOverrideRemainingSensor(coordinator, entry),
-            DsControlModeSensor(coordinator, entry)]
+            DsControlModeSensor(coordinator, entry),
+            DsSunSensor(coordinator, entry)]
         # First-class context sensors, to read the "why" at a glance — each only
         # when its source is configured.
         if coordinator._hw(const.CONF_DS_T_IN):
@@ -1246,6 +1247,48 @@ class DsControlModeSensor(_Base):
         return {"held_position": co.manual_pos,
                 "remaining_min": co.override_remaining_min,
                 "reason": getattr(co.data, "reason", None)}
+
+
+class DsSunSensor(_Base):
+    """Readable sun state for this shutter's facade.
+
+    State reads like "Día · Elevación 24,4° · Azimut 136,5° · Persiana al Sol"
+    (or "… a la Sombra" / "Noche …"), so a card shows day/night, the sun's
+    position and whether it strikes the window without templating. The pieces ride
+    along as structured attributes for automations.
+    """
+
+    _attr_translation_key = "ds_sun"
+    _attr_icon = "mdi:sun-angle"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_sun")
+
+    @staticmethod
+    def _deg(v: float) -> str:
+        return f"{v:.1f}".replace(".", ",")           # es decimal comma
+
+    @property
+    def native_value(self) -> str:
+        co = self.coordinator
+        parts = ["Día" if co.sun_above else "Noche"]
+        if co.sun_el is not None:
+            parts.append(f"Elevación {self._deg(co.sun_el)}°")
+        if co.sun_az is not None:
+            parts.append(f"Azimut {self._deg(co.sun_az)}°")
+        parts.append("Persiana al Sol" if co.sun_impact > 0
+                     else "Persiana a la Sombra")
+        return " · ".join(parts)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        co = self.coordinator
+        return {"day": co.sun_above,
+                "elevation": co.sun_el,
+                "azimuth": co.sun_az,
+                "in_sun": co.sun_impact > 0,
+                "impact": round(co.sun_impact)}
 
 
 class DsClimateModeSensor(_Base):
