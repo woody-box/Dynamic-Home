@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.84.0] — 2026-07-01
+
+### Added
+- **DW · sensor de Condición meteorológica.** Dynamic Weather expone ahora un sensor
+  individual con la **condición** (estado tipo `sunny`/`rainy`/`lightning`…), el
+  equivalente al sensor de condición de un proveedor (p. ej. Google Weather). Es de
+  tipo **enum** (vocabulario estándar de Home Assistant) y, como el resto de sensores
+  de DW, sobrevive al **failover** entre proveedores (su atributo `source` indica de
+  qué fuente sale). Reutilizable en cualquier tarjeta o automatización, incluidos los
+  campos de alerta de DS (v0.83.0).
+
+### Internal
+- `WxConditionSensor` en `sensor.py` (lee `WxData.condition`, opciones
+  `_WX_CONDITIONS`, atributo `source = active_entity`). Traducciones es/en/strings
+  (`wx_condition`). Test de integración (estado primario + failover a la secundaria).
+
 ## [0.83.0] — 2026-06-30
 
 ### Changed

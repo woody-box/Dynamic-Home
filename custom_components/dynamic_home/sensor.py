@@ -153,6 +153,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         # precip probability) only appear when their raw source is configured.
         wx_ents += [WxValueSensor(coordinator, entry, d) for d in _WX_VALUES
                     if d.requires_conf is None or coordinator._hw(d.requires_conf)]
+        wx_ents.append(WxConditionSensor(coordinator, entry))
         async_add_entities(wx_ents)
         return
     if module == const.MODULE_ZONES:
@@ -610,6 +611,52 @@ class WxValueSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self) -> dict:
         d = self.coordinator.data
         return {"source": d.sources.get(self._desc.field) if d else None}
+
+
+# Standard Home Assistant weather-condition vocabulary (matches what a weather.*
+# entity — e.g. Google Weather — reports as its state).
+_WX_CONDITIONS = [
+    "clear-night", "cloudy", "exceptional", "fog", "hail", "lightning",
+    "lightning-rainy", "partlycloudy", "pouring", "rainy", "snowy",
+    "snowy-rainy", "sunny", "windy", "windy-variant",
+]
+
+
+class WxConditionSensor(CoordinatorEntity, SensorEntity):
+    """Outdoor weather condition (failover-backed), mirroring a weather.* state.
+
+    The DW equivalent of a provider's condition sensor (e.g. Google Weather's
+    ``*_condicion_meteorologica``): its state is the condition of the active
+    weather source, so it survives a provider failover. Reusable anywhere,
+    including the DS weather-alert slots.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "wx_condition"
+    _attr_icon = "mdi:weather-partly-cloudy"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = _WX_CONDITIONS
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_wx_condition"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    @property
+    def native_value(self) -> str | None:
+        d = self.coordinator.data
+        cond = d.condition if d else None
+        return cond if cond in _WX_CONDITIONS else None
+
+    @property
+    def available(self) -> bool:
+        return self.native_value is not None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        d = self.coordinator.data
+        return {"source": d.active_entity if d else None}
 
 
 class HwMirrorSensor(SensorEntity):

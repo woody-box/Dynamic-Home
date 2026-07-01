@@ -1481,6 +1481,7 @@
       "wx_dewpoint": {"name": "Dew point"},
       "wx_storm_prob": {"name": "Thunderstorm probability"},
       "wx_precip_prob": {"name": "Precipitation probability"},
+      "wx_condition": {"name": "Weather condition"},
       "energy": {"name": "Energy"},
       "power": {"name": "Power"},
       "position": {"name": "Position"},
