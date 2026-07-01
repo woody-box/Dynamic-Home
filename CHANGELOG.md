@@ -4,6 +4,14 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.88.1] — 2026-07-01
+
+### Fixed
+- **DS · los sensores de energía 24h/30d se llamaban todos "Energía".** Les faltaba la
+  clave de traducción, así que Home Assistant usaba el nombre por defecto del `device_class`
+  y no se distinguían del acumulado. Ahora muestran **"Energía (últimas 24 h)"** y
+  **"Energía (últimos 30 días)"** (el `entity_id` no cambia).
+
 ## [0.88.0] — 2026-07-01
 
 ### Added
