@@ -162,6 +162,31 @@ async def test_uv_sensor_has_unit_and_integer_precision(
     assert ent.options["sensor"]["suggested_display_precision"] == 0
 
 
+async def test_wind_direction_sensor(hass: HomeAssistant) -> None:
+    """The wind bearing (degrees) is also exposed as an 8-point compass point."""
+    from homeassistant.helpers import entity_registry as er
+    hass.states.async_set("weather.primary", "sunny",
+                          {"temperature": 20.0, "wind_bearing": 45})
+    hass.states.async_set("weather.secondary", "cloudy", {"temperature": 19.0})
+    hass.states.async_set("sensor.wx_temp", "18.0")
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                  f"{entry.entry_id}_wx_wind_dir")
+    assert eid is not None
+    st = hass.states.get(eid)
+    assert st.state == "ne"                        # 45° -> NE (localised in the UI)
+    assert st.attributes["degrees"] == 45
+
+    # 350° wraps to N (raw state stays lowercase; the UI shows the localised form).
+    hass.states.async_set("weather.primary", "sunny",
+                          {"temperature": 20.0, "wind_bearing": 350})
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.states.get(eid).state == "n"
+
+
 async def test_per_field_failover_across_providers(hass: HomeAssistant) -> None:
     """Each field is taken from the first provider that has it (not one source)."""
     from homeassistant.helpers import entity_registry as er
