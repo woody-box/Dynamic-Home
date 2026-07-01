@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.94.0] — 2026-07-01
+
+### Added
+- **DS · ajustes clave editables desde el dashboard (sección "Configuración").** Un subconjunto
+  curado de tunables pasa a ser entidades `number` en la sección **Configuración** del dispositivo
+  (y usables en tarjetas), respaldadas por las **mismas Opciones** que edita el menú — sin duplicar
+  ni desincronizar. Incluye: **Duración override (min)**, **Límite de viento (km/h)**, **ΔT calor**,
+  **ΔT frío**, **ΔT free-cool**, **Apertura mínima verano (%)**, **Apertura máx. refrigerando (%)**,
+  **Cierre máx. por meteo (%)**, **Cierre en Sleep (%)**, **Cierre por lluvia (%)** y **Objetivo
+  amanecer (%)**; además, la **Posición de bloqueo** y la **Posición de privacidad** (que ya
+  existían) se agrupan en esa misma sección. El resto de tunables (geometría, calibración, umbrales
+  de sensor, posiciones secundarias, presencia, pico) sigue en el menú de Opciones.
+
+### Internal
+- `OptionNumber` (respaldo en `entry.options`, `EntityCategory.CONFIG`, conversión de escala para
+  mostrar el override en minutos) + `_DS_OPTION_NUMBERS`; `CoordNumberDesc.category` para reubicar
+  lock/privacy. Traducciones es/en/strings. Test de integración (existencia, categoría CONFIG,
+  defaults, sync con opciones y conversión min↔h).
+
 ## [0.93.0] — 2026-07-01
 
 ### Changed

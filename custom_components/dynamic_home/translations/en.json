@@ -1457,6 +1457,17 @@
       "privacy_pct": {"name": "Privacy position"},
       "lock_pct": {"name": "Lock position"},
       "override_minutes": {"name": "Override timer"},
+      "override_hours": {"name": "Override duration"},
+      "wind_limit_kmh": {"name": "Wind limit"},
+      "hot_delta": {"name": "Hot ΔT"},
+      "cold_delta": {"name": "Cold ΔT"},
+      "freecool_delta": {"name": "Free-cool ΔT"},
+      "summer_min_open_pct": {"name": "Summer min open"},
+      "heat_shield_pct": {"name": "Max open while cooling"},
+      "weather_max_open_pct": {"name": "Weather max close"},
+      "sleep_pct": {"name": "Sleep close"},
+      "rain_close_pct": {"name": "Rain close"},
+      "dawn_target_pct": {"name": "Sunrise target"},
       "quiet_max_level": {"name": "Quiet max level"}
     },
     "sensor": {
