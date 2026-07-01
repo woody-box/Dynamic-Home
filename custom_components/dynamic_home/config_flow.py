@@ -103,7 +103,8 @@ STEP_SHUTTER_SCHEMA = vol.Schema(
         vol.Optional(const.CONF_DS_T_IN): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_DS_T_OUT): _entity("sensor", "temperature"),
         vol.Optional(const.CONF_WIND): _entity("sensor"),
-        vol.Optional(const.CONF_RAIN): _entity(["binary_sensor"]),
+        vol.Optional(const.CONF_RAIN): _entity(
+            ["binary_sensor", "input_boolean", "sensor", "weather"]),
         vol.Optional(const.CONF_DS_ALERT): _entity(
             ["binary_sensor", "input_boolean", "sensor", "weather"]),
         vol.Optional(const.CONF_DS_ALERT_HAIL): _entity(

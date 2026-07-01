@@ -31,18 +31,20 @@ ALERT_GENERIC_CONDITIONS = (
 _ALERT_CONDITIONS = {
     "hail": ALERT_HAIL_CONDITIONS,
     "wind": ALERT_WIND_CONDITIONS,
+    "rain": ALERT_RAIN_CONDITIONS,
     "generic": ALERT_GENERIC_CONDITIONS,
 }
 
 
 def alert_active(state, kind: str, cfg: DsConfig) -> bool:
-    """Decide whether a weather-alert source is firing, from its raw state.
+    """Decide whether a weather-alert/rain source is firing, from its raw state.
 
-    One interpreter for three shapes so the DS alert slots can take a
+    One interpreter for three shapes so the DS alert/rain slots can take a
     ``binary_sensor``/``input_boolean`` (on/off), a numeric ``sensor`` (a
-    threshold: wind gust km/h for ``wind``, probability % otherwise) or a
-    condition/``weather`` sensor (a keyword like ``hail``/``windy``/``rainy``).
-    ``kind`` is ``"generic"``, ``"hail"`` or ``"wind"``. Unknown/empty -> False.
+    threshold: wind gust km/h for ``wind``, precipitation mm for ``rain``,
+    probability % otherwise) or a condition/``weather`` sensor (a keyword like
+    ``hail``/``windy``/``rainy``). ``kind`` is ``"generic"``, ``"hail"``,
+    ``"wind"`` or ``"rain"``. Unknown/empty -> False.
     """
     if state is None:
         return False
@@ -59,6 +61,8 @@ def alert_active(state, kind: str, cfg: DsConfig) -> bool:
         return s in _ALERT_CONDITIONS.get(kind, ALERT_GENERIC_CONDITIONS)
     if kind == "wind":                      # numeric: wind gust km/h
         return cfg.alert_gust_kmh > 0 and v >= cfg.alert_gust_kmh
+    if kind == "rain":                      # numeric: precipitation mm
+        return v > cfg.rain_mm_min
     return cfg.alert_prob_pct > 0 and v >= cfg.alert_prob_pct  # probability %
 
 
@@ -126,6 +130,7 @@ class DsConfig:
     # instead of a binary_sensor: wind gust km/h and probability % (0 = off).
     alert_gust_kmh: float = 50.0        # km/h: wind-alert slot numeric threshold
     alert_prob_pct: float = 70.0        # %: generic/hail slot numeric threshold
+    rain_mm_min: float = 0.1            # mm: rain slot numeric threshold (>= raining)
 
     # Facade geometry (solar impact model)
     facade_azimuth_deg: float = 180.0   # window orientation

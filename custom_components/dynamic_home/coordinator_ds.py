@@ -541,7 +541,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             weather_protect_enabled=(self.weather_protect and bool(
                 self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN)
                 or gust is not None)),
-            raining=self._is_on(const.CONF_RAIN),
+            raining=self._alert_on(const.CONF_RAIN, "rain", cfg),
             wind=self._num(const.CONF_WIND),
             gust=gust,
             current_pos=current_pos,
