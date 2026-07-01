@@ -431,17 +431,18 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         pos, reason = ins.override_pos, "ov_hold"
     elif ins.override_mode == "ttl" and ins.ttl_ok:
         pos, reason = ins.override_pos, "ov_ttl"
-    # 1b) Weather alert (F17): anticipatory protection (above rain/wind).
+    # 1b) Manual hold: a hand/external command wins over EVERY condition, second
+    # only to the lock. What you (or your automation) just did stands — the weather
+    # never undoes it ("open it, step out onto the terrace, it shuts and traps
+    # you"). Press "Resume auto" to hand control back.
+    elif ins.manual_pos is not None:
+        pos, reason = ins.manual_pos, "manual_hold"
+    # 1c) Weather alert (F17): anticipatory protection (above rain/wind).
     elif ins.alert_pos is not None:
         pos, reason = ins.alert_pos, "meteo_alert"
     # 2) Meteo rain
     elif ins.weather_protect_enabled and ins.raining:
         pos, reason = cfg.rain_close_pct, "meteo_rain"
-    # 2b) Manual hold: a hand command pauses the comfort logic so it never undoes
-    # what you just did (no more "open it, step out, it shuts and traps you").
-    # Sits below the safety layers (override/alert/rain) and above all comfort.
-    elif ins.manual_pos is not None:
-        pos, reason = ins.manual_pos, "manual_hold"
     # 2c) Presence simulation (Away): mimic an occupant (day open / night close,
     # jittered). Below the safety/manual layers (weather still protects), above
     # the comfort layers it replaces while away.

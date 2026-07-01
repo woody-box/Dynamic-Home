@@ -4,6 +4,17 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.93.0] — 2026-07-01
+
+### Changed
+- **DS · el override manual pasa por encima de cualquier condición (solo lo supera el
+  bloqueo).** En la cascada de decisión, el `manual_hold` (lo que dejas al mover la persiana
+  a mano / por botón externo / por automatización, con "Seguir movimientos manuales") sube por
+  encima de la **alerta meteo** y la **lluvia**. Antes esas dos capas le ganaban y podían
+  deshacer lo que acababas de hacer; ahora tu acción manual **manda** hasta que pulses
+  **"Reanudar automático"**. El único que sigue por encima es la **Posición de bloqueo**
+  (`ov_lock`). Las posiciones automáticas (sol/estacional/privacidad/…) siguen por debajo.
+
 ## [0.92.1] — 2026-07-01
 
 ### Fixed

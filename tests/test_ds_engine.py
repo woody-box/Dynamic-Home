@@ -120,18 +120,20 @@ def test_manual_hold_beats_comfort():
     assert d.pos == 70 and d.reason == "manual_hold"
 
 
-def test_manual_hold_yields_to_safety():
-    # Safety layers (lock / weather alert / rain) still win over a manual hold.
+def test_manual_hold_beats_weather_yields_only_to_lock():
+    # A manual hold outranks EVERY condition (incl. weather alert / rain); only the
+    # lock beats it. What you did to the shutter by hand stands until you resume.
     cfg = _cfg(rain_close_pct=0, slew_enabled=False)
     d = decide_cover(cfg, DsState(),
                      DsInputs(manual_pos=90, weather_protect_enabled=True,
                               raining=True))
-    assert d.reason == "meteo_rain"
+    assert d.pos == 90 and d.reason == "manual_hold"          # rain doesn't undo it
     d = decide_cover(cfg, DsState(), DsInputs(manual_pos=90, alert_pos=0))
-    assert d.reason == "meteo_alert"
+    assert d.pos == 90 and d.reason == "manual_hold"          # nor a weather alert
+    # ...but the lock (hard manual pin) still wins.
     d = decide_cover(cfg, DsState(),
                      DsInputs(manual_pos=90, override_mode="lock", override_pos=10))
-    assert d.reason == "ov_lock"
+    assert d.pos == 10 and d.reason == "ov_lock"
 
 
 def test_manual_hold_is_protected_from_slew():
