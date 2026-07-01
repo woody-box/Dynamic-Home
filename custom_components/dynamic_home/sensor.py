@@ -154,6 +154,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         wx_ents += [WxValueSensor(coordinator, entry, d) for d in _WX_VALUES
                     if d.requires_conf is None or coordinator._hw(d.requires_conf)]
         wx_ents.append(WxConditionSensor(coordinator, entry))
+        wx_ents.append(WxWindDirSensor(coordinator, entry))
         async_add_entities(wx_ents)
         return
     if module == const.MODULE_ZONES:
@@ -667,6 +668,51 @@ class WxConditionSensor(CoordinatorEntity, SensorEntity):
     def extra_state_attributes(self) -> dict:
         d = self.coordinator.data
         return {"source": d.active_entity if d else None}
+
+
+# 8-point compass. English abbreviations are the stable internal states; the
+# translations localise them (es: SW->SO, W->O, NW->NO).
+_WX_WIND_DIRS = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
+
+
+class WxWindDirSensor(CoordinatorEntity, SensorEntity):
+    """Wind bearing as a readable compass point (companion to the degrees sensor).
+
+    Converts the resolved ``wind_bearing`` (degrees) into an 8-point cardinal
+    direction; the raw degrees ride along in the ``degrees`` attribute.
+    """
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "wx_wind_dir"
+    _attr_icon = "mdi:compass-outline"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = _WX_WIND_DIRS
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{entry.entry_id}_wx_wind_dir"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, entry.entry_id)})
+
+    def _bearing(self) -> float | None:
+        d = self.coordinator.data
+        return d.values.get("wind_bearing") if d else None
+
+    @property
+    def native_value(self) -> str | None:
+        deg = self._bearing()
+        if deg is None:
+            return None
+        return _WX_WIND_DIRS[int((deg + 22.5) // 45) % 8]
+
+    @property
+    def available(self) -> bool:
+        return self._bearing() is not None
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"degrees": self._bearing()}
 
 
 class HwMirrorSensor(SensorEntity):

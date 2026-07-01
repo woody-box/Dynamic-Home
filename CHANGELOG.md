@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.89.0] — 2026-07-01
+
+### Added
+- **DW · sensor de Dirección del viento (rumbo cardinal).** Además del rumbo en grados
+  (`wx_wind_bearing`), Dynamic Weather expone ahora el mismo dato como **punto cardinal**
+  de 8 rumbos, más legible (N/NE/E/SE/S/**SO**/**O**/**NO** en español). Es de tipo enum y,
+  como el resto de sensores de DW, sigue a la fuente activa con failover. Los grados
+  originales quedan en el atributo `degrees`.
+
+### Internal
+- `WxWindDirSensor` en `sensor.py` (convierte `wind_bearing` → rumbo; estado interno en
+  abreviaturas inglesas estables, localizado a español vía traducciones de estado).
+  Alta en la rama `MODULE_WEATHER`. Traducciones es/en/strings. Test de integración
+  (45°→NE, 350°→N, atributo `degrees`).
+
 ## [0.88.1] — 2026-07-01
 
 ### Fixed
