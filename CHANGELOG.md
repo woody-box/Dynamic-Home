@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.90.0] — 2026-07-01
+
+### Added
+- **DS · recuento de persianas de la casa (abiertas / cerradas / entreabiertas).** Tres
+  sensores globales (**Persianas abiertas**, **Persianas cerradas**, **Persianas
+  entreabiertas**) bajo un dispositivo compartido **"Dynamic Home · Persianas"**. Cuentan
+  **solo las persianas gestionadas por DS** (por posición: 100 = abierta, 0 = cerrada,
+  intermedio = entreabierta), sin duplicar con los covers físicos. Atributo `total` con el
+  número de persianas gestionadas. Se crean una sola vez (los posee la primera entrada DS)
+  y se actualizan en vivo al moverse cualquier persiana.
+
+### Internal
+- `DsCoverCountSensor` en `sensor.py` (dispositivo compartido `SHUTTERS_DEVICE_ID`, propietario
+  elegido vía `DATA_DS_SUMMARY_OWNER`, seguimiento reactivo de los covers gestionados +
+  re-armado en cada tick del propietario). Limpieza del marcador en `__init__` al descargar.
+  Traducciones es/en/strings. Test de integración (2+ persianas, recuentos y actualización).
+
 ## [0.89.0] — 2026-07-01
 
 ### Added

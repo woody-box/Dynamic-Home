@@ -37,6 +37,11 @@ PLATFORMS_ENERGY: list[str] = ["sensor", "binary_sensor"]
 # whole bus is observable from one place in the HA UI, not scattered per entry).
 BUS_DEVICE_ID = "bus"
 
+# Shared device + owner-entry marker for the house-wide shutter counts (how many
+# DS-managed covers are open/closed/ajar), created once by the first DS entry.
+SHUTTERS_DEVICE_ID = "shutters_summary"
+DATA_DS_SUMMARY_OWNER = "_ds_summary_owner"
+
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"
 CONF_SW_PWR = "sw_pwr"
