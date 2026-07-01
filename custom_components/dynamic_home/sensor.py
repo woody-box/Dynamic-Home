@@ -544,6 +544,7 @@ class _WxValDesc:
     unit: str | None = None
     diagnostic: bool = False
     requires_conf: str | None = None   # only create when this raw source is set
+    precision: int | None = None       # suggested display precision (0 = integer)
 
 
 # Individual weather values resolved per-field from the configured providers
@@ -565,8 +566,8 @@ _WX_VALUES: tuple[_WxValDesc, ...] = (
     _WxValDesc("wx_gust", "gust", "mdi:weather-windy-variant",
                SensorDeviceClass.WIND_SPEED, UnitOfSpeed.KILOMETERS_PER_HOUR,
                diagnostic=True),
-    _WxValDesc("wx_uv", "uv", "mdi:weather-sunny-alert", None, None,
-               diagnostic=True),
+    _WxValDesc("wx_uv", "uv", "mdi:weather-sunny-alert", None, "UV Index",
+               diagnostic=True, precision=0),
     _WxValDesc("wx_cloud", "cloud", "mdi:weather-cloudy", None, PERCENTAGE,
                diagnostic=True),
     _WxValDesc("wx_dewpoint", "dewpoint", "mdi:thermometer-water",
@@ -592,6 +593,8 @@ class WxValueSensor(CoordinatorEntity, SensorEntity):
         self._attr_icon = desc.icon
         self._attr_device_class = desc.device_class
         self._attr_native_unit_of_measurement = desc.unit
+        if desc.precision is not None:
+            self._attr_suggested_display_precision = desc.precision
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"
         if desc.diagnostic:
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
