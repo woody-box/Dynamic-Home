@@ -4,6 +4,27 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.92.0] — 2026-07-01
+
+### Changed
+- **DS · el sensor de Sol por persiana se simplifica a "al Sol / a la Sombra".** El estado deja
+  de agrupar día/noche + elevación + azimut (que cambiaban cada minuto y ensuciaban el
+  historial) y ahora solo indica **"Persiana al Sol"** o **"Persiana a la Sombra"** (atributos
+  `in_sun`/`impact`).
+
+### Added
+- **DS · datos del sol comunes en el panel "Dynamic Home · Persianas".** Los datos genéricos se
+  mueven a sensores propios (una sola vez, junto a los recuentos): **Día o noche**, **Elevación**
+  (°) y **Azimut** (°). Además, dos nuevos: **Amanecer** y **Anochecer**, que muestran la ventana
+  del próximo orto/ocaso como **"De HH:MM a HH:MM"** (amanecer = desde el alba `next_dawn` hasta
+  que sale `next_rising`; anochecer = desde que se pone `next_setting` hasta el ocaso `next_dusk`),
+  con `start`/`end` como atributos. Salen de la entidad `sun.sun` nativa.
+
+### Internal
+- `DsSunSensor` reducido a sol/sombra. Nuevos `_SharedSunSensor` + `DsSunDayNight/Elevation/
+  Azimuth/Sunrise/Sunset` (leen `sun.sun`, suscritos a sus cambios), altas en el bloque del
+  propietario del dispositivo compartido. Traducciones es/en/strings. Tests actualizados + nuevo.
+
 ## [0.91.0] — 2026-07-01
 
 ### Added
