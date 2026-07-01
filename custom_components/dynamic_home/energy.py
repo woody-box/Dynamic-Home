@@ -36,6 +36,29 @@ def dc_power_w(on: bool, watts_on: float) -> float:
     return max(0.0, watts_on) if on else 0.0
 
 
+def window_kwh(samples: list[tuple[float, float]], current_kwh: float,
+               now_ts: float, window_s: float) -> float:
+    """Energy consumed over the last ``window_s`` from cumulative-kWh snapshots.
+
+    ``samples`` is an ascending list of ``(timestamp, cumulative_kwh)`` and
+    ``current_kwh`` the live cumulative total. The consumption in the window is
+    ``current − baseline``, where the baseline is the cumulative value at the
+    window's start: the latest snapshot at or before ``now − window_s`` (or the
+    earliest snapshot if the history is shorter than the window — a partial figure
+    while it fills). No history yet -> 0. Never negative.
+    """
+    if not samples:
+        return 0.0
+    cutoff = now_ts - window_s
+    baseline = samples[0][1]
+    for ts, kwh in samples:
+        if ts <= cutoff:
+            baseline = kwh
+        else:
+            break
+    return max(0.0, current_kwh - baseline)
+
+
 def ds_move_kwh(delta_pct: float, motor_w: float, full_travel_s: float) -> float:
     """Energy (kWh) of one shutter movement of ``|delta_pct|`` %.
 

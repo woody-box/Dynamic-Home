@@ -1484,6 +1484,8 @@
       "wx_condition": {"name": "Condición meteorológica"},
       "energy": {"name": "Energía"},
       "power": {"name": "Potencia"},
+      "energy_24h": {"name": "Energía (últimas 24 h)"},
+      "energy_30d": {"name": "Energía (últimos 30 días)"},
       "position": {"name": "Posición"},
       "target_position": {"name": "Posición objetivo"},
       "reason": {"name": "Motivo"},
