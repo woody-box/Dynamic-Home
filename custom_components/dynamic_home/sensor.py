@@ -226,6 +226,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         if data[const.DATA_DS_SUMMARY_OWNER] == entry.entry_id:
             ds_ents += [DsCoverCountSensor(coordinator, entry, key, icon, pred)
                         for key, icon, pred in _DS_COVER_COUNTS]
+            ds_ents += [cls() for cls in _DS_SHARED_SUN]
         async_add_entities(ds_ents)
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
@@ -917,6 +918,147 @@ class DsCoverCountSensor(CoordinatorEntity, SensorEntity):
         return {"total": len(self._positions())}
 
 
+class _SharedSunSensor(SensorEntity):
+    """Base for the house-wide sun sensors on the shared 'Persianas' device.
+
+    Reads the native ``sun.sun`` entity (global, same for every shutter) and
+    refreshes whenever it updates. Created once, alongside the shutter counts.
+    """
+
+    _attr_has_entity_name = True
+    _attr_should_poll = False
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, key: str) -> None:
+        self._attr_translation_key = key
+        self._attr_unique_id = f"{const.DOMAIN}_{key}"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)},
+            name="Dynamic Home · Persianas")
+
+    def _sun(self):
+        return self.hass.states.get("sun.sun")
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self.async_on_remove(async_track_state_change_event(
+            self.hass, ["sun.sun"], self._sun_changed))
+
+    @callback
+    def _sun_changed(self, event) -> None:
+        self.async_write_ha_state()
+
+    @property
+    def available(self) -> bool:
+        return self._sun() is not None
+
+
+class DsSunDayNightSensor(_SharedSunSensor):
+    """Day or night (from the sun being above/below the horizon)."""
+
+    _attr_icon = "mdi:theme-light-dark"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["day", "night"]
+
+    def __init__(self) -> None:
+        super().__init__("sun_day_night")
+
+    @property
+    def native_value(self) -> str | None:
+        st = self._sun()
+        return None if st is None else (
+            "day" if st.state == "above_horizon" else "night")
+
+
+class DsSunElevationSensor(_SharedSunSensor):
+    """Sun elevation above the horizon (degrees)."""
+
+    _attr_icon = "mdi:angle-acute"
+    _attr_native_unit_of_measurement = "°"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self) -> None:
+        super().__init__("sun_elevation")
+
+    @property
+    def native_value(self) -> float | None:
+        st = self._sun()
+        return st.attributes.get("elevation") if st else None
+
+
+class DsSunAzimuthSensor(_SharedSunSensor):
+    """Sun azimuth / compass bearing (degrees)."""
+
+    _attr_icon = "mdi:compass"
+    _attr_native_unit_of_measurement = "°"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self) -> None:
+        super().__init__("sun_azimuth")
+
+    @property
+    def native_value(self) -> float | None:
+        st = self._sun()
+        return st.attributes.get("azimuth") if st else None
+
+
+class _SunWindowSensor(_SharedSunSensor):
+    """A sun transition window as a readable ``De HH:MM a HH:MM`` range."""
+
+    _start_attr = ""
+    _end_attr = ""
+
+    def _edges(self):
+        st = self._sun()
+        if st is None:
+            return None, None
+        s = dt_util.parse_datetime(st.attributes.get(self._start_attr) or "")
+        e = dt_util.parse_datetime(st.attributes.get(self._end_attr) or "")
+        return s, e
+
+    @property
+    def native_value(self) -> str | None:
+        s, e = self._edges()
+        if s is None or e is None:
+            return None
+        return (f"De {dt_util.as_local(s):%H:%M} "
+                f"a {dt_util.as_local(e):%H:%M}")
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        s, e = self._edges()
+        return {"start": dt_util.as_local(s).isoformat() if s else None,
+                "end": dt_util.as_local(e).isoformat() if e else None}
+
+
+class DsSunriseSensor(_SunWindowSensor):
+    """Next sunrise window: from first light (dawn) to fully risen."""
+
+    _attr_icon = "mdi:weather-sunset-up"
+    _start_attr = "next_dawn"
+    _end_attr = "next_rising"
+
+    def __init__(self) -> None:
+        super().__init__("sunrise")
+
+
+class DsSunsetSensor(_SunWindowSensor):
+    """Next sunset window: from starting to set (sunset) to fully hidden (dusk)."""
+
+    _attr_icon = "mdi:weather-sunset-down"
+    _start_attr = "next_setting"
+    _end_attr = "next_dusk"
+
+    def __init__(self) -> None:
+        super().__init__("sunset")
+
+
+_DS_SHARED_SUN = (DsSunDayNightSensor, DsSunElevationSensor, DsSunAzimuthSensor,
+                  DsSunriseSensor, DsSunsetSensor)
+
+
 class _Base(CoordinatorEntity[DvCoordinator], SensorEntity):
     _attr_has_entity_name = True
 
@@ -1250,12 +1392,10 @@ class DsControlModeSensor(_Base):
 
 
 class DsSunSensor(_Base):
-    """Readable sun state for this shutter's facade.
-
-    State reads like "Día · Elevación 24,4° · Azimut 136,5° · Persiana al Sol"
-    (or "… a la Sombra" / "Noche …"), so a card shows day/night, the sun's
-    position and whether it strikes the window without templating. The pieces ride
-    along as structured attributes for automations.
+    """Whether the sun strikes this shutter's facade: "Persiana al Sol" / "…​ a la
+    Sombra". The generic sun data (day/night, elevation, azimuth) lives in its own
+    sensors on the shared "Dynamic Home · Persianas" device, so this one only
+    flips when the shading actually changes (no minute-by-minute history churn).
     """
 
     _attr_translation_key = "ds_sun"
@@ -1265,30 +1405,15 @@ class DsSunSensor(_Base):
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "ds_sun")
 
-    @staticmethod
-    def _deg(v: float) -> str:
-        return f"{v:.1f}".replace(".", ",")           # es decimal comma
-
     @property
     def native_value(self) -> str:
-        co = self.coordinator
-        parts = ["Día" if co.sun_above else "Noche"]
-        if co.sun_el is not None:
-            parts.append(f"Elevación {self._deg(co.sun_el)}°")
-        if co.sun_az is not None:
-            parts.append(f"Azimut {self._deg(co.sun_az)}°")
-        parts.append("Persiana al Sol" if co.sun_impact > 0
-                     else "Persiana a la Sombra")
-        return " · ".join(parts)
+        return ("Persiana al Sol" if self.coordinator.sun_impact > 0
+                else "Persiana a la Sombra")
 
     @property
     def extra_state_attributes(self) -> dict:
         co = self.coordinator
-        return {"day": co.sun_above,
-                "elevation": co.sun_el,
-                "azimuth": co.sun_az,
-                "in_sun": co.sun_impact > 0,
-                "impact": round(co.sun_impact)}
+        return {"in_sun": co.sun_impact > 0, "impact": round(co.sun_impact)}
 
 
 class DsClimateModeSensor(_Base):

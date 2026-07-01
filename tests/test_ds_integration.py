@@ -1123,19 +1123,53 @@ async def test_ds_sun_sensor(hass: HomeAssistant) -> None:
                                   f"{entry.entry_id}_ds_sun")
     assert eid is not None
     st = hass.states.get(eid)
-    assert st.state.startswith("Día · Elevación 24,4° · Azimut 180,0°")
-    assert "Persiana al Sol" in st.state
-    assert st.attributes["day"] is True
+    assert st.state == "Persiana al Sol"          # sun on the facade
     assert st.attributes["in_sun"] is True
-    assert st.attributes["elevation"] == 24.4
 
-    # Night: sun below horizon -> "Noche …" and in the shade.
-    hass.states.async_set("sun.sun", "below_horizon",
-                          {"azimuth": 10.0, "elevation": -8.0})
+    # Sun off the facade -> in the shade.
+    hass.states.async_set("sun.sun", "above_horizon",
+                          {"azimuth": 10.0, "elevation": 24.4})  # far from south
     co = hass.data[const.DOMAIN][entry.entry_id]
     await co.async_refresh()
     await hass.async_block_till_done()
     st = hass.states.get(eid)
-    assert st.state.startswith("Noche ·")
-    assert "Persiana a la Sombra" in st.state
-    assert st.attributes["day"] is False and st.attributes["in_sun"] is False
+    assert st.state == "Persiana a la Sombra" and st.attributes["in_sun"] is False
+
+
+async def test_shared_sun_sensors(hass: HomeAssistant) -> None:
+    """Day/night, elevation, azimuth and the sunrise/sunset windows live once on
+    the shared 'Persianas' device."""
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.util import dt as dt_util
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("cover.salon_real", "open", {"supported_features": 15})
+    hass.states.async_set("sun.sun", "above_horizon", {
+        "azimuth": 180.0, "elevation": 60.2,
+        "next_dawn": "2026-07-02T03:55:00+00:00",
+        "next_rising": "2026-07-02T04:31:00+00:00",
+        "next_setting": "2026-07-01T19:44:00+00:00",
+        "next_dusk": "2026-07-01T20:19:00+00:00"})
+    await _setup(hass)
+    reg = er.async_get(hass)
+
+    def state(key):
+        eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                      f"{const.DOMAIN}_{key}")
+        assert eid is not None, key
+        return hass.states.get(eid)
+
+    assert state("sun_day_night").state == "day"
+    assert float(state("sun_elevation").state) == 60.2
+    assert float(state("sun_azimuth").state) == 180.0
+    # Windows shown as "De HH:MM a HH:MM" in local time (compute the expected
+    # edges with the same converter, so it holds under any test timezone).
+    def rng(a, b):
+        la = dt_util.as_local(dt_util.parse_datetime(a))
+        lb = dt_util.as_local(dt_util.parse_datetime(b))
+        return f"De {la:%H:%M} a {lb:%H:%M}"
+
+    assert state("sunrise").state == rng(
+        "2026-07-02T03:55:00+00:00", "2026-07-02T04:31:00+00:00")
+    assert state("sunset").state == rng(
+        "2026-07-01T19:44:00+00:00", "2026-07-01T20:19:00+00:00")
+    assert state("sunrise").attributes["start"] is not None
