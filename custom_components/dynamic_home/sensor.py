@@ -900,6 +900,7 @@ class DsEnergyWindowSensor(_Base):
                  win: _EnergyWindow) -> None:
         super().__init__(coordinator, entry, win.key)
         self._win = win
+        self._attr_translation_key = win.key
         self._attr_icon = win.icon
 
     @property

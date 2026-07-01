@@ -672,9 +672,12 @@ async def test_ds_power_and_energy_window_sensors(hass: HomeAssistant) -> None:
         return reg.async_get_entity_id("sensor", const.DOMAIN,
                                        f"{entry.entry_id}_{key}")
 
-    # All three entities exist, with the right units/classes.
+    # All three entities exist, each with its own translation key (distinct
+    # names, not all "Energy") and the right units/classes.
     for key in ("power", "energy_24h", "energy_30d"):
         assert eid(key) is not None, key
+    for key in ("energy_24h", "energy_30d"):
+        assert reg.async_get(eid(key)).translation_key == key, key
     p = hass.states.get(eid("power"))
     assert p.attributes["device_class"] == "power"
     e24 = hass.states.get(eid("energy_24h"))
