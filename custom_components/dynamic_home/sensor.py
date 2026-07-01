@@ -195,6 +195,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         ds_ents: list[SensorEntity] = [
             BusSensor(coordinator, entry),
             EnergySensor(coordinator, entry),
+            PowerSensor(coordinator, entry),
+            *[DsEnergyWindowSensor(coordinator, entry, w)
+              for w in _DS_ENERGY_WINDOWS],
             DsPositionSensor(coordinator, entry),
             DsTargetSensor(coordinator, entry),
             DsReasonSensor(coordinator, entry),
@@ -865,6 +868,43 @@ class PowerSensor(_Base):
     @property
     def native_value(self) -> float:
         return round(self.coordinator.power_w, 1)
+
+
+@dataclass(frozen=True)
+class _EnergyWindow:
+    key: str            # translation key + unique_id suffix
+    seconds: float      # rolling window length
+    icon: str
+
+
+_DS_ENERGY_WINDOWS: tuple[_EnergyWindow, ...] = (
+    _EnergyWindow("energy_24h", 86400.0, "mdi:lightning-bolt-outline"),
+    _EnergyWindow("energy_30d", 30 * 86400.0, "mdi:calendar-month-outline"),
+)
+
+
+class DsEnergyWindowSensor(_Base):
+    """Energy consumed by the shutter motor over a rolling window (24 h / 30 d).
+
+    Complements the cumulative ``Energy`` total: a bounded figure that goes up and
+    down, so no ``state_class`` (it is not a monotonic meter). Rebuilds after a
+    restart as the in-memory history refills.
+    """
+
+    _attr_device_class = SensorDeviceClass.ENERGY
+    _attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+    _attr_suggested_display_precision = 3
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry,
+                 win: _EnergyWindow) -> None:
+        super().__init__(coordinator, entry, win.key)
+        self._win = win
+        self._attr_icon = win.icon
+
+    @property
+    def native_value(self) -> float:
+        return round(self.coordinator.energy_window_kwh(self._win.seconds), 3)
 
 
 class DsPositionSensor(_Base):

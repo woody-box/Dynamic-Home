@@ -659,6 +659,42 @@ async def test_ds_energy_accumulates_on_move(hass: HomeAssistant) -> None:
     assert hass.states.get(eid).attributes["device_class"] == "energy"
 
 
+async def test_ds_power_and_energy_window_sensors(hass: HomeAssistant) -> None:
+    """Instantaneous power (W) + rolling 24 h / 30 d energy windows."""
+    from homeassistant.helpers import entity_registry as er
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    reg = er.async_get(hass)
+
+    def eid(key):
+        return reg.async_get_entity_id("sensor", const.DOMAIN,
+                                       f"{entry.entry_id}_{key}")
+
+    # All three entities exist, with the right units/classes.
+    for key in ("power", "energy_24h", "energy_30d"):
+        assert eid(key) is not None, key
+    p = hass.states.get(eid("power"))
+    assert p.attributes["device_class"] == "power"
+    e24 = hass.states.get(eid("energy_24h"))
+    assert e24.attributes["unit_of_measurement"] == "kWh"
+
+    # Idle: no move this cycle -> instantaneous power is 0.
+    assert float(p.state) == 0.0
+
+    # A commanded move accrues energy; the 24 h window reflects the consumption.
+    co.lock_enabled = True
+    co.lock_pct = 0
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.energy_kwh > 0.0
+    assert float(hass.states.get(eid("energy_24h")).state) == round(
+        co.energy_kwh, 3)
+    assert float(hass.states.get(eid("energy_30d")).state) == round(
+        co.energy_kwh, 3)
+
+
 # --- F15: geometric shading (opt-in) refines the summer solar branch ---
 GEO = {
     **SHUTTER,

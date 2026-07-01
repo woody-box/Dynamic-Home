@@ -4,6 +4,26 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.88.0] — 2026-07-01
+
+### Added
+- **DS · tres sensores de energía por persiana.** Junto al total acumulado (`Energía`)
+  aparecen:
+  - **Energía (últimas 24 h)** y **Energía (últimos 30 días)** (`energy_24h`/`energy_30d`):
+    consumo del motor en ventanas móviles, calculado a partir de instantáneas del
+    acumulado (una cada 5 min, hasta 30 días). Se rehacen tras un reinicio conforme el
+    historial se vuelve a llenar.
+  - **Potencia** (`power`, W): potencia instantánea — el medidor real si está configurado
+    (`power_meter`), si no la del motor en el instante en que se mueve (0 en reposo, el
+    estado normal de una persiana).
+
+### Internal
+- `energy.window_kwh(samples, current, now, window_s)` puro + `coordinator_ds`
+  historial down-sampled (`_record_energy`, buckets de 5 min/30 días) y
+  `energy_window_kwh`; `power_w` real/estimado por movimiento. `DsEnergyWindowSensor`
+  (sin `state_class`: valor acotado, no monótono) + alta de `PowerSensor` en DS.
+  Traducciones es/en/strings. Tests puros (ventana) + integración (potencia + ventanas).
+
 ## [0.87.0] — 2026-07-01
 
 ### Added

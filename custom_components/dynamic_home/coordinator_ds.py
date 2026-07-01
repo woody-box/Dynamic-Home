@@ -31,6 +31,10 @@ from .options_spec import apply_options
 
 _LOGGER = logging.getLogger(__name__)
 
+# Rolling-window energy: keep at most one snapshot per 5 min, over 30 days.
+_ENERGY_BUCKET_S = 300.0
+_ENERGY_WINDOW_MAX_S = 30 * 86400.0
+
 
 class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     """Evaluates the DS (shutter) cascade and tracks the source entities.
@@ -100,6 +104,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.energy_kwh = 0.0
         self.power_w = 0.0             # F06/REQ-ENE-5: ~0 steady (motor moves briefly)
         self._energy_last_pos: int | None = None
+        # Rolling-window energy: down-sampled (ts, cumulative_kWh) snapshots to
+        # derive the last-24h and last-30d consumption. In-memory (rebuilds after a
+        # restart); the cumulative total itself is restored by its own sensor.
+        self._energy_hist: list[tuple[float, float]] = []
         # Gradual sunrise (F19): opt-in ramp state.
         self.dawn_enabled = False
         self._dawn_active = False
@@ -570,9 +578,37 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
         # Energy (F06): a shutter move lasts seconds (missed by 60 s sampling), so
         # estimate the marginal motor energy per commanded position change.
-        if self._energy_last_pos is not None and decision.pos != self._energy_last_pos:
+        moved = (self._energy_last_pos is not None
+                 and decision.pos != self._energy_last_pos)
+        if moved:
             self.energy_kwh += energy.ds_move_kwh(
                 decision.pos - self._energy_last_pos,
                 cfg.est_w_motor, cfg.full_travel_s)
         self._energy_last_pos = decision.pos
+        # Instantaneous power: a real meter if configured, else the motor draw on
+        # the tick it moves (0 while idle — the honest steady state for a shutter).
+        meter = self._num(const.CONF_POWER_METER)
+        self.power_w = (meter if meter is not None
+                        else (cfg.est_w_motor if moved else 0.0))
+        self._record_energy(now_ts)
         return decision
+
+    def _record_energy(self, now_ts: float) -> None:
+        """Snapshot the cumulative kWh once per bucket for the rolling windows.
+
+        Append-only (the bucket-start value is the baseline a later window reads
+        against); the live total is kept separately, so within a bucket the
+        baseline is preserved. Prunes snapshots past the longest window.
+        """
+        hist = self._energy_hist
+        if not hist or now_ts - hist[-1][0] >= _ENERGY_BUCKET_S:
+            hist.append((now_ts, self.energy_kwh))
+        cutoff = now_ts - _ENERGY_WINDOW_MAX_S - _ENERGY_BUCKET_S
+        while len(hist) > 1 and hist[0][0] < cutoff:
+            hist.pop(0)
+
+    def energy_window_kwh(self, window_s: float) -> float:
+        """Energy consumed in the last ``window_s`` (rolling)."""
+        now_ts = dt_util.utcnow().timestamp()
+        return energy.window_kwh(self._energy_hist, self.energy_kwh,
+                                 now_ts, window_s)
