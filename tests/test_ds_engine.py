@@ -505,6 +505,24 @@ def test_wind_cap_reacts_to_gust():
     assert d2.reason != "meteo_wind_cap"
 
 
+def test_wind_cap_yields_to_manual_and_lock():
+    # A manual hold (or lock) is a firm decision: the wind cap must NOT slam it
+    # shut, or a manually-opened shutter would trap someone on the terrace.
+    cfg = _cfg(wind_limit_kmh=40, wind_cap_span_kmh=20, weather_max_open_pct=30,
+               slew_enabled=False)
+    windy = dict(weather_protect_enabled=True, wind=60)   # well over the limit
+    # Manual hold open -> stays open despite the wind.
+    d = decide_cover(cfg, DsState(), DsInputs(manual_pos=100, **windy))
+    assert d.pos == 100 and d.reason == "manual_hold"
+    # Lock open -> stays open despite the wind.
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(override_mode="lock", override_pos=100, **windy))
+    assert d.pos == 100 and d.reason == "ov_lock"
+    # But an automatic (non-protected) state still gets wind-capped.
+    d = decide_cover(cfg, DsState(), DsInputs(**windy))
+    assert d.pos == 30 and d.reason == "meteo_wind_cap"
+
+
 def test_wind_cap_hysteresis():
     cfg = _cfg(wind_limit_kmh=40, wind_cap_hyst_kmh=5)
     st = DsState()

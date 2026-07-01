@@ -521,10 +521,13 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
 
     # --- Caps (applied after the branch) ---
 
-    # Wind cap (advanced, with hysteresis)
+    # Wind cap (advanced, with hysteresis). Like the SDHB/slew caps below, it must
+    # not override a PROTECTED reason: a manual hold / lock / weather alert / rain /
+    # privacy is a firm decision the user (or a safety layer) already made — the
+    # wind cap slamming a manually-opened shutter shut would trap someone outside.
     cap_pct = compute_wind_cap(cfg, ins)
     wind_active = update_wind_cap_active(state, cfg, ins)
-    if wind_active and pos > cap_pct and reason != "meteo_rain":
+    if wind_active and pos > cap_pct and reason not in PROTECTED:
         pos, reason = cap_pct, "meteo_wind_cap"
         detail = {"wind": ins.wind, "cap_pct": cap_pct}
 

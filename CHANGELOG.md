@@ -4,6 +4,17 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.92.1] — 2026-07-01
+
+### Fixed
+- **DS · el tope por viento pisaba el override manual y el bloqueo (podía dejarte fuera).**
+  El límite por viento solo eximía a la lluvia, así que cerraba la persiana aunque la hubieras
+  **abierto a mano / por botón externo / por automatización** (override armado) o la tuvieras
+  en **Bloqueo** — cerrándose una y otra vez y pudiendo atrapar a alguien en la terraza. Ahora
+  el tope por viento respeta las decisiones firmes (`PROTECTED`: override manual, bloqueo,
+  alerta/lluvia meteo, privacidad), igual que ya hacían los topes SDHB y de velocidad. Las
+  posiciones **automáticas** (sol/estacional/por defecto) siguen protegiéndose del viento.
+
 ## [0.92.0] — 2026-07-01
 
 ### Changed
