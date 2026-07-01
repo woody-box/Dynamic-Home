@@ -4,6 +4,24 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.87.0] — 2026-07-01
+
+### Added
+- **DS · dos sensores nuevos por persiana.**
+  - **Diferencial interior-exterior** (`ds_temp_diff`): la resta `Tª interior − Tª exterior`
+    de la sala de la persiana (p. ej. salón vs calle/terraza). De un vistazo, un diferencial
+    pequeño sugiere ventana/persiana abierta y uno grande que está cerrada y aislando. Solo
+    se crea si están configuradas ambas temperaturas (interior y exterior).
+  - **Modo de control** (`ds_control_mode`): indica si la persiana va en **automático**
+    (mandada por DS) o en **manual (override)** por una orden a mano/externa. Así, cuando
+    esté en manual, sabes que puedes pulsar el botón **"Reanudar automático"** para cancelar
+    el override. Atributos: `held_position`, `remaining_min` y `reason`.
+
+### Internal
+- `DsTempDiffSensor` y `DsControlModeSensor` en `sensor.py` (el de modo, enum
+  `auto`/`manual`, siempre presente; el diferencial gateado por ambas temperaturas).
+  Traducciones es/en/strings. Tests de integración (diferencial, y auto→manual→auto).
+
 ## [0.86.0] — 2026-07-01
 
 ### Fixed

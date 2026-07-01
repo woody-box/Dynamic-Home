@@ -731,6 +731,7 @@ async def test_ds_context_sensors_expose_temps_and_climate(
 
     assert float(_state("ds_indoor_temp")) == 24.0
     assert float(_state("ds_outdoor_temp")) == 30.0
+    assert float(_state("ds_temp_diff")) == -6.0          # 24 − 30
     assert _state("ds_climate_mode") == "cool"
     assert float(_state("ds_climate_setpoint")) == 23.5
     assert float(_state("ds_climate_temp")) == 25.0
@@ -830,11 +831,18 @@ async def test_manual_override_hold_resume_and_expiry(hass: HomeAssistant) -> No
     co = hass.data[const.DOMAIN][entry.entry_id]
     reg = er.async_get(hass)
 
+    # Control-mode sensor starts in automatic.
+    mid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_ds_control_mode")
+    assert mid is not None and hass.states.get(mid).state == "auto"
+
     # Hand command (what the managed cover does on a user move) arms the hold.
     co.arm_manual_override(80)
     await hass.async_block_till_done()
     assert co.manual_pos == 80
     assert co.data.reason == "manual_hold" and co.data.pos == 80
+    # ...and the control-mode sensor flips to manual.
+    assert hass.states.get(mid).state == "manual"
 
     # "Override restante" sensor shows time left.
     sid = reg.async_get_entity_id(
@@ -852,6 +860,7 @@ async def test_manual_override_hold_resume_and_expiry(hass: HomeAssistant) -> No
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.reason != "manual_hold"
+    assert hass.states.get(mid).state == "auto"        # back to automatic
 
     # Timeout: re-arm, backdate the deadline -> next cycle drops the hold.
     co.arm_manual_override(50)
@@ -872,10 +881,14 @@ async def test_ds_context_sensors_absent_without_sources(
     entry = await _setup(hass)            # plain SHUTTER (no temps, no climate)
 
     reg = er.async_get(hass)
-    for key in ("ds_indoor_temp", "ds_outdoor_temp", "ds_climate_mode",
-                "ds_climate_setpoint", "ds_climate_temp"):
+    for key in ("ds_indoor_temp", "ds_outdoor_temp", "ds_temp_diff",
+                "ds_climate_mode", "ds_climate_setpoint", "ds_climate_temp"):
         assert reg.async_get_entity_id(
             "sensor", const.DOMAIN, f"{entry.entry_id}_{key}") is None, key
+    # The control-mode sensor, on the other hand, always exists (override applies
+    # to any shutter).
+    assert reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_ds_control_mode") is not None
 
 
 async def test_heat_shield_holds_closed_when_hot_no_direct_sun(

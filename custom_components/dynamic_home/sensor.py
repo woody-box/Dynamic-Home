@@ -199,13 +199,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             DsTargetSensor(coordinator, entry),
             DsReasonSensor(coordinator, entry),
             ReasonHumanSensor(coordinator, entry, const.MODULE_SHUTTER),
-            DsOverrideRemainingSensor(coordinator, entry)]
+            DsOverrideRemainingSensor(coordinator, entry),
+            DsControlModeSensor(coordinator, entry)]
         # First-class context sensors, to read the "why" at a glance — each only
         # when its source is configured.
         if coordinator._hw(const.CONF_DS_T_IN):
             ds_ents.append(DsIndoorTempSensor(coordinator, entry))
         if coordinator._hw(const.CONF_DS_T_OUT):
             ds_ents.append(DsOutdoorTempSensor(coordinator, entry))
+        if (coordinator._hw(const.CONF_DS_T_IN)
+                and coordinator._hw(const.CONF_DS_T_OUT)):
+            ds_ents.append(DsTempDiffSensor(coordinator, entry))
         if coordinator._hw(const.CONF_CLIMATE):
             ds_ents.append(DsClimateModeSensor(coordinator, entry))
             ds_ents.append(DsClimateSetpointSensor(coordinator, entry))
@@ -1009,6 +1013,66 @@ class DsOutdoorTempSensor(_Base):
     @property
     def native_value(self) -> float | None:
         return self.coordinator._num(const.CONF_DS_T_OUT)
+
+
+class DsTempDiffSensor(_Base):
+    """Indoor−outdoor temperature differential for this shutter's room.
+
+    ``t_in − t_out`` (e.g. living room vs street/terrace): at a glance a small
+    delta hints the window/shutter is open (the room tracks outside), a large one
+    that it is closed and insulating. Only created when both temperatures are set.
+    """
+
+    _attr_translation_key = "ds_temp_diff"
+    _attr_icon = "mdi:thermometer-lines"
+    _attr_device_class = SensorDeviceClass.TEMPERATURE
+    _attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_suggested_display_precision = 1
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_temp_diff")
+
+    @property
+    def native_value(self) -> float | None:
+        t_in = self.coordinator._num(const.CONF_DS_T_IN)
+        t_out = self.coordinator._num(const.CONF_DS_T_OUT)
+        if t_in is None or t_out is None:
+            return None
+        return round(t_in - t_out, 1)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"indoor": self.coordinator._num(const.CONF_DS_T_IN),
+                "outdoor": self.coordinator._num(const.CONF_DS_T_OUT)}
+
+
+class DsControlModeSensor(_Base):
+    """Whether the shutter runs on DS automation or is held by a manual override.
+
+    ``auto`` = the cascade drives it; ``manual`` = a hand/external command armed a
+    hold (press "Resume auto" to cancel it). The reason and the remaining hold time
+    ride along as attributes.
+    """
+
+    _attr_translation_key = "ds_control_mode"
+    _attr_icon = "mdi:hand-back-right"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["auto", "manual"]
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator, entry, "ds_control_mode")
+
+    @property
+    def native_value(self) -> str:
+        return "manual" if self.coordinator.manual_pos is not None else "auto"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        co = self.coordinator
+        return {"held_position": co.manual_pos,
+                "remaining_min": co.override_remaining_min,
+                "reason": getattr(co.data, "reason", None)}
 
 
 class DsClimateModeSensor(_Base):
