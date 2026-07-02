@@ -214,6 +214,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         self._override_unsub = None     # cancels a pending auto-revert to auto
         self._apply_lock = asyncio.Lock()
         self._apply_seq = 0
+        self._was_observing = False
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -234,6 +235,12 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         # stays energised while the integration believes it is at V1, and the
         # change-only auto handler never corrects it (decision V1 == assumed V1).
         await self._apply_speed(self._logical_speed)
+        d = self._entry.data
+        speed_relays = [r for r in (d.get(const.CONF_SW_V2),
+                                    d.get(const.CONF_SW_V3)) if r]
+        if speed_relays:
+            self.async_on_remove(async_track_state_change_event(
+                self.hass, speed_relays, self._interlock_check))
 
     # --- derived state ---
     @property
@@ -409,7 +416,25 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data
-        if (self._preset == const.PRESET_AUTO and data
+        observing = self.coordinator.observe_effective
+        if self._was_observing and not observing:
+            # Leaving observe/pause: current_speed tracked the DECISIONS while
+            # the relays stayed put — re-assert the logical speed on the
+            # hardware, or the change-only gate below never corrects it.
+            self.hass.async_create_task(self._apply_speed(self._logical_speed))
+        elif (self._preset == const.PRESET_AUTO and data
                 and data.speed != self.coordinator.current_speed):
             self.hass.async_create_task(self._apply_speed(data.speed))
+        self._was_observing = observing
         super()._handle_coordinator_update()
+
+    @callback
+    def _interlock_check(self, _event) -> None:
+        """If V2 and V3 are ever energised at once, re-assert the wanted speed
+        (mirror of the hood's watchdog: an external actor flipping a relay must
+        not leave the motor with both speed windings closed)."""
+        d = self._entry.data
+        relays = [d.get(const.CONF_SW_V2), d.get(const.CONF_SW_V3)]
+        ons = sum(1 for r in relays if r and self.hass.states.is_state(r, "on"))
+        if ons > 1:
+            self.hass.async_create_task(self._apply_speed(self._logical_speed))

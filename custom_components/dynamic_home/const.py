@@ -219,7 +219,6 @@ EVENT_FILTER_DUE = f"{DOMAIN}_filter_due"
 EVENT_MOLD = f"{DOMAIN}_mold"
 EVENT_WINDOW = f"{DOMAIN}_window"
 EVENT_ADJACENT = f"{DOMAIN}_adjacent"
-EVENT_MODE_CHANGED = f"{DOMAIN}_mode_changed"
 
 # Guard key in hass.data[DOMAIN]: services are registered once for the whole
 # integration (not per entry) and removed when the last entry unloads.

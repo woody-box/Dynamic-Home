@@ -97,7 +97,16 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
                 "opening", "closing", "unavailable", "unknown"):
             return                          # mid-travel or no usable state yet
         pos = new.attributes.get("current_position")
-        real = int(pos) if pos is not None else (0 if new.state == "closed" else 100)
+        if pos is not None:
+            real = int(pos)
+        elif new.state == "closed" and (self._last_pos or 0) > 0:
+            real = 0        # positionless cover, qualitative contradiction: closed
+        elif new.state == "open" and self._last_pos == 0:
+            real = 100      # ...or opened while we had it closed
+        else:
+            # A positionless "open" can mean ANY partial position: mapping it to
+            # 100 turned DH's own 40% target into a false manual@100.
+            return
         if self._last_pos is None:
             self._last_pos = real           # first reading: just take the baseline
             return

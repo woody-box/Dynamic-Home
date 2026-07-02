@@ -330,7 +330,8 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         pos = st.attributes.get("current_position")
         return int(pos) if pos is not None else None
 
-    def _weather_alert(self, cfg: DsConfig, now_ts: float) -> int | None:
+    def _weather_alert(self, cfg: DsConfig, now_ts: float,
+                       raining: bool = False) -> int | None:
         """Anticipatory weather protection (F17): position to protect at, or None.
 
         Picks the most protective position among the active alert sensors
@@ -373,6 +374,11 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                     and rain >= cfg.precip_prob_alert):
                 positions.append(cfg.rain_close_pct)
         if positions:
+            if raining:
+                # Simultaneous wind alert (e.g. 50% open) + active rain: the
+                # rain-protection position joins the min(), or the alert branch
+                # (higher in the cascade) would let the water in half-open.
+                positions.append(cfg.rain_close_pct)
             self._last_alert_pos = min(positions)        # most protective wins
             self._alert_hold_until = now_ts + cfg.alert_hold_min * 60.0
             return self._last_alert_pos
@@ -470,8 +476,11 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self._dawn_active = False
             return None
         trig = cfg.dawn_trigger_elevation
-        if (prev is not None and prev <= trig < sun_el and not self._dawn_active):
-            start = current_pos if current_pos is not None else 0
+        if (prev is not None and prev <= trig < sun_el and not self._dawn_active
+                and current_pos is not None):
+            # No position feedback -> no ramp: assuming "0" could command a
+            # 10-20% step DOWN onto a shutter that was actually open at dawn.
+            start = current_pos
             if start < cfg.dawn_target_pct:               # skip if already open
                 self._dawn_active = True
                 self._dawn_start_ts = now_ts
@@ -589,7 +598,9 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # any other active night case closes to insulate/protect.
         night_purge = (night_pos is not None and hvac == "cool"
                        and self._purge_active)
-        alert_pos = self._weather_alert(cfg, now_ts)
+        raining = (self.weather_protect
+                   and self._alert_on(const.CONF_RAIN, "rain", cfg))
+        alert_pos = self._weather_alert(cfg, now_ts, raining=raining)
         sim_pos = self._sim_step(cfg, sun_above, now_ts)
         sleep_pos = self._sleep_pos(cfg)
         # Manual hold expiry: drop it once the "tiempo prudencial" elapses.
@@ -609,7 +620,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             weather_protect_enabled=(self.weather_protect and bool(
                 self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN)
                 or gust is not None)),
-            raining=self._alert_on(const.CONF_RAIN, "rain", cfg),
+            raining=raining,
             wind=self._wind_with_ttl(now_ts),
             gust=gust,
             current_pos=current_pos,

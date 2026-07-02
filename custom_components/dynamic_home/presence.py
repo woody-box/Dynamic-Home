@@ -113,12 +113,23 @@ def in_sleep_window(minute_of_day: int, cfg: PresenceConfig) -> bool:
 
 def house_state(zones_occupied: dict, phone_home: bool, door_recent_flag: bool,
                 minute_of_day: int, motion_recent_flag: bool,
-                cfg: PresenceConfig) -> str:
-    """Roll zones + phones into ``occupied`` / ``away`` / ``sleeping``."""
+                cfg: PresenceConfig, prev: str = "occupied",
+                phone_present: bool = False) -> str:
+    """Roll zones + phones into ``occupied`` / ``away`` / ``sleeping``.
+
+    ``prev`` latches Away: once away, an empty house STAYS away until a zone
+    is occupied again or a phone positively comes home (``phone_present``) —
+    the old form fell back to "occupied" 5 minutes after leaving, when the
+    door window expired, re-enabling comfort for an empty house.
+    """
     any_occ = any(zones_occupied.values())
-    if not any_occ and (door_recent_flag or not phone_home):
-        return "away"                                 # REQ-PRE-5: needs a signal
-    if any_occ and in_sleep_window(minute_of_day, cfg) and not motion_recent_flag:
+    if not any_occ:
+        if phone_present:
+            return "occupied"          # someone's phone is home; sensors quiet
+        if door_recent_flag or not phone_home or prev == "away":
+            return "away"                             # REQ-PRE-5: needs a signal
+        return "occupied"
+    if in_sleep_window(minute_of_day, cfg) and not motion_recent_flag:
         return "sleeping"                             # REQ-PRE-6
     return "occupied"
 

@@ -293,3 +293,27 @@ async def test_weather_publishes_data_for_dc_ds(hass: HomeAssistant) -> None:
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert const.DATA_WEATHER not in hass.data[const.DOMAIN]
+
+
+async def test_weather_source_units_are_normalized(hass: HomeAssistant) -> None:
+    # v0.97.0: a provider reporting mph / °F must be converted to the mirror's
+    # metric units — before this, derive_alert compared mph against km/h
+    # thresholds and the proxy mislabeled the values.
+    hass.states.async_set("weather.primary", "sunny",
+                          {"temperature": 68.0, "temperature_unit": "°F",
+                           "wind_speed": 40.0, "wind_speed_unit": "mph"})
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    vals = hass.data[const.DOMAIN][const.DATA_WEATHER]["values"]
+    assert round(vals["temperature"], 1) == 20.0            # 68 °F
+    assert round(vals["wind"], 1) == 64.4                   # 40 mph -> km/h
+    # Metric providers pass through untouched.
+    hass.states.async_set("weather.primary", "sunny",
+                          {"temperature": 20.0, "temperature_unit": "°C",
+                           "wind_speed": 30.0, "wind_speed_unit": "km/h"})
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    vals = hass.data[const.DOMAIN][const.DATA_WEATHER]["values"]
+    assert vals["temperature"] == 20.0 and vals["wind"] == 30.0

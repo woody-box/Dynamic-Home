@@ -648,9 +648,12 @@ def decide(cfg: DcConfig, ins: DcInputs) -> DcDecision:
         lead = compute_lead(cfg, ins.t_int, ins.t_ext, ins.wind)
         lead_source = "physical"
     # Tariff bias (F34 / REQ-TAR-4): cheap energy buys more anticipation, peak
-    # energy trims it; clamped to the lead bounds so it stays physical.
-    lead = max(cfg.lead_min_h,
-               min(cfg.lead_max_h, lead * tariff_lead_mult(cfg, ins.tariff_state)))
+    # energy trims it; clamped to the SOURCE model's own bounds (clamping an
+    # adaptive lead to the physical limits silently trimmed a learned 4 h for a
+    # radiant floor down to 3 h).
+    lo, hi = ((cfg.lead_adaptive_min_h, cfg.lead_adaptive_max_h)
+              if lead_source == "adaptive" else (cfg.lead_min_h, cfg.lead_max_h))
+    lead = max(lo, min(hi, lead * tariff_lead_mult(cfg, ins.tariff_state)))
     b_ext = bias_exterior(cfg, ins.hvac_mode, ins.t_ext)
     b_vmc = bias_vmc(cfg, ins.hvac_mode, ins.vmc_speed, ins.t_int, ins.t_ext)
     b_trend = trend_bias(cfg, ins.trend_cph, lead)

@@ -72,7 +72,7 @@ def add_cost(cost: float, delta_kwh: float, price: float | None) -> float:
     contributes nothing — so the running cost is monotonic and degrades cleanly
     when no price sensor is configured (REQ-EAG-3, gross cost).
     """
-    return cost + max(0.0, delta_kwh) * (price or 0.0)
+    return cost + max(0.0, delta_kwh) * max(0.0, price or 0.0)
 
 
 def resolve_context(inputs: dict, cfg: EnergyConfig) -> dict:

@@ -210,6 +210,7 @@ async def test_adaptive_thresholds_produced_from_history(hass: HomeAssistant) ->
 
     co.adaptive_enabled = True
     cfg = co._cfg()
+    cfg.adaptive_min_samples = 100          # a day's worth in production
     # Not enough samples yet -> None.
     assert co._update_adaptive(cfg, 600, 5)[0] is None
     # Feed >100 varied readings -> percentiles become available.
@@ -219,6 +220,10 @@ async def test_adaptive_thresholds_produced_from_history(hass: HomeAssistant) ->
     assert co2_v2 is not None and co2_v3 is not None
     assert co2_v3 >= co2_v2          # p95 >= p90
     assert pm_v2 is not None and pm_v3 >= pm_v2
+    # v0.97.0: the learned thresholds are bounded to ±30% of the fixed config
+    # (a badly-ventilated house must not LEARN complacency).
+    assert cfg.co2_v2 * 0.7 <= co2_v2 <= cfg.co2_v2 * 1.3
+    assert cfg.pm_v3 * 0.7 <= pm_v3 <= cfg.pm_v3 * 1.3
 
 
 async def test_dry_mode_anticondensation(hass: HomeAssistant) -> None:
@@ -826,6 +831,9 @@ async def test_adaptive_thresholds_exposed_on_fan(hass: HomeAssistant) -> None:
     co.adaptive_enabled = True
 
     # Feed enough varied history for the percentiles to be available.
+    hass.config_entries.async_update_entry(
+        entry, options={**entry.options, "adaptive_min_samples": 100})
+    await hass.async_block_till_done()
     cfg = co._cfg()
     for i in range(150):
         co._update_adaptive(cfg, 500 + (i % 200), 3 + (i % 10))

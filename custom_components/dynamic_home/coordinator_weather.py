@@ -13,9 +13,21 @@ from dataclasses import dataclass
 from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import (
+    UnitOfLength,
+    UnitOfPressure,
+    UnitOfSpeed,
+    UnitOfTemperature,
+)
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
+from homeassistant.util.unit_conversion import (
+    DistanceConverter,
+    PressureConverter,
+    SpeedConverter,
+    TemperatureConverter,
+)
 
 from . import const
 from .options_spec import apply_options
@@ -90,6 +102,7 @@ class WxCoordinator(DataUpdateCoordinator):
             hass, _LOGGER, name=f"{const.DOMAIN}_wx",
             update_interval=timedelta(seconds=const.UPDATE_INTERVAL_S))
         self.entry = entry
+        self._module = const.MODULE_WEATHER   # import_options routing
         self.active_label = "none"
         self.active_entity: str | None = None
         self.active_since: float | None = None
@@ -133,14 +146,14 @@ class WxCoordinator(DataUpdateCoordinator):
         age = now_ts - st.last_updated.timestamp()
         return is_fresh(age, cfg)
 
-    def _resolve_field(self, attr: str | None, raw: str | None,
+    def _resolve_field(self, key: str, attr: str | None, raw: str | None,
                        fresh: list) -> tuple[float | None, str | None]:
         """Per-field failover: first fresh source with the attribute, then raw."""
         if attr:
             for ent, st in fresh:
                 v = _f(st.attributes.get(attr))
                 if v is not None:
-                    return v, ent
+                    return _to_metric(key, v, st), ent
         if raw:
             v = self._num(raw)
             if v is not None:
@@ -166,7 +179,7 @@ class WxCoordinator(DataUpdateCoordinator):
         values: dict = {}
         field_sources: dict = {}
         for key, attr, raw in WX_FIELDS:
-            val, src = self._resolve_field(attr, raw, fresh)
+            val, src = self._resolve_field(key, attr, raw, fresh)
             values[key] = val
             field_sources[key] = src
 
@@ -200,6 +213,37 @@ class WxCoordinator(DataUpdateCoordinator):
             active_label=label, active_entity=active_entity,
             alert=self.alert_active, condition=condition,
             values=values, sources=field_sources)
+
+
+# Which source unit attribute governs each mirrored field. The mirror (and its
+# alert thresholds, and every DS/DC consumer) works in fixed metric units, so a
+# provider reporting °F / mph / m/s / inHg must be converted, not copied.
+_UNIT_ATTR = {"temperature": "temperature_unit", "dewpoint": "temperature_unit",
+              "wind": "wind_speed_unit", "gust": "wind_speed_unit",
+              "pressure": "pressure_unit", "precip": "precipitation_unit"}
+_METRIC = {"temperature_unit": UnitOfTemperature.CELSIUS,
+           "wind_speed_unit": UnitOfSpeed.KILOMETERS_PER_HOUR,
+           "pressure_unit": UnitOfPressure.HPA,
+           "precipitation_unit": UnitOfLength.MILLIMETERS}
+_CONVERTER = {"temperature_unit": TemperatureConverter,
+              "wind_speed_unit": SpeedConverter,
+              "pressure_unit": PressureConverter,
+              "precipitation_unit": DistanceConverter}
+
+
+def _to_metric(key: str, v: float, st) -> float:
+    """Normalize a weather attribute to the mirror's metric units."""
+    unit_attr = _UNIT_ATTR.get(key)
+    if not unit_attr:
+        return v
+    unit = st.attributes.get(unit_attr)
+    target = _METRIC[unit_attr]
+    if not unit or unit == target:
+        return v
+    try:
+        return _CONVERTER[unit_attr].convert(v, unit, target)
+    except (ValueError, TypeError):
+        return v                       # unknown unit: pass through unchanged
 
 
 def _f(v) -> float | None:

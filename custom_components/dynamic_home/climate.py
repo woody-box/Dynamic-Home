@@ -8,6 +8,8 @@ configured — drives it (mode + target). Mode is restored across restarts.
 
 from __future__ import annotations
 
+import asyncio
+
 from homeassistant.components.climate import (
     ATTR_HVAC_MODE,
     ClimateEntity,
@@ -65,6 +67,9 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         self.entity_id = f"climate.{slugify(entry.title)}"
         self._applied: tuple | None = None  # last (mode, target) — legacy single device
         self._applied_per: dict[str, tuple] = {}   # F25: per-emitter last (mode, target)
+        # Serialize hardware drives: _apply awaits blocking service calls, so two
+        # overlapping ticks could interleave mode/target on the real thermostat.
+        self._apply_lock = asyncio.Lock()
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -165,6 +170,10 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
 
     # --- drive the real thermostat(s) ---
     async def _apply(self) -> None:
+        async with self._apply_lock:
+            await self._apply_locked()
+
+    async def _apply_locked(self) -> None:
         # Observe (dry-run) or paused: compute but never drive hardware.
         if self.coordinator.observe_effective:
             return
@@ -196,7 +205,6 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
             return
         if (mode, target) == self._applied:
             return
-        self._applied = (mode, target)
         await self.hass.services.async_call(
             "climate", "set_hvac_mode",
             {"entity_id": real, ATTR_HVAC_MODE: mode}, blocking=True)
@@ -204,18 +212,24 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
             await self.hass.services.async_call(
                 "climate", "set_temperature",
                 {"entity_id": real, ATTR_TEMPERATURE: target}, blocking=True)
+        # Recorded only after the calls succeeded: a failed service must not
+        # leave _applied claiming a state the device never reached.
+        self._applied = (mode, target)
 
     async def _apply_emitters(self, cmds: dict) -> None:
-        """F25: drive each emitter's device (climate and/or switch) by its command."""
+        """F25: drive each emitter's device (climate and/or switch) by its command.
+
+        Iterates the COMMANDS (not the emitter list): a farewell OFF for a
+        removed emitter embeds its entities in the command itself.
+        """
         min_delta = getattr(self.coordinator, "apply_min_delta", 0.0)
-        for em in self.coordinator._emitters:
-            cmd = cmds.get(em["id"])
-            if cmd is None:
-                continue
+        ems = {em["id"]: em for em in self.coordinator._emitters}
+        for eid, cmd in cmds.items():
+            em = ems.get(eid, cmd)
             mode = HVACMode(cmd["mode"]) if cmd["mode"] in (
                 "heat", "cool", "off") else HVACMode.OFF
             target = cmd["target"]
-            prev = self._applied_per.get(em["id"])
+            prev = self._applied_per.get(eid)
             if prev is not None:
                 prev_mode, prev_target = prev
                 if (mode == prev_mode and target is not None
@@ -224,7 +238,7 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
                     continue
             if (mode, target) == prev:
                 continue
-            self._applied_per[em["id"]] = (mode, target)
+            self._applied_per[eid] = (mode, target)
             if em.get("climate"):
                 await self.hass.services.async_call(
                     "climate", "set_hvac_mode",

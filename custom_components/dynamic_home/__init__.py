@@ -151,9 +151,13 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[const.DOMAIN].pop(entry.entry_id, None)
         hass.data[const.DOMAIN].get("_facades", {}).pop(entry.entry_id, None)
         # Tear the services down with the last entry so they don't linger as
-        # no-ops after the integration is fully removed.
+        # no-ops after the integration is fully removed — and drop the shared
+        # hubs/registries too (a stale bus slot must not greet a future entry).
         if not _entry_ids(hass):
             _async_unregister_services(hass)
+            for key in ("_hub", "_anticycle", "_peak_dc", "_peak_ds",
+                        "_shared_emit", "_facades", "_ds_summary_adders"):
+                hass.data[const.DOMAIN].pop(key, None)
     return unloaded
 
 

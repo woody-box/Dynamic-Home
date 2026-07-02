@@ -376,8 +376,18 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
             s = sorted(hist)
             return s[min(len(s) - 1, int(p / 100.0 * len(s)))]
 
-        return (pct(self._co2_hist, 90), pct(self._co2_hist, 95),
-                pct(self._pm_hist, 90), pct(self._pm_hist, 95))
+        def clamp(v: float | None, ref: float) -> float | None:
+            # A badly-ventilated house must not LEARN complacency (p95 above the
+            # critical line = less ventilation exactly where the air is worst),
+            # nor a clean one learn paranoia: bound to ±30% of the fixed config.
+            if v is None:
+                return None
+            return max(ref * 0.7, min(ref * 1.3, v))
+
+        return (clamp(pct(self._co2_hist, 90), cfg.co2_v2),
+                clamp(pct(self._co2_hist, 95), cfg.co2_v3),
+                clamp(pct(self._pm_hist, 90), cfg.pm_v2),
+                clamp(pct(self._pm_hist, 95), cfg.pm_v3))
 
     def _age_s(self, key: str) -> float:
         """Seconds since the source entity last REPORTED (large if missing).
@@ -551,7 +561,9 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         if self.schedule_enabled and not schedule.is_empty(profile):
             v = schedule.active_value(profile, now.weekday(),
                                       now.hour * 60 + now.minute)
-            sched_speed = int(v) if v is not None else None
+            # Clamp to the physical range: an imported/edited profile with a
+            # stray value must not become a nonsense floor/percentage.
+            sched_speed = max(0, min(3, int(v))) if v is not None else None
 
         # Shower detection (rise over baseline) + effectiveness gate; also snapshot
         # the effective IAQ thresholds so the diagnostic sensors show value-vs-threshold.

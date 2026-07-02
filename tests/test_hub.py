@@ -132,3 +132,27 @@ if __name__ == "__main__":
                 print(f"  FAIL {name}: {e}")
     print(f"\n{'ALL GREEN' if not failed else str(failed) + ' FAILED'}")
     sys.exit(1 if failed else 0)
+
+
+def test_priority_tie_breaks_deterministically_by_source():
+    # v0.97.0: equal priorities resolved by dict insertion order (whichever
+    # zone booted first) — now the source name decides, stable across restarts.
+    h1 = SdhbHub()
+    h1.publish("dc_a", "request_solar_gain", target="ds", priority=70)
+    h1.publish("dc_b", "request_solar_shield", target="ds", priority=70)
+    h2 = SdhbHub()
+    h2.publish("dc_b", "request_solar_shield", target="ds", priority=70)
+    h2.publish("dc_a", "request_solar_gain", target="ds", priority=70)
+    assert h1.winner("ds") == h2.winner("ds") == "request_solar_shield"
+    assert h1.explain("ds")["winner"] == h2.explain("ds")["winner"]
+
+
+def test_publish_ttl_without_clock_is_an_error():
+    # A TTL'd intent with no clock would never expire (silent eternal slot).
+    h = SdhbHub()
+    try:
+        h.publish("x", "request_quiet", target="dv", ttl_s=600)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("ttl_s without now_ts must raise")

@@ -35,6 +35,7 @@ class EnergyCoordinator(DataUpdateCoordinator):
             hass, _LOGGER, name=f"{const.DOMAIN}_energy",
             update_interval=timedelta(seconds=const.UPDATE_INTERVAL_S))
         self.entry = entry
+        self._module = const.MODULE_ENERGY   # import_options routing
         self.context: dict = {}
         self.house_kwh: float = 0.0          # F34 §8.2: aggregated house energy
         self.house_cost: float = 0.0         # gross cost (€), accumulated
@@ -146,5 +147,8 @@ class EnergyCoordinator(DataUpdateCoordinator):
                         self.hass.async_create_task(co.async_request_refresh())
 
     async def _async_update_data(self) -> dict:
-        self.publish_energy(notify=False)
+        # notify=True is safe here: publish_energy only nudges consumers when
+        # the context materially changed, and the DC peak budget must react to
+        # a tariff/headroom change without waiting out its own poll.
+        self.publish_energy(notify=True)
         return self.context

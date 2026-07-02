@@ -461,7 +461,8 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # re-imposes its position.
     if ins.manual_pos is not None:
         pos, reason = ins.manual_pos, "manual_hold"
-    # 1b) Override (lock / hold / ttl)
+    # 1b) Override (lock / hold / ttl). NOTE: the hold/ttl variants are
+    # engine-only (YAML-port parity; the integration only ever sets "lock").
     elif ins.override_mode == "lock":
         pos, reason = ins.override_pos, "ov_lock"
     elif ins.override_mode == "hold" and ins.hold_ok:
@@ -561,13 +562,15 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     wind_active = update_wind_cap_active(state, cfg, ins)
     if wind_active and pos > cap_pct and reason not in PROTECTED:
         pos, reason = cap_pct, "meteo_wind_cap"
-        detail = {"wind": ins.wind, "cap_pct": cap_pct}
+        detail = dict(detail, wind=ins.wind, cap_pct=cap_pct)  # keep branch context
 
-    # SDHB quiet: freeze at current position (don't move)
+    # SDHB quiet: freeze at current position (don't move). With no position
+    # feedback there is nothing to freeze — don't relabel the reason either
+    # (the decided branch would execute under a false motive).
     if (ins.sdhb_allow_override and ins.quiet_respect_enabled
-            and ins.sdhb_request_quiet and reason not in PROTECTED):
-        if ins.current_pos is not None:
-            pos = ins.current_pos
+            and ins.sdhb_request_quiet and reason not in PROTECTED
+            and ins.current_pos is not None):
+        pos = ins.current_pos
         reason = "sdhb_quiet"
 
     # SDHB solar shield: clamp max opening — but, like the wind/slew caps, it must
