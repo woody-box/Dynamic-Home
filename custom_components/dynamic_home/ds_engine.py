@@ -539,12 +539,15 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
             pos = ins.current_pos
         reason = "sdhb_quiet"
 
-    # SDHB solar shield: clamp max opening
+    # SDHB solar shield: clamp max opening — but, like the wind/slew caps, it must
+    # NOT clamp a PROTECTED reason. A climate zone asking the shutters to shade
+    # against solar gain can't be allowed to shut a manually-opened / locked /
+    # alerted shutter (that trapped someone on the terrace). Only clamp the
+    # automatic (non-protected) states.
     if (ins.sdhb_allow_override and ins.sdhb_request_solar_shield
-            and pos > cfg.sdhb_solar_shield_max_open_pct):
-        pos = cfg.sdhb_solar_shield_max_open_pct
-        if reason not in PROTECTED:
-            reason = "sdhb_solar_shield"
+            and pos > cfg.sdhb_solar_shield_max_open_pct
+            and reason not in PROTECTED):
+        pos, reason = cfg.sdhb_solar_shield_max_open_pct, "sdhb_solar_shield"
 
     # Slew rate: limit movement per cycle
     if (cfg.slew_enabled and ins.current_pos is not None
