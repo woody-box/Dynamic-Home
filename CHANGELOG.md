@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.94.1] — 2026-07-02
+
+### Fixed
+- **DS · el "escudo solar" del bus (SDHB) también pisaba el override manual y el bloqueo
+  (podía atrapar a alguien).** Segundo caso de la misma familia que el del viento (v0.92.1),
+  que se había quedado sin corregir: cuando un módulo de **clima (DC)** pedía protección solar
+  a las persianas por el bus, el recorte de apertura se aplicaba **siempre**, incluso a una
+  persiana **abierta a mano** (override) o en **Bloqueo** — cerrándola —, y encima el **Motivo
+  seguía diciendo `manual_hold`**, así que "parecía manual pero se cerraba". Ahora el escudo
+  solar del bus respeta las decisiones firmes (`PROTECTED`: override, bloqueo, alerta, lluvia,
+  privacidad), igual que los topes de viento/velocidad. Las posiciones automáticas siguen
+  recortándose con normalidad.
+
 ## [0.94.0] — 2026-07-01
 
 ### Added

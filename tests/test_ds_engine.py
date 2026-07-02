@@ -543,6 +543,24 @@ def test_sdhb_solar_shield_clamps():
     assert d.pos == 30 and d.reason == "sdhb_solar_shield"
 
 
+def test_sdhb_solar_shield_yields_to_manual_and_lock():
+    # A climate zone's solar-shield request must NOT clamp a manually-opened /
+    # locked shutter shut (that trapped someone): PROTECTED reasons are exempt,
+    # like the wind/slew caps.
+    cfg = _cfg(sdhb_solar_shield_max_open_pct=30, slew_enabled=False)
+    shield = dict(sdhb_allow_override=True, sdhb_request_solar_shield=True)
+    # Manual hold open -> stays open despite the bus solar-shield request.
+    d = decide_cover(cfg, DsState(), DsInputs(manual_pos=100, **shield))
+    assert d.pos == 100 and d.reason == "manual_hold"
+    # Lock open -> stays open too.
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(override_mode="lock", override_pos=100, **shield))
+    assert d.pos == 100 and d.reason == "ov_lock"
+    # An automatic (non-protected) state still gets clamped.
+    d = decide_cover(cfg, DsState(), DsInputs(**shield))
+    assert d.pos == 30 and d.reason == "sdhb_solar_shield"
+
+
 def test_sdhb_quiet_freezes_position():
     cfg = _cfg(slew_enabled=False)
     d = decide_cover(cfg, DsState(),
