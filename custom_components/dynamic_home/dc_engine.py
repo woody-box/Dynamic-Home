@@ -288,11 +288,13 @@ def mold_index_step(prev_h: float, rh: float | None, dt_h: float,
 
     Above ``mold_rh_threshold`` the index grows by the elapsed hours; below it it
     decays exponentially (time constant ``mold_decay_h``). Clamped to
-    ``[0, mold_cap_h]``. ``rh`` None or non-positive dt -> unchanged.
+    ``[0, mold_cap_h]``. Non-positive dt -> unchanged. ``rh`` None (dead sensor)
+    also DECAYS: a lost RH source must not freeze an armed latch forever — the
+    dehumidifier it drives would never stop.
     """
-    if dt_h <= 0 or rh is None:
+    if dt_h <= 0:
         return max(0.0, min(prev_h, cfg.mold_cap_h))
-    if rh >= cfg.mold_rh_threshold:
+    if rh is not None and rh >= cfg.mold_rh_threshold:
         idx = prev_h + dt_h
     else:
         idx = prev_h * math.exp(-dt_h / cfg.mold_decay_h) if cfg.mold_decay_h > 0 \

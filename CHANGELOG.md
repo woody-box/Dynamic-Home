@@ -4,6 +4,56 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.96.0] — 2026-07-02
+
+### Fixed
+- **DC · el anti-ciclado protege el caso para el que existe.** Si la demanda caía dentro del
+  min-ON, el hub mantenía "encendido" un compresor que físicamente ya había parado: el
+  rearranque inmediato se saltaba el min-OFF y no contaba como arranque. Ahora la parada se
+  registra y el rearranque respeta min-OFF y el contador. Además una zona retenida por el
+  anti-pico ya no mantiene "despierto" el agregado del compresor.
+- **DC · conducto compartido sin inanición.** La guarda de sobre-acondicionado cortaba la
+  unidad cuando la zona más satisfecha llegaba a `consigna − margen` (¡por debajo de su
+  consigna!): un dormitorio ya caliente dejaba al salón sin calor para siempre. Ahora corta
+  solo en el lado de sobre-acondicionado (`consigna + margen`) y nunca mientras otra zona siga
+  genuinamente rezagada. Y si la zona dueña está apagada, el conducto sigue la dirección que
+  piden las hermanas en vez de apagarse para todas.
+- **DC · moho sin deshumidificador atascado.** Con el sensor de HR caído el índice decae en
+  vez de congelarse (el latch armado dejaba el deshumidificador encendido para siempre);
+  quitar la fuente de HR o descargar la entrada también lo apaga.
+- **DC · anti-pico honesto con el ICP.** El bypass de confort reserva su hueco en el
+  presupuesto (antes desaparecía de la contabilidad y el total podía disparar el ICP); una
+  carga pequeña que cabe ya no cede indefinidamente ante una grande que nunca cabrá; y el
+  hueco de una zona en marcha sigue al contador real de potencia en vez de quedarse congelado
+  en la foto del arranque.
+- **DC · ventana inferida sin falsos positivos de sol**: sin señal de demanda real, el
+  fallback pasa de "el modo está encendido" a la demanda inferida (t_int vs consigna) — un
+  golpe de sol con el aire acondicionado saciado ya no bloquea la zona 30 minutos.
+- **DC · el aprendizaje ya no mezcla signos de calor y frío**: las muestras de rate y
+  overshoot se normalizan por dirección antes de la EMA (los ciclos de frío, negativos,
+  cancelaban los de calor y el lead aprendido era basura).
+- **Energía · sin dobles conteos ni coste fantasma tras reiniciar.** El total de casa
+  restaura un suelo monotónico (el panel de Energía interpretaba la caída a 0 como reset de
+  contador y duplicaba el consumo) y el coste se integra por módulo, ignorando el salto de
+  restauración de cada contador. Las ventanas 24h/30d de las persianas se re-siembran al
+  restaurar (mostraban todo el histórico como "consumido hoy").
+- **DS · observe honesto**: en "Solo observar"/pausa la persiana ya no devenga kWh/W
+  fantasma ni consume presupuesto del anti-pico bloqueando a las persianas reales.
+- **DS · el tope de viento sobrevive a un anemómetro caído**: la última lectura válida se
+  mantiene 10 minutos antes de soltar la protección (antes se desactivaba en silencio en
+  plena galerna).
+- **DV · failsafe seguro**: el lockout por sensores intermitentes deja la VMC en V1 (no
+  apagada) y la antigüedad del dato usa `last_reported` (una lectura plana de CO2 en una
+  noche tranquila disparaba falsos lockouts).
+- **Ciclo de vida**: al eliminar la entrada de Zonas se limpian presencia y changeover (los
+  módulos seguían obedeciendo un estado fantasma); el aviso de free-cooling de una VMC
+  eliminada se borra; los sensores compartidos de "Persianas" se re-adoptan por otra entrada
+  DS viva al descargar la dueña (desaparecían hasta reiniciar); y la entrada Weather pasa a
+  ser singleton para altas nuevas (varias entradas pisaban el mismo dato compartido).
+
+### Internal
+- Fase 3 (fiabilidad) de la auditoría integral. Suite 600 tests.
+
 ## [0.95.0] — 2026-07-02
 
 ### Fixed

@@ -580,7 +580,11 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         permitida = ins.auto_mode and (not lockout) and (sched_ok or permiso_extra)
 
     if not permitida:
-        return DvDecision(0, "lockout" if lockout else "not_permitted")
+        if lockout:
+            # Failsafe lockout: the sensors are flapping/lying. For a dwelling
+            # ventilator the safe state is V1 (baseline fresh air), never OFF.
+            return DvDecision(1, "lockout")
+        return DvDecision(0, "not_permitted")
 
     # --- Mode precedence (SPEC §4) ---
     if ins.manual_override:

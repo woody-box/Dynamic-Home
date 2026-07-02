@@ -237,7 +237,11 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
 
     async def async_step_weather(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
-            await self.async_set_unique_id(f"wx_{user_input[const.CONF_NAME]}")
+            # Singleton (v0.96.0): every Weather entry wrote the same shared
+            # DATA_WEATHER blob (last one wins, unload of one dropped it for
+            # all). Existing multi-entry installs keep working; new entries are
+            # limited to one.
+            await self.async_set_unique_id("weather_singleton")
             self._abort_if_unique_id_configured()
             data = {**user_input, const.CONF_MODULE: const.MODULE_WEATHER}
             return self.async_create_entry(

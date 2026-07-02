@@ -1314,3 +1314,45 @@ async def test_night_purge_latch_no_flapping(hass: HomeAssistant) -> None:
     assert co._night_iso(cfg, "cool", -10.0, 26.0, 25.9) == opened   # holds
     assert co._night_iso(cfg, "cool", -10.0, 26.0, 26.2) == closed   # warmer
     assert co._night_iso(cfg, "cool", -10.0, 26.0, 25.9) == closed   # holds
+
+
+async def test_wind_cap_survives_anemometer_dropout(hass: HomeAssistant) -> None:
+    # v0.96.0: the wind sensor flapping to unavailable mid-storm must not drop
+    # the cap instantly — the last reading holds for a TTL, then lets go.
+    _seed(hass)
+    hass.states.async_set("sensor.wind", "55")
+    entry = MockConfigEntry(domain=const.DOMAIN,
+                            data={**SHUTTER, const.CONF_WIND: "sensor.wind"},
+                            title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    assert co._wind_with_ttl(1000.0) == 55.0               # live reading
+    hass.states.async_set("sensor.wind", "unavailable")
+    assert co._wind_with_ttl(1300.0) == 55.0               # dropout: held (5 min)
+    assert co._wind_with_ttl(1000.0 + 700.0) is None       # TTL expired: let go
+
+
+async def test_shared_sensors_adopted_after_owner_unload(
+        hass: HomeAssistant) -> None:
+    # v0.96.0: unloading the DS entry that owned the shared "Persianas" sensors
+    # re-homes them on another live DS entry on its next tick (they used to
+    # vanish until a restart).
+    ca, cb = await _two_shutters(hass)
+    data = hass.data[const.DOMAIN]
+    owner_id = data[const.DATA_DS_SUMMARY_OWNER]
+    other = cb if owner_id == ca.entry.entry_id else ca
+    assert await hass.config_entries.async_unload(owner_id)
+    await hass.async_block_till_done()
+    assert const.DATA_DS_SUMMARY_OWNER not in data
+
+    await other.async_refresh()                             # next tick adopts
+    await hass.async_block_till_done()
+    assert data[const.DATA_DS_SUMMARY_OWNER] == other.entry.entry_id
+    from homeassistant.helpers import entity_registry as er
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id("sensor", const.DOMAIN,
+                                  f"{const.DOMAIN}_covers_open")
+    assert eid is not None and hass.states.get(eid) is not None

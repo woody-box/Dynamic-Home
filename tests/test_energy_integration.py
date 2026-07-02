@@ -137,3 +137,29 @@ async def test_no_cost_sensor_without_price(hass: HomeAssistant) -> None:
         "sensor", const.DOMAIN, f"{entry.entry_id}_house_kwh") is not None
     assert reg.async_get_entity_id(
         "sensor", const.DOMAIN, f"{entry.entry_id}_house_cost") is None
+
+
+async def test_restored_module_kwh_is_not_billed(hass: HomeAssistant) -> None:
+    # v0.96.0: after a HA restart a module's EnergySensor restores its counter
+    # (0 -> historic kWh). That jump must reseed the baseline, never enter the
+    # house cost as if the house had just consumed those kWh.
+    hass.states.async_set("sensor.price", "0.20")
+    dc = SimpleNamespace(energy_kwh=0.0)
+    hass.data.setdefault(const.DOMAIN, {})["dc1"] = dc
+    entry = _energy_entry(hass, {const.CONF_ENERGY_PRICE: "sensor.price"})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+
+    # The module restores its historic total (like EnergySensor does).
+    dc.energy_kwh = 123.0
+    dc.energy_kwh_restored = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.house_cost == 0.0                            # no phantom cost
+    assert co.house_kwh == 123.0
+
+    dc.energy_kwh = 124.0                                  # real consumption
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert round(co.house_cost, 3) == 0.2                  # 1 kWh * 0.20

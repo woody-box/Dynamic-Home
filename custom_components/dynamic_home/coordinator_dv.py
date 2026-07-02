@@ -380,14 +380,20 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
                 pct(self._pm_hist, 90), pct(self._pm_hist, 95))
 
     def _age_s(self, key: str) -> float:
-        """Seconds since the source entity last changed (large if missing)."""
+        """Seconds since the source entity last REPORTED (large if missing).
+
+        ``last_reported`` also advances when the sensor re-sends the same value;
+        ``last_updated`` only moves on a CHANGE, so a flat CO2 reading through a
+        calm night looked "stale" and tripped false failsafe lockouts.
+        """
         ent = self._hw(key)
         if not ent:
             return 1e9
         st = self.hass.states.get(ent)
         if st is None:
             return 1e9
-        return (dt_util.utcnow() - st.last_updated).total_seconds()
+        ts = getattr(st, "last_reported", None) or st.last_updated
+        return (dt_util.utcnow() - ts).total_seconds()
 
     def _num(self, key: str) -> float | None:
         ent = self._hw(key)

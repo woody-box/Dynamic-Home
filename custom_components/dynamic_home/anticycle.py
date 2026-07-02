@@ -57,9 +57,14 @@ def step(state: CompressorState, any_demand: bool, force_off: bool,
             return False, "anticycle_safety_off"
         if any_demand:
             return True, "on"
-        if now_ts - state.last_on_ts < cfg.anticycle_min_on_s:
-            return True, "anticycle_min_on_hold"        # don't register the stop yet
+        # Demand dropped inside min-ON. The hub cannot force the physical
+        # compressor to stay on (gating needs the zone's own demand), so the
+        # early stop is REAL: record the off transition, or an immediate
+        # re-demand would skip min-OFF and the start counter — exactly the
+        # short cycle this guard exists to prevent.
         state.on, state.last_off_ts = False, now_ts
+        if now_ts - state.last_on_ts < cfg.anticycle_min_on_s:
+            return False, "anticycle_min_on_hold"
         return False, "off"
     # currently off
     if any_demand and not force_off:

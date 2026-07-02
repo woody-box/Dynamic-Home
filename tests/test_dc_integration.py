@@ -1040,8 +1040,18 @@ async def test_shared_duct_owner_reconciles_with_undershoot_guard(
     eid = co_o._emitters[0]["id"]
     cmd = co_o.emitter_commands[eid]
     assert cmd["shared"] is True
-    # Dormitorio is satisfied -> the guard cuts the whole unit even though Salón
-    # is still short (REQ-EMI-8), instead of over-heating Dormitorio.
+    # v0.96.0: Dormitorio merely NEAR its setpoint no longer cuts the unit while
+    # Salón genuinely lags (the old guard cut below setpoint and starved Salón).
+    assert cmd["reason"] == "reconciled" and cmd["on"] is True
+    # Dormitorio over-conditioned (past setpoint + margin) with Salón no longer
+    # lagging -> NOW the guard cuts the whole unit (REQ-EMI-8).
+    hass.states.async_set("sensor.dorm_temp", "21.8")
+    hass.states.async_set("sensor.salon_temp", "21.2")
+    await co_s.async_refresh()
+    await hass.async_block_till_done()
+    await co_o.async_refresh()
+    await hass.async_block_till_done()
+    cmd = co_o.emitter_commands[eid]
     assert cmd["reason"] == "undershoot_cut" and cmd["on"] is False
     # The non-owner never drives the shared unit.
     await co_s.async_refresh()

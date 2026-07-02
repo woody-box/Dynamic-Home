@@ -6,6 +6,7 @@ single in-memory SDHB hub so they can coordinate (e.g. a solar-shield intent).
 
 from __future__ import annotations
 
+import homeassistant.helpers.issue_registry as ir
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -122,17 +123,27 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ph = hass.data[const.DOMAIN].get("_peak_ds")
             if ph is not None:
                 ph.clear(entry.entry_id)
-            # If this entry owned the house-wide shutter-count sensors, release the
-            # marker so another DS entry claims them on its next setup/reload.
+            # This entry's adder is gone with its platform.
+            adders = hass.data[const.DOMAIN].get("_ds_summary_adders") or {}
+            adders.pop(entry.entry_id, None)
+            # If this entry owned the house-wide shared sensors (counts + sun),
+            # release the marker; the next tick of any surviving DS coordinator
+            # adopts them (see DsCoordinator._async_update_data) — they used to
+            # simply vanish until a restart.
             if (hass.data[const.DOMAIN].get(const.DATA_DS_SUMMARY_OWNER)
                     == entry.entry_id):
                 hass.data[const.DOMAIN].pop(const.DATA_DS_SUMMARY_OWNER, None)
-        # A VMC must not leave a filter-due repair issue for a removed entry (F08).
+        # A VMC must not leave repair issues for a removed entry (F08 filter,
+        # free-cooling advisory).
         if isinstance(coordinator, DvCoordinator):
             coordinator.clear_filter_issue()
+            ir.async_delete_issue(hass, const.DOMAIN,
+                                  f"freecool_no_changeover_{entry.entry_id}")
         if entry.data.get(const.CONF_MODULE) == const.MODULE_ZONES:
             hass.data[const.DOMAIN].pop(const.DATA_ZONES, None)
             hass.data[const.DOMAIN].pop(const.DATA_MODE, None)
+            hass.data[const.DOMAIN].pop(const.DATA_PRESENCE, None)
+            hass.data[const.DOMAIN].pop(const.DATA_CHANGEOVER, None)
         if entry.data.get(const.CONF_MODULE) == const.MODULE_ENERGY:
             hass.data[const.DOMAIN].pop(const.DATA_ENERGY, None)
         if entry.data.get(const.CONF_MODULE) == const.MODULE_WEATHER:
