@@ -222,12 +222,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ds_ents.append(DsClimateTempSensor(coordinator, entry))
         ds_ents.extend(_mirror_sensors(entry, module))
         # House-wide shutter counts: one shared set, owned by the first DS entry.
+        # Every DS entry leaves its adder registered so, when the owning entry
+        # unloads, another live one can ADOPT the shared sensors without a reload
+        # (see adopt_shared_shutter_sensors).
         data = hass.data.setdefault(const.DOMAIN, {})
+        data.setdefault("_ds_summary_adders", {})[entry.entry_id] = (
+            async_add_entities, coordinator, entry)
         data.setdefault(const.DATA_DS_SUMMARY_OWNER, entry.entry_id)
         if data[const.DATA_DS_SUMMARY_OWNER] == entry.entry_id:
-            ds_ents += [DsCoverCountSensor(coordinator, entry, key, icon, pred)
-                        for key, icon, pred in _DS_COVER_COUNTS]
-            ds_ents += [cls() for cls in _DS_SHARED_SUN]
+            ds_ents += _shared_shutter_sensors(coordinator, entry)
         async_add_entities(ds_ents)
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
@@ -370,8 +373,14 @@ class SurplusSensor(CoordinatorEntity, SensorEntity):
         return self.coordinator.context.get("surplus_w")
 
 
-class HouseEnergySensor(CoordinatorEntity, SensorEntity):
-    """House energy total (F34 §8.2): sum of every module's kWh; Energy dashboard."""
+class HouseEnergySensor(CoordinatorEntity, RestoreSensor):
+    """House energy total (F34 §8.2): sum of every module's kWh; Energy dashboard.
+
+    Restored as a monotonic floor: right after a restart the modules haven't
+    restored their own counters yet, so the live sum dips towards 0 — reported
+    as-is, the Energy dashboard reads the dip as a meter reset and DOUBLES the
+    consumption. The floor keeps the state monotonic through the restore window.
+    """
 
     _attr_has_entity_name = True
     _attr_translation_key = "house_energy"
@@ -384,12 +393,19 @@ class HouseEnergySensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator)
         self._attr_unique_id = f"{entry.entry_id}_house_kwh"
+        self._floor = 0.0
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)})
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_sensor_data()
+        if last is not None and last.native_value is not None:
+            self._floor = float(last.native_value)
+
     @property
     def native_value(self) -> float:
-        return round(self.coordinator.house_kwh, 3)
+        return round(max(self.coordinator.house_kwh, self._floor), 3)
 
 
 class HouseCostSensor(CoordinatorEntity, RestoreSensor):
@@ -1117,7 +1133,18 @@ class EnergySensor(_Base, RestoreSensor):
         await super().async_added_to_hass()
         last = await self.async_get_last_sensor_data()
         if last is not None and last.native_value is not None:
-            self.coordinator.energy_kwh = float(last.native_value)
+            restored = float(last.native_value)
+            self.coordinator.energy_kwh = restored
+            # Tell the house aggregator this jump is a restore, not consumption
+            # (it would otherwise bill the restored kWh as a phantom cost).
+            self.coordinator.energy_kwh_restored = True
+            # DS keeps a rolling history for the 24h/30d windows; reseed it at
+            # the restored total, or those windows would show the WHOLE history
+            # as "consumed in the last 24 h" after every restart.
+            hist = getattr(self.coordinator, "_energy_hist", None)
+            if hist is not None:
+                hist.clear()
+                hist.append((dt_util.utcnow().timestamp(), restored))
 
     @property
     def native_value(self) -> float:
@@ -2084,3 +2111,32 @@ class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
     @property
     def extra_state_attributes(self) -> dict | None:
         return self._desc.attrs(self.coordinator) if self._desc.attrs else None
+
+
+def _shared_shutter_sensors(coordinator, entry: ConfigEntry) -> list[SensorEntity]:
+    """The house-wide shared set (counts + sun) bound to the owning DS entry."""
+    ents: list[SensorEntity] = [
+        DsCoverCountSensor(coordinator, entry, key, icon, pred)
+        for key, icon, pred in _DS_COVER_COUNTS]
+    ents += [cls() for cls in _DS_SHARED_SUN]
+    return ents
+
+
+def adopt_shared_shutter_sensors(hass: HomeAssistant,
+                                 prefer: str | None = None) -> bool:
+    """Re-home the shared "Dynamic Home · Persianas" sensors on a live DS entry.
+
+    When the owning entry unloads, its platform tears the shared sensors down and
+    no other entry re-runs its own sensor setup — without this the house counts
+    and sun sensors simply vanished until a restart. Uses the adder each DS entry
+    registered at setup; returns True when someone adopted.
+    """
+    data = hass.data.get(const.DOMAIN, {})
+    adders = data.get("_ds_summary_adders") or {}
+    order = ([prefer] if prefer in adders else []) + list(adders)
+    for eid in order:
+        adder, coordinator, entry = adders[eid]
+        data[const.DATA_DS_SUMMARY_OWNER] = eid
+        adder(_shared_shutter_sensors(coordinator, entry))
+        return True
+    return False

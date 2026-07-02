@@ -62,20 +62,42 @@ def aggregate_setpoint(demands: list[ZoneDemand], hvac: str,
 
 
 def undershoot_cut(demands: list[ZoneDemand], hvac: str) -> bool:
-    """REQ-EMI-8: True once the most-satisfied zone hits its setpoint ∓ margin."""
+    """REQ-EMI-8: stop once a zone is OVER-conditioned past setpoint + margin.
+
+    v0.96.0: the old form cut at ``setpoint - margin`` — *below* the target of the
+    most satisfied zone — so a bedroom already at 20 °C with a 19 °C setpoint
+    starved a living room stuck at 18 °C forever. The guard now only cuts on the
+    over-conditioned side, and never while another zone still genuinely lags
+    (protect the satisfied room without starving the hungry one).
+    """
+    over = lagging = False
     for d in _active(demands, hvac):
         if d.current is None:
             continue
-        if hvac == "heat" and d.current >= d.target - d.undershoot_margin:
-            return True
-        if hvac == "cool" and d.current <= d.target + d.undershoot_margin:
-            return True
-    return False
+        if hvac == "heat":
+            over = over or d.current >= d.target + d.undershoot_margin
+            lagging = lagging or d.current < d.target - d.undershoot_margin
+        else:
+            over = over or d.current <= d.target - d.undershoot_margin
+            lagging = lagging or d.current > d.target + d.undershoot_margin
+    return over and not lagging
+
+
+def demanded_direction(demands: list[ZoneDemand]) -> str | None:
+    """The direction the reporting zones actually ask for (majority wins)."""
+    dirs = [d.hvac for d in demands if d.hvac in ("heat", "cool")]
+    if not dirs:
+        return None
+    return max(("heat", "cool"), key=dirs.count)
 
 
 def reconcile(demands: list[ZoneDemand], hvac: str, policy: str = "weighted",
               grilles: bool = False) -> dict:
     """One command for the shared unit: ``{mode, target, reason}``."""
+    if hvac not in ("heat", "cool"):
+        # The owner being off/idle must not kill the duct for its sisters: run
+        # in the direction the demanding zones ask for (v0.96.0).
+        hvac = demanded_direction(demands) or hvac
     active = _active(demands, hvac)
     if hvac not in ("heat", "cool") or not active:
         return {"mode": "off", "target": None, "reason": "idle"}

@@ -39,7 +39,7 @@ class EnergyCoordinator(DataUpdateCoordinator):
         self.house_kwh: float = 0.0          # F34 §8.2: aggregated house energy
         self.house_cost: float = 0.0         # gross cost (€), accumulated
         self.house_power_w: float = 0.0      # F06/REQ-ENE-5: instantaneous total (W)
-        self._prev_house_kwh: float | None = None
+        self._contrib_prev: dict[str, float] = {}   # entry_id -> last kwh seen
 
     def has_pv(self) -> bool:
         return bool(self._hw(const.CONF_ENERGY_PV))
@@ -93,22 +93,33 @@ class EnergyCoordinator(DataUpdateCoordinator):
         data = self.hass.data.get(const.DOMAIN, {})
         total = 0.0
         power = 0.0
+        delta = 0.0
+        contrib: dict[str, float] = {}
         for key, co in list(data.items()):
             if key.startswith("_") or co is self:
                 continue
             kwh = getattr(co, "energy_kwh", None)
             if isinstance(kwh, (int, float)):
-                total += float(kwh)
+                kwh = float(kwh)
+                total += kwh
+                # Cost deltas are tracked PER CONTRIBUTOR: a module's first
+                # sample, its restore jump (0 -> historic kWh after a restart)
+                # and a removed/reset module must never enter the cost as if the
+                # house had just consumed those kWh.
+                if getattr(co, "energy_kwh_restored", False):
+                    co.energy_kwh_restored = False       # consume: reseed only
+                elif key in self._contrib_prev:
+                    delta += max(0.0, kwh - self._contrib_prev[key])
+                contrib[key] = kwh
             pw = getattr(co, "power_w", None)
             if isinstance(pw, (int, float)):
                 power += float(pw)
         self.house_kwh = total
         self.house_power_w = power
-        if self._prev_house_kwh is not None:
+        if delta > 0.0:
             price = self._num(const.CONF_ENERGY_PRICE)
-            self.house_cost = energy_engine.add_cost(
-                self.house_cost, total - self._prev_house_kwh, price)
-        self._prev_house_kwh = total
+            self.house_cost = energy_engine.add_cost(self.house_cost, delta, price)
+        self._contrib_prev = contrib
 
     def publish_energy(self, notify: bool = True) -> None:
         prev = self.context

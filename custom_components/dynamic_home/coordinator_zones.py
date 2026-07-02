@@ -254,4 +254,8 @@ class ZonesCoordinator(DataUpdateCoordinator):
             self.publish_presence(notify=False)
         if self._changeover_configured():
             self.publish_changeover(notify=False)
+        else:
+            # De-configured mid-life: drop the blob, or community DC zones (and
+            # the DV free-cool advisory) keep following a ghost changeover.
+            self.hass.data.get(const.DOMAIN, {}).pop(const.DATA_CHANGEOVER, None)
         return tree

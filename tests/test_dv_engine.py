@@ -694,10 +694,11 @@ def test_trip_counter_arms_lockout():
 
 
 def test_decide_returns_lockout_when_active():
+    # v0.96.0: the safe state for a dwelling ventilator is V1, never OFF.
     cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
     st = DvState(lockout_until=1000)
     d = decide(cfg, st, DvInputs(co2_raw=500, pm_raw=5, now_ts=500))
-    assert d.speed == 0 and d.reason == "lockout"
+    assert d.speed == 1 and d.reason == "lockout"
 
 
 # --------------------------------------------------------------------------- #

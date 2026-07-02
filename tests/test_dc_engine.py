@@ -67,9 +67,11 @@ def test_mold_index_clamps_to_cap():
     assert mold_index_step(11.0, 90.0, 5.0, cfg) == 12.0
 
 
-def test_mold_index_unchanged_without_rh_or_time():
+def test_mold_index_decays_on_dead_rh_and_holds_without_time():
     cfg = _cfg()
-    assert mold_index_step(4.0, None, 2.0, cfg) == 4.0
+    # v0.96.0: a dead RH sensor DECAYS the index (it used to freeze an armed
+    # latch forever, leaving the dehumidifier running for good).
+    assert mold_index_step(4.0, None, 2.0, cfg) < 4.0
     assert mold_index_step(4.0, 90.0, 0.0, cfg) == 4.0
 
 

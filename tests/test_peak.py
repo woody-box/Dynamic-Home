@@ -142,3 +142,45 @@ def test_yield_is_transient_no_permanent_starvation():
     # The stream is exhausted -> nothing hungrier remains -> 'med' is granted.
     assert _ev(hub, "med", True, 3, max_units=1, priority=2.0)[0] is True
 
+
+
+def test_comfort_bypass_slot_counts_against_budget():
+    # v0.96.0: a comfort-bypass zone runs regardless, but its watts occupy the
+    # budget — otherwise the others fill it and the TOTAL trips the ICP.
+    hub = PeakLoadHub()
+    hub.force_grant("bypass", 1500.0, 0)
+    assert hub.is_active("bypass") is True
+    allowed, reason = _ev(hub, "b", True, 1, units=1000.0, max_units=2000.0)
+    assert allowed is False and reason == "peak_over_budget"
+    allowed, _ = _ev(hub, "c", True, 2, units=400.0, max_units=2000.0)
+    assert allowed is True                                  # 1500 + 400 fits
+
+
+def test_yield_only_when_the_hungrier_waiter_fits():
+    # v0.96.0: a small load that fits must not idle the budget forever behind a
+    # big waiter that never will.
+    hub = PeakLoadHub()
+    # 'big' (3000 W, very hungry) can never fit a 2000 W budget -> waits.
+    allowed, reason = _ev(hub, "big", True, 0, units=3000.0, max_units=2000.0,
+                          priority=2.0)
+    assert allowed is False and reason == "peak_over_budget"
+    # 'small' (1000 W, less hungry) fits and must NOT yield to 'big'.
+    allowed, reason = _ev(hub, "small", True, 1, units=1000.0, max_units=2000.0,
+                          priority=1.0)
+    assert allowed is True
+    # But when the hungrier waiter DOES fit, the smaller one still yields.
+    hub2 = PeakLoadHub()
+    _ev(hub2, "cold", True, 0, units=1500.0, max_units=1000.0, priority=2.0)
+    allowed, reason = _ev(hub2, "warm", True, 1, units=800.0, max_units=2000.0,
+                          priority=1.0)
+    assert allowed is False and reason == "peak_yield"
+
+
+def test_running_slot_units_follow_the_live_meter():
+    # v0.96.0: the slot is booked at the estimate but tracks the live meter
+    # once running, so the budget reflects the real draw.
+    hub = PeakLoadHub()
+    assert _ev(hub, "a", True, 0, units=1000.0, max_units=3000.0)[0] is True
+    _ev(hub, "a", True, 1, units=2200.0, max_units=3000.0)   # live refresh
+    allowed, reason = _ev(hub, "b", True, 2, units=1000.0, max_units=3000.0)
+    assert allowed is False and reason == "peak_over_budget"  # 2200 + 1000 > 3000

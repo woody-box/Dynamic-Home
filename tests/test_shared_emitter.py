@@ -35,27 +35,43 @@ def test_weight_biases_aggregate_toward_zone():
     assert heavier_a < base            # biased toward Salón a's lower target
 
 
-def test_undershoot_cut_when_most_satisfied_reaches_margin():
-    # Salón still short (19 vs 21), Dormitorio basically at setpoint (22.6 vs 23, m=0.5).
-    salon = _z("salon", 19.0, 21.0)
-    dorm = _z("dorm", 22.6, 23.0, margin=0.5)
-    assert se.undershoot_cut([salon, dorm], "heat") is True
-    # Both still short -> no cut.
+def test_undershoot_cut_on_overconditioning_without_starving():
+    # v0.96.0: the guard cuts on the OVER-conditioned side (setpoint + margin)
+    # and never while another zone still genuinely lags — the old form cut at
+    # setpoint - margin, so a satisfied bedroom starved the living room forever.
+    salon = _z("salon", 19.0, 21.0)                  # genuinely lagging
+    dorm_over = _z("dorm", 23.6, 23.0, margin=0.5)   # over-conditioned
+    assert se.undershoot_cut([dorm_over], "heat") is True      # protect it
+    assert se.undershoot_cut([salon, dorm_over], "heat") is False  # salón manda
+    # A zone merely NEAR its setpoint (old trigger) no longer cuts anything.
+    dorm_near = _z("dorm", 22.6, 23.0, margin=0.5)
+    assert se.undershoot_cut([dorm_near], "heat") is False
     assert se.undershoot_cut([salon, _z("dorm", 21.0, 23.0)], "heat") is False
 
 
 def test_reconcile_guards_and_grilles():
     salon = _z("salon", 19.0, 21.0)
-    dorm = _z("dorm", 22.6, 23.0)
-    # Without grilles the guard cuts the whole unit (REQ-EMI-8).
-    cut = se.reconcile([salon, dorm], "heat", grilles=False)
+    over = _z("dorm", 23.8, 23.0, margin=0.5)        # over-conditioned
+    # Without grilles the guard cuts the unit once a zone over-conditions and
+    # nobody genuinely lags (REQ-EMI-8, v0.96.0 semantics).
+    cut = se.reconcile([over], "heat", grilles=False)
     assert cut["mode"] == "off" and cut["reason"] == "undershoot_cut"
+    # A lagging sister keeps the unit alive.
+    alive = se.reconcile([salon, over], "heat", grilles=False)
+    assert alive["mode"] == "heat"
     # With grilles each zone throttles itself -> unit runs at the most-demanding.
-    grilles = se.reconcile([salon, dorm], "heat", grilles=True)
+    grilles = se.reconcile([salon, _z("dorm", 22.6, 23.0)], "heat", grilles=True)
     assert grilles["mode"] == "heat" and grilles["target"] == 21.0
     assert grilles["reason"] == "grilles"
     # No demand in this mode -> off.
     assert se.reconcile([], "heat")["mode"] == "off"
+
+
+def test_reconcile_owner_off_follows_sisters_direction():
+    # v0.96.0: the owner being off/idle must not kill the duct for its sisters.
+    salon = _z("salon", 19.0, 21.0)
+    d = se.reconcile([salon], "off")
+    assert d["mode"] == "heat" and d["target"] == 21.0
 
 
 def test_hub_report_owner_election_and_reconcile():

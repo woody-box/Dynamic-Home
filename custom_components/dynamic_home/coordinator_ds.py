@@ -35,6 +35,8 @@ _LOGGER = logging.getLogger(__name__)
 # Rolling-window energy: keep at most one snapshot per 5 min, over 30 days.
 _ENERGY_BUCKET_S = 300.0
 _ENERGY_WINDOW_MAX_S = 30 * 86400.0
+# Hold the last valid wind reading through a sensor dropout (seconds).
+_WIND_TTL_S = 600.0
 
 
 class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
@@ -72,6 +74,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Night-purge latch (F16): open once genuinely cooler outside, close once
         # warmer, hold in between (see _night_iso).
         self._purge_active = False
+        # Wind dropout TTL: hold the last valid reading a few minutes so an
+        # anemometer going unavailable mid-storm doesn't silently drop the cap.
+        self._wind_last: float | None = None
+        self._wind_last_ts = 0.0
         # Where the alert comes from, for observability: local / dynamic_weather / none.
         self.alert_source = "none"
         # Weather protection master switch for THIS shutter (rain + alert + wind cap).
@@ -484,6 +490,22 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             target = max(target, current_pos)
         return int(target)
 
+    def _wind_with_ttl(self, now_ts: float) -> float | None:
+        """The wind reading, holding the last valid value through a dropout.
+
+        An anemometer flapping to unavailable in the middle of a gale would
+        otherwise silently disable the wind cap (the shutter could reopen to
+        100 in a storm). Hold the last reading up to _WIND_TTL_S, then give up.
+        """
+        wind = self._num(const.CONF_WIND)
+        if wind is not None:
+            self._wind_last, self._wind_last_ts = wind, now_ts
+            return wind
+        if (self._hw(const.CONF_WIND) and self._wind_last is not None
+                and now_ts - self._wind_last_ts <= _WIND_TTL_S):
+            return self._wind_last
+        return None
+
     def _sun(self) -> tuple[float | None, float | None, bool]:
         st = self.hass.states.get("sun.sun")
         if st is None:
@@ -502,6 +524,13 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         slew limiter still shapes the move once it is allowed.
         """
         ph = self.hass.data.get(const.DOMAIN, {}).get("_peak_ds")
+        # Observe/pause: this shutter never moves, so it must not consume budget
+        # or stagger slots that would block shutters that DO move.
+        if self.observe_effective:
+            if ph is not None:
+                ph.clear(self.entry.entry_id)
+            self.peak_reason = "off"
+            return decision
         # Safety/manual first (the trap incidents): a PROTECTED decision — manual
         # hold, lock, weather alert, rain, wind cap — is never deferred, and never
         # snapped back to a mid-travel snapshot of current_pos by the inrush budget.
@@ -531,6 +560,13 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         return decision
 
     async def _async_update_data(self) -> DsDecision:
+        # Orphaned shared sensors (the owning DS entry unloaded): adopt them on
+        # this entry's platform so the house counts / sun sensors live on.
+        data = self.hass.data.get(const.DOMAIN, {})
+        if (const.DATA_DS_SUMMARY_OWNER not in data
+                and self.entry.entry_id in (data.get("_ds_summary_adders") or {})):
+            from .sensor import adopt_shared_shutter_sensors
+            adopt_shared_shutter_sensors(self.hass, prefer=self.entry.entry_id)
         cfg = self._cfg()
         cfg.privacy_pos_pct = int(self.privacy_pct)
         now_ts = dt_util.utcnow().timestamp()
@@ -574,7 +610,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN)
                 or gust is not None)),
             raining=self._alert_on(const.CONF_RAIN, "rain", cfg),
-            wind=self._num(const.CONF_WIND),
+            wind=self._wind_with_ttl(now_ts),
             gust=gust,
             current_pos=current_pos,
             dawn_pos=dawn_pos,
@@ -605,8 +641,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         decision = self._peak_gate(cfg, decision, current_pos, now_ts)
 
         # Energy (F06): a shutter move lasts seconds (missed by 60 s sampling), so
-        # estimate the marginal motor energy per commanded position change.
-        moved = (self._energy_last_pos is not None
+        # estimate the marginal motor energy per commanded position change. In
+        # observe/pause the motor never runs — no phantom kWh into the dashboard.
+        moved = (not self.observe_effective
+                 and self._energy_last_pos is not None
                  and decision.pos != self._energy_last_pos)
         if moved:
             self.energy_kwh += energy.ds_move_kwh(

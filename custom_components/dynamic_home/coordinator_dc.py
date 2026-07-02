@@ -397,7 +397,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         """Settling window elapsed: learn overshoot, lag and step the lead gain."""
         if self._off_peak is None or self._off_sp is None or self._off_ts is None:
             return
-        overshoot = self._off_peak - self._off_sp
+        # Normalize by direction: a cool cycle's peak is a MINIMUM (negative
+        # overshoot), which would cancel the heat samples in the shared EMA.
+        sign = -1.0 if self._off_hvac == "cool" else 1.0
+        overshoot = (self._off_peak - self._off_sp) * sign
         self.learn_overshoot_ema = ema(self.learn_overshoot_ema, overshoot,
                                        cfg.adapt_alpha)
         lag_h = (max(0.0, (self._off_peak_ts - self._off_ts) / 3600.0)
@@ -440,6 +443,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 dt_h = (now_ts - self._on_t0_ts) / 3600.0
                 rate = on_rate_cph(self._on_t0, t_int, dt_h, cfg)
                 if rate is not None:
+                    # Same sign normalization as the overshoot: cooling rates
+                    # are negative and would cancel the heating samples.
+                    if hvac == "cool":
+                        rate = -rate
                     self.learn_rate_ema = ema(self.learn_rate_ema, rate,
                                               cfg.adapt_alpha)
             self._settling = True
@@ -518,7 +525,9 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 and self.adapt_ok_count >= ANTICYCLE_AUTOSIZE_MIN_SAMPLES):
             cfg.anticycle_min_on_s, cfg.anticycle_min_off_s = anticycle_bounds(
                 self.learned_lag_h)
-        desired_on = decision.action in ("heat", "cool")
+        # A zone the peak arbiter (F03) held off last cycle is not really
+        # commanding the compressor — don't let it keep the aggregate "awake".
+        desired_on = decision.action in ("heat", "cool") and not self.peak_hold
         safety_off = self._effective_hvac() in ("heat", "cool") and decision.action == "off"
         # F09 full: a zone drives one compressor channel per distinct heat-pump
         # emitter (compressor_id); legacy/single-device falls to "default" (one
@@ -564,22 +573,19 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             self.peak_reason = "off"
             return
         demand = decision.action in ("heat", "cool") and not self.anticycle_hold
-        # F03 comfort bypass: a severe deviation from setpoint skips the peak gate
-        # entirely (comfort wins over peak-shaving; safety still wins above).
         dev = staging.deviation(decision.action, t_int, decision.target)
-        if demand and cfg.peak_comfort_bypass_c > 0 and dev >= cfg.peak_comfort_bypass_c:
-            ph.clear(self.entry.entry_id)
-            self.peak_hold = False
-            self.peak_reason = "peak_comfort_bypass"
-            return
         # F34: a live grid meter (Energy module) gives a watt budget = headroom;
         # it tightens any static cap and never loosens it. No meter -> static watt
         # budget if set, else degrade to an N-zones count (REQ-EPK-1).
         energy = self.hass.data.get(const.DOMAIN, {}).get(const.DATA_ENERGY)
         headroom = energy.get("import_headroom_w") if energy else None
         power_mode = headroom is not None or cfg.peak_max_power_w > 0
-        units = ((self._num(const.CONF_POWER_METER) or cfg.est_w_on)
-                 if power_mode else 1.0)
+        # Book a NEW start at the estimate (the full expected draw must fit);
+        # once running, follow the live meter so the budget tracks reality.
+        live = self._num(const.CONF_POWER_METER)
+        running = ph.is_active(self.entry.entry_id)
+        units = ((live if (running and live is not None and live > 0)
+                  else cfg.est_w_on) if power_mode else 1.0)
         if headroom is not None:
             max_units = (min(headroom, cfg.peak_max_power_w)
                          if cfg.peak_max_power_w > 0 else headroom)
@@ -587,6 +593,14 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             max_units = cfg.peak_max_power_w
         else:
             max_units = float(cfg.peak_max_zones)
+        # F03 comfort bypass: a severe deviation skips the peak gate (comfort wins
+        # over peak-shaving) — but the zone's watts still occupy the budget, or
+        # the others would fill it and the TOTAL would trip the ICP anyway.
+        if demand and cfg.peak_comfort_bypass_c > 0 and dev >= cfg.peak_comfort_bypass_c:
+            ph.force_grant(self.entry.entry_id, units, now_ts)
+            self.peak_hold = False
+            self.peak_reason = "peak_comfort_bypass"
+            return
         allowed, self.peak_reason = ph.evaluate(
             self.entry.entry_id, demand=demand, units=units, sustained=True,
             hold_s=0.0, now_ts=now_ts, max_units=max_units,
@@ -726,8 +740,14 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             return False
 
         valve = self._real_valve_open(cfg, hvac)
-        valve_open = valve if valve is not None else hvac in ("heat", "cool")
-        anom = window_anomaly(hvac, valve_open, trend_cph, cfg)
+        if valve is None:
+            # No real demand source (F27): infer demand from t_int vs the last
+            # target instead of "mode is on" — an idle, satisfied zone must not
+            # read a sun spike (or a defrost dip) as an open window.
+            tgt = getattr(self.data, "target", None) if self.data else None
+            valve = (self._valve_demand(cfg, hvac, t_int, tgt)
+                     if tgt is not None else hvac in ("heat", "cool"))
+        anom = window_anomaly(hvac, valve, trend_cph, cfg)
 
         if not self._window_inferred:
             self._window_ok_since = None
@@ -766,15 +786,20 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         ent = self._hw(const.CONF_DC_DEHUMIDIFIER)
         if not ent or self.observe_effective:
             return
+        if not self.hass.services.has_service("homeassistant",
+                                              "turn_on" if on else "turn_off"):
+            return                          # teardown before core services exist
         service = "turn_on" if on else "turn_off"
         self.hass.async_create_task(self.hass.services.async_call(
             "homeassistant", service, {"entity_id": ent}, blocking=False))
 
     def clear_mold(self) -> None:
-        """Remove the mold repair issue and bus request (called on unload)."""
+        """Remove the mold issue/bus request AND stop the dehumidifier (unload)."""
         ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
         ir.async_delete_issue(self.hass, const.DOMAIN, self._cond_issue_id)
         self.hub.clear(self._mold_source)
+        if self._mold_active:
+            self._drive_dehumidifier(False)
 
     def clear_published(self) -> None:
         """Remove all bus slots owned by this zone (called on unload/reload)."""
@@ -993,6 +1018,13 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Mold-risk index (F22): integrate, alert and drive drying when armed.
         if self.has_mold():
             self._mold_step(cfg, rh, now_ts)
+        elif self._mold_active:
+            # The RH source was removed with the latch armed: release everything
+            # it was driving (the dehumidifier must not run forever).
+            self._mold_active = False
+            ir.async_delete_issue(self.hass, const.DOMAIN, self._mold_issue_id)
+            self.hub.clear(self._mold_source)
+            self._drive_dehumidifier(False)
 
         # Adjacent warm-space advisory (F31): event-only, no actuation.
         if self.has_adjacent():

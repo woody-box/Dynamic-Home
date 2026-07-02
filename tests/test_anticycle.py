@@ -45,14 +45,23 @@ def test_max_starts_per_hour_caps():
     assert on is True and reason == "start"
 
 
-def test_min_on_holds_before_registering_stop():
-    cfg = _cfg(anticycle_min_on_s=600)
+def test_min_on_stop_is_registered_and_restart_respects_min_off():
+    # v0.96.0: the hub cannot force the physical compressor to stay on, so a
+    # stop inside min-ON is REAL — it is recorded, and an immediate re-demand
+    # must respect min-OFF and count as a start (the actual short cycle F09
+    # exists to prevent).
+    cfg = _cfg(anticycle_min_on_s=600, anticycle_min_off_s=300)
     st = CompressorState(on=True, last_on_ts=1000.0)
     on, reason = step(st, any_demand=False, force_off=False,
                       now_ts=1000.0 + 100, cfg=cfg)
-    assert on is True and reason == "anticycle_min_on_hold"
-    on, reason = step(st, False, False, now_ts=1000.0 + 700, cfg=cfg)
-    assert on is False and reason == "off"
+    assert on is False and reason == "anticycle_min_on_hold"
+    assert st.on is False and st.last_off_ts == 1100.0
+    # Re-demand 60 s later: min-OFF blocks the restart.
+    on, reason = step(st, True, False, now_ts=1000.0 + 160, cfg=cfg)
+    assert on is False and reason == "anticycle_min_off_hold"
+    # After min-OFF it restarts (and the start is counted).
+    on, reason = step(st, True, False, now_ts=1000.0 + 500, cfg=cfg)
+    assert on is True and reason == "start" and len(st.starts) == 1
 
 
 def test_safety_off_cedes_min_on():
