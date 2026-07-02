@@ -704,3 +704,51 @@ if __name__ == "__main__":
                 print(f"  FAIL {name}: {e}")
     print(f"\n{'ALL GREEN' if not failed else str(failed) + ' FAILED'}")
     sys.exit(1 if failed else 0)
+
+
+# --------------------------------------------------------------------------- #
+# v0.95.0 hysteresis: no flapping around thresholds
+# --------------------------------------------------------------------------- #
+def test_wind_cap_holds_in_hysteresis_band():
+    # While the cap is latched it is never a no-op 100: wind hovering just under
+    # the limit must not flap the position 100<->90 on every tick.
+    cfg = _cfg(wind_limit_kmh=40, wind_cap_hyst_kmh=5, wind_cap_span_kmh=20,
+               weather_max_open_pct=30, slew_enabled=False)
+    st = DsState()
+    windy = dict(weather_protect_enabled=True)
+    d = decide_cover(cfg, st, DsInputs(wind=41, **windy))
+    assert d.reason == "meteo_wind_cap" and d.pos <= 90
+    pos_at_41 = d.pos
+    d = decide_cover(cfg, st, DsInputs(wind=39, **windy))    # inside the band
+    assert d.reason == "meteo_wind_cap" and d.pos == pos_at_41
+    d = decide_cover(cfg, st, DsInputs(wind=34, **windy))    # below limit - hyst
+    assert d.reason == "default" and d.pos == 100
+
+
+def test_hot_out_latch_no_flapping():
+    # Hovering ±0.1 °C around the hot threshold must not cycle the shutter
+    # open/closed all afternoon (enter at hot_delta, release at delta - hyst).
+    cfg = _cfg(slew_enabled=False, hot_delta=0.8, temp_hyst_c=0.3)
+    st = DsState()
+    sun = dict(hvac_mode="cool", sun_azimuth=180.0, sun_elevation=30.0,
+               sun_effective=True)
+    d = decide_cover(cfg, st, DsInputs(t_in=25, t_out=25.9, **sun))
+    assert d.reason == "summer_solar_shield"
+    d = decide_cover(cfg, st, DsInputs(t_in=25, t_out=25.7, **sun))  # in band
+    assert d.reason == "summer_solar_shield"                          # holds
+    d = decide_cover(cfg, st, DsInputs(t_in=25, t_out=25.4, **sun))  # released
+    assert d.reason == "default" and d.pos == 100
+
+
+def test_cold_shield_latch_no_flapping():
+    # Winter mild-open <-> cold-shield with a release band (heat_shield on, day).
+    cfg = _cfg(slew_enabled=False, cold_delta=0.8, temp_hyst_c=0.3)
+    st = DsState()
+    day = dict(hvac_mode="heat", heat_shield=True, sun_azimuth=0.0,
+               sun_elevation=30.0, sun_effective=True)   # north facade: no impact
+    d = decide_cover(cfg, st, DsInputs(t_in=21, t_out=20.1, **day))
+    assert d.reason == "winter_cold_shield"
+    d = decide_cover(cfg, st, DsInputs(t_in=21, t_out=20.3, **day))  # in band
+    assert d.reason == "winter_cold_shield"                           # holds
+    d = decide_cover(cfg, st, DsInputs(t_in=21, t_out=20.6, **day))  # released
+    assert d.reason == "winter_mild_open" and d.pos == 100

@@ -99,13 +99,28 @@ def test_base_target_drops_from_v3_to_v2_below_band():
 def test_freecool_hysteresis():
     cfg = _cfg(freecool_enabled=True, freecool_t_ext_min=5,
                freecool_delta_on=2, freecool_delta_off=1)
-    ins = DvInputs(t_in=24, t_ext=21)  # delta 3 >= on(2)
+    ins = DvInputs(t_in=26, t_ext=21)  # delta 5 >= on(2), warm inside
     assert compute_freecool(cfg, ins, prev_active=False) is True
-    ins2 = DvInputs(t_in=22.5, t_ext=21)  # delta 1.5: < on but >= off
+    ins2 = DvInputs(t_in=25.5, t_ext=24)  # delta 1.5: < on but >= off
     assert compute_freecool(cfg, ins2, prev_active=True) is True
     assert compute_freecool(cfg, ins2, prev_active=False) is False
-    ins3 = DvInputs(t_in=24, t_ext=3)  # t_ext below min
+    ins3 = DvInputs(t_in=26, t_ext=3)  # t_ext below min
     assert compute_freecool(cfg, ins3, prev_active=False) is False
+
+
+def test_freecool_needs_a_genuinely_warm_interior():
+    # v0.95.0: free-cooling is a COOLING feature. A mild shoulder/winter day
+    # (19-21 °C indoors, cooler outside) must not vent away paid-for heat.
+    cfg = _cfg(freecool_enabled=True, freecool_t_ext_min=5,
+               freecool_delta_on=2, freecool_delta_off=1)
+    mild = DvInputs(t_in=21, t_ext=12)                 # delta 9 but NOT warm
+    assert compute_freecool(cfg, mild, prev_active=False) is False
+    warm = DvInputs(t_in=26, t_ext=17)                 # genuinely warm inside
+    assert compute_freecool(cfg, warm, prev_active=False) is True
+    # Small release band: once active it holds slightly below the floor.
+    edge = DvInputs(t_in=23.7, t_ext=17)
+    assert compute_freecool(cfg, edge, prev_active=True) is True
+    assert compute_freecool(cfg, edge, prev_active=False) is False
 
 
 def test_freecool_suppressed_in_heating_season():
@@ -113,9 +128,9 @@ def test_freecool_suppressed_in_heating_season():
     # and vent away heat. The house heating season blocks it.
     cfg = _cfg(freecool_enabled=True, freecool_t_ext_min=5,
                freecool_delta_on=2, freecool_delta_off=1)
-    warm = DvInputs(t_in=21, t_ext=12)                 # delta 9 >= on
+    warm = DvInputs(t_in=26, t_ext=12)                 # delta 14 >= on, warm inside
     assert compute_freecool(cfg, warm, prev_active=False) is True
-    heating = DvInputs(t_in=21, t_ext=12, heating_season=True)
+    heating = DvInputs(t_in=26, t_ext=12, heating_season=True)
     assert compute_freecool(cfg, heating, prev_active=False) is False
 
 
@@ -770,3 +785,68 @@ if __name__ == "__main__":
                 print(f"  FAIL {name}: {e}")
     print(f"\n{'ALL GREEN' if not failed else str(failed) + ' FAILED'}")
     sys.exit(1 if failed else 0)
+
+
+# --------------------------------------------------------------------------- #
+# v0.95.0: cap priorities (human lens)
+# --------------------------------------------------------------------------- #
+def test_sdhb_quiet_yields_to_critical_air():
+    # A quiet request from the bus never silences critical air.
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
+    d = decide(cfg, DvState(), DvInputs(co2_raw=2500, pm_raw=5,
+                                        sdhb_intent="request_quiet",
+                                        trigger_is_iaq=True, now_ts=0.0))
+    assert d.speed == 3 and d.reason != "sdhb_quiet"
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5,
+                                        sdhb_intent="request_quiet", now_ts=0.0))
+    assert d.speed == 1 and d.reason == "sdhb_quiet"
+
+
+def test_freecool_exempt_from_quiet_and_mode_caps_up_to_cap():
+    # Summer night with quiet hours capping V1: free-cooling may still run V2
+    # (fresh air is free exactly then). A freecool_quiet_cap of 1 restores the
+    # old behaviour for users who prefer absolute silence.
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False,
+               freecool_enabled=True, freecool_t_ext_min=5,
+               freecool_delta_on=2, freecool_delta_off=1,
+               quiet_enabled=True, quiet_start_min=0,
+               quiet_end_min=24 * 60 - 1, quiet_max_level=1)
+    ins = dict(co2_raw=500, pm_raw=5, t_in=27, t_ext=22, now_ts=0.0,
+               minute_of_day=3 * 60, trigger_is_iaq=True)
+    d = decide(cfg, DvState(), DvInputs(**ins))
+    assert d.speed == 2 and d.reason == "freecool"
+    d = decide(cfg, DvState(), DvInputs(mode_cap=1, **ins))    # sleep mode
+    assert d.speed == 2 and d.reason == "freecool"
+    cfg.freecool_quiet_cap = 1
+    d = decide(cfg, DvState(), DvInputs(**ins))
+    assert d.speed == 1 and d.reason == "quiet_cap"
+
+
+def test_boost_respects_hostile_air():
+    # Boost must not pull wildfire smoke in at full blast: the hostile cap is
+    # the last authority, with a V1 floor when the indoor air is critical.
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, hostile_enabled=True)
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5, boost_active=True,
+                                        aqi=200, now_ts=0.0))
+    assert d.speed == 0 and d.reason == "hostile_off"
+    d = decide(cfg, DvState(), DvInputs(co2_raw=2500, pm_raw=5, boost_active=True,
+                                        aqi=200, now_ts=0.0))
+    assert d.speed == 1 and d.reason == "hostile_off"          # V1 floor
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5, mode_boost=True,
+                                        aqi=120, now_ts=0.0, trigger_is_iaq=True))
+    assert d.speed == 1 and d.reason == "hostile_cap_v1"       # mode boost too
+
+
+def test_dry_mode_respects_quiet_and_hostile_caps():
+    # Drying is useful but never urgent at hour scale: quiet/hostile bound it
+    # (floor V1 so the mold-driven request is slowed down, not silenced).
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False,
+               quiet_enabled=True, quiet_start_min=0,
+               quiet_end_min=24 * 60 - 1, quiet_max_level=1)
+    base = dict(co2_raw=500, pm_raw=5, dry_mode=True, dew_risk=True,
+                dp_diff=3.0, now_ts=0.0, minute_of_day=3 * 60)
+    d = decide(cfg, DvState(), DvInputs(**base))
+    assert d.reason == "dry_mode" and d.speed == 1
+    cfg2 = _cfg(co2_ema_enabled=False, pm_ema_enabled=False, hostile_enabled=True)
+    d = decide(cfg2, DvState(), DvInputs(aqi=200, **base))
+    assert d.reason == "dry_mode" and d.speed == 1

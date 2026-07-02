@@ -80,6 +80,9 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         self.bootstrap_enabled = False
         # Dry-mode (anti-condensation ventilation) toggle.
         self.dry_mode_enabled = False
+        # Free-cooling master toggle (on by default = legacy behaviour); the
+        # feature still needs both temp probes to actually run.
+        self.freecool_enabled = True
         # Weekly schedule (same daily window every day).
         self.schedule_enabled = False
         self.schedule_on = dtime(7, 0)
@@ -282,8 +285,11 @@ class DvCoordinator(repairs.DegradedTracker, DataUpdateCoordinator[DvDecision]):
         cfg = DvConfig()
         apply_options(cfg, self.entry.options, const.MODULE_VMC)
         # Gates driven by hardware presence / switches, not by user options.
-        cfg.freecool_enabled = bool(self._hw(const.CONF_T_IN) and
-                                    self._hw(const.CONF_T_EXT))
+        # Free-cooling needs both probes AND the user's switch (v0.95.0: it was
+        # not disable-able before — the probes' presence forced it on).
+        cfg.freecool_enabled = (self.freecool_enabled
+                                and bool(self._hw(const.CONF_T_IN)
+                                         and self._hw(const.CONF_T_EXT)))
         cfg.hostile_enabled = bool(self._hw(const.CONF_AQI))
         cfg.shower_enabled = bool(self._bathrooms() and
                                   self._hw(const.CONF_HUM_EXT))

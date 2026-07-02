@@ -53,6 +53,12 @@ class DvConfig:
     freecool_t_ext_min: float = 5.0
     freecool_delta_on: float = 2.0
     freecool_delta_off: float = 1.0
+    # Only engage when the inside is genuinely warm (a mild January day with
+    # 19-21 °C indoors must not vent away paid-for heat). Small release band.
+    freecool_t_in_min: float = 24.0
+    # Summer nights the free-cool is exempt from the sleep/quiet caps up to this
+    # speed (user decision: fresh air is worth more than silence, up to V2).
+    freecool_quiet_cap: int = 2
 
     # Hostile outside (AQI)
     hostile_enabled: bool = False
@@ -348,11 +354,38 @@ def compute_freecool(cfg: DvConfig, ins: DvInputs, prev_active: bool) -> bool:
         return False
     if ins.heating_season:
         return False
+    # Free-cooling is a COOLING feature: only engage when the inside is genuinely
+    # warm, or a mild winter/shoulder day (19-21 °C indoors, cooler outside)
+    # would vent away heat the occupants are paying for. Small release band so
+    # it doesn't chatter right at the comfort line.
+    t_in_floor = cfg.freecool_t_in_min - (0.5 if prev_active else 0.0)
+    if ins.t_in < t_in_floor:
+        return False
     if ins.t_ext < cfg.freecool_t_ext_min:
         return False
     delta = ins.t_in - ins.t_ext
     threshold = cfg.freecool_delta_off if prev_active else cfg.freecool_delta_on
     return delta >= threshold
+
+
+def hostile_cap(cfg: DvConfig, aqi: float | None, speed: int,
+                critical_air: bool) -> tuple[int, str | None]:
+    """Hostile-outdoor-air cap (SPEC §4.2.4). Returns (speed, reason | None).
+
+    The LAST authority on the output: even a boost must not pull wildfire smoke
+    in at full blast. With critical indoor air the floor is V1 instead of OFF
+    (locked in with CO2 rising beats nothing at all — the lesser evil).
+    """
+    if not cfg.hostile_enabled or aqi is None:
+        return speed, None
+    if aqi >= cfg.hostile_t3:
+        floor = 1 if critical_air else 0
+        return (floor, "hostile_off") if speed > floor else (speed, None)
+    if aqi >= cfg.hostile_t2 and speed > 1:
+        return 1, "hostile_cap_v1"
+    if aqi >= cfg.hostile_t1 and speed > 2:
+        return 2, "hostile_cap_v2"
+    return speed, None
 
 
 def in_schedule(weekday: int, minute_of_day: int, cfg: DvConfig) -> bool:
@@ -554,9 +587,11 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         return DvDecision(3 if ins.override_v3 else 2, "manual_override")
 
     # Timed V3 boost (F14): explicit, auto-reverting; bypasses the auto path and
-    # the quiet-hours cap (it is a deliberate user request).
+    # the quiet-hours cap (it is a deliberate user request) — but NOT the hostile
+    # outdoor air: boosting during a wildfire would pull smoke in at full blast.
     if ins.boost_active:
-        return DvDecision(3, "boost")
+        capped, hr = hostile_cap(cfg, ins.aqi, 3, critical_air)
+        return DvDecision(capped if hr else 3, hr or "boost")
 
     # Dry mode (F13): gate ventilation on a dew-point advantage (dp_diff) with
     # hysteresis. Only ventilate to dry when the outdoor air is actually drier;
@@ -577,6 +612,15 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
                 spd = 2
             else:
                 spd = 1
+            # Drying is useful but never urgent at hour scale: the hostile-air,
+            # quiet-hours and house-mode ceilings still bound it (floor V1 so a
+            # mold-driven request is slowed down, not silenced).
+            spd, _ = hostile_cap(cfg, ins.aqi, spd, critical_air)
+            if in_quiet_window(ins.minute_of_day, cfg):
+                spd = min(spd, cfg.quiet_max_level)
+            if ins.mode_cap is not None:
+                spd = min(spd, ins.mode_cap)
+            spd = max(1, spd)
             return DvDecision(spd, "dry_mode",
                               details={"dp_diff": ins.dp_diff,
                                        "dry_margin": cfg.dry_margin})
@@ -646,11 +690,13 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     if ins.dry_mode and ins.dew_prerisk and not ins.dew_risk and t < 2:
         t, reason = 2, "dew_prerisk"
 
-    # 3) SDHB intent (after freecool; can force/cap)
+    # 3) SDHB intent (after freecool; can force/cap). A quiet request never
+    # silences critical air — health beats another module's silence wish.
     intent = ins.sdhb_intent
     if intent not in ("none", "unknown", "unavailable", ""):
         if intent in INTENT_QUIET:
-            t, reason = 1, "sdhb_quiet"
+            if not critical_air:
+                t, reason = 1, "sdhb_quiet"
         elif intent == INTENT_BOOST:
             t, reason = 3, "sdhb_boost"
         elif intent == INTENT_FREECOOL:
@@ -658,19 +704,14 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
                 t, reason = 2, "sdhb_freecool"
         # request_normal -> no-op
 
-    # 4) Hostile outside cap (SPEC §4.2.4)
-    if cfg.hostile_enabled and ins.aqi is not None:
-        if ins.aqi >= cfg.hostile_t3:
-            t, reason = 0, "hostile_off"
-        elif ins.aqi >= cfg.hostile_t2 and t > 1:
-            t, reason = 1, "hostile_cap_v1"
-        elif ins.aqi >= cfg.hostile_t1 and t > 2:
-            t, reason = 2, "hostile_cap_v2"
+    # (4: the hostile-outside cap moved to the END — it is the last authority,
+    # after boost/mode, so nothing can override it back up.)
 
     # 5) Anti-flapping: only raise on allowed triggers (SPEC §4.2.5)
     allow_raise = (
         ins.trigger_is_iaq
         or intent in (INTENT_BOOST, INTENT_FREECOOL)
+        or state.freecool_active
         or ins.dew_risk
         or ins.dew_prerisk
         or ins.dry_mode
@@ -682,21 +723,36 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         if t > floor:
             t, reason = floor, "hold_antiflap"
 
-    # 6) Quiet hours cap (F12): final authority on the auto/IAQ path — limit the
-    # speed during the night window unless the air is critical (health > silence).
-    if in_quiet_window(ins.minute_of_day, cfg) and t > cfg.quiet_max_level:
-        critical = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
-        if not critical:
-            t, reason = cfg.quiet_max_level, "quiet_cap"
+    # Summer-night free-cooling is exempt from the sleep/quiet ceilings up to a
+    # configurable speed: fresh air on a hot night is exactly when venting hard
+    # is free (the human lens), so the cap only floors at freecool_quiet_cap.
+    freecool_floor = (int(cfg.freecool_quiet_cap)
+                      if state.freecool_active and not ins.heating_season else 0)
+
+    # 6) Quiet hours cap (F12): limit the speed during the night window unless
+    # the air is critical (health > silence) or the free-cool exemption raises
+    # the ceiling.
+    if in_quiet_window(ins.minute_of_day, cfg):
+        cap = max(cfg.quiet_max_level, min(3, freecool_floor))
+        if not critical_air and t > cap:
+            t, reason = cap, "quiet_cap"
 
     # 7) House mode (F01): boost forces V3; other modes cap the auto path, but
-    # health overrides the cap (critical air still raises, like quiet hours).
+    # health overrides the cap (critical air still raises, like quiet hours) and
+    # the summer-night free-cool keeps its exemption here too (sleep mode).
     if ins.mode_boost:
         t, reason = 3, "mode_boost"
-    elif ins.mode_cap is not None and t > ins.mode_cap:
-        critical = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
-        if not critical:
-            t, reason = ins.mode_cap, "mode_cap"
+    elif ins.mode_cap is not None:
+        cap = max(ins.mode_cap, min(3, freecool_floor))
+        if not critical_air and t > cap:
+            t, reason = cap, "mode_cap"
+
+    # 8) Hostile outdoor air (SPEC §4.2.4) is the LAST authority: even boost /
+    # mode_boost must not pull smoke in (floor V1 when the indoor air is
+    # critical — locked in with rising CO2 beats nothing at all).
+    capped, hr = hostile_cap(cfg, ins.aqi, t, critical_air)
+    if hr is not None:
+        t, reason = capped, hr
 
     return DvDecision(t, reason, base_target=base,
                       details={"co2": round(co2, 1), "pm": round(pm, 2),

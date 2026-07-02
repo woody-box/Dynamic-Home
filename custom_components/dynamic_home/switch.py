@@ -104,6 +104,10 @@ _VMC_SWITCHES: tuple[_ToggleDesc, ...] = (
         lambda c: c.dry_mode_enabled,
         lambda c, v: setattr(c, "dry_mode_enabled", v)),
     _ToggleDesc(
+        "freecool", "Free-cooling", "mdi:snowflake-thermometer",
+        lambda c: c.freecool_enabled,
+        lambda c, v: setattr(c, "freecool_enabled", v)),
+    _ToggleDesc(
         "anticipatory", "Anticipatory boost", "mdi:trending-up",
         lambda c: c.anticip_enabled,
         lambda c, v: setattr(c, "anticip_enabled", v)),

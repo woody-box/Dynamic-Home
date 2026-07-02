@@ -84,6 +84,10 @@ class DsConfig:
     summer_min_open_pct: int = 20
     hot_delta: float = 0.8
     cold_delta: float = 0.8             # ΔT below which the outside counts as cold
+    # Release band for the thermal thresholds above (enter at delta, leave at
+    # delta - hyst): keeps the shutter from oscillating open/closed all afternoon
+    # when the temperature hovers on the line.
+    temp_hyst_c: float = 0.3
     winter_night_pct: int = 0
     # Thermal-shield opening caps (opt-in via the switch). Cooling: max opening
     # while it is hotter outside (0 = fully shut, blocks sun+heat; raise to let
@@ -166,6 +170,9 @@ class DsConfig:
 @dataclass
 class DsState:
     wind_cap_active: bool = False
+    # Thermal latches (see temp_hyst_c): enter at delta, release at delta - hyst.
+    hot_out_active: bool = False        # summer "hotter outside" shield
+    cold_shield_active: bool = False    # winter "genuinely colder outside" shield
 
 
 @dataclass
@@ -363,17 +370,22 @@ def effective_wind(ins: DsInputs) -> float | None:
 
 
 def compute_wind_cap(cfg: DsConfig, ins: DsInputs) -> int:
-    """Wind cap percentage (100 = no cap). Port of the wind-cap ramp."""
+    """Wind cap percentage. Port of the wind-cap ramp.
+
+    Only applied while the hysteresis flag (``update_wind_cap_active``) is on.
+    While it is on the cap is never a no-op 100 — inside the release band the
+    ramp holds at its first step (90), otherwise the position would flap
+    100↔90 on every tick with the wind hovering around the limit (exactly what
+    the hysteresis exists to avoid).
+    """
     w = effective_wind(ins)
     if not ins.weather_protect_enabled or w is None:
-        return 100
-    if w < cfg.wind_limit_kmh:
         return 100
     if cfg.wind_cap_span_kmh > 0:
         ratio = (w - cfg.wind_limit_kmh) / cfg.wind_cap_span_kmh
         ratio = max(0.0, min(1.0, ratio))
         raw = 100 - ratio * (100 - cfg.weather_max_open_pct)
-        raw = max(cfg.weather_max_open_pct, min(100, raw))
+        raw = max(cfg.weather_max_open_pct, min(90.0, raw))
         return quantize10(raw)
     return cfg.weather_max_open_pct  # span == 0 -> fixed cap
 
@@ -410,7 +422,25 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     is_cool = ins.hvac_mode == "cool"
     is_heat = ins.hvac_mode == "heat"
     temps_ok = ins.t_in is not None and ins.t_out is not None
-    hot_out = temps_ok and ins.t_out >= ins.t_in + cfg.hot_delta
+    # "Hotter outside" with a release band: enter at hot_delta, leave at
+    # hot_delta - temp_hyst_c, hold in between (no open/close flapping while the
+    # temperature hovers on the threshold all afternoon).
+    if temps_ok:
+        if ins.t_out >= ins.t_in + cfg.hot_delta:
+            state.hot_out_active = True
+        elif ins.t_out < ins.t_in + cfg.hot_delta - cfg.temp_hyst_c:
+            state.hot_out_active = False
+    else:
+        state.hot_out_active = False
+    hot_out = temps_ok and state.hot_out_active
+    # Same latch for the winter "genuinely colder outside" shield.
+    if temps_ok:
+        if ins.t_out < ins.t_in - cfg.cold_delta:
+            state.cold_shield_active = True
+        elif ins.t_out >= ins.t_in - cfg.cold_delta + cfg.temp_hyst_c:
+            state.cold_shield_active = False
+    else:
+        state.cold_shield_active = False
     # Cooling-season protection wants the shutter shaded: hotter outside with
     # either direct sun (solar shield) or the thermal shield armed. The dawn ramp
     # yields to this, so the morning opening doesn't let the sun/heat in. Winter
@@ -513,7 +543,7 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
             sun_up = ins.sun_elevation is not None and ins.sun_elevation > 0
             if not ins.heat_shield or not sun_up or not temps_ok:
                 pos, reason = cfg.winter_night_pct, "winter_night_insulate"
-            elif ins.t_out < ins.t_in - cfg.cold_delta:
+            elif state.cold_shield_active:
                 pos, reason = cfg.winter_night_pct, "winter_cold_shield"
                 detail = {"t_in": ins.t_in, "t_out": ins.t_out}
             else:

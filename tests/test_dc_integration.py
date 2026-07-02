@@ -1091,23 +1091,37 @@ async def test_community_zone_follows_changeover(hass: HomeAssistant) -> None:
     co = hass.data[const.DOMAIN][entry.entry_id]
     co.hvac_mode = "heat"                       # user left it on "heat"
 
-    # Building supplies cold water -> the zone cools, not heats.
+    # v0.95.0: building supplies cold water while the user asks heat -> the zone
+    # RESTS (never silently inverts the user's intent) and flags the conflict.
     _set_changeover(hass, "cool")
     await co.async_refresh()
     await hass.async_block_till_done()
-    assert co.data.action == "cool"
+    assert co.data.action == "off"
+    assert co.changeover_conflict is True
+    assert co.hvac_effective == "off"
 
-    # Hot water -> heats.
+    # Hot water -> the user's heat runs (no conflict).
     _set_changeover(hass, "heat")
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.action == "heat"
+    assert co.changeover_conflict is False
+    assert co.hvac_effective == "heat"
 
     # Shoulder season (off) -> idle even though the zone is "on".
     _set_changeover(hass, "off")
     await co.async_refresh()
     await hass.async_block_till_done()
     assert co.data.action == "off"
+    assert co.changeover_conflict is False
+
+    # "Follow the building" mode still tracks the water direction.
+    co.follow_changeover = True
+    _set_changeover(hass, "cool")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.action == "cool"
+    assert co.changeover_conflict is False
 
 
 async def test_individual_zone_ignores_changeover(hass: HomeAssistant) -> None:

@@ -1272,3 +1272,45 @@ async def test_config_number_entities(hass: HomeAssistant) -> None:
         {"entity_id": ent("override_hours"), "value": 120}, blocking=True)
     await hass.async_block_till_done()
     assert entry.options["override_hours"] == 2.0
+
+
+# --- v0.95.0: the coordinator feeds `night` -> the free-cool branch lives ---
+async def test_freecool_night_opens_on_cool_summer_nights(
+        hass: HomeAssistant) -> None:
+    # Cool summer night (26 in / 22 out), cooling season, sun below the horizon:
+    # the shutter opens to vent the thermal mass (freecool_night). This branch
+    # was dead code before v0.95.0 (DsInputs.night was never filled in).
+    async_mock_service(hass, "cover", "set_cover_position")
+    _seed(hass)                                     # sun below horizon
+    hass.states.async_set("climate.salon", "cool")
+    hass.states.async_set("sensor.salon_in", "26")
+    hass.states.async_set("sensor.salon_out", "22")
+    entry = MockConfigEntry(domain=const.DOMAIN,
+                            data={**SHUTTER,
+                                  const.CONF_CLIMATE: "climate.salon",
+                                  const.CONF_DS_T_IN: "sensor.salon_in",
+                                  const.CONF_DS_T_OUT: "sensor.salon_out"},
+                            title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "freecool_night"
+    assert co.data.pos == co._cfg().freecool_max_open_pct
+
+
+async def test_night_purge_latch_no_flapping(hass: HomeAssistant) -> None:
+    # v0.95.0: the F16 purge has a latch (freecool_delta entry band): sensor
+    # noise around t_in must not cycle the bedroom shutter up/down all night.
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.night_iso_enabled = True
+    cfg = co._cfg()                                  # freecool_delta = 0.8
+    opened, closed = cfg.night_iso_open_pct, cfg.night_iso_close_pct
+    assert co._night_iso(cfg, "cool", -10.0, 26.0, 25.0) == opened   # cooler
+    assert co._night_iso(cfg, "cool", -10.0, 26.0, 25.9) == opened   # holds
+    assert co._night_iso(cfg, "cool", -10.0, 26.0, 26.2) == closed   # warmer
+    assert co._night_iso(cfg, "cool", -10.0, 26.0, 25.9) == closed   # holds

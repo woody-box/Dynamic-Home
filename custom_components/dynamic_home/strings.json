@@ -1440,6 +1440,7 @@
       "adaptive": {"name": "Adaptive thresholds"},
       "bootstrap": {"name": "Startup kick"},
       "dry_mode": {"name": "Dry mode"},
+      "freecool": {"name": "Free-cooling"},
       "anticipatory": {"name": "Anticipatory boost"},
       "schedule": {"name": "Schedule"},
       "quiet_hours": {"name": "Quiet hours"},
@@ -1468,7 +1469,9 @@
       "sleep_pct": {"name": "Sleep close"},
       "rain_close_pct": {"name": "Rain close"},
       "dawn_target_pct": {"name": "Sunrise target"},
-      "quiet_max_level": {"name": "Quiet max level"}
+      "quiet_max_level": {"name": "Quiet max level"},
+      "freecool_t_in_min": {"name": "Free-cool min indoor temp"},
+      "freecool_quiet_cap": {"name": "Free-cool night cap"}
     },
     "sensor": {
       "changeover": {"name": "Changeover"},

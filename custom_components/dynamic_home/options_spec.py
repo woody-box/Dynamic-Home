@@ -120,6 +120,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("freecool_t_ext_min", "Min outdoor temp (°C)", "Temp. ext. mínima (°C)"),
             _v("freecool_delta_on", "ΔT on (°C)", "ΔT activación (°C)"),
             _v("freecool_delta_off", "ΔT off (°C)", "ΔT desactivación (°C)"),
+            _v("freecool_t_in_min", "Min indoor temp (°C)",
+               "Temp. int. mínima (°C)"),
+            _v("freecool_quiet_cap", "Night cap during sleep/quiet (V)",
+               "Tope nocturno en sleep/silencio (V)"),
         ],
         "hostile": [
             _v("hostile_t1", "AQI threshold 1", "Umbral AQI 1"),

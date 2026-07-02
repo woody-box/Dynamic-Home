@@ -19,6 +19,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 from . import const
 from .coordinator import DsCoordinator, DvCoordinator
 from .ds_engine import DsConfig
+from .dv_engine import DvConfig
 
 
 @dataclass(frozen=True)
@@ -111,6 +112,16 @@ _DS_OPTION_NUMBERS: tuple[OptionNumberDesc, ...] = (
 )
 
 
+_DV_DEFAULTS = DvConfig()
+
+# VMC tunables edited from the dashboard (same Options backing as the menu).
+_VMC_OPTION_NUMBERS: tuple[OptionNumberDesc, ...] = (
+    OptionNumberDesc("freecool_t_in_min", "mdi:home-thermometer", 18, 30, 0.5,
+                     "°C", precision=1),
+    OptionNumberDesc("freecool_quiet_cap", "mdi:fan-chevron-up", 1, 3, 1, ""),
+)
+
+
 _VMC_NUMBERS: tuple[CoordNumberDesc, ...] = (
     CoordNumberDesc(
         "override_minutes", "Override timer", const.OVERRIDE_MIN_DEFAULT,
@@ -136,6 +147,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
         entities: list[NumberEntity] = [
             ThresholdNumber(coordinator, entry, d) for d in THRESHOLDS]
         entities += [CoordNumber(coordinator, entry, d) for d in _VMC_NUMBERS]
+        entities += [OptionNumber(entry, d, _DV_DEFAULTS)
+                     for d in _VMC_OPTION_NUMBERS]
         async_add_entities(entities)
 
 
@@ -230,9 +243,11 @@ class OptionNumber(NumberEntity):
     _attr_mode = NumberMode.BOX
     _attr_entity_category = EntityCategory.CONFIG
 
-    def __init__(self, entry: ConfigEntry, desc: OptionNumberDesc) -> None:
+    def __init__(self, entry: ConfigEntry, desc: OptionNumberDesc,
+                 defaults=None) -> None:
         self._entry = entry
         self._desc = desc
+        self._defaults = defaults if defaults is not None else _DS_DEFAULTS
         self._attr_unique_id = f"{entry.entry_id}_{desc.key}"
         self._attr_translation_key = desc.key   # name from translations (i18n)
         self._attr_icon = desc.icon
@@ -246,7 +261,7 @@ class OptionNumber(NumberEntity):
     @property
     def native_value(self) -> float:
         stored = self._entry.options.get(
-            self._desc.key, getattr(_DS_DEFAULTS, self._desc.key))
+            self._desc.key, getattr(self._defaults, self._desc.key))
         v = stored * self._desc.scale
         return round(v, self._desc.precision) if self._desc.precision else v
 
