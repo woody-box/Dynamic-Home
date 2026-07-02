@@ -128,7 +128,12 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
                 "anticycle_hold": self.coordinator.anticycle_hold,
                 "anticycle_reason": self.coordinator.anticycle_reason,
                 "peak_hold": self.coordinator.peak_hold,
-                "peak_reason": self.coordinator.peak_reason}
+                "peak_reason": self.coordinator.peak_reason,
+                # F37: the direction the zone really runs (community zones are
+                # gated by the building changeover) and whether the user's mode
+                # contradicts the water — the zone rests instead of inverting.
+                "hvac_effective": self.coordinator.hvac_effective,
+                "changeover_conflict": self.coordinator.changeover_conflict}
 
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
         if hvac_mode == HVACMode.HEAT_COOL:

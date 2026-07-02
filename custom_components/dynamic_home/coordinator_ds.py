@@ -69,6 +69,9 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Weather alert (F17): anticipatory protection hold state.
         self._alert_hold_until = 0.0
         self._last_alert_pos = 0
+        # Night-purge latch (F16): open once genuinely cooler outside, close once
+        # warmer, hold in between (see _night_iso).
+        self._purge_active = False
         # Where the alert comes from, for observability: local / dynamic_weather / none.
         self.alert_source = "none"
         # Weather protection master switch for THIS shutter (rain + alert + wind cap).
@@ -380,13 +383,22 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         to protect it. Disabled, daytime or unknown sun -> None (cascade decides).
         """
         if not self.night_iso_enabled or sun_el is None or sun_el > 0:
+            self._purge_active = False
             return None
         if hvac == "heat":
             return cfg.night_iso_close_pct
         if hvac == "cool":
             if t_in is None or t_out is None:
                 return None
-            return (cfg.night_iso_open_pct if t_out <= t_in
+            # Purge with a latch (reuses freecool_delta as the entry band): open
+            # when the outside is genuinely cooler, close once it's warmer, hold
+            # in between — otherwise ±0.1 °C of sensor noise around t_in cycles
+            # the bedroom shutter up and down all night.
+            if t_out <= t_in - cfg.freecool_delta:
+                self._purge_active = True
+            elif t_out > t_in:
+                self._purge_active = False
+            return (cfg.night_iso_open_pct if self._purge_active
                     else cfg.night_iso_close_pct)
         return None
 
@@ -540,8 +552,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # Purge = cool night opening because the outside is cooler (vents heat);
         # any other active night case closes to insulate/protect.
         night_purge = (night_pos is not None and hvac == "cool"
-                       and t_in is not None and t_out is not None
-                       and t_out <= t_in)
+                       and self._purge_active)
         alert_pos = self._weather_alert(cfg, now_ts)
         sim_pos = self._sim_step(cfg, sun_above, now_ts)
         sleep_pos = self._sleep_pos(cfg)
@@ -567,6 +578,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             gust=gust,
             current_pos=current_pos,
             dawn_pos=dawn_pos,
+            # Night for the free-cool branch (F: open on cool summer nights).
+            # Sun data missing -> not night (conservative: the branch stays off,
+            # same as before it was wired).
+            night=(sun_el is not None and sun_el <= 0),
             night_pos=night_pos,
             night_purge=night_purge,
             sim_pos=sim_pos,

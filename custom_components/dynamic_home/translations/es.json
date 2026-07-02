@@ -1440,6 +1440,7 @@
       "adaptive": {"name": "Umbrales adaptativos"},
       "bootstrap": {"name": "Arranque inicial"},
       "dry_mode": {"name": "Modo secado"},
+      "freecool": {"name": "Free-cooling"},
       "anticipatory": {"name": "Refuerzo anticipatorio"},
       "schedule": {"name": "Programador"},
       "quiet_hours": {"name": "Horas de silencio"},
@@ -1468,7 +1469,9 @@
       "sleep_pct": {"name": "Cierre en Sleep"},
       "rain_close_pct": {"name": "Cierre por lluvia"},
       "dawn_target_pct": {"name": "Objetivo amanecer"},
-      "quiet_max_level": {"name": "Nivel máx. en silencio"}
+      "quiet_max_level": {"name": "Nivel máx. en silencio"},
+      "freecool_t_in_min": {"name": "Temp. interior mínima free-cool"},
+      "freecool_quiet_cap": {"name": "Tope nocturno free-cool"}
     },
     "sensor": {
       "changeover": {"name": "Cambio estacional"},

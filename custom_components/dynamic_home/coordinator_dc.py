@@ -78,10 +78,14 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         )
         self.entry = entry
         self.hub = hub
-        self.hvac_mode = "off"          # effective engine mode (heat/cool/off)
+        self.hvac_mode = "off"          # the user's mode (heat/cool/off)
         # F37: user picked HEAT_COOL ("follow the building"); each cycle resolves
         # hvac_mode from the house changeover so the engine never sees "heat_cool".
         self.follow_changeover = False
+        # The direction the zone actually runs (community zones gated by the
+        # changeover) and whether the user's mode contradicts the building water.
+        self.hvac_effective = "off"
+        self.changeover_conflict = False
         self.override_active = False
         self.override_temp: float | None = None
         self.vacation_enabled = False
@@ -235,7 +239,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     @property
     def real_demand_open(self) -> bool | None:
         """Real demand for the current mode (None if no real source configured)."""
-        return self._real_valve_open(self._cfg(), self.hvac_mode)
+        return self._real_valve_open(self._cfg(), self._effective_hvac())
 
     # --- F26 installation profile (declared catalogue; F09/F03 will consume it) ---
     def has_install(self) -> bool:
@@ -280,18 +284,25 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
     def _effective_hvac(self) -> str:
         """The direction the zone may actually run this cycle.
 
-        A community (central_shared) zone follows the house changeover: the building
-        decides heat vs cool, so the zone's own mode only enables/disables it. Off
-        season (changeover ``off``) or zone off -> idle. Non-community zones, or no
-        changeover configured (``None``), keep their own mode (back-compat).
+        A community (central_shared) zone can only run in the direction the
+        building's water supports. If the zone's own mode agrees, it runs; if it
+        CONTRADICTS the changeover (heat asked while cold water circulates), the
+        zone rests (off) — it never silently inverts the user's intent (the
+        "follow the building" switch exists for that). Off season (changeover
+        ``off``) or zone off -> idle. Non-community zones, or no changeover
+        configured (``None``), keep their own mode (back-compat).
         """
         base = self.hvac_mode
         profile = self.install_profile
         co = self._house_changeover()
+        self.changeover_conflict = False
         if profile and profile.get("community") and co is not None:
-            if base == "off":
+            if base == "off" or co not in ("heat", "cool"):
                 return "off"
-            return co if co in ("heat", "cool") else "off"
+            if co != base:
+                self.changeover_conflict = True
+                return "off"
+            return base
         return base
 
     def _build_emitter_commands(self, cfg: DcConfig, decision, t_int, now_ts):
@@ -367,12 +378,12 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             if not chan:
                 continue
             hub.report(chan, shared_emitter.ZoneDemand(
-                entry_id=self.entry.entry_id, hvac=self.hvac_mode, current=t_int,
+                entry_id=self.entry.entry_id, hvac=self._effective_hvac(), current=t_int,
                 target=decision.target, weight=cfg.zone_demand_weight,
                 undershoot_margin=cfg.shared_undershoot_margin,
                 owner=em.get("owner", False)))
             if hub.is_owner(chan, self.entry.entry_id):
-                cmd = hub.reconcile(chan, self.hvac_mode,
+                cmd = hub.reconcile(chan, self._effective_hvac(),
                                     em.get("policy", "weighted"),
                                     em["scope"] == "group_grilles")
                 self.emitter_commands[em["id"]] = {
@@ -508,7 +519,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             cfg.anticycle_min_on_s, cfg.anticycle_min_off_s = anticycle_bounds(
                 self.learned_lag_h)
         desired_on = decision.action in ("heat", "cool")
-        safety_off = self.hvac_mode in ("heat", "cool") and decision.action == "off"
+        safety_off = self._effective_hvac() in ("heat", "cool") and decision.action == "off"
         # F09 full: a zone drives one compressor channel per distinct heat-pump
         # emitter (compressor_id); legacy/single-device falls to "default" (one
         # house compressor). Reset first so dropped channels stop being reported.
@@ -588,8 +599,9 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             dt_s = now_ts - self._energy_ts
             power = self._num(const.CONF_POWER_METER)
             if power is None:
-                valve = self._real_valve_open(cfg, self.hvac_mode)
-                on = valve if valve is not None else self.hvac_mode in ("heat", "cool")
+                eff = self._effective_hvac()
+                valve = self._real_valve_open(cfg, eff)
+                on = valve if valve is not None else eff in ("heat", "cool")
                 power = energy.dc_power_w(on, cfg.est_w_on)
             self.energy_kwh = energy.add_kwh(self.energy_kwh, power, dt_s)
             self.power_w = float(power or 0.0)
@@ -626,7 +638,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         radiant-cooling) or an *undeclared* emitter (we can't rule it out). A
         declared non-radiant zone (split/fan-coil/ducts) is fine on the air check.
         """
-        if self.has_water() or self.hvac_mode != "cool":
+        if self.has_water() or self._effective_hvac() != "cool":
             return False
         emission = self.entry.options.get(const.CONF_EMISSION)
         return emission is None or install.is_cold_surface(emission)
@@ -689,7 +701,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         t_adj = self._num(const.CONF_DC_ADJ_TEMP)
         door = (self._is_on(const.CONF_DC_ADJ_DOOR)
                 if self._hw(const.CONF_DC_ADJ_DOOR) else None)
-        advice = adjacent_advice(self.hvac_mode, t_int, t_adj, door, cfg)
+        advice = adjacent_advice(self._effective_hvac(), t_int, t_adj, door, cfg)
         if advice != self.adjacent_advice:
             self.adjacent_advice = advice
             dt = (t_adj - t_int) if (t_adj is not None and t_int is not None) else 0.0
@@ -953,10 +965,16 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         if self.follow_changeover:
             co = self._house_changeover()
             self.hvac_mode = co if co in ("heat", "cool") else "off"
+        # The direction the zone actually runs this cycle. EVERY step below uses
+        # it — a community zone gated by the changeover must evaluate condensation,
+        # window inference, facade/forecast biases, learning and energy in its REAL
+        # direction, never in the mode label the user left on the thermostat.
+        eff = self._effective_hvac()
+        self.hvac_effective = eff
 
         self.dew_point_c = dew_point(t_int, rh)
         self.floor_temp_c = self._num(const.CONF_DC_WATER_TEMP)
-        self.dew_risk_active = dew_risk(cfg, self.hvac_mode, t_int, rh,
+        self.dew_risk_active = dew_risk(cfg, eff, t_int, rh,
                                         self.floor_temp_c)
         # Surface-based breakdown for the card (only meaningful with a floor temp).
         if self.floor_temp_c is not None and self.dew_point_c is not None:
@@ -982,20 +1000,20 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
 
         # Open-window inference (F20): only when no window sensor is configured.
         trend = self._update_trend(cfg, t_int, now_ts)
-        self._window_inferred = self._infer_window(cfg, self.hvac_mode, t_int,
+        self._window_inferred = self._infer_window(cfg, eff, t_int,
                                                    trend, now_ts)
 
         # Degraded when a core source is missing while a mode is demanded; this
         # pauses learning so stale readings don't poison the EMAs and (if
         # sustained) raises a Repairs issue.
         missing = (["indoor temperature"]
-                   if self.hvac_mode in ("heat", "cool") and t_int is None
+                   if eff in ("heat", "cool") and t_int is None
                    else [])
         self.degraded = self._update_degraded(missing, now_ts)
 
         facades, spans = self._registered_facades()
         lit = sunlit_facades(sun_az, sun_el, facades, spans)
-        facade_b = facade_bias(cfg, self.hvac_mode, self._facade_openness(lit))
+        facade_b = facade_bias(cfg, eff, self._facade_openness(lit))
 
         # Feed the learned lead only once the loop is enabled, healthy and has
         # completed at least one cycle; otherwise the engine uses its physical model.
@@ -1005,7 +1023,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                          else None)
 
         ins = DcInputs(
-            hvac_mode=self._effective_hvac(),
+            hvac_mode=eff,
             t_int=t_int,
             t_ext=self._num(const.CONF_DC_T_EXT),
             sun_elevation=sun_el,
@@ -1014,7 +1032,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             override_temp=self.override_temp,
             vmc_speed=self._vmc_speed(),
             trend_cph=trend,
-            forecast_temp=await self._forecast_temp(cfg, self.hvac_mode),
+            forecast_temp=await self._forecast_temp(cfg, eff),
             wind=self._num(const.CONF_DC_WIND),
             vacation=self.vacation_enabled or modes.is_away(self._mode()),
             window_lockout=self._is_on(const.CONF_DC_WINDOW),
@@ -1035,10 +1053,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # open window also disturbs the cycle, so it aborts learning like the sensor.
         window_open = self._is_on(const.CONF_DC_WINDOW) or self._window_inferred
         if self.adaptive_enabled and not self.degraded:
-            self._learn_step(cfg, now_ts, self.hvac_mode, t_int, decision.target,
+            self._learn_step(cfg, now_ts, eff, t_int, decision.target,
                              window_open, self.override_active)
         else:
-            self._valve_open = self._valve_demand(cfg, self.hvac_mode, t_int,
+            self._valve_open = self._valve_demand(cfg, eff, t_int,
                                                   decision.target)
             self._settling = False
 

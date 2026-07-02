@@ -4,6 +4,45 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.95.0] — 2026-07-02
+
+### Fixed
+- **DS · el free-cooling nocturno vuelve a la vida.** La rama `freecool_night` (abrir en las
+  noches frescas de verano para ventilar la masa térmica) era **código muerto**: el coordinador
+  nunca pasaba `night` al motor. Ahora se deriva del sol (bajo el horizonte = noche) y la rama
+  funciona; sin datos de sol queda desactivada (degradación conservadora).
+- **DC · el modo efectivo gobierna TODO el pipeline.** En zonas comunitarias, la protección de
+  condensación, la ventana inferida, el bias de fachada, el forecast, el aprendizaje, la energía
+  y el conducto compartido evaluaban con el modo de la UI mientras el motor corría con el del
+  edificio. Ahora todos usan la misma dirección real. Y en **conflicto** (pides Calor con agua
+  fría circulando) la zona **reposa (off)** en vez de invertir tu orden en silencio — nuevos
+  atributos `hvac_effective` y `changeover_conflict` en la entidad climate ("Seguir al edificio"
+  sigue funcionando igual).
+- **DV · el free-cooling ya no tira tu calefacción.** Solo se engancha con el interior
+  genuinamente caluroso (nueva "Temp. int. mínima", 24 °C por defecto, editable) y ahora tiene
+  **switch propio** ("Free-cooling", activado por defecto) — antes la mera presencia de sondas
+  lo forzaba y no se podía apagar.
+- **DS · histéresis contra el flapping**: el tope de viento ya actúa dentro de su banda de
+  histéresis (antes el flag estaba activo pero el tope era 100 → la persiana alternaba 100↔90
+  con viento rondando el límite); la purga nocturna F16 tiene latch (abre si fuera está
+  genuinamente más fresco, cierra si está más cálido, mantiene en medio); y los umbrales
+  térmicos de verano/invierno (`hot_delta`/`cold_delta`) ganan banda de salida de 0,3 °C.
+
+### Added
+- **DV · free-cool nocturno exento de sleep/silencio hasta un tope configurable.** En noches de
+  verano el free-cool puede subir hasta el nuevo "Tope nocturno free-cool" (V2 por defecto,
+  entidad number editable 1..3) aunque el modo Sleep o las horas de silencio capen a V1 — poner
+  1 restaura el silencio absoluto.
+- **DV · prioridades del aire coherentes**: el tope por aire exterior hostil (AQI) pasa a ser la
+  **última autoridad** (ni el Boost ni el modo Boost pueden aspirar humo a plena potencia), con
+  piso V1 si el aire interior es crítico; el secado (moho/rocío) pasa por los topes de
+  silencio/hostil con piso V1; y la petición de silencio del bus (`request_quiet`) respeta el
+  aire crítico como el resto de topes.
+
+### Internal
+- Fase 2 (coherencia frío/calor) de la auditoría integral. Suite 593 tests; paridad de
+  traducciones 1495 claves.
+
 ## [0.94.2] — 2026-07-02
 
 ### Fixed
