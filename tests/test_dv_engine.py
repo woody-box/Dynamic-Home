@@ -181,7 +181,7 @@ def test_dry_requested_via_bus_opens_when_outdoor_drier():
                    dp_diff=1.5, co2_raw=500, pm_raw=5, current_speed=1,
                    trigger_is_iaq=True)
     d = decide(_dry_cfg(), DvState(), ins)
-    assert d.reason == "dry_mode" and d.speed == 3
+    assert d.reason == "dry_mode" and d.speed == 2   # staged entry (V3 needs >=2.0)
 
 
 def test_dry_requested_via_bus_blocked_when_outdoor_humid():
@@ -193,7 +193,12 @@ def test_dry_requested_via_bus_blocked_when_outdoor_humid():
 
 
 def test_dry_gate_opens_above_margin():
+    # v0.97.0: dry entry is STAGED — engaging lands on V2; V3 needs a much
+    # drier outdoor air (dry_v3_delta 2.0 > dry_margin 1.0, the old default
+    # made V3 the only reachable entry speed).
     d = decide(_dry_cfg(), DvState(), _dry_ins(1.5))
+    assert d.reason == "dry_mode" and d.speed == 2
+    d = decide(_dry_cfg(), DvState(), _dry_ins(2.5))
     assert d.reason == "dry_mode" and d.speed == 3
 
 
@@ -416,9 +421,14 @@ def test_quiet_caps_auto_speed():
     assert d.reason == "quiet_cap" and d.speed == 1
 
 
-def test_quiet_caps_to_off():
+def test_quiet_cap_zero_floors_at_v1_under_real_demand():
+    # v0.97.0: an OFF cap against real IAQ demand (V2/V3 base) floors at V1 —
+    # a hard 0 invited a 0<->V3 bang-bang right at the critical CO2 line.
     d = decide(_quiet_cfg(quiet_max_level=0), DvState(), _qins(1400, 3 * 60))
-    assert d.reason == "quiet_cap" and d.speed == 0
+    assert d.reason == "quiet_cap" and d.speed == 1
+    # With clean air (V1 base) the OFF cap still applies.
+    d = decide(_quiet_cfg(quiet_max_level=0), DvState(), _qins(500, 3 * 60))
+    assert d.speed == 0
 
 
 def test_quiet_critical_co2_lifts_cap():

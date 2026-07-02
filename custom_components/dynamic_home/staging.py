@@ -24,6 +24,7 @@ class StagingState:
     on: bool = False
     lag_since: float | None = None       # when the lag first exceeded the on-band
     settle_since: float | None = None     # when recovery under the off-band began
+    hvac: str | None = None              # direction the latch was armed for
 
 
 def deviation(hvac: str, current: float | None, target: float | None) -> float:
@@ -43,7 +44,16 @@ def step(state: StagingState, hvac: str, current: float | None,
     if hvac not in ("heat", "cool"):
         state.on = False
         state.lag_since = state.settle_since = None
+        state.hvac = None
         return False, "off"
+    if state.hvac is None:
+        state.hvac = hvac                # adopt the direction on first use
+    elif state.hvac != hvac:
+        # Direction flipped (heat -> cool): a support armed for heating must not
+        # stay latched on into the cooling run waiting out the release hysteresis.
+        state.on = False
+        state.lag_since = state.settle_since = None
+        state.hvac = hvac
     dev = deviation(hvac, current, target)
     if not state.on:
         if dev > cfg.support_dev_on:

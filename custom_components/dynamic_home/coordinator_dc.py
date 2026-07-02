@@ -103,6 +103,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         # F25: multiple emitters per zone (primary + staged support). Empty list
         # keeps the legacy single-device path. emitter_commands: id -> command dict.
         self._emitters: list[dict] = []
+        self._prev_emitters: dict[str, dict] = {}   # last cycle's, for farewells
         self._staging: dict[str, staging.StagingState] = {}
         self.emitter_commands: dict[str, dict] = {}
         self.observe_enabled = False    # dry-run: compute but do not act on hw
@@ -352,6 +353,19 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 "target": decision.target if on else None,
                 "on": on, "primary": em is primary, "reason": reason,
             }
+        # An emitter deleted from the editor must get a farewell OFF (it would
+        # otherwise stay frozen in its last state forever) and its staging latch
+        # pruned. The command embeds its entities: it is no longer in _emitters.
+        current_ids = {em["id"] for em in self._emitters}
+        for gone_id, em in self._prev_emitters.items():
+            if gone_id in current_ids:
+                continue
+            self._staging.pop(gone_id, None)
+            cmds[gone_id] = {"mode": "off", "target": None, "on": False,
+                             "primary": False, "reason": "removed",
+                             "climate": em.get("climate"),
+                             "switch": em.get("switch")}
+        self._prev_emitters = {em["id"]: em for em in self._emitters}
         self.emitter_commands = cmds
 
     def _default_channel(self) -> str | None:
@@ -921,8 +935,9 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                       now_ts: float) -> float:
         """EMA-smoothed indoor-temp derivative (°C/h), with a deadband."""
         if t_int is None:
+            # Dead sensor: a stale derivative must not keep biasing the target.
             self._prev_tint, self._prev_ts = None, None
-            return self._cph
+            return 0.0
         if self._prev_tint is not None and self._prev_ts is not None:
             dt_h = (now_ts - self._prev_ts) / 3600.0
             if dt_h > 0:
@@ -1098,8 +1113,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         elif lit:
             # Dynamic: target only the sunlit facades.
             desired = {f"{self._source}__{fk}": (intent, fk) for fk in lit}
-        elif facades and sun_el is not None:
-            # Facades known but none sunlit -> publish nothing.
+        elif facades:
+            # Facades known but none sunlit — or the sun itself unknown (sun.sun
+            # unavailable): publish nothing. Broadcasting a shield to every
+            # facade at prio 70 with no sun data would clamp shutters at night.
             desired = {}
         else:
             # Fallback: broadcast to the configured target.

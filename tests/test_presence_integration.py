@@ -187,3 +187,38 @@ async def test_presence_absent_keeps_zones_config_time(
     reg = er.async_get(hass)
     assert reg.async_get_entity_id(
         "binary_sensor", const.DOMAIN, f"{entry.entry_id}_house_presence") is None
+
+
+async def test_presence_auto_respects_manual_home_until_transition(
+        hass: HomeAssistant) -> None:
+    # v0.97.0: forcing "home" by hand with the presence saying Away must stick —
+    # auto-drive only re-engages on a real presence transition.
+    hass.states.async_set("binary_sensor.salon_mmwave", "off")
+    hass.states.async_set("device_tracker.phone", "not_home")
+    entry = _zones_entry(hass, {
+        const.CONF_PRESENCE_SOURCES: {
+            "salon": {"mmwave": ["binary_sensor.salon_mmwave"]}},
+        const.CONF_PRESENCE_PHONES: ["device_tracker.phone"],
+        const.CONF_PRESENCE_AUTO: True})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.house_mode == "away"                     # auto-driven
+
+    co.house_mode = "home"                             # the user forces Home
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.house_mode == "home"                     # not stomped in <=60 s
+
+    # A real transition (someone shows up, then leaves again) re-engages auto.
+    hass.states.async_set("binary_sensor.salon_mmwave", "on")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.house_mode == "home"
+    hass.states.async_set("binary_sensor.salon_mmwave", "off")
+    hass.states.async_set("device_tracker.phone", "not_home")
+    # Let the zone's latch/holds expire (fresh state = empty zone).
+    co.presence_zones["salon"] = type(co.presence_zones["salon"])()
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.house_mode == "away"

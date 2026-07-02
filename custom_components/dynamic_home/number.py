@@ -263,7 +263,8 @@ class OptionNumber(NumberEntity):
         stored = self._entry.options.get(
             self._desc.key, getattr(self._defaults, self._desc.key))
         v = stored * self._desc.scale
-        return round(v, self._desc.precision) if self._desc.precision else v
+        return (round(v, self._desc.precision)
+                if self._desc.precision is not None else v)
 
     async def async_set_native_value(self, value: float) -> None:
         options = dict(self._entry.options)

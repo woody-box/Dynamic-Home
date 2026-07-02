@@ -4,6 +4,56 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.97.0] — 2026-07-02
+
+### Fixed
+- **DV**: el secado entra escalonado (V2 al engancharse; V3 solo con el exterior mucho más
+  seco — antes V3 era la única entrada alcanzable); un tope de silencio a 0 con demanda IAQ
+  real deja piso V1 (evitaba un bang-bang 0↔V3 justo en la línea crítica); los umbrales
+  adaptativos se acotan a ±30 % de los fijos y maduran con un día entero de muestras (una
+  casa mal ventilada ya no "aprende" complacencia); al salir de Observar/Pausa los relés se
+  re-sincronizan con la velocidad lógica; el ventilador gana el vigilante de interlock de la
+  campana (V2 y V3 nunca energizados a la vez); el tramo del programador se acota a 0..3.
+- **DS**: con lluvia activa simultánea a una alerta de viento, la posición de lluvia entra en
+  el `min()` (media persiana ya no deja entrar el agua); la rampa de amanecer no se activa
+  sin feedback de posición (podía comandar 10-20 % a una persiana abierta); un cover sin
+  posición ya no convierte el objetivo parcial propio en un falso override a 100 %; el
+  `sdhb_quiet` no re-etiqueta el motivo sin posición que congelar; el tope de viento conserva
+  el contexto de la rama en los detalles; Amanecer/Anochecer muestran siempre el par del
+  mismo día.
+- **DC**: el latch de apoyo (staging) se resetea al cambiar de dirección y se poda al
+  eliminar emisores; un emisor borrado del editor recibe un OFF de despedida (quedaba
+  congelado en su último estado); la conducción del termostato va serializada y solo se da
+  por aplicada tras el éxito de los servicios; una sonda interior caída deja la tendencia a 0
+  (no seguía aplicando una rampa rancia); el clamp tarifario del lead respeta los límites del
+  modelo fuente (recortaba un lead adaptativo de 4 h a 3 h); con fachadas registradas y sol
+  desconocido no se publica escudo (un broadcast a prioridad 70 podía clampar persianas de
+  noche).
+- **Zonas/presencia**: Away con latch (la casa vacía ya no vuelve a "ocupada" a los 5
+  minutos al caducar la ventana de puerta; sale de Away cuando alguien ocupa una zona o un
+  móvil vuelve positivamente a casa); el modo puesto a mano se respeta hasta la siguiente
+  transición real de presencia (decisión del usuario).
+- **Transversal**: los eventos de presencia/changeover solo se disparan en transiciones (no
+  cada ciclo); el módulo de Energía notifica a los consumidores al cambiar el contexto (el
+  presupuesto de pico de DC reacciona a la tarifa sin esperar su propio tick);
+  `import_options` cubre también Energía y Weather; los empates del bus se resuelven de
+  forma determinista (nombre de fuente, estable entre reinicios) y publicar con TTL sin
+  reloj es un error; un precio negativo no resta del coste; `precision=0` redondea en las
+  entidades number; el rumbo del viento deja de declarar `state_class` de medida (la media
+  estadística de un ángulo no significa nada); el espejo meteo convierte °F/mph/inHg/in a
+  métrico con las unidades declaradas por el proveedor; al descargar la última entrada se
+  liberan los hubs compartidos.
+
+### Removed
+- **DV**: entradas muertas del port YAML (`shower_override`, `dew_prerisk`,
+  `override_recent`) — sin efecto en runtime desde el port; el boost de ducha por ΔRH sigue
+  intacto.
+
+### Internal
+- Fase 4 (pulido) y cierre de la auditoría integral v0.94.1. Suite 606 tests.
+- Pendiente anotado (sin cambio de comportamiento, requiere decisión del usuario): debounce
+  de asentamiento y tolerancia configurable en la detección de movimiento externo del cover.
+
 ## [0.96.0] — 2026-07-02
 
 ### Fixed

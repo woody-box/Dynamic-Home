@@ -68,7 +68,9 @@ class DvConfig:
 
     # Dry mode (dew point)
     dry_v2_delta: float = 0.2
-    dry_v3_delta: float = 1.0
+    # Must be > dry_margin (1.0), or drying always ENGAGES straight into V3
+    # and the staged V2 entry is unreachable.
+    dry_v3_delta: float = 2.0
     dew_spread_min: float = 1.5      # indoor temp within this of dew point -> risk
     # F13: only ventilate to dry when the outdoor air is meaningfully drier, i.e.
     # dp_diff (dp_in - dp_out) clears a margin, with hysteresis so it doesn't
@@ -115,7 +117,9 @@ class DvConfig:
 
     # Adaptive thresholds (SPEC §7) — engine uses them when provided & ready.
     adaptive_enabled: bool = False
-    adaptive_min_samples: int = 100   # min readings before percentiles are used
+    # Min readings before percentiles are used: ~a full day at 1/min, so a
+    # couple of unusual hours can't set the house's "normal".
+    adaptive_min_samples: int = 1440
 
     # Heat-recovery efficiency (F28): bypass / no-recovery detection thresholds.
     hrv_bypass_eff_max: float = 0.2   # η at/below this with real ΔT => bypass
@@ -276,21 +280,17 @@ class DvInputs:
     boost_active: bool = False        # F14: timed V3 boost (service-driven)
 
     # Explicit shower override (timer/UI). If None, shower is derived from RH.
-    shower_override: bool = False
-    shower_level: str | None = None  # "v2" | "v3" | None
 
     dry_mode: bool = False
     dry_requested: bool = False        # F22: bus-driven dry request (DC mold)
     mode_cap: int | None = None        # F01: house-mode speed cap (None = none)
     mode_boost: bool = False           # F01: house-mode boost -> V3
     dew_risk: bool = False
-    dew_prerisk: bool = False
     dp_diff: float | None = None
 
     sdhb_intent: str = "none"
 
     trigger_is_iaq: bool = False
-    override_recent: bool = False
 
     # Weekly scheduler (F21): base speed from the active slot (0=off, 1/2/3 floor).
     # None = no weekly profile (fall back to the legacy on/off in_schedule gate).
@@ -631,11 +631,8 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     else:
         state.dry_active = False
 
-    # Shower: explicit override, or derived from ΔRH.
+    # Shower boost, derived from ΔRH.
     shower_on = update_shower(state, cfg, ins.now_ts, ins.rh_delta)
-    if ins.shower_override:
-        spd = {"v3": 3, "v2": 2}.get(ins.shower_level or "", 1)
-        return DvDecision(spd, "shower_override")
     if shower_on:
         return DvDecision(cfg.shower_level, "shower_rh")
 
@@ -661,9 +658,6 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
 
     co2_hys = cfg.co2_hys
     pm_hys = cfg.pm_hys
-    if ins.override_recent and ins.current_speed == 3:
-        co2_hys *= 0.5
-        pm_hys *= 0.5
 
     base = base_target(co2, pm, co2_v2, co2_v3, pm_v2, pm_v3,
                        ins.current_speed, co2_hys, pm_hys)
@@ -690,10 +684,6 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     if state.freecool_active and t < 2:
         t, reason = 2, "freecool"
 
-    # 2) Pre-risk dew
-    if ins.dry_mode and ins.dew_prerisk and not ins.dew_risk and t < 2:
-        t, reason = 2, "dew_prerisk"
-
     # 3) SDHB intent (after freecool; can force/cap). A quiet request never
     # silences critical air — health beats another module's silence wish.
     intent = ins.sdhb_intent
@@ -717,7 +707,6 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
         or intent in (INTENT_BOOST, INTENT_FREECOOL)
         or state.freecool_active
         or ins.dew_risk
-        or ins.dew_prerisk
         or ins.dry_mode
         or anticip_on
     )
@@ -738,6 +727,10 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     # the ceiling.
     if in_quiet_window(ins.minute_of_day, cfg):
         cap = max(cfg.quiet_max_level, min(3, freecool_floor))
+        if cap == 0 and t >= 2:
+            # An OFF cap against real IAQ demand invites a 0<->V3 bang-bang
+            # right at the critical line; V1 is the honest quiet floor.
+            cap = 1
         if not critical_air and t > cap:
             t, reason = cap, "quiet_cap"
 

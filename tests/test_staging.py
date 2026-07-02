@@ -71,3 +71,14 @@ def test_cool_direction_arms_on_overshoot():
     st = staging.StagingState()
     staging.step(st, "cool", 27.0, 25.0, 0.0, CFG)          # 2°C over -> arming
     assert staging.step(st, "cool", 27.0, 25.0, CONFIRM_S, CFG)[0] is True
+
+
+def test_direction_flip_resets_the_support_latch():
+    # v0.97.0: a support armed for heating must not stay latched on into a
+    # cooling run, waiting out the release hysteresis in the wrong direction.
+    cfg = DcConfig(support_dev_on=0.6, support_confirm_min=0.0)
+    st = staging.StagingState()
+    on, _ = staging.step(st, "heat", 18.0, 21.0, 0.0, cfg)   # lag -> arms
+    assert on is True
+    on, reason = staging.step(st, "cool", 18.0, 21.0, 60.0, cfg)
+    assert on is False                                        # reset, re-evaluated

@@ -622,6 +622,10 @@ class WxValueSensor(CoordinatorEntity, SensorEntity):
     def __init__(self, coordinator, entry: ConfigEntry, desc: _WxValDesc) -> None:
         super().__init__(coordinator)
         self._desc = desc
+        if desc.field == "wind_bearing":
+            # A 0/360 angle has no meaningful statistical mean: MEASUREMENT
+            # would make the long-term stats average N (350°) with N (10°) to E.
+            self._attr_state_class = None
         self._attr_translation_key = desc.key
         self._attr_icon = desc.icon
         self._attr_device_class = desc.device_class
@@ -1033,6 +1037,12 @@ class _SunWindowSensor(_SharedSunSensor):
             return None, None
         s = dt_util.parse_datetime(st.attributes.get(self._start_attr) or "")
         e = dt_util.parse_datetime(st.attributes.get(self._end_attr) or "")
+        if s is not None and e is not None and s > e:
+            # Mid-window (e.g. between dawn and sunrise) the start already
+            # points to tomorrow while the end is still today's: show the
+            # coherent same-day pair instead of a crossed range.
+            from datetime import timedelta as _td
+            s = s - _td(days=1)
         return s, e
 
     @property

@@ -94,3 +94,18 @@ def test_door_and_motion_recent_helpers():
 def test_state_to_mode_mapping():
     assert p.STATE_TO_MODE == {"occupied": "home", "away": "away",
                                "sleeping": "sleep"}
+
+
+def test_away_latches_until_someone_actually_returns():
+    # v0.97.0: once Away, the door window expiring must not fall back to
+    # "occupied" with the house still empty — Away holds until a zone occupies
+    # or a phone positively comes home.
+    empty = {"z1": False}
+    assert p.house_state(empty, True, False, 12 * 60, False, CFG,
+                         prev="away") == "away"
+    # A phone positively home ends it (sensors just quiet).
+    assert p.house_state(empty, True, False, 12 * 60, False, CFG,
+                         prev="away", phone_present=True) == "occupied"
+    # And so does real occupancy.
+    assert p.house_state({"z1": True}, True, False, 12 * 60, False, CFG,
+                         prev="away") == "occupied"

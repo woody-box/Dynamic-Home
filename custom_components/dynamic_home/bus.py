@@ -18,6 +18,8 @@ class SdhbHub:
     def publish(self, source: str, intent: str, target: str,
                 priority: int = 50, ttl_s: float = 0,
                 now_ts: float | None = None) -> None:
+        if ttl_s and now_ts is None:
+            raise ValueError("publish() with ttl_s requires now_ts")
         expires_at = (now_ts + ttl_s) if (ttl_s and now_ts is not None) else None
         self._slots[source] = {"intent": intent, "target": target,
                                "priority": priority, "expires_at": expires_at}
@@ -52,7 +54,11 @@ class SdhbHub:
         candidates = self._candidates(targets, now_ts)
         if not candidates:
             return "none"
-        return max(candidates, key=lambda kv: kv[1]["priority"])[1]["intent"]
+        # Deterministic tie-break by source name: without it, equal priorities
+        # resolved by dict insertion order — i.e. by which zone booted first,
+        # changing across restarts.
+        return max(candidates,
+                   key=lambda kv: (kv[1]["priority"], kv[0]))[1]["intent"]
 
     def explain(self, targets, now_ts: float | None = None) -> dict:
         """Same arbitration as :meth:`winner`, but return the *why*.
@@ -71,9 +77,10 @@ class SdhbHub:
                     "candidates": 0, "reason": "no_candidates", "target": None,
                     "ttl_remaining": None, "runner_up": None,
                     "runner_up_priority": None}
-        # Stable sort by priority desc picks the same slot as winner() (the
-        # first maximal in insertion order) and exposes the runner-up for free.
-        ranked = sorted(candidates, key=lambda kv: -kv[1]["priority"])
+        # Same ordering as winner() (priority, then source name) and exposes
+        # the runner-up for free.
+        ranked = sorted(candidates, key=lambda kv: (kv[1]["priority"], kv[0]),
+                        reverse=True)
         src, slot = ranked[0]
         runner = ranked[1][1] if len(ranked) > 1 else None
         expires_at = slot.get("expires_at")

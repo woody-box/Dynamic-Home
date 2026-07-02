@@ -59,6 +59,7 @@ class ZonesCoordinator(DataUpdateCoordinator):
         self.presence_occupied: dict[str, bool] = {}
         self.presence_reasons: dict[str, str] = {}
         self.house_presence = "occupied"
+        self._auto_driven_mode: str | None = None   # last mode auto-drive set
         # F37: community changeover (seasonal water direction).
         self.changeover_manual = "auto"     # set/restored by the house select
         self.changeover: str | None = None  # resolved heat/cool/off/None
@@ -185,23 +186,34 @@ class ZonesCoordinator(DataUpdateCoordinator):
         self.house_presence = presence.house_state(
             occ, phone_home, presence.door_recent(states, cfg, now_ts),
             now.hour * 60 + now.minute,
-            presence.motion_recent(states, cfg, now_ts), cfg)
+            presence.motion_recent(states, cfg, now_ts), cfg,
+            prev=self.house_presence, phone_present=any(votes))
         self.presence_occupied = occ
 
     def publish_presence(self, notify: bool = True) -> None:
         data = self.hass.data.setdefault(const.DOMAIN, {})
-        data[const.DATA_PRESENCE] = {"house": self.house_presence,
-                                     "zones": dict(self.presence_occupied),
-                                     "reasons": dict(self.presence_reasons)}
-        events.fire_presence_changed(self.hass, self.entry, self.house_presence,
-                                     self.presence_occupied)
+        blob = {"house": self.house_presence,
+                "zones": dict(self.presence_occupied),
+                "reasons": dict(self.presence_reasons)}
+        changed = data.get(const.DATA_PRESENCE) != blob
+        data[const.DATA_PRESENCE] = blob
+        if changed:                          # transitions only (const.py contract)
+            events.fire_presence_changed(self.hass, self.entry,
+                                         self.house_presence,
+                                         self.presence_occupied)
         # Auto-drive the house mode along the home/away/sleep axis only — never
-        # stomp a manual boost/eco selection (manual > auto, RNF-3).
+        # stomp a manual selection (manual > auto, RNF-3): only drive on a real
+        # presence TRANSITION, or while the current mode is still the one this
+        # auto-drive set last time.
         if self.entry.options.get(const.CONF_PRESENCE_AUTO):
             target = presence.STATE_TO_MODE.get(self.house_presence)
+            manual_pick = (self.house_mode != self._auto_driven_mode
+                           and self._auto_driven_mode is not None)
             if (target and target != self.house_mode
-                    and self.house_mode in ("home", "away", "sleep")):
+                    and self.house_mode in ("home", "away", "sleep")
+                    and (changed or not manual_pick)):
                 self.house_mode = target
+                self._auto_driven_mode = target
                 self.publish_modes(notify=notify)
 
     # --- F37 community changeover ---
@@ -236,7 +248,9 @@ class ZonesCoordinator(DataUpdateCoordinator):
             "zones": zmap,
             "water_temp": self._num(
                 self.entry.options.get(const.CONF_CHANGEOVER_SENSOR))}
-        events.fire_changeover_changed(self.hass, self.entry, self.changeover)
+        if self.changeover != getattr(self, "_prev_changeover", object()):
+            self._prev_changeover = self.changeover
+            events.fire_changeover_changed(self.hass, self.entry, self.changeover)
         self.async_update_listeners()
         if notify:                          # community zones must re-evaluate
             for key, co in list(data.items()):
