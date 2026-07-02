@@ -19,6 +19,7 @@ from homeassistant.util import dt as dt_util
 from . import comfort, const, energy, events, modes, repairs, zones
 from .bus import SdhbHub
 from .ds_engine import (
+    PROTECTED,
     DsConfig,
     DsDecision,
     DsInputs,
@@ -489,6 +490,14 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         slew limiter still shapes the move once it is allowed.
         """
         ph = self.hass.data.get(const.DOMAIN, {}).get("_peak_ds")
+        # Safety/manual first (the trap incidents): a PROTECTED decision — manual
+        # hold, lock, weather alert, rain, wind cap — is never deferred, and never
+        # snapped back to a mid-travel snapshot of current_pos by the inrush budget.
+        if decision.reason in PROTECTED:
+            if ph is not None:
+                ph.clear(self.entry.entry_id)
+            self.peak_reason = "protected"
+            return decision
         if ph is None or not self.peak_enabled or current_pos is None:
             if ph is not None and not self.peak_enabled:
                 ph.clear(self.entry.entry_id)

@@ -424,19 +424,20 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
     # winter sunrise still opens for light/solar gain.
     sun_protect = is_cool and impact > 0 and ins.sun_gain_shield
 
-    # 1) Override (lock / hold / ttl)
-    if ins.override_mode == "lock":
+    # 1) Manual hold: a hand/external command wins over EVERYTHING — even the
+    # lock. What you (or your automation) just did stands; no condition undoes
+    # it ("open it, step out onto the terrace, it shuts and traps you"). When
+    # the hold expires (or "Resume auto" is pressed) the lock, if armed,
+    # re-imposes its position.
+    if ins.manual_pos is not None:
+        pos, reason = ins.manual_pos, "manual_hold"
+    # 1b) Override (lock / hold / ttl)
+    elif ins.override_mode == "lock":
         pos, reason = ins.override_pos, "ov_lock"
     elif ins.override_mode == "hold" and ins.hold_ok:
         pos, reason = ins.override_pos, "ov_hold"
     elif ins.override_mode == "ttl" and ins.ttl_ok:
         pos, reason = ins.override_pos, "ov_ttl"
-    # 1b) Manual hold: a hand/external command wins over EVERY condition, second
-    # only to the lock. What you (or your automation) just did stands — the weather
-    # never undoes it ("open it, step out onto the terrace, it shuts and traps
-    # you"). Press "Resume auto" to hand control back.
-    elif ins.manual_pos is not None:
-        pos, reason = ins.manual_pos, "manual_hold"
     # 1c) Weather alert (F17): anticipatory protection (above rain/wind).
     elif ins.alert_pos is not None:
         pos, reason = ins.alert_pos, "meteo_alert"

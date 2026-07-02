@@ -1025,6 +1025,65 @@ async def test_peak_disabled_does_not_defer_shutters(hass: HomeAssistant) -> Non
     assert cb.peak_reason == "off"
 
 
+async def test_peak_never_defers_protected_moves(hass: HomeAssistant) -> None:
+    # v0.94.2: the inrush budget must never defer — nor snap back to a mid-travel
+    # snapshot — a manual hold, a lock or a weather protection (the third
+    # instance of the trap pattern found in the audit).
+    from custom_components.dynamic_home.ds_engine import DsConfig, DsDecision
+    ca, cb = await _two_shutters(hass)
+    ca.peak_enabled = cb.peak_enabled = True
+    cfg = DsConfig(peak_max_zones=1, peak_stagger_s=0)
+    assert ca._peak_gate(cfg, DsDecision(pos=0, reason="x"), 100, 1000.0).pos == 0
+    # Budget is now full. A hand-opened shutter caught mid-travel (pos 10) must
+    # keep driving to 100 — not get "held" back at 10.
+    manual = DsDecision(pos=100, reason="manual_hold")
+    db = cb._peak_gate(cfg, manual, 10, 1000.0)
+    assert db.pos == 100 and db.reason == "manual_hold"
+    assert cb.peak_reason == "protected"
+    # A rain/hail closing is a protection: never deferred either.
+    rain = DsDecision(pos=0, reason="meteo_rain")
+    db = cb._peak_gate(cfg, rain, 100, 1000.0)
+    assert db.pos == 0 and db.reason == "meteo_rain"
+
+
+async def test_manual_hold_survives_restart(hass: HomeAssistant) -> None:
+    # v0.94.2: a HA restart mid-hold must NOT hand the shutter back to the
+    # automation — the hold is restored from the control-mode sensor's state.
+    from homeassistant.core import State
+    from homeassistant.helpers import entity_registry as er
+    from homeassistant.util import dt as dt_util
+    from pytest_homeassistant_custom_component.common import mock_restore_cache
+
+    _seed(hass, position=50)
+    entry = await _setup(hass)
+    eid = er.async_get(hass).async_get_entity_id(
+        "sensor", const.DOMAIN, f"{entry.entry_id}_ds_control_mode")
+    assert eid is not None
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    until = dt_util.utcnow().timestamp() + 3600.0
+    mock_restore_cache(hass, (State(eid, "manual",
+                                    {"held_position": 100,
+                                     "hold_until_ts": until}),))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.manual_pos == 100
+    assert co.manual_until == until
+
+    # An already-expired hold is NOT restored (auto resumes normally).
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    mock_restore_cache(hass, (State(eid, "manual",
+                                    {"held_position": 100,
+                                     "hold_until_ts": until - 7200.0}),))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.manual_pos is None
+
+
 # --- F37: shutters follow the house changeover (season) for solar strategy ---
 async def test_hvac_mode_follows_house_changeover(hass: HomeAssistant) -> None:
     _seed(hass)

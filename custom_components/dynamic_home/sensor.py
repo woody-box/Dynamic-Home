@@ -33,6 +33,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
+from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
@@ -1363,12 +1364,14 @@ class DsTempDiffSensor(_Base):
                 "outdoor": self.coordinator._num(const.CONF_DS_T_OUT)}
 
 
-class DsControlModeSensor(_Base):
+class DsControlModeSensor(_Base, RestoreEntity):
     """Whether the shutter runs on DS automation or is held by a manual override.
 
     ``auto`` = the cascade drives it; ``manual`` = a hand/external command armed a
     hold (press "Resume auto" to cancel it). The reason and the remaining hold time
-    ride along as attributes.
+    ride along as attributes. The hold itself is restored across a Home Assistant
+    restart from this sensor's last state — an update mid-hold must not silently
+    hand the shutter back to the automation (trap safety).
     """
 
     _attr_translation_key = "ds_control_mode"
@@ -1379,6 +1382,21 @@ class DsControlModeSensor(_Base):
     def __init__(self, coordinator, entry: ConfigEntry) -> None:
         super().__init__(coordinator, entry, "ds_control_mode")
 
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is None or self.coordinator.manual_pos is not None:
+            return
+        pos = last.attributes.get("held_position")
+        until = last.attributes.get("hold_until_ts")
+        if pos is None or until is None:
+            return
+        until_f = float("inf") if until == "inf" else float(until)
+        if until_f > dt_util.utcnow().timestamp():
+            self.coordinator.manual_pos = max(0, min(100, int(pos)))
+            self.coordinator.manual_until = until_f
+            self.hass.async_create_task(self.coordinator.async_request_refresh())
+
     @property
     def native_value(self) -> str:
         return "manual" if self.coordinator.manual_pos is not None else "auto"
@@ -1386,8 +1404,16 @@ class DsControlModeSensor(_Base):
     @property
     def extra_state_attributes(self) -> dict:
         co = self.coordinator
+        # hold_until_ts is a str/float (never math.inf — attributes are JSON).
+        if co.manual_pos is None:
+            until = None
+        elif co.manual_until == float("inf"):
+            until = "inf"
+        else:
+            until = round(co.manual_until, 1)
         return {"held_position": co.manual_pos,
                 "remaining_min": co.override_remaining_min,
+                "hold_until_ts": until,
                 "reason": getattr(co.data, "reason", None)}
 
 

@@ -68,6 +68,8 @@ class HoodFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_hood"
         self._preset = const.PRESET_AUTO
+        self._apply_lock = asyncio.Lock()
+        self._apply_seq = 0
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)})
 
@@ -147,14 +149,22 @@ class HoodFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
 
     # --- hardware driver (break-before-make, 1-of-3) ---
     async def _apply_hood(self, speed: int) -> None:
-        relays = self._relays
-        for i, ent in enumerate(relays, start=1):     # drop every non-target first
-            if i != speed:
-                await self._switch(ent, False)
-        if speed in (1, 2, 3):
-            await asyncio.sleep(const.RELAY_SETTLE_S)
-            await self._switch(relays[speed - 1], True)
-        self.coordinator.hood_current = speed
+        # Serialize appliers: the sequence awaits (settle + blocking services), so
+        # an interleaved newer command could otherwise leave two relays closed.
+        # A newer request supersedes anything still waiting on the lock.
+        self._apply_seq += 1
+        token = self._apply_seq
+        async with self._apply_lock:
+            if token != self._apply_seq:
+                return
+            relays = self._relays
+            for i, ent in enumerate(relays, start=1):  # drop every non-target first
+                if i != speed:
+                    await self._switch(ent, False)
+            if speed in (1, 2, 3):
+                await asyncio.sleep(const.RELAY_SETTLE_S)
+                await self._switch(relays[speed - 1], True)
+            self.coordinator.hood_current = speed
 
     async def _switch(self, entity_id: str | None, on: bool) -> None:
         if not entity_id or self.coordinator.observe_effective:
@@ -202,6 +212,8 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         self._preset = const.PRESET_AUTO
         self._bootstrapped = False
         self._override_unsub = None     # cancels a pending auto-revert to auto
+        self._apply_lock = asyncio.Lock()
+        self._apply_seq = 0
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, entry.entry_id)},
             name=entry.title,
@@ -339,6 +351,18 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
 
     # --- hardware driver (SPEC §5) ---
     async def _apply_speed(self, speed: int) -> None:
+        # Serialize appliers: the sequence awaits (settle sleeps + blocking
+        # services), so an interleaved user OFF racing an auto change could leave
+        # V3 latched with the power relay cut — and the motor would restart at V3
+        # when power returns. A newer request supersedes one still on the lock.
+        self._apply_seq += 1
+        token = self._apply_seq
+        async with self._apply_lock:
+            if token != self._apply_seq:
+                return
+            await self._apply_speed_locked(speed)
+
+    async def _apply_speed_locked(self, speed: int) -> None:
         d = self._entry.data
         sw_pwr, sw_v2, sw_v3 = (d.get(const.CONF_SW_PWR),
                                 d.get(const.CONF_SW_V2),

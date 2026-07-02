@@ -611,6 +611,39 @@ def test_permiso_extra_overrides_schedule():
     assert d.speed >= 1 and d.reason != "not_permitted"
 
 
+def test_schedule_yields_to_critical_air_boost_and_manual():
+    # v0.94.2: the schedule window must never suffocate the house — a person
+    # sleeping with critical CO2 gets ventilation, and a boost press or a manual
+    # override outside the window still works.
+    cfg = _cfg(schedule_enabled=True, schedule={0: (8 * 60, 22 * 60)},
+               co2_ema_enabled=False, pm_ema_enabled=False)
+    night = dict(weekday=0, minute_of_day=23 * 60, now_ts=0.0)
+    d = decide(cfg, DvState(), DvInputs(co2_raw=2500, pm_raw=5,
+                                        trigger_is_iaq=True, **night))
+    assert d.speed >= 1 and d.reason != "not_permitted"     # critical CO2 vents
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5,
+                                        boost_active=True, **night))
+    assert d.speed == 3 and d.reason == "boost"             # boost still works
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5,
+                                        manual_override=True, override_v3=True,
+                                        **night))
+    assert d.speed == 3 and d.reason == "manual_override"   # so does manual
+    # Clean air and no user action -> the window still applies.
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5, **night))
+    assert d.speed == 0 and d.reason == "not_permitted"
+
+
+def test_weekly_slot_zero_yields_to_critical_air():
+    # F21 profile slot 0 (off window) has the same safety escape.
+    cfg = _cfg(co2_ema_enabled=False, pm_ema_enabled=False)
+    d = decide(cfg, DvState(), DvInputs(co2_raw=2500, pm_raw=5, schedule_speed=0,
+                                        trigger_is_iaq=True, now_ts=0.0))
+    assert d.speed >= 1 and d.reason != "not_permitted"
+    d = decide(cfg, DvState(), DvInputs(co2_raw=500, pm_raw=5, schedule_speed=0,
+                                        now_ts=0.0))
+    assert d.speed == 0 and d.reason == "not_permitted"
+
+
 # --------------------------------------------------------------------------- #
 # Failsafe
 # --------------------------------------------------------------------------- #

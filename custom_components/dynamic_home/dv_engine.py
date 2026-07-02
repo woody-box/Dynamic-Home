@@ -528,15 +528,23 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     lockout = update_failsafe(state, cfg, ins.now_ts, vital_ko)
 
     # --- Permitida gate (SPEC §4) ---
+    # Effective IAQ before the gate: the schedule window must never suffocate the
+    # house. Critical CO2/PM, a boost press or a manual override all pass through
+    # even outside the permitted hours (safety wins over the calendar).
+    co2 = state.co2_ema if (cfg.co2_ema_enabled and state.co2_ema > 0) else (co2_raw or 0.0)
+    pm = state.pm_ema if (cfg.pm_ema_enabled and state.pm_ema > 0) else (pm_raw or 0.0)
+    critical_air = co2 >= cfg.quiet_critical_co2 or pm >= cfg.quiet_critical_pm
+    permiso_extra = (ins.permiso_extra or critical_air
+                     or ins.boost_active or ins.manual_override)
     if ins.permitida is not None:
         permitida = ins.permitida
     elif ins.schedule_speed is not None:
         # F21 weekly profile: slot 0 = off window; 1/2/3 permit (and act as floor).
         sched_ok = ins.schedule_speed > 0
-        permitida = ins.auto_mode and (not lockout) and (sched_ok or ins.permiso_extra)
+        permitida = ins.auto_mode and (not lockout) and (sched_ok or permiso_extra)
     else:
         sched_ok = in_schedule(ins.weekday, ins.minute_of_day, cfg)
-        permitida = ins.auto_mode and (not lockout) and (sched_ok or ins.permiso_extra)
+        permitida = ins.auto_mode and (not lockout) and (sched_ok or permiso_extra)
 
     if not permitida:
         return DvDecision(0, "lockout" if lockout else "not_permitted")
@@ -588,8 +596,7 @@ def decide(cfg: DvConfig, state: DvState, ins: DvInputs) -> DvDecision:
     if vital_ko:
         return DvDecision(1, "failsafe_vital_ko")
 
-    co2 = state.co2_ema if (cfg.co2_ema_enabled and state.co2_ema > 0) else (co2_raw or 0.0)
-    pm = state.pm_ema if (cfg.pm_ema_enabled and state.pm_ema > 0) else (pm_raw or 0.0)
+    # (co2/pm effective values were resolved above, before the permitida gate.)
 
     # Adaptive thresholds (SPEC §7): override config when enabled & provided.
     co2_v2, co2_v3 = cfg.co2_v2, cfg.co2_v3
