@@ -4,6 +4,41 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.94.2] — 2026-07-02
+
+### Fixed
+- **DS · el gate anti-pico (F03) era el tercer camino que podía pisar el override manual.**
+  El escalonado de arranques se aplicaba *después* de la decisión sin comprobar `PROTECTED`:
+  con el presupuesto ocupado podía "retener" una persiana **recién abierta a mano** en una
+  foto a mitad de recorrido (revirtiéndola), y también **diferir un cierre por granizo o
+  lluvia**. Ahora una decisión protegida (manual, bloqueo, alerta, lluvia, tope de viento)
+  nunca se difiere ni se revierte.
+- **DS · el override manual pasa POR ENCIMA del bloqueo.** Hasta ahora el Lock re-cerraba en
+  ≤60 s una persiana abierta a mano con el bloqueo activo (mismo desenlace que los
+  atrapamientos). Lo que acabas de hacer con la mano manda sobre todo; al expirar el hold
+  (o al pulsar "Volver a automático") el bloqueo re-impone su posición.
+- **DS · el override manual sobrevive a un reinicio de Home Assistant.** Antes era solo
+  memoria: una actualización de HA con la persiana abierta a mano devolvía el control a la
+  automatización (que podía cerrarla contigo fuera). El hold se restaura ahora desde el
+  sensor "Modo de control" si no había caducado.
+- **DV · la ventana de horario ya no puede asfixiar la casa.** Fuera del horario la VMC iba
+  a 0 incondicionalmente: ni el CO2/PM crítico, ni el Boost, ni el override manual podían
+  encenderla (una persona durmiendo con CO2 a 2500 ppm se quedaba sin ventilación). Ahora
+  el aire crítico, el boost y el manual atraviesan la ventana (aplica igual al tramo 0 del
+  programador semanal).
+- **DV · secuencia de relés serializada.** Un OFF del usuario cruzado con un cambio
+  automático podía dejar **V3 armada con la alimentación cortada** (el motor arrancaría en
+  V3 al volver la corriente). Las aplicaciones de velocidad (VMC y campana) van ahora bajo
+  un lock y una petición nueva sustituye a la que espera.
+- **Zonas · un móvil sin conexión ya no cuenta como "fuera de casa".** Un `device_tracker`
+  en `unavailable`/`unknown` es "sin señal", no "fuera": la casa ya no se va a Away de
+  madrugada (con su setback de clima, cap de VMC y simulación de presencia) porque la app
+  del móvil perdiera la conexión.
+
+### Internal
+- Auditoría integral v0.94.1 (4 frentes + verificación manual): esta es la **fase 1
+  (seguridad)** de 4. Suite 583 tests.
+
 ## [0.94.1] — 2026-07-02
 
 ### Fixed

@@ -119,9 +119,17 @@ class ZonesCoordinator(DataUpdateCoordinator):
         st = self.hass.states.get(eid)
         return bool(st and st.state == "on")
 
-    def _tracker_home(self, eid: str) -> bool:
+    def _tracker_home(self, eid: str) -> bool | None:
+        """Whether this tracker says "home" — or ``None`` when it has no signal.
+
+        A phone that lost connectivity (unavailable/unknown/missing) is "no
+        data", never "out of the house": counting it as away flipped the whole
+        house to Away at 3 a.m. with the family asleep inside.
+        """
         st = self.hass.states.get(eid)
-        return bool(st and st.state == "home")
+        if st is None or st.state in ("unavailable", "unknown"):
+            return None
+        return st.state == "home"
 
     def _num(self, eid: str | None) -> float | None:
         if not eid:
@@ -168,7 +176,10 @@ class ZonesCoordinator(DataUpdateCoordinator):
             occ[zid], self.presence_reasons[zid] = presence.zone_occupied(
                 st, cfg, now_ts)
         phones = self.entry.options.get(const.CONF_PRESENCE_PHONES) or []
-        phone_home = (not phones) or any(self._tracker_home(e) for e in phones)
+        # Only trackers with a real signal vote; with every phone silent there is
+        # no phone evidence, so don't let "not phone_home" force the house Away.
+        votes = [v for v in (self._tracker_home(e) for e in phones) if v is not None]
+        phone_home = (not votes) or any(votes)
         states = list(self.presence_zones.values())
         now = dt_util.now()
         self.house_presence = presence.house_state(

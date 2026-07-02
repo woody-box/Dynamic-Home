@@ -65,6 +65,29 @@ async def test_presence_away_auto_drives_house_mode(hass: HomeAssistant) -> None
     assert hass.states.get(house).state == "off"     # away -> not occupied
 
 
+async def test_unavailable_tracker_does_not_force_away(
+        hass: HomeAssistant) -> None:
+    # v0.94.2: a phone that lost connectivity is "no data", never "out": the
+    # house must not flip to Away at 3 a.m. with the family asleep inside.
+    hass.states.async_set("binary_sensor.salon_mmwave", "off")
+    hass.states.async_set("device_tracker.phone", "unavailable")
+    entry = _zones_entry(hass, {
+        const.CONF_PRESENCE_SOURCES: {
+            "salon": {"mmwave": ["binary_sensor.salon_mmwave"]}},
+        const.CONF_PRESENCE_PHONES: ["device_tracker.phone"],
+        const.CONF_PRESENCE_AUTO: True})
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.data[const.DOMAIN][const.DATA_PRESENCE]["house"] != "away"
+    # A tracker with a real "not_home" signal still counts (regression guard).
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    hass.states.async_set("device_tracker.phone", "not_home")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert hass.data[const.DOMAIN][const.DATA_PRESENCE]["house"] == "away"
+
+
 async def test_presence_auto_does_not_stomp_manual_boost(
         hass: HomeAssistant) -> None:
     hass.states.async_set("binary_sensor.salon_mmwave", "off")

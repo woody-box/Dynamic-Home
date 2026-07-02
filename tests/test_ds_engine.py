@@ -120,9 +120,11 @@ def test_manual_hold_beats_comfort():
     assert d.pos == 70 and d.reason == "manual_hold"
 
 
-def test_manual_hold_beats_weather_yields_only_to_lock():
-    # A manual hold outranks EVERY condition (incl. weather alert / rain); only the
-    # lock beats it. What you did to the shutter by hand stands until you resume.
+def test_manual_hold_beats_everything_including_lock():
+    # A manual hold outranks EVERY condition — weather alert, rain, and since
+    # v0.94.2 the lock too: what you just did by hand stands, and the lock
+    # re-imposes its position only once the hold expires (coordinator drops
+    # manual_pos) or the user resumes auto.
     cfg = _cfg(rain_close_pct=0, slew_enabled=False)
     d = decide_cover(cfg, DsState(),
                      DsInputs(manual_pos=90, weather_protect_enabled=True,
@@ -130,9 +132,13 @@ def test_manual_hold_beats_weather_yields_only_to_lock():
     assert d.pos == 90 and d.reason == "manual_hold"          # rain doesn't undo it
     d = decide_cover(cfg, DsState(), DsInputs(manual_pos=90, alert_pos=0))
     assert d.pos == 90 and d.reason == "manual_hold"          # nor a weather alert
-    # ...but the lock (hard manual pin) still wins.
+    # The lock yields to a fresh hand command...
     d = decide_cover(cfg, DsState(),
                      DsInputs(manual_pos=90, override_mode="lock", override_pos=10))
+    assert d.pos == 90 and d.reason == "manual_hold"
+    # ...and re-imposes once the hold is gone.
+    d = decide_cover(cfg, DsState(),
+                     DsInputs(manual_pos=None, override_mode="lock", override_pos=10))
     assert d.pos == 10 and d.reason == "ov_lock"
 
 
