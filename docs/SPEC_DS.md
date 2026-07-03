@@ -204,11 +204,56 @@ Cada persiana escucha en `ds` (broadcast) y en **su fachada** `ds_f<azimut>`
 
 ---
 
-## 8. Implementación
+## 8. Común e interruptores globales (v0.98.0)
+
+Hay un dispositivo **auto-creado** "**Dynamic Shutter · Común**" (módulo interno
+singleton `shutter_common`, sin paso de UI): se **crea solo con la primera
+persiana** y se **elimina con la última** — no hay que añadirlo. Los `entity_id`
+de sus sensores no cambian (misma `unique_id`), así que no rompe dashboards.
+
+Agrupa:
+
+- **Recuentos de la casa**: **Persianas abiertas / cerradas / entreabiertas**
+  (solo las gestionadas por DS, por posición: 100 = abierta, 0 = cerrada,
+  intermedio = entreabierta; atributo `total`).
+- **Sol compartido**: **Amanecer**, **Anochecer**, **Azimut**, **Elevación** y
+  **Día o noche** (leídos de `sun.sun`, una sola vez para toda la casa).
+
+E incluye **interruptores globales** (mandos "a lo bruto") que activan/desactivan
+una función en **TODAS** las persianas a la vez:
+
+| Interruptor global | Atributo por persiana |
+|--------------------|-----------------------|
+| **Solo observar (todas)** | `observe_enabled` (manual/auto global) |
+| **Protección meteo** | `weather_protect` |
+| **Escudo térmico** | `heat_shield_enabled` |
+| **Escudo de sol directo** | `sun_shield_enabled` |
+| **Aislamiento nocturno** | `night_iso_enabled` |
+| **Amanecer gradual** | `dawn_enabled` |
+| **Sombreado geométrico** | `geo_shade_enabled` |
+| **Limitación de pico** | `peak_enabled` |
+
+Más un botón **"Reanudar automático (todas)"** (`GlobalResumeAutoButton`) que
+cancela el override manual en todas.
+
+**Semántica "a lo bruto".** Cada global es un **mando maestro sin memoria**: al
+apagarlo se apaga esa función en **todas**, al encenderlo se enciende en **todas**
+— **no recuerda** la mezcla individual previa. Una entidad **"Aviso"** en la
+pantalla común lo explica con ejemplo (si el Escudo térmico está ON en 4 persianas
+y OFF en otras 4, apagar y volver a encender el global lo deja ON en las 8).
+
+Los ajustes **muy por-persiana** (privacidad, bloqueo, excluir de simulación,
+"Seguir movimientos manuales") **siguen solo en cada persiana**, no en el común.
+
+---
+
+## 9. Implementación
 
 | Lógica | Dónde |
 |--------|-------|
 | Decisión pura (cascada + caps) | `ds_engine.decide_cover()` (testeable) |
 | Geometría sol/fachada + penetración | `ds_engine.solar_impact()` / `solar_penetration_m()` / `geo_shade_pos()` |
+| Viento efectivo (peor de medio/ráfaga) | `ds_engine.effective_wind()` / `compute_wind_cap()` / `update_wind_cap_active()` |
 | Estado, sensores, bus, hardware | `DsCoordinator` sobre el `SdhbHub` |
+| Común (recuentos + sol + globales) | `coordinator_shutter_common` (singleton auto-creado) |
 | Conducir la persiana | entidad `cover` gestionada |

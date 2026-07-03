@@ -13,6 +13,15 @@
 
 **Valor:** Alta / Media / Baja · **Esfuerzo:** S (pequeño) / M (medio) / L (grande)
 
+> **Auditoría integral (v0.94.2 → v0.98.0) — cerrada.** Cuatro fases (seguridad,
+> coherencia frío/calor, fiabilidad, pulido) + tope de viento desde el proveedor
+> (v0.97.1) + la sección **«Dynamic Shutter · Común»** con interruptores globales
+> (v0.98.0, ver **F38**). Los refinamientos que tocaban features ya listadas quedan
+> **entregados** dentro de sus fichas; el detalle con criterios de aceptación vive en
+> [REQUIREMENTS.md → «Auditoría integral»](REQUIREMENTS.md). **Pendientes anotados** (con
+> decisión del usuario): debounce/tolerancia del movimiento externo del cover, switch
+> dedicado "solo viento", y la parte FV/batería/VE de Energía (F34, validación externa).
+
 ---
 
 ## Cross-módulo (bus SDHB)
@@ -460,8 +469,21 @@
 | **F35** | ✅ implementada | Campana coordinada (PM interior → subir campana; 3 relés break-before-make + interlock; entidad fan auto+manual). |
 | **F36** | ✅ implementada | Espejos de hardware (opción 3): sensores estables por rol para dashboards; reemplazar hardware = solo reconfigurar la entrada. Toggle `expose_mirrors` por zona. |
 | **F37** | ✅ implementada | Changeover comunitario (v0.20.0): dirección de casa heat/cool/off que las zonas `community` (F26) siguen; detección manual + auto por sensor de agua con umbrales; `changeover.py`; select + sensor en Zonas; `hvac_action`; opt-in/back-compat. **Refinado v0.22.0: histéresis de temporada (anti-flap) + override de changeover por zona (auto hereda la casa).** Per-zona con sensor de agua propio diferido. |
+| **F38** | ✅ implementada | **Dynamic Shutter · Común + interruptores globales** (v0.98.0): la pantalla común de persianas (recuentos + datos de sol) pasa a **dispositivo propio auto-creado** con la primera persiana; +interruptores **globales "a lo bruto"** (subconjunto curado: observar/meteo/escudo térmico/escudo de sol/aislamiento nocturno/amanecer/sombreado geométrico/pico) + botón "Reanudar automático (todas)" y entidad **"Aviso"** que explica que no recuerdan el estado individual. |
 
 ### F37 · Changeover comunitario (modo estacional de agua)
 - **Estado:** ✅ implementada (v0.20.0) · **Módulos:** Zonas + DC · **Valor:** Alta (instalaciones comunitarias) · **Esfuerzo:** S-M
 - **Idea:** en suelo radiante comunitario a 2 tubos, el edificio decide calor/frío de temporada; el usuario solo abre válvula. Una dirección de casa (changeover) que las zonas comunitarias respetan, para que DC no pida calor con agua fría.
 - **Implementado (v0.20.0):** `changeover.py` puro (`resolve` manual/auto por temperatura del agua de impulsión + umbrales); `ZonesCoordinator` publica `DATA_CHANGEOVER` (reusa poll/listeners de F32) y avisa a DC; `ChangeoverSelect` (auto/heat/cool/off) + `ChangeoverSensor`; `coordinator_dc._effective_hvac` gatea solo las zonas `community`; `hvac_action` real en la tarjeta; opt-in (sin configurar = idéntico). Histéresis de temporada + override por zona (v0.22.0). **v0.28.0: expuesto a DS** (persianas siguen el changeover: escudo solar/free-cooling en verano, ganancia/aislamiento en invierno). **v0.29.0: expuesto a DV** (la temporada de calor suprime el free-cooling de ventilación → no tira el calor que pagas). **Diferido:** changeover por zona con sensor de agua propio (colectores mixtos).
+
+### F38 · Dynamic Shutter · Común + interruptores globales — ✅ implementada
+- **Estado:** ✅ implementada (v0.98.0) · **Módulos:** DS · **Valor:** Media (UX) · **Esfuerzo:** S-M
+- **Idea:** la pantalla común de las persianas (recuentos abiertas/cerradas/entreabiertas + datos de sol comunes) estaba **anidada dentro de la primera persiana**; sacarla a su propio dispositivo y sumarle **mandos globales** para aplicar una función a **toda la casa** de golpe.
+- **Implementado (v0.98.0):**
+  - **Sección/dispositivo propio auto-creado.** Nuevo módulo **auto-singleton** `shutter_common` (config-flow interno, sin paso de UI): se **crea solo** con la primera persiana y se elimina con la última. Coordinator sin temporizador (`coordinator_shutter_common.py`); los recuentos se re-arman por dispatcher desde el tick de cada persiana. Las `unique_id` de los sensores comunes no cambian → **dashboards intactos**. Retirada la vieja lógica de adopción del propietario (v0.96.0), ya innecesaria.
+  - **Interruptores globales "a lo bruto".** Un **subconjunto curado** que tiene sentido a nivel de casa (`_GLOBAL_SWITCHES` en `switch.py`): **Solo observar (todas)**, **Protección meteo**, **Escudo térmico**, **Escudo de sol directo**, **Aislamiento nocturno**, **Amanecer gradual**, **Sombreado geométrico** y **Limitación de pico**, más un botón **Reanudar automático (todas)**. Cada global escribe el atributo del coordinator de **todas** las persianas a la vez. Los ajustes muy por-persiana (privacidad, bloqueo, excluir de simulación, seguir movimientos manuales) **siguen solo en cada persiana**.
+  - **Aviso honesto.** Cada global es un mando de fuerza bruta: **no recuerda** el estado individual (si el Escudo térmico estaba ON en 4 y OFF en otras 4, apagar+encender el global lo deja ON en las 8). Una entidad **"Aviso"** en la pantalla común lo explica con ejemplo.
+- **Perfilado:**
+  - **Sección común como dispositivo de primera clase**, no colgada de una persiana concreta (que podría borrarse).
+  - **Globales solo para lo que aplica homogéneo a la casa**; lo íntimo de cada hueco no se globaliza.
+  - **Transparencia del comportamiento "a lo bruto"** vía la entidad Aviso (no promete recordar overrides individuales).

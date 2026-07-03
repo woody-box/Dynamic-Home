@@ -2138,3 +2138,130 @@ bombas de calor independientes ya no se interfieren; `"default"` preserva el com
 único de casa (back-compat, single-device intacto). Editor: campo `compressor_id` por
 emisor. Tests puros (canales independientes; `participates`/`clear`) + integración (dos
 bombas en `hp_a`/`hp_b`, una bloqueada retiene solo su emisor). Suite 451→454.
+
+---
+
+## 13 · Auditoría integral (v0.94.2 → v0.98.0)
+
+> No reescribe los requisitos por feature (§1–§12): **registra** lo que la auditoría
+> corrigió/añadió sobre lo ya entregado, en formato requisito + criterio de aceptación
+> (1 línea por punto). Cuatro fases (seguridad → coherencia frío/calor → fiabilidad →
+> pulido) + dos añadidos posteriores (v0.97.1, v0.98.0). Detalle narrativo por versión en
+> [CHANGELOG.md](../CHANGELOG.md) `[0.94.2]…[0.98.0]`.
+
+### 13.1 · Fase 1 — Seguridad (v0.94.2)
+- **REQ-AUD-1 · Override manual > bloqueo (DS).** El override manual gana a cualquier
+  condición, incluido el Lock. **AC:** una persiana abierta a mano con bloqueo activo **no**
+  se re-cierra durante el hold; al expirar (o "Volver a automático") el bloqueo reimpone.
+- **REQ-AUD-2 · Gate anti-pico respeta PROTECTED (DS).** El escalonado F03 corre **después**
+  de la decisión pero nunca sobre una decisión protegida. **AC:** con presupuesto ocupado, una
+  orden manual/bloqueo/alerta/lluvia/tope-de-viento **no** se difiere ni se revierte a media
+  altura.
+- **REQ-AUD-3 · Override persiste al reinicio (DS).** El hold manual sobrevive a un reinicio
+  de HA. **AC:** tras reiniciar con la persiana abierta a mano, el control **no** vuelve a la
+  automatización si el hold no había caducado (se restaura del sensor "Modo de control").
+- **REQ-AUD-4 · Escape IAQ del horario (DV).** Fuera de la ventana horaria la VMC va a 0 salvo
+  excepciones. **AC:** CO₂/PM crítico, Boost y override manual **encienden** la VMC aunque el
+  horario (o el tramo 0 del programador) diga OFF.
+- **REQ-AUD-5 · Relés serializados (DV).** Las aplicaciones de velocidad (VMC y campana) van
+  bajo lock y la petición nueva sustituye a la pendiente. **AC:** un OFF del usuario cruzado con
+  un cambio automático **no** deja V3 armada con la alimentación cortada.
+- **REQ-AUD-6 · Tracker `unavailable` ≠ fuera (Zonas).** Un `device_tracker` sin señal no
+  cuenta como "fuera". **AC:** un móvil en `unavailable`/`unknown` **no** manda la casa a Away
+  (con su setback/cap/simulación).
+
+### 13.2 · Fase 2 — Coherencia frío/calor (v0.95.0)
+- **REQ-AUD-7 · Free-cool nocturno DS revivido.** La rama `freecool_night` deja de ser código
+  muerto. **AC:** `night` se deriva del sol (bajo horizonte); sin datos de sol la rama queda
+  **desactivada** (degradación conservadora).
+- **REQ-AUD-8 · Modo efectivo DC gobierna todo el pipeline.** En zonas comunitarias, toda
+  rama (condensación, ventana inferida, bias de fachada, forecast, aprendizaje, energía,
+  conducto) usa la dirección real. **AC:** ninguna rama evalúa con el modo de la UI mientras el
+  motor corre con el del edificio.
+- **REQ-AUD-9 · Conflicto changeover → off (DC).** Pedir Calor con agua fría circulando no
+  invierte la orden en silencio. **AC:** la zona **reposa (off)**; atributos `hvac_effective` y
+  `changeover_conflict` publicados.
+- **REQ-AUD-10 · Free-cool DV con switch + temp-min + tope nocturno.** El free-cooling deja de
+  forzarlo la mera presencia de sondas. **AC:** switch propio (ON por defecto) + "Temp. int.
+  mínima" (24 °C, editable) que exige interior genuinamente caluroso + "Tope nocturno
+  free-cool" (V2, 1..3) que se salta el cap de silencio/Sleep (1 = silencio absoluto).
+- **REQ-AUD-11 · Prioridades de aire hostil (DV).** El tope por AQI exterior es la **última
+  autoridad**. **AC:** ni Boost ni modo Boost aspiran humo a plena potencia; piso V1 con aire
+  interior crítico; secado y `request_quiet` pasan por los topes con piso V1.
+- **REQ-AUD-12 · Histéresis DS.** El tope de viento actúa dentro de su banda; la purga nocturna
+  F16 tiene latch; `hot_delta`/`cold_delta` ganan banda de salida. **AC:** sin flapping 100↔90
+  con viento rondando el límite ni 0↔V3 en la línea crítica.
+
+### 13.3 · Fase 3 — Fiabilidad (v0.96.0)
+- **REQ-AUD-13 · Anti-ciclado honesto (DC).** Una parada física dentro del min-ON se registra.
+  **AC:** el rearranque respeta min-OFF y cuenta como arranque; una zona retenida por anti-pico
+  no mantiene "despierto" el agregado del compresor.
+- **REQ-AUD-14 · Conducto compartido sin inanición (DC).** La guarda de sobre-acondicionado
+  corta solo en `consigna + margen`. **AC:** una zona ya satisfecha **no** deja a otra rezagada
+  sin servicio; con la zona dueña apagada el conducto sigue a las hermanas.
+- **REQ-AUD-15 · Moho sin latch atascado (DC).** Con HR caída el índice decae. **AC:** el
+  deshumidificador **no** queda encendido para siempre; quitar la fuente HR o descargar lo apaga.
+- **REQ-AUD-16 · Anti-pico honesto con el ICP (DC).** El bypass de confort **reserva** su hueco
+  en el presupuesto. **AC:** el total contabilizado nunca supera el ICP; una carga pequeña que
+  cabe no cede ante una grande que nunca cabrá; el hueco sigue al contador real de potencia.
+- **REQ-AUD-17 · Ventana inferida sin falso positivo de sol (DC).** Sin señal de demanda real,
+  el fallback usa demanda inferida (t_int vs consigna). **AC:** un golpe de sol con el aire
+  saciado **no** bloquea la zona 30 min.
+- **REQ-AUD-18 · EMAs por modo (DC).** Las muestras de rate/overshoot se normalizan por
+  dirección antes de la EMA. **AC:** los ciclos de frío (negativos) **no** cancelan los de calor;
+  el lead aprendido deja de ser basura.
+- **REQ-AUD-19 · Energía sin doble conteo (Energía/DS).** El total de casa restaura un suelo
+  monotónico y el coste se integra por módulo. **AC:** el panel de Energía **no** duplica consumo
+  tras reinicio; las ventanas 24h/30d de persianas se re-siembran al restaurar.
+- **REQ-AUD-20 · Observe honesto (DS).** En "Solo observar"/pausa no se devenga energía ni se
+  consume presupuesto. **AC:** una persiana en observe **no** genera kWh/W fantasma ni bloquea
+  el anti-pico de las reales.
+- **REQ-AUD-21 · Viento con TTL (DS).** La última lectura de viento válida se retiene 10 min.
+  **AC:** un anemómetro caído **no** suelta la protección en silencio en plena galerna.
+- **REQ-AUD-22 · Failsafe V1 (DV).** El lockout por sensores intermitentes deja la VMC en V1
+  (no apagada) y la antigüedad usa `last_reported`. **AC:** una lectura plana de CO₂ en noche
+  tranquila **no** dispara falsos lockouts.
+- **REQ-AUD-23 · Ciclo de vida.** Al eliminar Zonas se limpian presencia y changeover; el
+  aviso de free-cooling de una VMC borrada se elimina; los sensores compartidos de "Persianas"
+  se re-adoptan por otra entrada DS viva; Weather pasa a singleton. **AC:** ningún módulo obedece
+  un estado fantasma tras descargar una entrada.
+
+### 13.4 · Fase 4 — Pulido (v0.97.0)
+- **REQ-AUD-24 · Pulido varios.** Secado DV escalonado (V2→V3) con tope de silencio y piso V1;
+  umbrales adaptativos DV acotados a ±30 % y madurados con 1 día de muestras; re-sync de relés
+  al salir de observe; lluvia+viento entra en `min()` (no media persiana); rampa de amanecer
+  exige feedback de posición; conducción del termostato DC **serializada** (aplicada solo tras
+  éxito de servicios); sonda interior caída deja la tendencia a 0; clamp tarifario respeta los
+  límites del modelo; empates del bus deterministas (nombre de fuente); precio negativo no resta;
+  espejo meteo convierte °F/mph/inHg. **AC:** cada caso cubierto por su test; entradas muertas
+  del port YAML (`shower_override`/`dew_prerisk`/`override_recent`) retiradas sin tocar el boost
+  de ducha por ΔRH. **Diferido:** debounce/tolerancia configurable de la detección de movimiento
+  externo del cover (decisión del usuario).
+
+### 13.5 · Añadidos posteriores
+- **REQ-AUD-25 · Tope de viento desde el proveedor (DS, v0.97.1).** Sin sensor local usable, el
+  tope proporcional usa el **viento medio** del proveedor (Dynamic Weather) como respaldo. **AC:**
+  con el proveedor dando solo viento medio (sin ráfaga) el tope sigue actuando; la alerta
+  anticipatoria por viento no cambia. **Pendiente anotado:** switch dedicado "solo viento".
+- **REQ-AUD-26 · «Dynamic Shutter · Común» auto-creado + globales (v0.98.0).** Ver §13.6.
+
+### 13.6 · Feature — «Dynamic Shutter · Común» + interruptores globales (F38, v0.98.0)
+- **REQ-COM-1 · Sección propia auto-creada.** La pantalla común (recuentos
+  abiertas/cerradas/entreabiertas + sol: amanecer/anochecer/azimut/elevación/día-noche) es un
+  **dispositivo propio**, no anidado en la primera persiana. **AC:** módulo auto-singleton
+  `shutter_common` (config-flow interno, sin paso de UI) que se **crea con la primera persiana y
+  se elimina con la última**; coordinator sin timer, recuentos re-armados por dispatcher desde el
+  tick de cada persiana; las `unique_id` de los sensores comunes no cambian (dashboards intactos).
+- **REQ-COM-2 · Globales "a lo bruto" con aviso.** Interruptores que activan/desactivan una
+  función en **TODAS** las persianas a la vez. **AC:** cada global escribe el atributo del
+  coordinator de todas las persianas; **no recuerda** el estado individual (si estaba ON en 4 y
+  OFF en 4, apagar+encender lo deja ON en las 8); una entidad **"Aviso"** lo explica con ejemplo;
+  botón **"Reanudar automático (todas)"**.
+- **REQ-COM-3 · Subconjunto curado.** Solo se globaliza lo que tiene sentido a nivel de casa
+  (`_GLOBAL_SWITCHES`). **AC:** globales = Solo observar (todas), Protección meteo, Escudo
+  térmico, Escudo de sol directo, Aislamiento nocturno, Amanecer gradual, Sombreado geométrico y
+  Limitación de pico; lo íntimo por-persiana (privacidad, bloqueo, excluir de simulación, seguir
+  movimientos manuales) **sigue solo en cada persiana**.
+
+**Tests:** suite 608; paridad de traducciones. **Cierre de la auditoría integral** (bump minor
+por módulo/feature nueva).

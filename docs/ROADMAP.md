@@ -8,6 +8,24 @@
 
 **Esfuerzo:** S (pequeño) / M (medio) / L (grande) · **Valor:** Alta / Media / Baja
 
+## Estado actual (v0.98.0)
+- **Todas las fases de features (0–5) están entregadas** salvo la parte diferida de
+  Energía (ver abajo). Las fundacionales (F24/F26/F32/F37) y los módulos nuevos
+  (Weather, Energy) ya viven en el código.
+- **Auditoría integral cerrada (v0.94.2 → v0.98.0).** Cuatro fases —seguridad,
+  coherencia frío/calor, fiabilidad y pulido— más el tope de viento desde el proveedor
+  (v0.97.1) y el módulo **«Dynamic Shutter · Común»** con interruptores globales de
+  persianas (v0.98.0). El detalle y los criterios de aceptación viven en
+  [REQUIREMENTS.md → «Auditoría integral»](REQUIREMENTS.md).
+- **Pendientes anotados** (sin cambio de comportamiento, requieren decisión del usuario):
+  - **Debounce/tolerancia configurable** de la detección de movimiento externo del cover
+    (asentamiento antes de tratar un movimiento como override manual).
+  - **Switch dedicado «solo viento»** en DS (separar el tope por viento del resto de
+    protecciones meteo, hoy agrupadas).
+  - **Parte diferida de Energía (F34):** FV/excedente (§8.5), carga del VE (§8.6) y
+    balance neto — **no testable por el autor** (sin placas/batería/wallbox) → validación
+    externa. El anti-pico de red, coste/consumo y tarifa ya están entregados.
+
 ## Principios de ordenación
 1. **Quick wins primero** (S, sin dependencias, sobre código existente) para fijar
    el ritmo *requisitos→tests→código* y dejar infra reutilizable (eventos, Repairs).
