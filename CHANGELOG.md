@@ -4,6 +4,13 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.97.2] — 2026-07-03
+
+### Changed
+- **DC · nombre del módulo más claro.** En el selector «¿Qué módulo quieres añadir?» y en el
+  título del formulario, *Dynamic Climate* pasa de «(Zona)» a «(Calefacción/Refrigeración)» —
+  «Zona» no describía lo que hace el módulo. En inglés, «(Heating/Cooling)».
+
 ## [0.97.1] — 2026-07-02
 
 ### Changed
