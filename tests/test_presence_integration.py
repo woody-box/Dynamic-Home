@@ -199,7 +199,10 @@ async def test_presence_auto_respects_manual_home_until_transition(
         const.CONF_PRESENCE_SOURCES: {
             "salon": {"mmwave": ["binary_sensor.salon_mmwave"]}},
         const.CONF_PRESENCE_PHONES: ["device_tracker.phone"],
-        const.CONF_PRESENCE_AUTO: True})
+        const.CONF_PRESENCE_AUTO: True,
+        # Disable the sleep window so occupancy reads "occupied" (home) regardless
+        # of the wall clock — otherwise this test fails when CI runs at night.
+        const.CONF_PRESENCE_TUNE: {"sleep_start_min": 0, "sleep_end_min": 0}})
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     co = hass.data[const.DOMAIN][entry.entry_id]
