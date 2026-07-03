@@ -117,25 +117,47 @@ safety first):
 
 ```mermaid
 flowchart LR
-    A[Sensors · Zigbee / WiFi / MQTT] --> B[Home Assistant]
-    C[Relays · Shelly / actuators] --> B
-    B --> D[Dynamic Home integration]
-    D --> DC[DC · Climate]
-    D --> DV[DV · Ventilation]
-    D --> DS[DS · Shutter]
-    DC <--> SDHB[SDHB · shared intent bus]
-    DV <--> SDHB
-    DS <--> SDHB
-    DC --> HMI[Dashboards]
-    DV --> HMI
+    S[Sensors · Zigbee / WiFi / MQTT] --> HA[Home Assistant]
+    HA --> R[Relays · covers · climate]
+    HA <--> INT[Dynamic Home integration]
+
+    CO[Coordination layer<br/>SDHB intent bus · weather feed<br/>house modes + presence · changeover<br/>energy context · house hubs]
+
+    INT --> DV[DV · Ventilation]
+    INT --> DS[DS · Shutter]
+    INT --> DC[DC · Climate]
+    INT --> DW[DW · Weather]
+    INT --> ZN[Zones · modes / presence / changeover]
+    INT --> EN[Energy · ICP / tariff]
+
+    DV <--> CO
+    DS <--> CO
+    DC <--> CO
+    DW <--> CO
+    ZN <--> CO
+    EN <--> CO
+
+    DV --> HMI[Dashboards / entities]
     DS --> HMI
+    DC --> HMI
+    DW --> HMI
+    ZN --> HMI
+    EN --> HMI
     HMI --> U[User]
 ```
 
 Dynamic Home **does not replace Home Assistant**: it runs as a custom integration
 inside it. Home Assistant remains the platform for entities, automation, history
-and UI. The decision logic lives in **pure modules with no Home Assistant
+and UI, and the decision logic lives in **pure modules with no Home Assistant
 dependency** (`*_engine.py`); the HA wrappers only translate state.
+
+Modules stay **decoupled** — instead of calling each other, they publish to and
+read from a shared **coordination layer**: the **SDHB intent bus** (e.g. Climate
+asks the Shutters to shade against solar gain, or triggers drying ventilation), a
+**weather feed** (Weather → Climate / Shutter), **house modes + presence** and
+seasonal **changeover** (Zones → all modules), an **energy context** (Energy →
+Climate's anti-peak budget) and house-level **hubs** (compressor anti-cycle,
+electrical-peak staging, shared-duct reconciliation).
 
 ---
 
