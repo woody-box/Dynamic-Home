@@ -120,26 +120,49 @@ que leen los demás módulos (nunca manda — cada módulo soberano, la segurida
 
 ```mermaid
 flowchart LR
-    A[Sensores · Zigbee / WiFi / MQTT] --> B[Home Assistant]
-    C[Relés · Shelly / actuadores] --> B
-    B --> D[Integración Dynamic Home]
-    D --> DC[DC · Clima]
-    D --> DV[DV · Ventilación]
-    D --> DS[DS · Persianas]
-    DC <--> SDHB[SDHB · bus de intenciones]
-    DV <--> SDHB
-    DS <--> SDHB
-    DC --> HMI[Dashboards]
-    DV --> HMI
+    S[Sensores · Zigbee / WiFi / MQTT] --> HA[Home Assistant]
+    HA --> R[Relés · persianas · clima]
+    HA <--> INT[Integración Dynamic Home]
+
+    CO[Capa de coordinación<br/>bus SDHB · datos de tiempo<br/>modos + presencia · changeover<br/>contexto de energía · hubs de casa]
+
+    INT --> DV[DV · Ventilación]
+    INT --> DS[DS · Persianas]
+    INT --> DC[DC · Clima]
+    INT --> DW[DW · Tiempo]
+    INT --> ZN[Zonas · modos / presencia / changeover]
+    INT --> EN[Energía · ICP / tarifa]
+
+    DV <--> CO
+    DS <--> CO
+    DC <--> CO
+    DW <--> CO
+    ZN <--> CO
+    EN <--> CO
+
+    DV --> HMI[Dashboards / entidades]
     DS --> HMI
+    DC --> HMI
+    DW --> HMI
+    ZN --> HMI
+    EN --> HMI
     HMI --> U[Usuario]
 ```
 
 Dynamic Home **no sustituye a Home Assistant**: se ejecuta como integración
 personalizada dentro de él. Home Assistant sigue siendo la plataforma de
-entidades, automatización, histórico e interfaz. La lógica de decisión vive en
+entidades, automatización, histórico e interfaz, y la lógica de decisión vive en
 **módulos puros sin dependencias de Home Assistant** (`*_engine.py`); los
 *wrappers* de HA solo traducen estado.
+
+Los módulos están **desacoplados** — en vez de llamarse entre sí, publican y leen
+de una **capa de coordinación** compartida: el **bus SDHB** de intenciones (p. ej.
+el Clima pide a las Persianas que sombreen contra la ganancia solar, o dispara la
+ventilación de secado), los **datos de tiempo** (Tiempo → Clima / Persianas), los
+**modos + presencia** de la casa y el **changeover** estacional (Zonas → todos los
+módulos), un **contexto de energía** (Energía → presupuesto anti-pico del Clima) y
+los **hubs de casa** (anti-ciclado de compresor, escalonado de pico eléctrico,
+reconciliación de conducto compartido).
 
 ---
 
