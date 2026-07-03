@@ -611,17 +611,25 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         wxv = ((self.hass.data.get(const.DOMAIN, {}).get(const.DATA_WEATHER) or {})
                .get("values") or {})
         gust = wxv.get("gust")
+        # Wind feeding the cap: the local sensor (with its dropout TTL) first, then
+        # Dynamic Weather's regional mean wind when there's no usable local reading
+        # (no sensor, or the sensor died past its TTL). So the proportional wind cap
+        # works from the weather provider alone, not only from a gust value.
+        wind = self._wind_with_ttl(now_ts)
+        if wind is None:
+            wind = wxv.get("wind")
         ins = DsInputs(
             hvac_mode=hvac,
             t_in=t_in,
             t_out=t_out,
             # Weather protection runs when a local wind/rain sensor is set, or when
-            # Dynamic Weather supplies a gust (so it protects even with no local wind).
+            # Dynamic Weather supplies wind or a gust (so it protects even with no
+            # local sensor).
             weather_protect_enabled=(self.weather_protect and bool(
                 self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN)
-                or gust is not None)),
+                or gust is not None or wind is not None)),
             raining=raining,
-            wind=self._wind_with_ttl(now_ts),
+            wind=wind,
             gust=gust,
             current_pos=current_pos,
             dawn_pos=dawn_pos,

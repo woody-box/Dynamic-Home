@@ -61,10 +61,17 @@
           "ds_t_out": "Temperatura exterior (opcional)",
           "wind": "Viento km/h (opcional)",
           "rain": "Lluvia (binary_sensor / sensor, opcional)",
-          "ds_alert": "Alerta meteo (binary_sensor / sensor)",
-          "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor / sensor)",
-          "ds_alert_wind": "Alerta viento (binary_sensor / sensor)",
+          "ds_alert": "Alerta meteo (binary_sensor / sensor, opcional)",
+          "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor / sensor, opcional)",
+          "ds_alert_wind": "Alerta viento (binary_sensor / sensor, opcional)",
           "power_meter": "Medidor de potencia (opcional, W)"
+        },
+        "data_description": {
+          "wind": "Sensor local de viento — para mayor precisión, o si tu proveedor de tiempo no entrega viento. Alimenta el tope por viento (limita cuánto abre la persiana al subir el viento). Sin él, se usa el viento/ráfaga de Dynamic Weather.",
+          "rain": "Sensor local de lluvia — para mayor precisión, o si tu proveedor no entrega lluvia. Cierra la persiana mientras llueve. Sin él, se usa la lluvia/probabilidad de Dynamic Weather.",
+          "ds_alert": "Alerta genérica local (tormenta) — lleva la persiana a su posición de protección antes del fenómeno. Sin ella, se sigue la alerta de Dynamic Weather.",
+          "ds_alert_hail": "Alerta local de granizo/tormenta, con su propia posición de protección. Sin ella, se usa la alerta general de Dynamic Weather.",
+          "ds_alert_wind": "Alerta local de viento fuerte, con su propia posición de protección. Sin ella, se usa la alerta de Dynamic Weather (viento medio sobre el umbral)."
         }
       },
       "climate": {
@@ -1247,9 +1254,9 @@
           "ds_t_out": "Temperatura exterior (opcional)",
           "wind": "Viento km/h (opcional)",
           "rain": "Lluvia (binary_sensor / sensor, opcional)",
-          "ds_alert": "Alerta meteo (binary_sensor / sensor)",
-          "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor / sensor)",
-          "ds_alert_wind": "Alerta viento (binary_sensor / sensor)",
+          "ds_alert": "Alerta meteo (binary_sensor / sensor, opcional)",
+          "ds_alert_hail": "Alerta granizo/tormenta (binary_sensor / sensor, opcional)",
+          "ds_alert_wind": "Alerta viento (binary_sensor / sensor, opcional)",
           "dc_t_int": "Temperatura interior",
           "dc_t_ext": "Temperatura exterior (opcional)",
           "dc_climate": "Termostato a controlar (opcional; solo informa si se deja vacío)",
@@ -1286,6 +1293,13 @@
           "energy_total": "Consumo total de la casa (sensor, W)",
           "energy_pv": "Producción FV (sensor, W)",
           "energy_batt_soc": "SoC de batería (sensor, %)"
+        },
+        "data_description": {
+          "wind": "Sensor local de viento — para mayor precisión, o si tu proveedor de tiempo no entrega viento. Alimenta el tope por viento (limita cuánto abre la persiana al subir el viento). Sin él, se usa el viento/ráfaga de Dynamic Weather.",
+          "rain": "Sensor local de lluvia — para mayor precisión, o si tu proveedor no entrega lluvia. Cierra la persiana mientras llueve. Sin él, se usa la lluvia/probabilidad de Dynamic Weather.",
+          "ds_alert": "Alerta genérica local (tormenta) — lleva la persiana a su posición de protección antes del fenómeno. Sin ella, se sigue la alerta de Dynamic Weather.",
+          "ds_alert_hail": "Alerta local de granizo/tormenta, con su propia posición de protección. Sin ella, se usa la alerta general de Dynamic Weather.",
+          "ds_alert_wind": "Alerta local de viento fuerte, con su propia posición de protección. Sin ella, se usa la alerta de Dynamic Weather (viento medio sobre el umbral)."
         }
       }
     },
@@ -1417,170 +1431,500 @@
       }
     },
     "button": {
-      "resume_auto": {"name": "Reanudar automático"}
+      "resume_auto": {
+        "name": "Reanudar automático"
+      }
     },
     "switch": {
-      "observe": {"name": "Solo observar"},
-      "privacy": {"name": "Privacidad"},
-      "lock": {"name": "Bloqueo"},
-      "dawn": {"name": "Amanecer gradual"},
-      "night_iso": {"name": "Aislamiento nocturno"},
-      "geo_shade": {"name": "Sombreado geométrico"},
-      "heat_shield": {"name": "Escudo térmico"},
-      "sun_shield": {"name": "Escudo de sol directo"},
-      "weather_protect": {"name": "Protección meteo"},
-      "track_external": {"name": "Seguir movimientos manuales"},
-      "sim_exclude": {"name": "Excluir de simulación"},
-      "presence_sim": {"name": "Simulación de presencia"},
-      "pause_all": {"name": "Pausa Dynamic Home"},
-      "pause_climate": {"name": "Pausa Clima"},
-      "pause_vmc": {"name": "Pausa Ventilación"},
-      "pause_shutter": {"name": "Pausa Persianas"},
-      "peak": {"name": "Limitación de pico"},
-      "adaptive": {"name": "Umbrales adaptativos"},
-      "bootstrap": {"name": "Arranque inicial"},
-      "dry_mode": {"name": "Modo secado"},
-      "freecool": {"name": "Free-cooling"},
-      "anticipatory": {"name": "Refuerzo anticipatorio"},
-      "schedule": {"name": "Programador"},
-      "quiet_hours": {"name": "Horas de silencio"},
-      "vacation": {"name": "Vacaciones"},
-      "adaptive_lead": {"name": "Lead adaptativo"},
-      "anticycle": {"name": "Anti-ciclado"},
-      "anticycle_autosize": {"name": "Anti-ciclado adaptativo"}
+      "observe": {
+        "name": "Solo observar"
+      },
+      "privacy": {
+        "name": "Privacidad"
+      },
+      "lock": {
+        "name": "Bloqueo"
+      },
+      "dawn": {
+        "name": "Amanecer gradual"
+      },
+      "night_iso": {
+        "name": "Aislamiento nocturno"
+      },
+      "geo_shade": {
+        "name": "Sombreado geométrico"
+      },
+      "heat_shield": {
+        "name": "Escudo térmico"
+      },
+      "sun_shield": {
+        "name": "Escudo de sol directo"
+      },
+      "weather_protect": {
+        "name": "Protección meteo"
+      },
+      "track_external": {
+        "name": "Seguir movimientos manuales"
+      },
+      "sim_exclude": {
+        "name": "Excluir de simulación"
+      },
+      "presence_sim": {
+        "name": "Simulación de presencia"
+      },
+      "pause_all": {
+        "name": "Pausa Dynamic Home"
+      },
+      "pause_climate": {
+        "name": "Pausa Clima"
+      },
+      "pause_vmc": {
+        "name": "Pausa Ventilación"
+      },
+      "pause_shutter": {
+        "name": "Pausa Persianas"
+      },
+      "peak": {
+        "name": "Limitación de pico"
+      },
+      "adaptive": {
+        "name": "Umbrales adaptativos"
+      },
+      "bootstrap": {
+        "name": "Arranque inicial"
+      },
+      "dry_mode": {
+        "name": "Modo secado"
+      },
+      "freecool": {
+        "name": "Free-cooling"
+      },
+      "anticipatory": {
+        "name": "Refuerzo anticipatorio"
+      },
+      "schedule": {
+        "name": "Programador"
+      },
+      "quiet_hours": {
+        "name": "Horas de silencio"
+      },
+      "vacation": {
+        "name": "Vacaciones"
+      },
+      "adaptive_lead": {
+        "name": "Lead adaptativo"
+      },
+      "anticycle": {
+        "name": "Anti-ciclado"
+      },
+      "anticycle_autosize": {
+        "name": "Anti-ciclado adaptativo"
+      }
     },
     "number": {
-      "co2_v2": {"name": "Umbral CO₂ V2"},
-      "co2_v3": {"name": "Umbral CO₂ V3"},
-      "pm_v2": {"name": "Umbral PM2.5 V2"},
-      "pm_v3": {"name": "Umbral PM2.5 V3"},
-      "filter_life_hours": {"name": "Vida del filtro"},
-      "privacy_pct": {"name": "Posición privacidad"},
-      "lock_pct": {"name": "Posición bloqueo"},
-      "override_minutes": {"name": "Temporizador override"},
-      "override_hours": {"name": "Duración override"},
-      "wind_limit_kmh": {"name": "Límite de viento"},
-      "hot_delta": {"name": "ΔT calor"},
-      "cold_delta": {"name": "ΔT frío"},
-      "freecool_delta": {"name": "ΔT free-cool"},
-      "summer_min_open_pct": {"name": "Apertura mínima verano"},
-      "heat_shield_pct": {"name": "Apertura máx. refrigerando"},
-      "weather_max_open_pct": {"name": "Cierre máx. por meteo"},
-      "sleep_pct": {"name": "Cierre en Sleep"},
-      "rain_close_pct": {"name": "Cierre por lluvia"},
-      "dawn_target_pct": {"name": "Objetivo amanecer"},
-      "quiet_max_level": {"name": "Nivel máx. en silencio"},
-      "freecool_t_in_min": {"name": "Temp. interior mínima free-cool"},
-      "freecool_quiet_cap": {"name": "Tope nocturno free-cool"}
+      "co2_v2": {
+        "name": "Umbral CO₂ V2"
+      },
+      "co2_v3": {
+        "name": "Umbral CO₂ V3"
+      },
+      "pm_v2": {
+        "name": "Umbral PM2.5 V2"
+      },
+      "pm_v3": {
+        "name": "Umbral PM2.5 V3"
+      },
+      "filter_life_hours": {
+        "name": "Vida del filtro"
+      },
+      "privacy_pct": {
+        "name": "Posición privacidad"
+      },
+      "lock_pct": {
+        "name": "Posición bloqueo"
+      },
+      "override_minutes": {
+        "name": "Temporizador override"
+      },
+      "override_hours": {
+        "name": "Duración override"
+      },
+      "wind_limit_kmh": {
+        "name": "Límite de viento"
+      },
+      "hot_delta": {
+        "name": "ΔT calor"
+      },
+      "cold_delta": {
+        "name": "ΔT frío"
+      },
+      "freecool_delta": {
+        "name": "ΔT free-cool"
+      },
+      "summer_min_open_pct": {
+        "name": "Apertura mínima verano"
+      },
+      "heat_shield_pct": {
+        "name": "Apertura máx. refrigerando"
+      },
+      "weather_max_open_pct": {
+        "name": "Cierre máx. por meteo"
+      },
+      "sleep_pct": {
+        "name": "Cierre en Sleep"
+      },
+      "rain_close_pct": {
+        "name": "Cierre por lluvia"
+      },
+      "dawn_target_pct": {
+        "name": "Objetivo amanecer"
+      },
+      "quiet_max_level": {
+        "name": "Nivel máx. en silencio"
+      },
+      "freecool_t_in_min": {
+        "name": "Temp. interior mínima free-cool"
+      },
+      "freecool_quiet_cap": {
+        "name": "Tope nocturno free-cool"
+      }
     },
     "sensor": {
-      "changeover": {"name": "Cambio estacional"},
-      "headroom": {"name": "Margen de red"},
-      "tariff": {"name": "Tarifa"},
-      "surplus": {"name": "Excedente FV"},
-      "house_energy": {"name": "Consumo de casa"},
-      "house_cost": {"name": "Coste de casa"},
-      "house_power": {"name": "Potencia de casa"},
-      "zones": {"name": "Zonas"},
-      "weather_source": {"name": "Fuente activa"},
-      "wx_temperature": {"name": "Temperatura exterior"},
-      "wx_humidity": {"name": "Humedad exterior"},
-      "wx_pressure": {"name": "Presión"},
-      "wx_wind": {"name": "Velocidad del viento"},
-      "wx_wind_bearing": {"name": "Dirección del viento"},
-      "wx_precip": {"name": "Precipitación"},
-      "wx_gust": {"name": "Ráfagas de viento"},
-      "wx_uv": {"name": "Índice UV"},
-      "wx_cloud": {"name": "Cobertura de nubes"},
-      "wx_dewpoint": {"name": "Punto de rocío"},
-      "wx_storm_prob": {"name": "Probabilidad de tormenta"},
-      "wx_precip_prob": {"name": "Probabilidad de precipitación"},
-      "wx_condition": {"name": "Condición meteorológica"},
-      "wx_wind_dir": {"name": "Dirección del viento", "state": {"n":"N","ne":"NE","e":"E","se":"SE","s":"S","sw":"SO","w":"O","nw":"NO"}},
-      "energy": {"name": "Energía"},
-      "power": {"name": "Potencia"},
-      "energy_24h": {"name": "Energía (últimas 24 h)"},
-      "energy_30d": {"name": "Energía (últimos 30 días)"},
-      "covers_open": {"name": "Persianas abiertas"},
-      "covers_closed": {"name": "Persianas cerradas"},
-      "covers_ajar": {"name": "Persianas entreabiertas"},
-      "sun_day_night": {"name": "Día o noche", "state": {"day": "Día", "night": "Noche"}},
-      "sun_elevation": {"name": "Elevación"},
-      "sun_azimuth": {"name": "Azimut"},
-      "sunrise": {"name": "Amanecer"},
-      "sunset": {"name": "Anochecer"},
-      "position": {"name": "Posición"},
-      "target_position": {"name": "Posición objetivo"},
-      "reason": {"name": "Motivo"},
-      "reason_human": {"name": "Motivo (texto)"},
-      "ds_indoor_temp": {"name": "Temperatura interior"},
-      "ds_outdoor_temp": {"name": "Temperatura exterior"},
-      "ds_temp_diff": {"name": "Diferencial interior-exterior"},
-      "ds_control_mode": {"name": "Modo de control", "state": {"auto": "Automático", "manual": "Manual (override)"}},
-      "ds_sun": {"name": "Sol"},
-      "ds_climate_mode": {"name": "Modo clima"},
-      "ds_climate_setpoint": {"name": "Consigna clima"},
-      "ds_climate_temp": {"name": "Temperatura clima"},
-      "schedule": {"name": "Programación"},
-      "speed": {"name": "Velocidad"},
-      "dew_point_in": {"name": "Punto de rocío interior"},
-      "dew_point_out": {"name": "Punto de rocío exterior"},
-      "dew_point_diff": {"name": "Δ punto de rocío"},
-      "shower_rise": {"name": "Subida humedad ducha"},
-      "mode": {"name": "Modo"},
-      "op_state": {"name": "Estado operativo"},
-      "override_remaining": {"name": "Override restante"},
-      "filter_life": {"name": "Vida del filtro"},
-      "hrv_efficiency": {"name": "Rendimiento recuperador"},
-      "voc": {"name": "VOC"},
-      "nox": {"name": "NOx"},
-      "co2": {"name": "CO₂"},
-      "pm25": {"name": "PM2.5"},
-      "mold_index": {"name": "Índice de moho"},
-      "adjacent_advice": {"name": "Aviso espacio adyacente"},
-      "install": {"name": "Instalación"},
-      "hours_v1": {"name": "Horas V1"},
-      "hours_v2": {"name": "Horas V2"},
-      "hours_v3": {"name": "Horas V3"},
-      "hours_machine": {"name": "Horas máquina"},
-      "hours_filter": {"name": "Horas filtro"},
-      "hrv_supply": {"name": "Recuperador insuflación"},
-      "hrv_intake": {"name": "Recuperador admisión"},
-      "hrv_extract": {"name": "Recuperador extracción"},
-      "hrv_exhaust": {"name": "Recuperador expulsión"},
-      "target": {"name": "Consigna"},
-      "base": {"name": "Base activa"},
-      "target_raw": {"name": "Consigna RAW"},
-      "dew_point": {"name": "Temperatura de condensación"},
-      "floor_temp": {"name": "Temperatura de suelo"},
-      "cond_spread": {"name": "Desvío real condensación"},
-      "cond_margin": {"name": "Margen de condensación"},
-      "mods_total": {"name": "Mods total"},
-      "lead": {"name": "Lead"},
-      "bias_exterior": {"name": "Bias exterior"},
-      "bias_vmc": {"name": "Bias VMC"},
-      "bias_trend": {"name": "Bias tendencia"},
-      "bias_brake": {"name": "Bias freno"},
-      "bias_forecast": {"name": "Bias forecast"},
-      "bias_facade": {"name": "Bias fachadas"},
-      "sdhb_bias": {"name": "Bias bus"},
-      "lead_gain_adaptive": {"name": "Lead adaptativo"},
-      "learn_rate": {"name": "Tasa aprendida"},
-      "learn_overshoot": {"name": "Overshoot aprendido"},
-      "learned_lag": {"name": "Retardo térmico"},
-      "adapt_ok_count": {"name": "Ciclos aprendidos"},
-      "adapt_abort_count": {"name": "Ciclos abortados"}
+      "changeover": {
+        "name": "Cambio estacional"
+      },
+      "headroom": {
+        "name": "Margen de red"
+      },
+      "tariff": {
+        "name": "Tarifa"
+      },
+      "surplus": {
+        "name": "Excedente FV"
+      },
+      "house_energy": {
+        "name": "Consumo de casa"
+      },
+      "house_cost": {
+        "name": "Coste de casa"
+      },
+      "house_power": {
+        "name": "Potencia de casa"
+      },
+      "zones": {
+        "name": "Zonas"
+      },
+      "weather_source": {
+        "name": "Fuente activa"
+      },
+      "wx_temperature": {
+        "name": "Temperatura exterior"
+      },
+      "wx_humidity": {
+        "name": "Humedad exterior"
+      },
+      "wx_pressure": {
+        "name": "Presión"
+      },
+      "wx_wind": {
+        "name": "Velocidad del viento"
+      },
+      "wx_wind_bearing": {
+        "name": "Dirección del viento"
+      },
+      "wx_precip": {
+        "name": "Precipitación"
+      },
+      "wx_gust": {
+        "name": "Ráfagas de viento"
+      },
+      "wx_uv": {
+        "name": "Índice UV"
+      },
+      "wx_cloud": {
+        "name": "Cobertura de nubes"
+      },
+      "wx_dewpoint": {
+        "name": "Punto de rocío"
+      },
+      "wx_storm_prob": {
+        "name": "Probabilidad de tormenta"
+      },
+      "wx_precip_prob": {
+        "name": "Probabilidad de precipitación"
+      },
+      "wx_condition": {
+        "name": "Condición meteorológica"
+      },
+      "wx_wind_dir": {
+        "name": "Dirección del viento",
+        "state": {
+          "n": "N",
+          "ne": "NE",
+          "e": "E",
+          "se": "SE",
+          "s": "S",
+          "sw": "SO",
+          "w": "O",
+          "nw": "NO"
+        }
+      },
+      "energy": {
+        "name": "Energía"
+      },
+      "power": {
+        "name": "Potencia"
+      },
+      "energy_24h": {
+        "name": "Energía (últimas 24 h)"
+      },
+      "energy_30d": {
+        "name": "Energía (últimos 30 días)"
+      },
+      "covers_open": {
+        "name": "Persianas abiertas"
+      },
+      "covers_closed": {
+        "name": "Persianas cerradas"
+      },
+      "covers_ajar": {
+        "name": "Persianas entreabiertas"
+      },
+      "sun_day_night": {
+        "name": "Día o noche",
+        "state": {
+          "day": "Día",
+          "night": "Noche"
+        }
+      },
+      "sun_elevation": {
+        "name": "Elevación"
+      },
+      "sun_azimuth": {
+        "name": "Azimut"
+      },
+      "sunrise": {
+        "name": "Amanecer"
+      },
+      "sunset": {
+        "name": "Anochecer"
+      },
+      "position": {
+        "name": "Posición"
+      },
+      "target_position": {
+        "name": "Posición objetivo"
+      },
+      "reason": {
+        "name": "Motivo"
+      },
+      "reason_human": {
+        "name": "Motivo (texto)"
+      },
+      "ds_indoor_temp": {
+        "name": "Temperatura interior"
+      },
+      "ds_outdoor_temp": {
+        "name": "Temperatura exterior"
+      },
+      "ds_temp_diff": {
+        "name": "Diferencial interior-exterior"
+      },
+      "ds_control_mode": {
+        "name": "Modo de control",
+        "state": {
+          "auto": "Automático",
+          "manual": "Manual (override)"
+        }
+      },
+      "ds_sun": {
+        "name": "Sol"
+      },
+      "ds_climate_mode": {
+        "name": "Modo clima"
+      },
+      "ds_climate_setpoint": {
+        "name": "Consigna clima"
+      },
+      "ds_climate_temp": {
+        "name": "Temperatura clima"
+      },
+      "schedule": {
+        "name": "Programación"
+      },
+      "speed": {
+        "name": "Velocidad"
+      },
+      "dew_point_in": {
+        "name": "Punto de rocío interior"
+      },
+      "dew_point_out": {
+        "name": "Punto de rocío exterior"
+      },
+      "dew_point_diff": {
+        "name": "Δ punto de rocío"
+      },
+      "shower_rise": {
+        "name": "Subida humedad ducha"
+      },
+      "mode": {
+        "name": "Modo"
+      },
+      "op_state": {
+        "name": "Estado operativo"
+      },
+      "override_remaining": {
+        "name": "Override restante"
+      },
+      "filter_life": {
+        "name": "Vida del filtro"
+      },
+      "hrv_efficiency": {
+        "name": "Rendimiento recuperador"
+      },
+      "voc": {
+        "name": "VOC"
+      },
+      "nox": {
+        "name": "NOx"
+      },
+      "co2": {
+        "name": "CO₂"
+      },
+      "pm25": {
+        "name": "PM2.5"
+      },
+      "mold_index": {
+        "name": "Índice de moho"
+      },
+      "adjacent_advice": {
+        "name": "Aviso espacio adyacente"
+      },
+      "install": {
+        "name": "Instalación"
+      },
+      "hours_v1": {
+        "name": "Horas V1"
+      },
+      "hours_v2": {
+        "name": "Horas V2"
+      },
+      "hours_v3": {
+        "name": "Horas V3"
+      },
+      "hours_machine": {
+        "name": "Horas máquina"
+      },
+      "hours_filter": {
+        "name": "Horas filtro"
+      },
+      "hrv_supply": {
+        "name": "Recuperador insuflación"
+      },
+      "hrv_intake": {
+        "name": "Recuperador admisión"
+      },
+      "hrv_extract": {
+        "name": "Recuperador extracción"
+      },
+      "hrv_exhaust": {
+        "name": "Recuperador expulsión"
+      },
+      "target": {
+        "name": "Consigna"
+      },
+      "base": {
+        "name": "Base activa"
+      },
+      "target_raw": {
+        "name": "Consigna RAW"
+      },
+      "dew_point": {
+        "name": "Temperatura de condensación"
+      },
+      "floor_temp": {
+        "name": "Temperatura de suelo"
+      },
+      "cond_spread": {
+        "name": "Desvío real condensación"
+      },
+      "cond_margin": {
+        "name": "Margen de condensación"
+      },
+      "mods_total": {
+        "name": "Mods total"
+      },
+      "lead": {
+        "name": "Lead"
+      },
+      "bias_exterior": {
+        "name": "Bias exterior"
+      },
+      "bias_vmc": {
+        "name": "Bias VMC"
+      },
+      "bias_trend": {
+        "name": "Bias tendencia"
+      },
+      "bias_brake": {
+        "name": "Bias freno"
+      },
+      "bias_forecast": {
+        "name": "Bias forecast"
+      },
+      "bias_facade": {
+        "name": "Bias fachadas"
+      },
+      "sdhb_bias": {
+        "name": "Bias bus"
+      },
+      "lead_gain_adaptive": {
+        "name": "Lead adaptativo"
+      },
+      "learn_rate": {
+        "name": "Tasa aprendida"
+      },
+      "learn_overshoot": {
+        "name": "Overshoot aprendido"
+      },
+      "learned_lag": {
+        "name": "Retardo térmico"
+      },
+      "adapt_ok_count": {
+        "name": "Ciclos aprendidos"
+      },
+      "adapt_abort_count": {
+        "name": "Ciclos abortados"
+      }
     },
     "binary_sensor": {
-      "scarcity": {"name": "Escasez de energía"},
-      "house_presence": {"name": "Presencia casa"},
-      "dew_risk": {"name": "Riesgo de condensación"},
-      "real_demand": {"name": "Demanda real"},
-      "window_inferred": {"name": "Ventana (inferida)"},
-      "weather_alert": {"name": "Alerta meteo"},
-      "degraded": {"name": "Estado"},
-      "zone_occupancy": {"name": "Presencia {zone}"},
-      "in_sun": {"name": "Al sol"}
+      "scarcity": {
+        "name": "Escasez de energía"
+      },
+      "house_presence": {
+        "name": "Presencia casa"
+      },
+      "dew_risk": {
+        "name": "Riesgo de condensación"
+      },
+      "real_demand": {
+        "name": "Demanda real"
+      },
+      "window_inferred": {
+        "name": "Ventana (inferida)"
+      },
+      "weather_alert": {
+        "name": "Alerta meteo"
+      },
+      "degraded": {
+        "name": "Estado"
+      },
+      "zone_occupancy": {
+        "name": "Presencia {zone}"
+      },
+      "in_sun": {
+        "name": "Al sol"
+      }
     }
   }
 }
