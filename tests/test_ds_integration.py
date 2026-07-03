@@ -126,6 +126,18 @@ async def test_dw_probabilities_and_gust_drive_ds(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert co.data.reason == "meteo_wind_cap"
 
+    # v0.97.1: the MEAN wind from Dynamic Weather also drives the cap (no local
+    # sensor, no gust) — the proportional cap works from the provider alone.
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"wind": 80}}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "meteo_wind_cap"
+    # Calm provider wind -> no cap.
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"wind": 5}}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason != "meteo_wind_cap"
+
 
 # --- F17: anticipatory weather-alert protection ---
 ALERTS = {

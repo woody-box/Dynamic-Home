@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.97.1] — 2026-07-02
+
+### Changed
+- **DS · el tope por viento actúa también con el viento del proveedor.** Hasta ahora, sin
+  sensor de viento local, el tope proporcional solo reaccionaba a la **ráfaga** que publica
+  Dynamic Weather; si el proveedor no daba ráfaga, no había tope. Ahora usa el **viento medio**
+  del proveedor como respaldo cuando no hay lectura local usable (sin sensor, o el sensor caído
+  pasada su ventana de retención). La alerta anticipatoria por viento ya funcionaba con el
+  proveedor y no cambia.
+- **DS · textos de ayuda en los campos meteo del formulario.** Cada campo opcional (viento,
+  lluvia, alerta meteo, alerta granizo/tormenta, alerta viento) muestra ahora una descripción:
+  para qué sirve (sensor local para mayor precisión, o por si tu proveedor no entrega ese
+  valor) y a qué función afecta. Las tres alertas pasan a indicar «(opcional)» como el resto.
+
+### Internal
+- Suite 606 tests. Paridad de traducciones 1507 claves.
+
 ## [0.97.0] — 2026-07-02
 
 ### Fixed
