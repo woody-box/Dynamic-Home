@@ -7,7 +7,7 @@
         "menu_options": {
           "vmc": "Dynamic Ventilation (HRV)",
           "shutter": "Dynamic Shutter (Blinds)",
-          "climate": "Dynamic Climate (Zone)",
+          "climate": "Dynamic Climate (Heating/Cooling)",
           "weather": "Dynamic Weather",
           "zones": "Dynamic Home (Zones)",
           "energy": "Dynamic Energy"
@@ -75,7 +75,7 @@
         }
       },
       "climate": {
-        "title": "Dynamic Climate (Zone)",
+        "title": "Dynamic Climate (Heating/Cooling)",
         "description": "Climate zone. Publishes solar-gain (heat) / solar-shield (cool) intents to the configured shutters.",
         "data": {
           "name": "Name",

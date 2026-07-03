@@ -7,7 +7,7 @@
         "menu_options": {
           "vmc": "Dynamic Ventilation (VMC)",
           "shutter": "Dynamic Shutter (Persiana)",
-          "climate": "Dynamic Climate (Zona)",
+          "climate": "Dynamic Climate (Calefacción/Refrigeración)",
           "weather": "Dynamic Weather (Tiempo)",
           "zones": "Dynamic Home (Zonas)",
           "energy": "Dynamic Energy (Energía)"
@@ -75,7 +75,7 @@
         }
       },
       "climate": {
-        "title": "Dynamic Climate (Zona)",
+        "title": "Dynamic Climate (Calefacción/Refrigeración)",
         "description": "Zona climática. Publica al bus solar-gain (calor) / solar-shield (frío) hacia las persianas indicadas.",
         "data": {
           "name": "Nombre",
