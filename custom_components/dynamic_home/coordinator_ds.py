@@ -13,6 +13,7 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util import dt as dt_util
 
@@ -569,13 +570,6 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         return decision
 
     async def _async_update_data(self) -> DsDecision:
-        # Orphaned shared sensors (the owning DS entry unloaded): adopt them on
-        # this entry's platform so the house counts / sun sensors live on.
-        data = self.hass.data.get(const.DOMAIN, {})
-        if (const.DATA_DS_SUMMARY_OWNER not in data
-                and self.entry.entry_id in (data.get("_ds_summary_adders") or {})):
-            from .sensor import adopt_shared_shutter_sensors
-            adopt_shared_shutter_sensors(self.hass, prefer=self.entry.entry_id)
         cfg = self._cfg()
         cfg.privacy_pos_pct = int(self.privacy_pct)
         now_ts = dt_util.utcnow().timestamp()
@@ -676,6 +670,9 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.power_w = (meter if meter is not None
                         else (cfg.est_w_motor if moved else 0.0))
         self._record_energy(now_ts)
+        # Poke the house-wide count sensors (on the "Común" entry) so they re-arm
+        # their cover tracking and refresh — no idle timer of their own.
+        async_dispatcher_send(self.hass, const.SIGNAL_DS_COVERS)
         return decision
 
     def _record_energy(self, now_ts: float) -> None:

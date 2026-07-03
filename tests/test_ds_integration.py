@@ -415,6 +415,7 @@ async def test_shutter_config_flow(hass: HomeAssistant) -> None:
                     const.CONF_FACADE_AZIMUTH: 180})
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][const.CONF_MODULE] == const.MODULE_SHUTTER
+    await hass.async_block_till_done()   # let the auto-created Común entry settle
 
 
 async def test_shutter_create_copies_from_template(hass: HomeAssistant) -> None:
@@ -445,6 +446,7 @@ async def test_shutter_create_copies_from_template(hass: HomeAssistant) -> None:
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][const.CONF_COVER] == "cover.salon_der"
     assert result["options"] == {"summer_min_open_pct": 35}   # tunables cloned
+    await hass.async_block_till_done()   # let the auto-created Común entry settle
 
 
 async def test_shutter_clone_into_existing(hass: HomeAssistant) -> None:
@@ -1135,8 +1137,19 @@ async def test_hvac_mode_climate_entity_wins_then_falls_back(
 
 
 # --- House-wide shutter counts (open / closed / ajar), DS-managed covers only ---
+def _common(hass: HomeAssistant):
+    """The auto-created 'Dynamic Shutter · Común' coordinator, or None."""
+    from custom_components.dynamic_home.coordinator import ShutterCommonCoordinator
+    return next((co for co in hass.data.get(const.DOMAIN, {}).values()
+                 if isinstance(co, ShutterCommonCoordinator)), None)
+
+
 async def test_house_shutter_counts(hass: HomeAssistant) -> None:
-    """Three shared sensors count DS-managed covers by position, not raw covers."""
+    """Three shared sensors count DS-managed covers by position, not raw covers.
+
+    The counts live on the auto-created 'Común' device now, not nested under a
+    shutter.
+    """
     from homeassistant.helpers import entity_registry as er
     async_mock_service(hass, "cover", "set_cover_position")
     hass.states.async_set("sun.sun", "below_horizon",
@@ -1146,16 +1159,16 @@ async def test_house_shutter_counts(hass: HomeAssistant) -> None:
     for eid, pos in positions.items():
         hass.states.async_set(eid, "open",
                               {"supported_features": 15, "current_position": pos})
-    entries = []
     for i, cover in enumerate(positions):
         data = {**SHUTTER, const.CONF_COVER: cover, const.CONF_NAME: f"P{i}"}
         e = MockConfigEntry(domain=const.DOMAIN, data=data, title=f"P{i}")
         e.add_to_hass(hass)
         assert await hass.config_entries.async_setup(e.entry_id)
-        entries.append(e)
     await hass.async_block_till_done()
-    # First owner tick after all entries exist re-arms the cover tracking.
-    await hass.data[const.DOMAIN][entries[0].entry_id].async_refresh()
+    # The Común entry auto-created; re-tick it so the counts re-arm over all covers.
+    common = _common(hass)
+    assert common is not None
+    await common.async_refresh()
     await hass.async_block_till_done()
 
     reg = er.async_get(hass)
@@ -1166,15 +1179,14 @@ async def test_house_shutter_counts(hass: HomeAssistant) -> None:
         assert eid is not None, key
         return int(hass.states.get(eid).state)
 
-    # One set only (owned by the first DS entry), counting the three managed covers.
+    # One set only (on the Común device), counting the three managed covers.
     assert count("covers_open") == 1
     assert count("covers_closed") == 1
     assert count("covers_ajar") == 1
 
-    # Move one open -> closed and re-tick the owner: the counts follow.
+    # Move one open -> closed: the count sensor's own cover listener follows.
     hass.states.async_set("cover.a", "closed",
                           {"supported_features": 15, "current_position": 0})
-    await hass.data[const.DOMAIN][entries[0].entry_id].async_refresh()
     await hass.async_block_till_done()
     assert count("covers_open") == 0
     assert count("covers_closed") == 2
@@ -1347,24 +1359,76 @@ async def test_wind_cap_survives_anemometer_dropout(hass: HomeAssistant) -> None
     assert co._wind_with_ttl(1000.0 + 700.0) is None       # TTL expired: let go
 
 
-async def test_shared_sensors_adopted_after_owner_unload(
+async def test_common_entry_autocreated_and_removed_with_last_shutter(
         hass: HomeAssistant) -> None:
-    # v0.96.0: unloading the DS entry that owned the shared "Persianas" sensors
-    # re-homes them on another live DS entry on its next tick (they used to
-    # vanish until a restart).
-    ca, cb = await _two_shutters(hass)
-    data = hass.data[const.DOMAIN]
-    owner_id = data[const.DATA_DS_SUMMARY_OWNER]
-    other = cb if owner_id == ca.entry.entry_id else ca
-    assert await hass.config_entries.async_unload(owner_id)
-    await hass.async_block_till_done()
-    assert const.DATA_DS_SUMMARY_OWNER not in data
-
-    await other.async_refresh()                             # next tick adopts
-    await hass.async_block_till_done()
-    assert data[const.DATA_DS_SUMMARY_OWNER] == other.entry.entry_id
+    # v0.98.0: the shared "Común" entry auto-creates with the first shutter and
+    # is removed with the last (no per-shutter owner / adoption dance anymore).
     from homeassistant.helpers import entity_registry as er
+    ca, cb = await _two_shutters(hass)
+    assert _common(hass) is not None
     reg = er.async_get(hass)
-    eid = reg.async_get_entity_id("sensor", const.DOMAIN,
-                                  f"{const.DOMAIN}_covers_open")
-    assert eid is not None and hass.states.get(eid) is not None
+    assert reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{const.DOMAIN}_covers_open") is not None
+
+    # Remove one shutter -> the Común stays (another shutter remains).
+    await hass.config_entries.async_remove(ca.entry.entry_id)
+    await hass.async_block_till_done()
+    assert _common(hass) is not None
+
+    # Remove the LAST shutter -> the Común is removed too.
+    await hass.config_entries.async_remove(cb.entry.entry_id)
+    await hass.async_block_till_done()
+    assert _common(hass) is None
+    assert not [e for e in hass.config_entries.async_entries(const.DOMAIN)
+                if e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER_COMMON]
+
+
+# --- v0.98.0: the "Común" screen + global switches ---
+async def test_global_switch_fans_out_to_all_shutters(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    ca, cb = await _two_shutters(hass)
+    assert _common(hass) is not None
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id(
+        "switch", const.DOMAIN, f"{const.DOMAIN}_global_observe")
+    assert eid is not None
+
+    # Blunt master: ON puts EVERY shutter in observe (house-wide manual).
+    await hass.services.async_call(
+        "switch", "turn_on", {"entity_id": eid}, blocking=True)
+    await hass.async_block_till_done()
+    assert ca.observe_enabled is True and cb.observe_enabled is True
+    assert hass.states.get(eid).state == "on"
+
+    # OFF turns it off on all (house-wide automatic).
+    await hass.services.async_call(
+        "switch", "turn_off", {"entity_id": eid}, blocking=True)
+    await hass.async_block_till_done()
+    assert ca.observe_enabled is False and cb.observe_enabled is False
+
+    # Master reads "on" only when ALL shutters have it on (blunt semantics).
+    ca.observe_enabled = True                      # only one on
+    async_dispatcher_send_test(hass)
+    await hass.async_block_till_done()
+    assert hass.states.get(eid).state == "off"
+
+
+def async_dispatcher_send_test(hass):
+    from homeassistant.helpers.dispatcher import async_dispatcher_send
+    async_dispatcher_send(hass, const.SIGNAL_DS_TOGGLES)
+
+
+async def test_global_resume_auto_clears_every_hold(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import entity_registry as er
+    ca, cb = await _two_shutters(hass)
+    ca.arm_manual_override(80)
+    cb.arm_manual_override(20)
+    assert ca.manual_pos == 80 and cb.manual_pos == 20
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id(
+        "button", const.DOMAIN, f"{const.DOMAIN}_global_resume_auto")
+    assert eid is not None
+    await hass.services.async_call(
+        "button", "press", {"entity_id": eid}, blocking=True)
+    await hass.async_block_till_done()
+    assert ca.manual_pos is None and cb.manual_pos is None

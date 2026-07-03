@@ -12,6 +12,9 @@ MODULE_CLIMATE = "climate_zone"
 MODULE_WEATHER = "weather"
 MODULE_ZONES = "zones"
 MODULE_ENERGY = "energy"
+# Auto-created singleton: the shared shutter screen (counts + sun) and the global
+# shutter switches live here, in their own "Dynamic Shutter · Común" section.
+MODULE_SHUTTER_COMMON = "shutter_common"
 
 # Short Dynamic Home tag per module. Prefixed onto the hardware mirrors and
 # suffixed onto the primary control entities (cover/climate/fan) so everything
@@ -32,15 +35,22 @@ PLATFORMS_CLIMATE: list[str] = ["climate", "switch", "sensor", "binary_sensor"]
 PLATFORMS_WEATHER: list[str] = ["weather", "binary_sensor", "sensor"]
 PLATFORMS_ZONES: list[str] = ["sensor", "select", "binary_sensor", "switch"]
 PLATFORMS_ENERGY: list[str] = ["sensor", "binary_sensor"]
+PLATFORMS_SHUTTER_COMMON: list[str] = ["sensor", "switch", "button"]
 
 # Shared device that groups the bus-conflict sensors of every module (so the
 # whole bus is observable from one place in the HA UI, not scattered per entry).
 BUS_DEVICE_ID = "bus"
 
-# Shared device + owner-entry marker for the house-wide shutter counts (how many
-# DS-managed covers are open/closed/ajar), created once by the first DS entry.
+# Shared device for the house-wide shutter screen (how many DS-managed covers are
+# open/closed/ajar, plus the sun sensors and the global switches). Owned by the
+# auto-created "Dynamic Shutter · Común" entry (MODULE_SHUTTER_COMMON).
 SHUTTERS_DEVICE_ID = "shutters_summary"
-DATA_DS_SUMMARY_OWNER = "_ds_summary_owner"
+# Dispatcher signal: a global shutter switch changed -> per-shutter toggles
+# re-write their UI state so they reflect the fan-out immediately.
+SIGNAL_DS_TOGGLES = f"{DOMAIN}_ds_toggles_changed"
+# Dispatcher signal: a DS coordinator ticked -> the house-wide count sensors
+# re-arm their cover tracking (catching shutters added/removed) and refresh.
+SIGNAL_DS_COVERS = f"{DOMAIN}_ds_covers_changed"
 
 # --- Config entry keys: VMC (DV) hardware map ---
 CONF_NAME = "name"

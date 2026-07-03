@@ -1433,6 +1433,9 @@
     "button": {
       "resume_auto": {
         "name": "Reanudar automático"
+      },
+      "global_resume_auto": {
+        "name": "Reanudar automático (todas)"
       }
     },
     "switch": {
@@ -1519,6 +1522,30 @@
       },
       "anticycle_autosize": {
         "name": "Anti-ciclado adaptativo"
+      },
+      "global_observe": {
+        "name": "Solo observar (todas)"
+      },
+      "global_weather_protect": {
+        "name": "Protección meteo (todas)"
+      },
+      "global_heat_shield": {
+        "name": "Escudo térmico (todas)"
+      },
+      "global_sun_shield": {
+        "name": "Escudo de sol directo (todas)"
+      },
+      "global_night_iso": {
+        "name": "Aislamiento nocturno (todas)"
+      },
+      "global_dawn": {
+        "name": "Amanecer gradual (todas)"
+      },
+      "global_geo_shade": {
+        "name": "Sombreado geométrico (todas)"
+      },
+      "global_peak": {
+        "name": "Limitación de pico (todas)"
       }
     },
     "number": {
@@ -1895,6 +1922,9 @@
       },
       "adapt_abort_count": {
         "name": "Ciclos abortados"
+      },
+      "ds_global_note": {
+        "name": "Aviso · interruptores globales"
       }
     },
     "binary_sensor": {

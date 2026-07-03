@@ -226,6 +226,18 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
                 title=user_input[const.CONF_NAME], data=data)
         return self.async_show_form(step_id="zones", data_schema=STEP_ZONES_SCHEMA)
 
+    async def async_step_shutter_common(self, discovery_info=None):
+        """Auto-created singleton (no UI): the shared shutter screen + global
+        switches. Kicked off by __init__ when the first shutter is set up, and
+        removed with the last shutter — the user never adds it by hand.
+        """
+        await self.async_set_unique_id("shutter_common_singleton")
+        self._abort_if_unique_id_configured()           # one common entry only
+        return self.async_create_entry(
+            title="Dynamic Shutter · Común",
+            data={const.CONF_MODULE: const.MODULE_SHUTTER_COMMON,
+                  const.CONF_NAME: "Dynamic Shutter · Común"})
+
     async def async_step_vmc(self, user_input: dict[str, Any] | None = None):
         if user_input is not None:
             await self.async_set_unique_id(f"vmc_{user_input[const.CONF_SW_PWR]}")

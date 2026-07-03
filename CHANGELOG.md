@@ -4,6 +4,37 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.98.0] — 2026-07-03
+
+### Added
+- **DS · sección "Dynamic Shutter · Común".** La pantalla común de las persianas (recuentos
+  abiertas/cerradas/entreabiertas + sol: amanecer, anochecer, azimut, elevación, día/noche)
+  deja de estar anidada dentro de la primera persiana y pasa a su **propio dispositivo**.
+  Se **crea sola** con la primera persiana y se elimina con la última — no hay que añadirla.
+  Tus entity_ids no cambian (misma unique_id), así que no se rompen los dashboards.
+- **DS · interruptores globales de persianas** (en esa pantalla común). Mandos que activan o
+  desactivan una función en **TODAS** las persianas a la vez: **Solo observar (todas)** — modo
+  manual/automático global de la casa — más **Protección meteo**, **Escudo térmico**, **Escudo
+  de sol directo**, **Aislamiento nocturno**, **Amanecer gradual**, **Sombreado geométrico** y
+  **Limitación de pico**, y un botón **Reanudar automático (todas)**. Los muy por-persiana
+  (privacidad, bloqueo, excluir de simulación, seguir movimientos manuales) siguen solo en cada
+  persiana.
+- **Aviso de los globales**: cada interruptor global es un mando "a lo bruto" — al apagarlo se
+  apaga esa función en todas y al encenderlo se enciende en todas; **no recuerda** el estado
+  individual de cada persiana. Una entidad "Aviso" en la pantalla común lo explica con ejemplo
+  (si el Escudo térmico está ON en 4 y OFF en otras 4, apagar y volver a encender el global lo
+  deja ON en las 8).
+
+### Changed
+- **README · tabla de madurez** actualizada (es/en): valoración honesta por módulo con el eje
+  "rodaje en real vs solo tests" (DV/DS/DW maduros; DC mixto; Zonas beta; Energía experimental).
+
+### Internal
+- Nuevo módulo auto-singleton `shutter_common` (config-flow interno, sin paso de UI) con su
+  coordinator sin temporizador; los recuentos se re-arman por dispatcher desde el tick de cada
+  persiana. Retirada la lógica de adopción del propietario (v0.96.0), ya innecesaria. Suite
+  608 tests; paridad de traducciones. Bump minor por ser módulo/feature nueva.
+
 ## [0.97.2] — 2026-07-03
 
 ### Changed
