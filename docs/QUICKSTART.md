@@ -105,6 +105,12 @@ ni ningún relé**. Es el modo seguro para validar comportamiento durante días.
 > El switch *Observe only* lo comparten todos los módulos (DC/DV/DS): es el mismo
 > `_observe` en `switch.py`. Puedes dejar toda la casa en observación a la vez. También
 > se puede conmutar por servicio: `dynamic_home.set_observe`.
+>
+> En **persianas** hay un atajo global: la pantalla **"Dynamic Shutter · Común"** —que
+> aparece **sola** al crear la primera persiana, con los **recuentos** (abiertas/cerradas/
+> entreabiertas), los **datos de sol** y los **interruptores globales**— trae **"Solo
+> observar (todas)"**, un modo **manual/automático global de la casa** que pone en
+> observación todas las persianas de golpe (v0.98.0).
 
 ---
 
@@ -137,13 +143,16 @@ esa es la trazabilidad "qué decidió, cuándo y por qué".
 - **DV (ventilación):** `iaq` (CO₂/PM), `shower_rh` (boost por ducha), `dry_mode` (secado
   por rocío), `freecool` (free-cooling), `quiet_cap` (horas de silencio),
   `failsafe_vital_ko` (fuente vital obsoleta), `hold_antiflap`.
-- **DS (persianas):** `summer_solar_shield` / `summer_solar_geo` (escudo solar fijo o
+- **DS (persianas):** `manual_hold` (movimiento manual respetado — por encima de
+  meteo/lluvia y del bloqueo), `presence_sim` (simulación de presencia en Away), `mode_sleep`
+  (Sleep de la zona), `summer_solar_shield` / `summer_solar_geo` (escudo solar fijo o
   geométrico), `summer_heat_shield` (tope por calor refrigerando), `winter_solar_gain`
   (ganancia), `winter_cold_shield` / `winter_mild_open` (día de invierno sin sol),
-  `freecool_night` (purga nocturna), `dawn_ramp` (amanecer), `meteo_rain` / `meteo_alert`
-  y los caps de viento. **Ojo:** `night_insulate` = el switch **F16** (aislamiento
-  nocturno), distinto de `winter_night_insulate` = la rama **built-in** de calefacción sin
-  sol. Glosario completo en [`SPEC_DS.md`](SPEC_DS.md).
+  `night_purge` (ventilación nocturna) / `freecool_night` (free-cooling nocturno de verano),
+  `dawn_ramp` (amanecer), `meteo_rain` / `meteo_alert` y los caps de viento. **Ojo:**
+  `night_insulate` = el switch **F16** (aislamiento nocturno), distinto de
+  `winter_night_insulate` = la rama **built-in** de calefacción sin sol. Glosario completo en
+  [`SPEC_DS.md`](SPEC_DS.md).
 
 ---
 

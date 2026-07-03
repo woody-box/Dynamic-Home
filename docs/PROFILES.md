@@ -85,9 +85,13 @@ aparte si lo tienes.
   **Varios baños:** opciones de la VMC → **Baños** → añade hasta 6 (nombre + sensor de
   humedad). Cualquier ducha en cualquier baño dispara el boost (gana la mayor subida) y el
   atributo `shower_bathroom` del ventilador dice **qué baño** fue.
-- **Free-cooling:** `freecool_enabled`. Con changeover en calor se **suprime** (F37); sin
-  changeover se rige solo por temperatura (y verás el aviso de Reparaciones si hay
-  calefacción).
+- **Free-cooling:** tiene **switch propio** ("Free-cooling", ON por defecto) — ya no lo
+  fuerza la mera presencia de sondas, puedes apagarlo. Solo se engancha con el interior
+  **genuinamente caluroso** (número "Temp. int. mínima", 24 °C por defecto, editable), así
+  no ventila tu calefacción. En noches de verano puede saltarse el cap de silencio/Sleep
+  hasta el "Tope nocturno free-cool" (V2 por defecto; ponlo a 1 para silencio absoluto).
+  Con changeover en calor se **suprime** (F37); sin changeover se rige solo por temperatura
+  (y verás el aviso de Reparaciones si hay calefacción).
 
 **Reason codes a vigilar:** `iaq`, `shower_rh`, `dry_mode`, `freecool`, `quiet_cap`,
 `failsafe_vital_ko` (si un sensor se queda obsoleto), `hold_antiflap`.
@@ -118,6 +122,18 @@ solar).
   de varios motores simultáneos. Es un canal **separado** del de clima.
 - **Temporada:** sin un `climate` enlazado por persiana, DS sigue el **changeover de casa**
   (F37) para decidir escudo solar (verano) vs ganancia (invierno).
+- **El override manual manda sobre todo, incluso el bloqueo.** Si mueves una persiana a mano,
+  esa orden gana sobre la lógica solar, el escalonado anti-pico **y el bloqueo** (el Lock ya
+  no re-cierra en ≤60 s lo que acabas de abrir); persiste incluso a un reinicio de HA (se
+  restaura desde el sensor "Modo de control" si no ha caducado el hold). Al expirar el hold —o
+  al pulsar "Volver a automático"— la automatización (y el bloqueo) reimponen su posición.
+- **Aplicar un perfil a toda la casa:** la pantalla **"Dynamic Shutter · Común"** (dispositivo
+  propio, se crea sola con la primera persiana) trae **interruptores globales "a lo bruto"**
+  —**Solo observar (todas)**, protección meteo, escudo térmico, escudo de sol, aislamiento
+  nocturno, amanecer gradual, sombreado geométrico y limitación de pico— más **"Reanudar
+  automático (todas)"**. Encienden/apagan la función en **todas** las persianas de golpe; ojo,
+  **no recuerdan** el estado individual (lo explica la entidad "Aviso"). Lo íntimo de cada
+  hueco (privacidad, bloqueo, seguir movimientos manuales) sigue **por persiana**.
 
 **Reason codes a vigilar:** posición por `summer_solar_shield` / `winter_solar_gain`,
 `freecool_night`, cap por `alert_wind` / `alert_hail` y `meteo_rain`, y en el bus el

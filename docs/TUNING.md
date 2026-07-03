@@ -85,9 +85,16 @@
 - **Horas de silencio** (entidades de ventana) + `quiet_max_level`.
 - **Pero** `quiet_critical_co2` / `quiet_critical_pm` *(Horas de silencio)*: si el aire se
   pone crítico, **la salud gana** e ignora el cap.
+- `freecool_quiet_cap` *(Free-cooling)* — en noches de **verano** el free-cool queda **exento**
+  del cap de silencio/Sleep hasta este tope (V2 por def., editable 1..3). Ponlo a **1** para
+  recuperar el silencio absoluto de noche.
 
 ### "**Free-cooling** / no ventilar el calor que pago"
 - `freecool_t_ext_min`, `freecool_delta_on/off` *(Free-cooling)*.
+- `freecool_t_in_min` *(Free-cooling)* — **temp. interior mínima** para que arranque el
+  free-cool (24 °C por def.): por debajo **no** ventila, para no tirar por la ventana el
+  calor que pagas en un día templado. Hay además un **switch "Free-cooling"** (ON por def.)
+  para apagarlo del todo.
 - **Vigila junto:** **configura el changeover** (entrada de Zonas). Sin él, el free-cooling
   va solo por temperatura y puede ventilar calor en invierno (te saldrá un aviso).
 
@@ -111,6 +118,10 @@
 ### "**Sombra** en verano / que no me deslumbre"
 - **Baja** `summer_min_open_pct` *(Posiciones)* → cierra más en el escudo solar.
 - `hot_delta` *(Deltas térmicos)* — cuánto más caliente fuera que dentro para activar.
+- `temp_hyst_c` *(Deltas térmicos)* — **banda de histéresis** de los escudos térmicos: el
+  escudo entra a `hot_delta` y **sale** a `hot_delta − temp_hyst_c` (y simétrico con
+  `cold_delta` en invierno). **Súbelo** si la persiana oscila abrir/cerrar todo el mediodía
+  con la temperatura rondando el umbral (def. 0,3 °C).
 - Para el modelo **geométrico** (opt-in): `window_height_cm`, `overhang_cm`,
   `target_penetration_m`… *(Geometría)*.
 
@@ -124,6 +135,10 @@
 - `alert_pct` / `alert_hail_pct` / `alert_wind_pct` / `alert_hold_min` *(Alertas)*.
 - `rain_close_pct`, `weather_max_open_pct` *(Posiciones)*.
 - *La protección meteo es un cap de seguridad **por encima** de la lógica solar.*
+- **Sin sensor de viento local** (o con el local caído pasada su ventana de retención), el
+  tope proporcional usa el **viento del proveedor Dynamic Weather** como respaldo (ráfaga si
+  la publica, si no el viento medio) — la protección de viento funciona aunque no cablees un
+  anemómetro.
 
 ### "**Amanecer suave**"
 - `dawn_step_pct`, `dawn_step_min`, `dawn_target_pct`, `dawn_trigger_elevation` *(Amanecer)*.
@@ -133,6 +148,18 @@
 
 ### "No **clavar el inrush** de varios motores"
 - `peak_stagger_s` *(Anti-pico)* — espacia los arranques. Canal **separado** del de clima.
+
+### "Mover un ajuste **a toda la casa** de golpe" (v0.98.0)
+- La pantalla **"Dynamic Shutter · Común"** (aparece sola al crear la primera persiana) trae
+  **interruptores globales**: activan/desactivan una función en **TODAS** las persianas a la
+  vez — **Protección meteo**, **Escudo térmico**, **Escudo de sol directo**, **Aislamiento
+  nocturno**, **Amanecer gradual**, **Sombreado geométrico**, **Limitación de pico** y
+  **Solo observar (todas)** — más un botón **Reanudar automático (todas)**.
+- **Aviso — son "a lo bruto":** cada global **no recuerda** el estado individual de cada
+  persiana. Si tenías el Escudo térmico ON en 4 y OFF en otras 4, apagar y volver a encender
+  el global lo deja **ON en las 8**. Para ajustes finos por persiana, usa el toggle de cada
+  una (privacidad, bloqueo, excluir de simulación, seguir movimientos manuales siguen solo
+  por persiana).
 
 ---
 
