@@ -141,19 +141,26 @@ dependency** (`*_engine.py`); the HA wrappers only translate state.
 
 ## Project status
 
-Current release: **v0.72.0**.
+Current release: **v0.98.0**. This is a personal, single-maintainer, pre-1.0
+project: nothing is "final" in a broad-production sense, so the scale below is
+relative. The key axis is **not test count** but **real-world soak** — how much
+each module has actually run on hardware, not just in the (606+) unit tests.
 
-| Area | Status | Notes |
-|------|--------|-------|
-| HACS install | Beta | Installable as a custom integration |
-| Dynamic Climate (DC) | Beta | Per-zone climate, biases, adaptive lead, install profiles |
-| Dynamic Ventilation (DV) | Beta | VMC speed by IAQ, humidity, dew point |
-| Dynamic Shutter (DS) | Beta | Position by facade/sun/weather; modes, presence sim, global peak |
-| Dynamic Home (Zones) | Beta | Zones, house modes, comfort, presence, changeover, master pause |
-| Dynamic Energy | Beta | ICP headroom, tariff, scarcity, kWh/€ totals, anti-peak budget |
-| SDHB bus | Beta | In-memory intent arbitration |
-| Config flow (UI) | Functional | Setup + options grouped by category; reconfigure & clone |
-| PV / battery / EV | Experimental | Fields present but gated; not validated by the author |
+- **Beta (mature)** — well covered by tests **and** in daily real-world use.
+- **Beta** — complete and tested, with modest real-world soak.
+- **Experimental** — works but little real-world validation, or parts unbuilt.
+
+| Module | Maturity | Notes |
+|--------|----------|-------|
+| Dynamic Ventilation (DV) | 🟢 Beta (mature) | Battle-tested on real relays; IAQ speed + failsafe proven |
+| Dynamic Shutter (DS) | 🟢 Beta (mature) | Battle-tested; safety-hardened after real incidents (give it soak time) |
+| Dynamic Weather (DW) | 🟢 Beta (stable) | Simple provider mirror + alerts; low complexity, low risk |
+| Dynamic Climate (DC) | 🟡 Beta / Experimental | Core (base+biases, condensation, changeover) functional; advanced paths (multi-emitter, shared duct, anti-peak, compressor anti-cycle) tested-only, little real-world use |
+| Dynamic Home (Zones) | 🟡 Beta | Zones, modes, presence, changeover in use; comfort presets less exercised |
+| Dynamic Energy | 🟠 Experimental | Newest module; core (headroom/tariff/cost) tested; PV/battery/EV deferred and unvalidated |
+| SDHB bus | 🟢 Beta (stable) | In-memory intent arbitration, deterministic tie-break |
+| Config flow (UI) | Functional | Setup + options by category; reconfigure & clone; shutter "Común" auto-created |
+| PV / battery / EV | 🟠 Experimental | Fields present but gated; not validated by the author |
 | Example dashboards | Pending | Not packaged yet |
 | Screenshots | Pending | To be added |
 

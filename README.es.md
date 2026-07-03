@@ -145,19 +145,26 @@ entidades, automatización, histórico e interfaz. La lógica de decisión vive 
 
 ## Estado del proyecto
 
-Versión actual: **v0.72.0**.
+Versión actual: **v0.98.0**. Proyecto personal, de un solo mantenedor y pre-1.0:
+nada es "final" en sentido de producción amplia, así que la escala es relativa.
+El eje clave **no es el número de tests** sino el **rodaje en hardware real** —
+cuánto ha corrido cada módulo de verdad, no solo en los (606+) tests unitarios.
 
-| Área | Estado | Comentario |
-|------|--------|------------|
-| Instalación HACS | Beta | Instalable como integración personalizada |
-| Dynamic Climate (DC) | Beta | Clima por zona, biases, lead adaptativo, perfiles de instalación |
-| Dynamic Ventilation (DV) | Beta | Velocidad VMC por IAQ, humedad, punto de rocío |
-| Dynamic Shutter (DS) | Beta | Posición por fachada/sol/meteo; modos, simulación de presencia, pico global |
-| Dynamic Home (Zonas) | Beta | Zonas, modos de casa, confort, presencia, changeover, pausa maestra |
-| Dynamic Energy | Beta | Margen ICP, tarifa, escasez, totales kWh/€, presupuesto anti-pico |
-| Bus SDHB | Beta | Arbitraje de intenciones en memoria |
-| Config flow (UI) | Funcional | Alta + opciones por categoría; reconfigurar y clonar |
-| FV / batería / VE | Experimental | Campos presentes pero gateados; sin validar por el autor |
+- **Beta (madura)** — bien cubierto por tests **y** en uso real diario.
+- **Beta** — completo y con tests, con rodaje real moderado.
+- **Experimental** — funciona pero con poca validación real, o con partes sin construir.
+
+| Módulo | Madurez | Comentario |
+|--------|---------|------------|
+| Dynamic Ventilation (DV) | 🟢 Beta (madura) | Probado en real con tus relés; velocidad por IAQ + failsafe consolidados |
+| Dynamic Shutter (DS) | 🟢 Beta (madura) | Probado en real; endurecido en seguridad tras incidencias reales (dale rodaje) |
+| Dynamic Weather (DW) | 🟢 Beta (estable) | Espejo de proveedores + alertas; poca complejidad, poco riesgo |
+| Dynamic Climate (DC) | 🟡 Beta / Experimental | Núcleo (base+biases, condensación, changeover) funcional; caminos avanzados (multi-emisor, conducto compartido, anti-pico, anti-ciclado) solo en tests, poco rodaje real |
+| Dynamic Home (Zonas) | 🟡 Beta | Zonas, modos, presencia y changeover en uso; presets de confort menos ejercitados |
+| Dynamic Energy | 🟠 Experimental | El módulo más nuevo; núcleo (margen/tarifa/coste) testeado; FV/batería/VE diferidos y sin validar |
+| Bus SDHB | 🟢 Beta (estable) | Arbitraje de intenciones en memoria, desempate determinista |
+| Config flow (UI) | Funcional | Alta + opciones por categoría; reconfigurar y clonar; "Común" de persianas auto-creada |
+| FV / batería / VE | 🟠 Experimental | Campos presentes pero gateados; sin validar por el autor |
 | Dashboards de ejemplo | Pendiente | Aún no empaquetados |
 | Capturas | Pendiente | Por añadir |
 

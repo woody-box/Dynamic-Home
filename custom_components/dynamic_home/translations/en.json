@@ -1433,6 +1433,9 @@
     "button": {
       "resume_auto": {
         "name": "Resume automatic"
+      },
+      "global_resume_auto": {
+        "name": "Resume automatic (all)"
       }
     },
     "switch": {
@@ -1519,6 +1522,30 @@
       },
       "anticycle_autosize": {
         "name": "Adaptive anti-cycle"
+      },
+      "global_observe": {
+        "name": "Observe only (all)"
+      },
+      "global_weather_protect": {
+        "name": "Weather protection (all)"
+      },
+      "global_heat_shield": {
+        "name": "Thermal shield (all)"
+      },
+      "global_sun_shield": {
+        "name": "Direct-sun shield (all)"
+      },
+      "global_night_iso": {
+        "name": "Night insulation (all)"
+      },
+      "global_dawn": {
+        "name": "Gradual sunrise (all)"
+      },
+      "global_geo_shade": {
+        "name": "Geometric shading (all)"
+      },
+      "global_peak": {
+        "name": "Peak limiting (all)"
       }
     },
     "number": {
@@ -1895,6 +1922,9 @@
       },
       "adapt_abort_count": {
         "name": "Aborted cycles"
+      },
+      "ds_global_note": {
+        "name": "Note · global switches"
       }
     },
     "binary_sensor": {

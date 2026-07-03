@@ -12,8 +12,10 @@ from .coordinator_dc import DcCoordinator
 from .coordinator_ds import DsCoordinator
 from .coordinator_dv import DvCoordinator
 from .coordinator_energy import EnergyCoordinator
+from .coordinator_shutter_common import ShutterCommonCoordinator
 from .coordinator_weather import WxCoordinator
 from .coordinator_zones import ZonesCoordinator
 
 __all__ = ["DcCoordinator", "DsCoordinator", "DvCoordinator", "EnergyCoordinator",
-           "WxCoordinator", "ZonesCoordinator", "SdhbHub"]
+           "ShutterCommonCoordinator", "WxCoordinator", "ZonesCoordinator",
+           "SdhbHub"]

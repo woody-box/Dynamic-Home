@@ -22,6 +22,7 @@ from .coordinator import (
     DvCoordinator,
     EnergyCoordinator,
     SdhbHub,
+    ShutterCommonCoordinator,
     WxCoordinator,
     ZonesCoordinator,
 )
@@ -42,7 +43,29 @@ def _platforms(entry: ConfigEntry) -> list[str]:
         return const.PLATFORMS_ZONES
     if module == const.MODULE_ENERGY:
         return const.PLATFORMS_ENERGY
+    if module == const.MODULE_SHUTTER_COMMON:
+        return const.PLATFORMS_SHUTTER_COMMON
     return const.PLATFORMS_VMC
+
+
+async def _ensure_common_entry(hass: HomeAssistant) -> None:
+    """Auto-create the "Dynamic Shutter · Común" singleton (once), if missing.
+
+    Called when a shutter is set up. Guarded by a flag (several shutters set up
+    at once) and by the flow's unique-id singleton, so only one entry is created.
+    On restart the entry already exists and this is a no-op.
+    """
+    if any(e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER_COMMON
+           for e in hass.config_entries.async_entries(const.DOMAIN)):
+        return
+    if hass.data[const.DOMAIN].get("_common_creating"):
+        return
+    hass.data[const.DOMAIN]["_common_creating"] = True
+    try:
+        await hass.config_entries.flow.async_init(
+            const.DOMAIN, context={"source": "shutter_common"})
+    finally:
+        hass.data[const.DOMAIN].pop("_common_creating", None)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -79,6 +102,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     elif module == const.MODULE_ENERGY:
         coordinator = EnergyCoordinator(hass, entry)  # F34 house energy context
         coordinator.async_setup_listeners()
+    elif module == const.MODULE_SHUTTER_COMMON:
+        coordinator = ShutterCommonCoordinator(hass, entry)  # shared screen + globals
     else:
         coordinator = DvCoordinator(hass, entry, hub)
         coordinator.async_setup_listeners()
@@ -92,7 +117,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, _platforms(entry))
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     _async_register_services(hass)
+    # First shutter -> make sure the shared "Dynamic Shutter · Común" entry exists.
+    # Background task tied to the entry so it's cancelled on unload (no lingering).
+    if module == const.MODULE_SHUTTER:
+        entry.async_create_background_task(
+            hass, _ensure_common_entry(hass), "dynamic_home ensure common")
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """A config entry was deleted (not just unloaded). If the LAST shutter is
+    gone, remove the auto-created "Común" singleton too — it has no reason to
+    linger without any shutter. Only fires on real removal, never on restart.
+    """
+    if entry.data.get(const.CONF_MODULE) != const.MODULE_SHUTTER:
+        return
+    shutters = [e for e in hass.config_entries.async_entries(const.DOMAIN)
+                if e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER
+                and e.entry_id != entry.entry_id]
+    if shutters:
+        return
+    for e in hass.config_entries.async_entries(const.DOMAIN):
+        if e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER_COMMON:
+            hass.async_create_task(hass.config_entries.async_remove(e.entry_id))
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -123,16 +170,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             ph = hass.data[const.DOMAIN].get("_peak_ds")
             if ph is not None:
                 ph.clear(entry.entry_id)
-            # This entry's adder is gone with its platform.
-            adders = hass.data[const.DOMAIN].get("_ds_summary_adders") or {}
-            adders.pop(entry.entry_id, None)
-            # If this entry owned the house-wide shared sensors (counts + sun),
-            # release the marker; the next tick of any surviving DS coordinator
-            # adopts them (see DsCoordinator._async_update_data) — they used to
-            # simply vanish until a restart.
-            if (hass.data[const.DOMAIN].get(const.DATA_DS_SUMMARY_OWNER)
-                    == entry.entry_id):
-                hass.data[const.DOMAIN].pop(const.DATA_DS_SUMMARY_OWNER, None)
         # A VMC must not leave repair issues for a removed entry (F08 filter,
         # free-cooling advisory).
         if isinstance(coordinator, DvCoordinator):
@@ -156,7 +193,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not _entry_ids(hass):
             _async_unregister_services(hass)
             for key in ("_hub", "_anticycle", "_peak_dc", "_peak_ds",
-                        "_shared_emit", "_facades", "_ds_summary_adders"):
+                        "_shared_emit", "_facades"):
                 hass.data[const.DOMAIN].pop(key, None)
     return unloaded
 

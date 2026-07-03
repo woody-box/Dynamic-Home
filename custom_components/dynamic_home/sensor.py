@@ -30,6 +30,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_state_change_event
@@ -221,17 +222,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             ds_ents.append(DsClimateSetpointSensor(coordinator, entry))
             ds_ents.append(DsClimateTempSensor(coordinator, entry))
         ds_ents.extend(_mirror_sensors(entry, module))
-        # House-wide shutter counts: one shared set, owned by the first DS entry.
-        # Every DS entry leaves its adder registered so, when the owning entry
-        # unloads, another live one can ADOPT the shared sensors without a reload
-        # (see adopt_shared_shutter_sensors).
-        data = hass.data.setdefault(const.DOMAIN, {})
-        data.setdefault("_ds_summary_adders", {})[entry.entry_id] = (
-            async_add_entities, coordinator, entry)
-        data.setdefault(const.DATA_DS_SUMMARY_OWNER, entry.entry_id)
-        if data[const.DATA_DS_SUMMARY_OWNER] == entry.entry_id:
-            ds_ents += _shared_shutter_sensors(coordinator, entry)
         async_add_entities(ds_ents)
+        return
+    if module == const.MODULE_SHUTTER_COMMON:
+        # The shared house-wide shutter screen: counts + sun + a usage note,
+        # on their own "Dynamic Shutter · Común" device (not nested under a
+        # single shutter). Owned by this auto-created singleton.
+        async_add_entities(_shared_shutter_sensors(coordinator, entry))
         return
     entities: list[SensorEntity] = [HoursSensor(coordinator, entry, d)
                                     for d in _HOURS]
@@ -889,7 +886,7 @@ class DsCoverCountSensor(CoordinatorEntity, SensorEntity):
         self._attr_unique_id = f"{const.DOMAIN}_{key}"      # global (single set)
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)},
-            name="Dynamic Home · Persianas")
+            name="Dynamic Shutter · Común")
         self._unsub_covers = None
 
     def _ds_coordinators(self):
@@ -923,10 +920,18 @@ class DsCoverCountSensor(CoordinatorEntity, SensorEntity):
         self._track_covers()
         self.async_on_remove(
             lambda: self._unsub_covers() if self._unsub_covers else None)
+        # A DS coordinator ticked (a shutter may have appeared/gone) -> re-arm
+        # tracking and refresh. The "Común" entry keeps no idle timer of its own.
+        self.async_on_remove(async_dispatcher_connect(
+            self.hass, const.SIGNAL_DS_COVERS, self._covers_changed))
+
+    @callback
+    def _covers_changed(self) -> None:
+        self._track_covers()
+        self.async_write_ha_state()
 
     @callback
     def _handle_coordinator_update(self) -> None:
-        # The owner ticked: siblings may have appeared/gone -> re-arm tracking.
         self._track_covers()
         super()._handle_coordinator_update()
 
@@ -955,7 +960,7 @@ class _SharedSunSensor(SensorEntity):
         self._attr_unique_id = f"{const.DOMAIN}_{key}"
         self._attr_device_info = DeviceInfo(
             identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)},
-            name="Dynamic Home · Persianas")
+            name="Dynamic Shutter · Común")
 
     def _sun(self):
         return self.hass.states.get("sun.sun")
@@ -2124,29 +2129,46 @@ class DcSensor(CoordinatorEntity[DcCoordinator], SensorEntity):
 
 
 def _shared_shutter_sensors(coordinator, entry: ConfigEntry) -> list[SensorEntity]:
-    """The house-wide shared set (counts + sun) bound to the owning DS entry."""
+    """The house-wide shared set (counts + sun + note) on the "Común" device."""
     ents: list[SensorEntity] = [
         DsCoverCountSensor(coordinator, entry, key, icon, pred)
         for key, icon, pred in _DS_COVER_COUNTS]
     ents += [cls() for cls in _DS_SHARED_SUN]
+    ents.append(DsGlobalNoteSensor(coordinator, entry))
     return ents
 
 
-def adopt_shared_shutter_sensors(hass: HomeAssistant,
-                                 prefer: str | None = None) -> bool:
-    """Re-home the shared "Dynamic Home · Persianas" sensors on a live DS entry.
+class DsGlobalNoteSensor(CoordinatorEntity, SensorEntity):
+    """A read-only note on the common screen explaining the global switches.
 
-    When the owning entry unloads, its platform tears the shared sensors down and
-    no other entry re-runs its own sensor setup — without this the house counts
-    and sun sensors simply vanished until a restart. Uses the adder each DS entry
-    registered at setup; returns True when someone adopted.
+    The global toggles are blunt masters: OFF turns the function off on ALL
+    shutters, ON turns it on on ALL. They do NOT remember each shutter's previous
+    state — so turning a global OFF then ON re-enables it everywhere, losing any
+    per-shutter mix. This sensor states that where the user configures them.
     """
-    data = hass.data.get(const.DOMAIN, {})
-    adders = data.get("_ds_summary_adders") or {}
-    order = ([prefer] if prefer in adders else []) + list(adders)
-    for eid in order:
-        adder, coordinator, entry = adders[eid]
-        data[const.DATA_DS_SUMMARY_OWNER] = eid
-        adder(_shared_shutter_sensors(coordinator, entry))
-        return True
-    return False
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "ds_global_note"
+    _attr_icon = "mdi:information-outline"
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    def __init__(self, coordinator, entry: ConfigEntry) -> None:
+        super().__init__(coordinator)
+        self._attr_unique_id = f"{const.DOMAIN}_ds_global_note"
+        self._attr_device_info = DeviceInfo(
+            identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)},
+            name="Dynamic Shutter · Común")
+
+    @property
+    def native_value(self) -> str:
+        return "Los interruptores globales activan/desactivan TODAS las persianas"
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {"aviso": (
+            "Cada interruptor global es un mando a lo bruto: al apagarlo se apaga "
+            "esa función en TODAS las persianas y al encenderlo se enciende en "
+            "TODAS. No recuerda el estado individual de cada persiana. Ejemplo: si "
+            "el Escudo térmico está ON en 4 persianas y OFF en otras 4, y apagas y "
+            "vuelves a encender el interruptor global, queda ON en las 8. Para una "
+            "mezcla concreta, ajústalas una a una en cada persiana.")}
