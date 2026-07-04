@@ -1383,6 +1383,55 @@ async def test_common_entry_autocreated_and_removed_with_last_shutter(
                 if e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER_COMMON]
 
 
+async def test_common_device_rehomed_off_shutter_on_upgrade(
+        hass: HomeAssistant) -> None:
+    # v0.98.1: after upgrading, the shared shutter device (counts + sun) keeps a
+    # stale link to the first shutter in its config_entries, so it stays nested
+    # under that shutter instead of standing alone. The shared entities already
+    # belong to the Común entry (v0.98.0); only the device link is stale. A
+    # reload of the Común entry must strip it without churning any entity.
+    from homeassistant.helpers import device_registry as dr
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    ea = MockConfigEntry(domain=const.DOMAIN, data={**SHUTTER}, title="A")
+    ea.add_to_hass(hass)
+    # Pre-create the Común as a normal (reloadable) entry so the shutter's
+    # auto-create step finds it and we exercise the real setup path on reload.
+    common = MockConfigEntry(
+        domain=const.DOMAIN, title="Dynamic Shutter · Común",
+        unique_id="shutter_common_singleton",
+        data={const.CONF_NAME: "Común",
+              const.CONF_MODULE: const.MODULE_SHUTTER_COMMON})
+    common.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(ea.entry_id)
+    await hass.async_block_till_done()
+    if common.state is not ConfigEntryState.LOADED:
+        assert await hass.config_entries.async_setup(common.entry_id)
+        await hass.async_block_till_done()
+    dev_reg = dr.async_get(hass)
+    reg = er.async_get(hass)
+    device = dev_reg.async_get_device(
+        identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)})
+    eid = reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{const.DOMAIN}_covers_open")
+
+    # Simulate the leftover pre-0.98 link: the shutter still pinned to the device.
+    dev_reg.async_update_device(device.id, add_config_entry_id=ea.entry_id)
+    assert ea.entry_id in dev_reg.async_get(device.id).config_entries
+
+    # Reload the Común entry -> its setup strips the stale shutter link.
+    assert await hass.config_entries.async_reload(common.entry_id)
+    await hass.async_block_till_done()
+
+    device = dev_reg.async_get_device(
+        identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)})
+    assert device.config_entries == {common.entry_id}   # only the Común owns it
+    # The shared entity was untouched: same entity_id, still on the Común entry.
+    assert reg.async_get_entity_id(
+        "sensor", const.DOMAIN, f"{const.DOMAIN}_covers_open") == eid
+    assert reg.async_get(eid).config_entry_id == common.entry_id
+
+
 # --- v0.98.0: the "Común" screen + global switches ---
 async def test_global_switch_fans_out_to_all_shutters(hass: HomeAssistant) -> None:
     from homeassistant.helpers import entity_registry as er
