@@ -11,6 +11,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import service as service_helper
 
 from . import const
@@ -68,6 +69,28 @@ async def _ensure_common_entry(hass: HomeAssistant) -> None:
         hass.data[const.DOMAIN].pop("_common_creating", None)
 
 
+def _reassign_common_device(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Re-home the shared "Dynamic Shutter · Común" device onto its own entry.
+
+    The shared shutter device (SHUTTERS_DEVICE_ID: counts + sun + note) predates
+    v0.98.0, when it lived nested under the first shutter entry. v0.98.0 moved
+    its entities to the auto-created Común singleton, but Home Assistant only ever
+    *adds* config entries to a device — it never prunes the stale one — so the
+    device keeps the old shutter in its ``config_entries`` and stays displayed
+    *inside* that shutter instead of standing alone as its own hub. Drop every
+    entry that isn't ours; the Común entities are already attached, so the device
+    always keeps this entry and never collapses. Entity links are untouched.
+    Idempotent: a no-op on fresh installs and once already re-homed.
+    """
+    dev_reg = dr.async_get(hass)
+    device = dev_reg.async_get_device(
+        identifiers={(const.DOMAIN, const.SHUTTERS_DEVICE_ID)})
+    if device is None:
+        return
+    for cfg_id in device.config_entries - {entry.entry_id}:
+        dev_reg.async_update_device(device.id, remove_config_entry_id=cfg_id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Dynamic Home from a config entry."""
     hub: SdhbHub = hass.data.setdefault(const.DOMAIN, {}).setdefault(
@@ -115,6 +138,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[const.DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, _platforms(entry))
+    # The shared shutter device predates its own entry; on upgrade strip the stale
+    # shutter link so it shows as its own "Común" hub, not nested (v0.98.1).
+    if module == const.MODULE_SHUTTER_COMMON:
+        _reassign_common_device(hass, entry)
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
     _async_register_services(hass)
     # First shutter -> make sure the shared "Dynamic Shutter · Común" entry exists.

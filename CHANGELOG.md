@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.98.1] — 2026-07-04
+
+### Fixed
+- **DS · la sección "Dynamic Shutter · Común" seguía anidada dentro de la primera
+  persiana** tras actualizar desde una versión anterior a la v0.98.0. El
+  dispositivo compartido (recuentos + sol) existe desde la v0.90.0, cuando vivía
+  colgado de la primera persiana; la v0.98.0 movió sus entidades a la entrada
+  "Común" auto-creada, pero Home Assistant solo **añade** entradas de
+  configuración a un dispositivo (nunca poda la vieja), así que el dispositivo
+  seguía mostrándose **dentro** de esa persiana en vez de como su propio hub. Al
+  arrancar, la entrada Común ahora **retira el enlace obsoleto** de la persiana y
+  se queda como única dueña del dispositivo. Las entidades no se tocan: conservan
+  su `entity_id`. Las instalaciones nuevas no se ven afectadas (el dispositivo
+  nace ya bajo la Común).
+
 ## [0.98.0] — 2026-07-03
 
 ### Added
