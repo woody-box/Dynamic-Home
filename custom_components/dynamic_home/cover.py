@@ -52,6 +52,8 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._last_pos: int | None = None  # last position pushed to the hardware
+        self._driving = False           # a DH command is travelling right now
+        self._external_moving = False   # someone ELSE is moving the cover now
         self._attr_unique_id = f"{entry.entry_id}_cover"
         # Keep the clean object_id (cover.<window>) even though the name carries
         # the "· DS" suffix — so the entity_id stays stable and the suffix is
@@ -78,6 +80,22 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     @callback
     def _on_real_cover_change(self, event) -> None:
         self.async_write_ha_state()
+        new = event.data.get("new_state")
+        state = new.state if new else None
+        if state in ("opening", "closing"):
+            # Travelling. If DH has no command in flight, someone else started
+            # this move (wall button / other automation): hold the auto logic
+            # off until it settles — the override only arms on the settled
+            # position, and a tick in that window used to issue a counter-order
+            # that reversed the user's move mid-travel.
+            if not self._driving and self.coordinator.track_external:
+                self._external_moving = True
+            return
+        if state in (None, "unavailable", "unknown"):
+            return                          # no usable state yet
+        # Settled (open/closed): the travel is over, whoever started it.
+        self._driving = False
+        self._external_moving = False
         if self.coordinator.track_external:
             self._detect_external_move(event)
 
@@ -91,11 +109,9 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         settled position against the last one DH commanded (``_last_pos``): a
         mismatch means someone else moved it, so we pause the comfort logic with a
         timed override (it expires on its own, like the integration button).
+        Only called on settled states (the caller filters mid-travel ones).
         """
         new = event.data.get("new_state")
-        if new is None or new.state in (
-                "opening", "closing", "unavailable", "unknown"):
-            return                          # mid-travel or no usable state yet
         pos = new.attributes.get("current_position")
         if pos is not None:
             real = int(pos)
@@ -175,6 +191,12 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         target = self._entry.data.get(const.CONF_COVER)
         # Observe (dry-run) or paused: track the target but never move the cover.
         if target and not self.coordinator.observe_effective:
+            # Expect travel only when the command should actually move the cover,
+            # so our own opening/closing is told apart from an external (manual)
+            # move; cleared when the cover settles.
+            real = self._real_position()
+            if real is None or abs(real - position) > _EXTERNAL_TOL_PCT:
+                self._driving = True
             await self.hass.services.async_call(
                 "cover", "set_cover_position",
                 {"entity_id": target, ATTR_POSITION: position}, blocking=True)
@@ -183,7 +205,11 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     def _handle_coordinator_update(self) -> None:
         data = self.coordinator.data
         # Only command the hardware when the target actually changed, so we
-        # don't re-issue (and interrupt) the cover every cycle.
-        if data is not None and data.pos != self._last_pos:
+        # don't re-issue (and interrupt) the cover every cycle. And never while
+        # an external (manual) move is travelling: the settled position arms the
+        # manual hold, which then refreshes us — fighting it mid-travel reversed
+        # a wall-button press before the override could arm.
+        if (data is not None and data.pos != self._last_pos
+                and not self._external_moving):
             self.hass.async_create_task(self._drive(data.pos))
         super()._handle_coordinator_update()

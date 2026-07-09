@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.99.3] — 2026-07-09
+
+### Fixed
+- **DS · un tick del automático invertía el botón de pared a mitad de recorrido.**
+  Al pulsar el botón físico, la persiana viaja (`opening`/`closing`) y el override
+  manual solo se arma con la **posición asentada** al final del recorrido. Si en
+  ese hueco llegaba una decisión del automático (tick del coordinador, intent del
+  bus), comandaba su propio objetivo y **revertía** la orden del usuario (subes
+  con el botón y la persiana baja). Ahora, cuando la persiana física empieza a
+  moverse **sin que DH lo haya ordenado**, el automático **se retiene** hasta que
+  el movimiento asienta; entonces el mecanismo de siempre arma el override manual
+  con la posición final. Los movimientos ordenados por el propio DH no se ven
+  afectados (una decisión nueva a mitad de su propio recorrido sigue mandando), y
+  con "Seguir movimientos manuales" desactivado el comportamiento no cambia.
+
 ## [0.99.2] — 2026-07-09
 
 ### Changed
