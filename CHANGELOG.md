@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.99.2] — 2026-07-09
+
+### Changed
+- **Nombre legible en las entidades principales (VMC, persiana, clima).** El
+  ventilador, la persiana y el clima gestionados mostraban un sufijo críptico
+  (`- DH-DV` / `- DH-DS` / `- DH-DC`) que, dentro de la página del dispositivo,
+  aparecía solo como `- DH-DV`. Ahora el sufijo es la **sigla corta del módulo**
+  con punto medio: `<dispositivo> · DV` / `· DS` / `· DC` (p. ej. "Siber Optima ·
+  DV", "Salón · DC"). Sigue distinguiendo la entidad gestionada del aparato físico
+  que controla, pero de forma legible. **No cambia el `entity_id`** (`fan.vmc`,
+  `cover.salon`, `climate.salon`… se mantienen). Los sensores espejo conservan su
+  etiqueta `DH-DV … (espejo)`.
+
 ## [0.99.1] — 2026-07-09
 
 ### Added

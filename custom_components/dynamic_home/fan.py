@@ -194,10 +194,10 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
     """Represents the VMC."""
 
     _attr_has_entity_name = True
-    # Suffix the Dynamic Home tag so this managed VMC is told apart from the
-    # physical relays/fan it drives (e.g. "VMC - DH-DV"). The device name still
-    # leads, so renaming the device propagates as usual.
-    _attr_name = f"- {const.MODULE_TAG[const.MODULE_VMC]}"
+    # The device name leads (has_entity_name); append the short module code so this
+    # managed VMC reads as "<device> · DV" and is told apart from the physical
+    # relays/fan it drives, without the cryptic "- DH-DV".
+    _attr_name = f"· {const.MODULE_TAG[const.MODULE_VMC].removeprefix('DH-')}"
     _attr_speed_count = const.SPEED_COUNT
     _attr_preset_modes = const.PRESET_MODES
     _attr_supported_features = _SUPPORTED_FEATURES
@@ -206,7 +206,7 @@ class DvFan(CoordinatorEntity[DvCoordinator], FanEntity, RestoreEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_fan"
-        # Stable object_id (fan.<vmc>) despite the "- DH-DV" display suffix;
+        # Stable object_id (fan.<vmc>) despite the "· DV" display suffix;
         # existing entities keep their registered id.
         self.entity_id = f"fan.{slugify(entry.title)}"
         self._preset = const.PRESET_AUTO

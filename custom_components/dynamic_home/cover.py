@@ -38,10 +38,10 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
     """Managed shutter driven by the DS cascade."""
 
     _attr_has_entity_name = True
-    # Suffix the Dynamic Home tag so this managed cover is told apart from the
-    # physical cover it drives (e.g. "Persiana Salón Centro - DH-DS"). The device
-    # name still leads, so renaming the device propagates as usual.
-    _attr_name = f"- {const.MODULE_TAG[const.MODULE_SHUTTER]}"
+    # The device name leads (has_entity_name); append the short module code so this
+    # managed cover reads as "<device> · DS" and is told apart from the physical
+    # cover it drives, without the cryptic "- DH-DS".
+    _attr_name = f"· {const.MODULE_TAG[const.MODULE_SHUTTER].removeprefix('DH-')}"
     _attr_supported_features = (
         CoverEntityFeature.OPEN
         | CoverEntityFeature.CLOSE
@@ -54,7 +54,7 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         self._last_pos: int | None = None  # last position pushed to the hardware
         self._attr_unique_id = f"{entry.entry_id}_cover"
         # Keep the clean object_id (cover.<window>) even though the name carries
-        # the "- DH-DS" suffix — so the entity_id stays stable and the suffix is
+        # the "· DS" suffix — so the entity_id stays stable and the suffix is
         # display-only. Existing entities keep their registered id regardless.
         self.entity_id = f"cover.{slugify(entry.title)}"
         self._attr_device_info = DeviceInfo(
