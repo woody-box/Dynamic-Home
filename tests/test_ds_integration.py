@@ -487,11 +487,11 @@ async def test_setup_creates_cover(hass: HomeAssistant) -> None:
     _seed(hass)
     entry = await _setup(hass)
     assert entry.state is ConfigEntryState.LOADED
-    # Clean object_id is preserved; the Dynamic Home tag is a display-only suffix
+    # Clean object_id is preserved; the short module code is a display-only suffix
     # so the managed cover is told apart from the physical one in dashboards.
     cover = hass.states.get("cover.salon")
     assert cover is not None
-    assert cover.attributes["friendly_name"] == "Salon - DH-DS"
+    assert cover.attributes["friendly_name"] == "Salon · DS"
 
 
 async def test_bus_solar_shield_clamps_cover(hass: HomeAssistant) -> None:

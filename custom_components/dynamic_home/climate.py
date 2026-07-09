@@ -50,10 +50,10 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
     """The managed climate zone."""
 
     _attr_has_entity_name = True
-    # Suffix the Dynamic Home tag so this managed climate is told apart from the
-    # physical thermostat it drives (e.g. "Zona Salón - DH-DC"). The device name
-    # still leads, so renaming the device propagates as usual.
-    _attr_name = f"- {const.MODULE_TAG[const.MODULE_CLIMATE]}"
+    # The device name leads (has_entity_name); append the short module code so this
+    # managed climate reads as "<device> · DC" and is told apart from the physical
+    # thermostat it drives, without the cryptic "- DH-DC".
+    _attr_name = f"· {const.MODULE_TAG[const.MODULE_CLIMATE].removeprefix('DH-')}"
     _attr_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_target_temperature_step = 0.5
     _attr_supported_features = ClimateEntityFeature.TARGET_TEMPERATURE
@@ -67,7 +67,7 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         super().__init__(coordinator)
         self._entry = entry
         self._attr_unique_id = f"{entry.entry_id}_climate"
-        # Stable object_id (climate.<zone>) despite the "- DH-DC" display suffix;
+        # Stable object_id (climate.<zone>) despite the "· DC" display suffix;
         # existing entities keep their registered id.
         self.entity_id = f"climate.{slugify(entry.title)}"
         self._applied: tuple | None = None  # last (mode, target) — legacy single device
