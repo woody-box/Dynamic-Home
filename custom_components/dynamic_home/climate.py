@@ -34,6 +34,11 @@ _HVAC_MODES = [HVACMode.OFF, HVACMode.HEAT, HVACMode.COOL]
 # decides heat vs cool); honest UI instead of showing "heat" while actually cooling.
 _HVAC_MODES_COMMUNITY = _HVAC_MODES + [HVACMode.HEAT_COOL]
 
+# Fallback range ends (Home Assistant's climate defaults) for the idle-in-mode
+# setpoint when the driven thermostat exposes no min_temp / max_temp.
+_IDLE_MIN_TEMP = 7.0
+_IDLE_MAX_TEMP = 35.0
+
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
@@ -187,14 +192,19 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         if not real:
             return
         data = self.coordinator.data
-        # F09/F03: while the anti-cycling guard (compressor) or the peak-staging
-        # guard (house electrical budget) holds this zone off, command the
-        # thermostat OFF instead of heat/cool.
-        if (getattr(self.coordinator, "anticycle_hold", False)
-                or getattr(self.coordinator, "peak_hold", False)):
+        # F09/F03: a protective hold (compressor anti-cycling / house peak budget)
+        # idles the thermostat IN mode — keep heat/cool but push the setpoint out
+        # of reach — so a DS thermal-shield reference survives and the unit
+        # re-engages on its own when the hold clears. Only a genuine off
+        # (user/safety) drops the mode to OFF.
+        held = (getattr(self.coordinator, "anticycle_hold", False)
+                or getattr(self.coordinator, "peak_hold", False))
+        mode = self.coordinator.hvac_mode
+        if held and mode in ("heat", "cool"):
+            target = self._idle_target(real, HVACMode(mode))
+        elif held:
             mode, target = HVACMode.OFF, None
         else:
-            mode = self.coordinator.hvac_mode
             target = data.target if data else None
         prev_mode, prev_target = self._applied or (None, None)
         # Anti-jitter: when only the target moved and the change is below
@@ -228,6 +238,9 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
             em = ems.get(eid, cmd)
             mode = HVACMode(cmd["mode"]) if cmd["mode"] in (
                 "heat", "cool", "off") else HVACMode.OFF
+            # A protective hold keeps the direction (mode) but idles the emitter;
+            # a genuine off drops the mode. target is None while idle/off.
+            idle = cmd.get("idle", False)
             target = cmd["target"]
             prev = self._applied_per.get(eid)
             if prev is not None:
@@ -240,19 +253,36 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
                 continue
             self._applied_per[eid] = (mode, target)
             if em.get("climate"):
+                # Idle-in-mode: keep heat/cool, push the setpoint out of reach.
+                eff_target = (self._idle_target(em["climate"], mode)
+                              if idle else target)
                 await self.hass.services.async_call(
                     "climate", "set_hvac_mode",
                     {"entity_id": em["climate"], ATTR_HVAC_MODE: mode}, blocking=True)
-                if mode != HVACMode.OFF and target is not None:
+                if mode != HVACMode.OFF and eff_target is not None:
                     await self.hass.services.async_call(
                         "climate", "set_temperature",
-                        {"entity_id": em["climate"], ATTR_TEMPERATURE: target},
+                        {"entity_id": em["climate"], ATTR_TEMPERATURE: eff_target},
                         blocking=True)
             if em.get("switch"):
-                service = "turn_off" if mode == HVACMode.OFF else "turn_on"
+                # A bare switch has no mode to preserve: idle == off for it.
+                on = mode != HVACMode.OFF and not idle
+                service = "turn_on" if on else "turn_off"
                 await self.hass.services.async_call(
                     "homeassistant", service,
                     {"entity_id": em["switch"]}, blocking=True)
+
+    def _idle_target(self, entity_id: str, mode: HVACMode) -> float:
+        """A setpoint that idles the emitter WITHOUT leaving its heat/cool mode:
+        the far end of its range, so the driven thermostat sees no demand. Used by
+        protective holds so the direction (and a DS shield's reference) survives
+        and the unit re-engages on its own when the hold clears."""
+        st = self.hass.states.get(entity_id)
+        lo = st.attributes.get("min_temp") if st else None
+        hi = st.attributes.get("max_temp") if st else None
+        lo = _IDLE_MIN_TEMP if lo is None else float(lo)
+        hi = _IDLE_MAX_TEMP if hi is None else float(hi)
+        return hi if mode == HVACMode.COOL else lo
 
     @callback
     def _handle_coordinator_update(self) -> None:

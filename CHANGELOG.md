@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.99.0] — 2026-07-09
+
+### Changed
+- **DC · los "holds" ya no apagan el termostato: reposo en modo.** Cuando una
+  protección detiene la zona —anti-ciclado del compresor (F09) o límite de pico
+  eléctrico (F03)— DC dejaba el termostato en **OFF**. Eso borraba la referencia
+  de modo (calor/frío) que leen las persianas para el escudo térmico (se abrían),
+  y en aerotermia individual era un apagado brusco que no siempre re-enganchaba
+  limpio. Ahora el hold hace **reposo en modo**: mantiene `calor`/`frío` y empuja
+  la consigna fuera de rango (frío→máx, calor→mín del termostato) para que no haya
+  demanda. Así el compresor descansa igual (protección intacta), **el termostato
+  no se apaga**, la persiana conserva la referencia y la zona **vuelve a arrancar
+  sola** al soltarse el hold. Un apagado real (usuario, condensación, ventana,
+  changeover en reposo) sí sigue poniendo el termostato en OFF. Aplica también a
+  los emisores tipo `climate` en zonas multi-emisor (F25); los emisores de tipo
+  interruptor siguen apagándose (no tienen modo que conservar).
+
 ## [0.98.1] — 2026-07-04
 
 ### Fixed
