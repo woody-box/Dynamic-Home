@@ -59,7 +59,7 @@ ramas parecidas:
 
 | `reason` | Significado |
 |----------|-------------|
-| `manual_hold` | **Override manual** (mano / botón externo / automatización). Manda sobre **todo**, incluido el bloqueo (v0.94.2). Sobrevive a reinicios. |
+| `manual_hold` | **Override manual** (mano / botón externo / automatización). Manda sobre **todo**, incluido el bloqueo (v0.94.2). Sobrevive a reinicios. El override se arma con la **posición asentada**; mientras un movimiento externo está **en curso** (`opening`/`closing` que DH no inició), el automático **no comanda** la persiana (v0.99.3) — así un tick a mitad de recorrido no invierte la orden del botón de pared. |
 | `ov_lock` / `ov_hold` / `ov_ttl` | Bloqueo / override de posición (fijo / temporal / con TTL). La integración solo arma `ov_lock`; `ov_hold`/`ov_ttl` son de motor (paridad YAML). |
 | `meteo_alert` | Protección anticipatoria por alerta (viento/granizo/tormenta) (F17). |
 | `meteo_rain` | Cerrada por lluvia. |

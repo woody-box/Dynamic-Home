@@ -92,6 +92,74 @@ async def test_external_cover_move_arms_override(hass: HomeAssistant) -> None:
     assert co.manual_pos is None                 # not re-armed when tracking is off
 
 
+async def test_external_move_in_progress_is_not_reversed(
+        hass: HomeAssistant) -> None:
+    """A wall-button move mid-travel must not be fought by the auto logic.
+
+    While the cover is travelling on an external command (opening/closing that
+    DH did not issue), the manual override is not armed yet — it only arms on
+    the settled position. A coordinator tick in that window used to command its
+    own target, reversing the user's move. The auto path must hold off until
+    the cover settles (which then arms the override, as before).
+    """
+    from custom_components.dynamic_home.ds_engine import DsDecision
+    _seed(hass, position=50)
+    entry = await _setup(hass)
+    # Mock AFTER setup: forwarding the cover platform loads the cover component,
+    # which would otherwise re-register the real service over the mock.
+    calls = async_mock_service(hass, "cover", "set_cover_position")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    # Pin DH's last command to the current position (no travel expected).
+    co.async_set_updated_data(DsDecision(pos=50, reason="default"))
+    await hass.async_block_till_done()
+    n0 = len(calls)
+
+    # Wall button: the physical cover starts travelling up (not DH's doing).
+    hass.states.async_set("cover.salon_real", "opening",
+                          {"current_position": 60, "supported_features": 15})
+    await hass.async_block_till_done()
+
+    # Mid-travel the auto logic wants a different position -> no counter-order.
+    co.async_set_updated_data(DsDecision(pos=0, reason="night_insulate"))
+    await hass.async_block_till_done()
+    assert len(calls) == n0                      # held off, user's move respected
+
+    # The cover settles where the user sent it -> manual override, as before.
+    hass.states.async_set("cover.salon_real", "open",
+                          {"current_position": 100, "supported_features": 15})
+    await hass.async_block_till_done()
+    assert co.manual_pos == 100
+
+
+async def test_own_drive_travel_does_not_gate_auto(hass: HomeAssistant) -> None:
+    """DH's own command travelling (opening/closing) must not trip the external
+    hold-off: a newer decision mid-travel still re-commands the cover."""
+    from custom_components.dynamic_home.ds_engine import DsDecision
+    _seed(hass, position=50)
+    entry = await _setup(hass)
+    # Mock AFTER setup (see test above).
+    calls = async_mock_service(hass, "cover", "set_cover_position")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    # DH itself commands 0 -> the cover starts closing (this IS our move).
+    co.async_set_updated_data(DsDecision(pos=0, reason="night_insulate"))
+    await hass.async_block_till_done()
+    n0 = len(calls)
+    assert n0 >= 1
+    hass.states.async_set("cover.salon_real", "closing",
+                          {"current_position": 30, "supported_features": 15})
+    await hass.async_block_till_done()
+
+    # A newer decision mid own-travel still drives (the gate is external-only).
+    co.async_set_updated_data(DsDecision(pos=100, reason="dawn_ramp"))
+    await hass.async_block_till_done()
+    assert len(calls) == n0 + 1
+    # And settling near DH's own target never arms a manual override.
+    hass.states.async_set("cover.salon_real", "open",
+                          {"current_position": 100, "supported_features": 15})
+    await hass.async_block_till_done()
+    assert co.manual_pos is None
+
+
 async def test_dw_probabilities_and_gust_drive_ds(hass: HomeAssistant) -> None:
     """Dynamic Weather gust -> wind cap; storm/rain probability -> alert."""
     _seed(hass)
