@@ -75,6 +75,13 @@
         }
       },
       "climate": {
+        "title": "Copy from another zone (optional)",
+        "description": "If you already have a similar climate zone configured, pick it to pre-fill the form (everything but the indoor sensor) and copy its settings. Leave empty to start from scratch.",
+        "data": {
+          "copy_from": "Copy configuration from"
+        }
+      },
+      "climate_form": {
         "title": "Dynamic Climate (Heating/Cooling)",
         "description": "Climate zone. Publishes solar-gain (heat) / solar-shield (cool) intents to the configured shutters.",
         "data": {

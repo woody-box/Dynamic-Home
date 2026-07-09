@@ -77,7 +77,8 @@ async def test_climate_config_flow(hass: HomeAssistant) -> None:
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"next_step_id": "climate"})
-    assert result["step_id"] == "climate"
+    # No zone exists yet -> skip the copy picker, straight to the entity form.
+    assert result["step_id"] == "climate_form"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -86,6 +87,38 @@ async def test_climate_config_flow(hass: HomeAssistant) -> None:
                     const.CONF_DC_TARGET: "ds"})
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][const.CONF_MODULE] == const.MODULE_CLIMATE
+
+
+async def test_climate_create_copies_from_template(hass: HomeAssistant) -> None:
+    """Adding a 2nd zone can copy a sibling: form pre-filled + options cloned."""
+    _seed(hass)
+    hass.states.async_set("sensor.cocina_temp", "26")
+    src = MockConfigEntry(
+        domain=const.DOMAIN, title="Salón",
+        data={**CLIMATE, const.CONF_DC_T_INT: "sensor.salon_temp"},
+        options={"base_heat_day": 21.5})
+    src.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        const.DOMAIN, context={"source": "user"})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "climate"})
+    # A sibling exists -> the copy picker shows first.
+    assert result["step_id"] == "climate"
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"copy_from": src.entry_id})
+    assert result["step_id"] == "climate_form"
+
+    # Only the indoor sensor (and name) differ; options come from the template.
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={const.CONF_NAME: "Cocina",
+                    const.CONF_DC_T_INT: "sensor.cocina_temp",
+                    const.CONF_DC_TARGET: "ds"})
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["data"][const.CONF_DC_T_INT] == "sensor.cocina_temp"
+    assert result["options"] == {"base_heat_day": 21.5}   # tunables cloned
+    await hass.async_block_till_done()
 
 
 async def test_setup_creates_climate(hass: HomeAssistant) -> None:
