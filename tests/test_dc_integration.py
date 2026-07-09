@@ -651,8 +651,12 @@ async def test_dc_schedule_editor_persists_and_copies(hass: HomeAssistant) -> No
 
 
 # --- F09: short-cycle protection (shared compressor aggregate) ---
-async def test_anticycle_holds_start_and_drives_thermostat_off(
+async def test_anticycle_hold_idles_in_mode_not_off(
         hass: HomeAssistant) -> None:
+    # v0.99.0: a protective hold must NOT turn the thermostat off — that loses the
+    # heat/cool reference a DS shield reads and, on aerotermia, it wouldn't
+    # re-engage cleanly. It idles IN mode: keeps heat/cool and pushes the setpoint
+    # out of reach (min_temp here, default 7) so there is no demand.
     from homeassistant.components.climate import ATTR_HVAC_MODE
     from homeassistant.util import dt as dt_util
 
@@ -663,8 +667,8 @@ async def test_anticycle_holds_start_and_drives_thermostat_off(
                        "Salon")
     # Mock AFTER setup: forwarding the climate platform loads the climate
     # component, which would otherwise re-register the real service over the mock.
-    calls = async_mock_service(hass, "climate", "set_hvac_mode")
-    async_mock_service(hass, "climate", "set_temperature")
+    mode_calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    temp_calls = async_mock_service(hass, "climate", "set_temperature")
     co = hass.data[const.DOMAIN][entry.entry_id]
     co.hvac_mode = "heat"
     co.anticycle_enabled = True
@@ -677,8 +681,28 @@ async def test_anticycle_holds_start_and_drives_thermostat_off(
 
     assert co.anticycle_hold is True
     assert co.anticycle_reason == "anticycle_min_off_hold"
-    # The climate entity drove the real thermostat OFF to protect the compressor.
-    assert any(c.data.get(ATTR_HVAC_MODE) == HVACMode.OFF for c in calls)
+    # Never OFF: the thermostat stays in HEAT so the reference survives...
+    assert not any(c.data.get(ATTR_HVAC_MODE) == HVACMode.OFF for c in mode_calls)
+    assert any(c.data.get(ATTR_HVAC_MODE) == HVACMode.HEAT for c in mode_calls)
+    # ...idled by pushing the setpoint to the low end (min_temp / default 7).
+    assert any(c.data.get(ATTR_TEMPERATURE) == 7 for c in temp_calls)
+
+
+async def test_user_off_still_drives_thermostat_off(hass: HomeAssistant) -> None:
+    # Only protective holds idle-in-mode; a genuine off (user turned the zone off)
+    # still commands the real thermostat OFF.
+    from homeassistant.components.climate import ATTR_HVAC_MODE
+    _seed(hass)
+    hass.states.async_set("climate.real", "heat")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_CLIMATE: "climate.real"},
+                       "Salon")
+    mode_calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "off"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert any(c.data.get(ATTR_HVAC_MODE) == HVACMode.OFF for c in mode_calls)
 
 
 async def test_anticycle_disabled_does_not_hold(hass: HomeAssistant) -> None:
@@ -917,7 +941,12 @@ async def test_f09_gates_only_heat_pump_emitter(hass: HomeAssistant) -> None:
     assert co.anticycle_hold is True
     # ...but it only holds the heat-pump emitter; the gas boiler keeps heating.
     assert co.emitter_commands["hp"]["on"] is False
+    # v0.99.0: the held heat-pump emitter idles IN its demanded direction (mode
+    # kept, idle flag set) instead of being commanded off.
+    assert co.emitter_commands["hp"]["idle"] is True
+    assert co.emitter_commands["hp"]["mode"] == "heat"
     assert co.emitter_commands["gas"]["on"] is True
+    assert co.emitter_commands["gas"]["idle"] is False
 
 
 async def test_peak_gated_off_for_non_electric(hass: HomeAssistant) -> None:

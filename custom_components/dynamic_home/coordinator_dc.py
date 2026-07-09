@@ -320,10 +320,10 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             return
         hvac = self._effective_hvac()       # F37: community zones follow the building
         primary = emitters_mod.primary_for(self._emitters, hvac)
-        # F03/F25: OFF/safety and the electrical-peak hold gate ALL emitters; the
-        # F09 compressor hold gates only heat-pump emitters (per-emitter, below).
-        base_off = (self.peak_hold
-                    or decision.action not in ("heat", "cool"))
+        # A genuine off (user/safety) drops the mode; a protective hold (F03 peak /
+        # F09 compressor anti-cycling) idles the emitter IN mode instead, so a
+        # climate emitter re-engages on its own and a DS shield keeps its reference.
+        genuine_off = decision.action not in ("heat", "cool")
         zone_compressor = bool(self.install_profile
                                and self.install_profile.get("compressor"))
         cmds: dict[str, dict] = {}
@@ -335,23 +335,25 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             # F09 full: hold by this emitter's own compressor channel.
             anti_off = self._channel_holds.get(em["compressor_id"],
                                                 self.anticycle_hold)
-            held = base_off or (anti_off and em_compressor)
+            prot_hold = self.peak_hold or (anti_off and em_compressor)
+            # Does this emitter WANT to run this cycle (ignoring protective holds)?
             if em is primary:
-                on, reason = not held, "primary"
+                wants_on, reason = not genuine_off, "primary"
             else:
                 st = self._staging.setdefault(em["id"], staging.StagingState())
                 sup_on, reason = staging.step(st, hvac, t_int, decision.target,
                                               now_ts, cfg)
-                on = sup_on and not held
+                wants_on = sup_on and not genuine_off
             # A bare switch/valve emitter has no self-regulating thermostat, so it
-            # follows real demand (t_int vs target / F27) once it is not held.
-            if on and not em.get("climate") and em.get("switch"):
-                on = not held and self._valve_demand(cfg, hvac, t_int,
-                                                     decision.target)
+            # follows real demand (t_int vs target / F27).
+            if wants_on and not em.get("climate") and em.get("switch"):
+                wants_on = self._valve_demand(cfg, hvac, t_int, decision.target)
+            on = wants_on and not prot_hold
+            idle = wants_on and prot_hold       # wanted to run but held -> idle in mode
             cmds[em["id"]] = {
-                "mode": decision.action if on else "off",
+                "mode": decision.action if (on or idle) else "off",
                 "target": decision.target if on else None,
-                "on": on, "primary": em is primary, "reason": reason,
+                "on": on, "idle": idle, "primary": em is primary, "reason": reason,
             }
         # An emitter deleted from the editor must get a farewell OFF (it would
         # otherwise stay frozen in its last state forever) and its staging latch
@@ -362,7 +364,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 continue
             self._staging.pop(gone_id, None)
             cmds[gone_id] = {"mode": "off", "target": None, "on": False,
-                             "primary": False, "reason": "removed",
+                             "idle": False, "primary": False, "reason": "removed",
                              "climate": em.get("climate"),
                              "switch": em.get("switch")}
         self._prev_emitters = {em["id"]: em for em in self._emitters}
