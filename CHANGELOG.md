@@ -4,6 +4,18 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.99.1] — 2026-07-09
+
+### Added
+- **DC · clonar los ajustes de otra zona al crear una nueva.** Al dar de alta una
+  zona de Dynamic Climate, si ya hay otra configurada aparece primero un selector
+  **"Copiar de otra zona"**: al elegirla, el formulario se **precarga** con sus
+  entidades (todo menos la sonda interior, que identifica la zona) y se **clonan
+  sus tunables/opciones** (perfil de instalación, emisores, horario, parámetros).
+  Solo tienes que apuntar los sensores nuevos y ajustar lo que cambie, en vez de
+  rehacer decenas de parámetros por zona. La primera zona va directa al formulario
+  como siempre. Mismo patrón que ya existía para las persianas.
+
 ## [0.99.0] — 2026-07-09
 
 ### Changed

@@ -195,6 +195,12 @@ def _ds_entries(hass) -> list:
             if e.data.get(const.CONF_MODULE) == const.MODULE_SHUTTER]
 
 
+def _dc_entries(hass) -> list:
+    """Existing climate (DC) config entries — used as copy/clone templates."""
+    return [e for e in hass.config_entries.async_entries(const.DOMAIN)
+            if e.data.get(const.CONF_MODULE) == const.MODULE_CLIMATE]
+
+
 class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
     """Handle the initial setup wizard."""
 
@@ -305,15 +311,48 @@ class DynamicHomeConfigFlow(ConfigFlow, domain=const.DOMAIN):
         return self.async_show_form(step_id="shutter_form", data_schema=schema)
 
     async def async_step_climate(self, user_input: dict[str, Any] | None = None):
+        """Optionally pick an existing zone as a template, then show the form.
+
+        Sibling zones differ mostly in their sensors; copying one pre-fills the
+        form (minus the indoor sensor, which keys the zone) and clones its
+        options/tunables, so you just point the new sensors and adjust.
+        """
+        others = _dc_entries(self.hass)
+        if not others:                       # first zone: straight to the form
+            return await self.async_step_climate_form()
+        if user_input is not None:
+            self._dc_copy_from = user_input.get("copy_from") or None
+            return await self.async_step_climate_form()
+        opts = [selector.SelectOptionDict(value="", label="—")]
+        opts += [selector.SelectOptionDict(value=e.entry_id, label=e.title)
+                 for e in others]
+        schema = vol.Schema({
+            vol.Optional("copy_from", default=""): selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=opts, mode=selector.SelectSelectorMode.DROPDOWN))})
+        return self.async_show_form(step_id="climate", data_schema=schema)
+
+    async def async_step_climate_form(self,
+                                      user_input: dict[str, Any] | None = None):
+        """The climate entity form; pre-filled from a template when chosen."""
+        src_id = getattr(self, "_dc_copy_from", None)
+        src = (self.hass.config_entries.async_get_entry(src_id)
+               if src_id else None)
         if user_input is not None:
             await self.async_set_unique_id(
                 f"dc_{user_input[const.CONF_DC_T_INT]}")
             self._abort_if_unique_id_configured()
             data = {**user_input, const.CONF_MODULE: const.MODULE_CLIMATE}
             return self.async_create_entry(
-                title=user_input[const.CONF_NAME], data=data)
-        return self.async_show_form(
-            step_id="climate", data_schema=STEP_CLIMATE_SCHEMA)
+                title=user_input[const.CONF_NAME], data=data,
+                options=dict(src.options) if src else {})   # clone the tunables
+        schema = STEP_CLIMATE_SCHEMA
+        if src:
+            suggested = {k: v for k, v in src.data.items()
+                         if k not in (const.CONF_DC_T_INT, const.CONF_MODULE)}
+            schema = self.add_suggested_values_to_schema(
+                STEP_CLIMATE_SCHEMA, suggested)
+        return self.async_show_form(step_id="climate_form", data_schema=schema)
 
     @staticmethod
     @callback

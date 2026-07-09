@@ -75,6 +75,13 @@
         }
       },
       "climate": {
+        "title": "Copiar de otra zona (opcional)",
+        "description": "Si ya tienes una zona climática parecida configurada, elígela para precargar el formulario (todo menos la sonda interior) y copiar sus ajustes. Déjalo vacío para empezar de cero.",
+        "data": {
+          "copy_from": "Copiar configuración de"
+        }
+      },
+      "climate_form": {
         "title": "Dynamic Climate (Calefacción/Refrigeración)",
         "description": "Zona climática. Publica al bus solar-gain (calor) / solar-shield (frío) hacia las persianas indicadas.",
         "data": {
