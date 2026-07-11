@@ -1595,6 +1595,9 @@
       "freecool_delta": {
         "name": "ΔT free-cool"
       },
+      "temp_hyst_c": {
+        "name": "Histéresis térmica"
+      },
       "summer_min_open_pct": {
         "name": "Apertura mínima verano"
       },

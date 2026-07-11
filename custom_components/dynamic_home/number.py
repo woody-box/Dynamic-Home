@@ -100,6 +100,8 @@ _DS_OPTION_NUMBERS: tuple[OptionNumberDesc, ...] = (
                      precision=1),
     OptionNumberDesc("freecool_delta", "mdi:snowflake-thermometer", 0, 5, 0.1,
                      "°C", precision=1),
+    OptionNumberDesc("temp_hyst_c", "mdi:thermometer-lines", 0, 3, 0.1, "°C",
+                     precision=1),
     # Positions "to taste"
     OptionNumberDesc("summer_min_open_pct", "mdi:blinds-horizontal", 0, 100, 5,
                      "%"),
