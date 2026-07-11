@@ -86,8 +86,9 @@ class DsConfig:
     cold_delta: float = 0.8             # ΔT below which the outside counts as cold
     # Release band for the thermal thresholds above (enter at delta, leave at
     # delta - hyst): keeps the shutter from oscillating open/closed all afternoon
-    # when the temperature hovers on the line.
-    temp_hyst_c: float = 0.3
+    # when the temperature hovers on the line. User-configurable (v0.100.0);
+    # 1.0 °C so a ±0.5 °C wobble around the threshold never cycles the shutter.
+    temp_hyst_c: float = 1.0
     winter_night_pct: int = 0
     # Thermal-shield opening caps (opt-in via the switch). Cooling: max opening
     # while it is hotter outside (0 = fully shut, blocks sun+heat; raise to let

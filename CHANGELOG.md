@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.100.0] — 2026-07-10
+
+### Changed
+- **DS · histéresis térmica configurable y default 1,0 °C (antes 0,3 fija).** La
+  banda de salida de los escudos térmicos (`temp_hyst_c`: el escudo **entra** a
+  `hot_delta`/`cold_delta` y **sale** en `umbral − histéresis`) existía en el motor
+  pero no era configurable y con 0,3 °C se quedaba corta: con 27 °C dentro, la
+  calle oscilando 27,2 ↔ 26,9 cerraba y abría la persiana una y otra vez. Ahora es
+  un ajuste del usuario — en **Opciones → Deltas térmicos** y como **number
+  editable en el dashboard** (junto a ΔT calor/frío) — con **default 1,0 °C**, de
+  modo que una oscilación de ±0,5 °C alrededor del umbral ya no mueve la persiana.
+  Sube el valor si tu exterior oscila más; bájalo si prefieres reaccionar antes.
+
 ## [0.99.3] — 2026-07-09
 
 ### Fixed

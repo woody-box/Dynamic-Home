@@ -208,6 +208,7 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
         "thermal": [
             _v("freecool_delta", "Free-cool ΔT (°C)", "ΔT free-cool (°C)"),
             _v("hot_delta", "Hot ΔT (°C)", "ΔT calor (°C)"),
+            _v("temp_hyst_c", "Thermal hysteresis (°C)", "Histéresis térmica (°C)"),
         ],
         "shield": [
             _v("heat_shield_pct", "Max open while cooling (%)",

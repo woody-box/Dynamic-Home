@@ -106,7 +106,8 @@ El switch **Thermal shield** es el mando de **prioridad térmica**. Cuando está
 
 **Histéresis térmica (anti-flapping).** Los umbrales `hot_delta` ("más calor
 fuera") y `cold_delta` ("genuinamente más frío fuera") llevan una **banda de
-salida** `temp_hyst_c` (def. **0,3 °C**): la condición **entra** al llegar al
+salida** `temp_hyst_c` (def. **1,0 °C** desde v0.100.0, configurable en
+Opciones y como number del dashboard): la condición **entra** al llegar al
 umbral y **sale** en `umbral − temp_hyst_c` (calor) / `umbral + temp_hyst_c`
 (frío), manteniéndose latcheada en medio. Así la persiana no alterna
 abrir/cerrar mientras la temperatura ronda el umbral toda la tarde. La **purga

@@ -1595,6 +1595,9 @@
       "freecool_delta": {
         "name": "Free-cool ΔT"
       },
+      "temp_hyst_c": {
+        "name": "Thermal hysteresis"
+      },
       "summer_min_open_pct": {
         "name": "Summer min open"
       },

@@ -725,6 +725,24 @@ def test_wind_cap_holds_in_hysteresis_band():
     assert d.reason == "default" and d.pos == 100
 
 
+def test_default_hysteresis_absorbs_half_degree_wobble():
+    # v0.100.0: temp_hyst_c defaults to 1.0 °C and is user-configurable. The
+    # motivating case: 27 °C inside, the outside hovering 27.2 <-> 26.9 used to
+    # close/open the shutter (0.3 band). With the 1.0 default a ±0.5 °C wobble
+    # around the threshold never cycles it.
+    cfg = _cfg(slew_enabled=False, hot_delta=0.2)          # default temp_hyst_c
+    assert cfg.temp_hyst_c == 1.0
+    st = DsState()
+    sun = dict(hvac_mode="cool", sun_azimuth=180.0, sun_elevation=30.0,
+               sun_effective=True)
+    d = decide_cover(cfg, st, DsInputs(t_in=27, t_out=27.2, **sun))
+    assert d.reason == "summer_solar_shield"               # shield engages
+    d = decide_cover(cfg, st, DsInputs(t_in=27, t_out=26.9, **sun))
+    assert d.reason == "summer_solar_shield"               # in band -> holds
+    d = decide_cover(cfg, st, DsInputs(t_in=27, t_out=26.1, **sun))
+    assert d.reason == "default" and d.pos == 100          # below band -> opens
+
+
 def test_hot_out_latch_no_flapping():
     # Hovering ±0.1 °C around the hot threshold must not cycle the shutter
     # open/closed all afternoon (enter at hot_delta, release at delta - hyst).

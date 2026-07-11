@@ -118,10 +118,11 @@
 ### "**Sombra** en verano / que no me deslumbre"
 - **Baja** `summer_min_open_pct` *(Posiciones)* → cierra más en el escudo solar.
 - `hot_delta` *(Deltas térmicos)* — cuánto más caliente fuera que dentro para activar.
-- `temp_hyst_c` *(Deltas térmicos)* — **banda de histéresis** de los escudos térmicos: el
-  escudo entra a `hot_delta` y **sale** a `hot_delta − temp_hyst_c` (y simétrico con
-  `cold_delta` en invierno). **Súbelo** si la persiana oscila abrir/cerrar todo el mediodía
-  con la temperatura rondando el umbral (def. 0,3 °C).
+- `temp_hyst_c` *(Deltas térmicos, también number en el dashboard)* — **banda de
+  histéresis** de los escudos térmicos: el escudo entra a `hot_delta` y **sale** a
+  `hot_delta − temp_hyst_c` (y simétrico con `cold_delta` en invierno). **Súbelo** si
+  la persiana oscila abrir/cerrar todo el mediodía con la temperatura rondando el
+  umbral (def. 1,0 °C desde v0.100.0; antes 0,3).
 - Para el modelo **geométrico** (opt-in): `window_height_cm`, `overhang_cm`,
   `target_penetration_m`… *(Geometría)*.
 
