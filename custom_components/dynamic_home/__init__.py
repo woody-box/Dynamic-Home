@@ -27,6 +27,7 @@ from .coordinator import (
     WxCoordinator,
     ZonesCoordinator,
 )
+from .hydro import HydroFlowHub
 from .peak import PeakLoadHub
 from .repairs import DegradedTracker
 from .shared_emitter import SharedEmitterHub
@@ -103,6 +104,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[const.DOMAIN].setdefault("_peak_ds", PeakLoadHub())
     # F25: house-level reconciler for ducted units shared across a group's zones.
     hass.data[const.DOMAIN].setdefault("_shared_emit", SharedEmitterHub())
+    # Hydraulic minimum flow: house-level weight gate for hydronic zone valves.
+    hass.data[const.DOMAIN].setdefault("_hydro_dc", HydroFlowHub())
 
     facades: dict = hass.data[const.DOMAIN].setdefault("_facades", {})
 
@@ -183,9 +186,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if isinstance(coordinator, DcCoordinator):
             coordinator.clear_published()
             coordinator.clear_mold()
-            # Drop this zone from the shared compressor aggregate (F09) and the
-            # electrical-peak arbiter (F03).
-            for key in ("_anticycle", "_peak_dc"):
+            # Drop this zone from the shared compressor aggregate (F09), the
+            # electrical-peak arbiter (F03) and the hydraulic weight gate.
+            for key in ("_anticycle", "_peak_dc", "_hydro_dc"):
                 hub = hass.data[const.DOMAIN].get(key)
                 if hub is not None:
                     hub.clear(entry.entry_id)
@@ -220,7 +223,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         if not _entry_ids(hass):
             _async_unregister_services(hass)
             for key in ("_hub", "_anticycle", "_peak_dc", "_peak_ds",
-                        "_shared_emit", "_facades"):
+                        "_shared_emit", "_hydro_dc", "_facades"):
                 hass.data[const.DOMAIN].pop(key, None)
     return unloaded
 

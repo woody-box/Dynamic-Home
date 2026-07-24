@@ -152,6 +152,10 @@ _CLIMATE_SWITCHES: tuple[_ToggleDesc, ...] = (
         "peak", "Peak limiting", "mdi:flash-alert",
         lambda c: c.peak_enabled,
         lambda c, v: setattr(c, "peak_enabled", v)),
+    _ToggleDesc(
+        "hydro", "Hydraulic min flow", "mdi:water-pump",
+        lambda c: c.hydro_enabled,
+        lambda c, v: setattr(c, "hydro_enabled", v)),
     _OBSERVE,
 )
 

@@ -174,6 +174,13 @@ class DcConfig:
     # Comfort bypass: a severe deviation (°C past setpoint) skips the peak gate
     # entirely — comfort wins over peak-shaving (safety still wins above). 0 = off.
     peak_comfort_bypass_c: float = 2.5
+    # Hydraulic minimum flow: this zone's circuit weight (how much water it
+    # moves) and the total demanded weight the house requires before any valve
+    # may open — a lone small circuit taking ALL the pump's flow whistles.
+    # Opt-in per zone (the "hydro" switch); consumed by the coordinator's gate,
+    # not by the pure decision pipeline.
+    hydro_weight: float = 1.0
+    hydro_min_weight: float = 2.0
     # Emitter staging (F25): a support emitter arms when the primary lags by more
     # than support_dev_on (°C) for support_confirm_min, and retires when the room
     # recovers under support_dev_off for support_release_min (hysteresis).

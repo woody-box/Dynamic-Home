@@ -73,6 +73,7 @@ CATEGORIES: dict[str, tuple[str, str]] = {
     "wx": ("Sources & alerts", "Fuentes y alertas"),
     "energy": ("Energy estimate", "Estimación de energía"),
     "cycle": ("Short-cycle protection", "Protección anti-ciclado"),
+    "hydro": ("Hydraulic minimum flow", "Caudal mínimo hidráulico"),
     "peak": ("Electrical-peak staging", "Escalonado de pico eléctrico"),
     "staging": ("Emitter staging", "Staging de emisores"),
     "shared": ("Shared emitter", "Emisor compartido"),
@@ -404,6 +405,10 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("peak_comfort_bypass_c", "Comfort bypass Δ (°C)",
                "Δ bypass de confort (°C)"),
         ],
+        "hydro": [
+            _v("hydro_weight", "Zone circuit weight", "Peso del circuito de la zona"),
+            _v("hydro_min_weight", "Minimum active weight", "Peso mínimo activo"),
+        ],
         "staging": [
             _v("support_dev_on", "Support arm Δ (°C)", "Δ activación apoyo (°C)"),
             _v("support_confirm_min", "Support confirm (min)",
@@ -516,7 +521,7 @@ def fields(module: str, category: str, include_advanced: bool = True) -> list[Op
 _CAT_ADVANCED: set[str] = {
     "positions", "thermal", "shield", "slew", "night", "dawn", "freecool",
     "dry", "quiet", "recuperator", "filter", "limits", "alert", "hood", "wx",
-    "energy", "tariff",
+    "energy", "tariff", "hydro",
 }
 _CAT_EXPERT: set[str] = {
     "geometry", "smoothing", "hostile", "failsafe", "adaptive_iaq", "exterior",

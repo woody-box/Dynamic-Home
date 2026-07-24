@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.101.0] — 2026-07-24
+
+### Added
+- **DC · caudal mínimo hidráulico (pesos por zona).** En una instalación
+  hidrónica, si un solo circuito pequeño (un baño) abre en solitario, todo el
+  caudal de la bomba pasa por él y el agua "silba" por velocidad. Ahora cada zona
+  DC declara un **peso** (cuánta agua mueve su circuito, p. ej. salón 4,
+  dormitorio 1, baño 0,5) y la casa exige un **peso mínimo activo** (p. ej. 2)
+  para que cualquier válvula abra: una zona por debajo del mínimo **queda
+  registrada pero retenida** (reposo en modo, como los holds F03/F09 — nunca se
+  apaga el termostato) y abre en cuanto otra zona demanda y la suma cruza el
+  mínimo; si la compañera se sacia, vuelve a retenerse. Mientras está retenida,
+  la demanda se infiere de temperatura vs consigna (la señal real F27 leería
+  nuestro propio cierre y la zona se desregistraría sola). Opt-in por zona con el
+  interruptor **"Caudal mín. hidráulico"** (default apagado); peso y mínimo
+  configurables en **Opciones → Caudal mínimo hidráulico** (pon el mismo mínimo
+  en todas las zonas). Observabilidad: atributos `hydro_hold` / `hydro_reason` /
+  `hydro_total_weight` en el climate y en los diagnósticos.
+
 ## [0.100.0] — 2026-07-10
 
 ### Changed
