@@ -982,6 +982,18 @@
           "anticycle_max_starts_per_h": "Maximum compressor starts allowed per rolling hour (default 6). (↓ = protects the compressor more)"
         }
       },
+      "cat_hydro": {
+        "title": "Hydraulic minimum flow",
+        "description": "Avoids water noise from a lone small circuit taking all the pump's flow: each zone declares a weight (how much water its circuit moves) and no valve opens until the total demanded weight reaches the minimum. A blocked demand stays registered and opens together with a partner. Enable it per zone with the \"Hydraulic min flow\" switch and set the SAME minimum in every zone.",
+        "data": {
+          "hydro_weight": "Zone circuit weight",
+          "hydro_min_weight": "Minimum active weight"
+        },
+        "data_description": {
+          "hydro_weight": "How much water this zone's circuit moves, relative to the others (e.g. living room 4, bedroom 1, bathroom 0.5).",
+          "hydro_min_weight": "Total demanded weight required before any valve opens. Set the same value in all participating zones. (↑ = requires more zones together)"
+        }
+      },
       "cat_peak": {
         "title": "Electrical-peak staging",
         "description": "Avoids tripping the main breaker: how many loads/watts at once + staggering. The comfort bypass lets a severe deviation skip the limit. Only applies to electrical/individual loads.",
@@ -1529,6 +1541,9 @@
       },
       "anticycle_autosize": {
         "name": "Adaptive anti-cycle"
+      },
+      "hydro": {
+        "name": "Hydraulic min flow"
       },
       "global_observe": {
         "name": "Observe only (all)"

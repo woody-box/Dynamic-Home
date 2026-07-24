@@ -982,6 +982,18 @@
           "anticycle_max_starts_per_h": "Máximo de arranques del compresor por hora móvil (por defecto 6). (↓ = protege más el compresor)"
         }
       },
+      "cat_hydro": {
+        "title": "Caudal mínimo hidráulico",
+        "description": "Evita el ruido del agua cuando un solo circuito pequeño se lleva todo el caudal de la bomba: cada zona declara un peso (cuánta agua mueve su circuito) y ninguna válvula abre hasta que el peso total demandado alcanza el mínimo. Una demanda bloqueada queda registrada y abre junto a otra zona. Actívalo por zona con el interruptor \"Caudal mín. hidráulico\" y pon el MISMO mínimo en todas las zonas.",
+        "data": {
+          "hydro_weight": "Peso del circuito de la zona",
+          "hydro_min_weight": "Peso mínimo activo"
+        },
+        "data_description": {
+          "hydro_weight": "Cuánta agua mueve el circuito de esta zona, en relación a las demás (p. ej. salón 4, dormitorio 1, baño 0,5).",
+          "hydro_min_weight": "Peso total demandado necesario para que cualquier válvula abra. Pon el mismo valor en todas las zonas participantes. (↑ = exige más zonas a la vez)"
+        }
+      },
       "cat_peak": {
         "title": "Escalonado de pico eléctrico",
         "description": "Evita disparar el ICP: cuántas cargas/vatios a la vez + escalonado. El bypass de confort deja saltar el límite si te alejas mucho. Solo aplica a cargas eléctricas/individuales.",
@@ -1529,6 +1541,9 @@
       },
       "anticycle_autosize": {
         "name": "Anti-ciclado adaptativo"
+      },
+      "hydro": {
+        "name": "Caudal mín. hidráulico"
       },
       "global_observe": {
         "name": "Solo observar (todas)"

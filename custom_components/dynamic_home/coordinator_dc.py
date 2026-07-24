@@ -100,6 +100,12 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self.peak_enabled = False
         self.peak_hold = False          # holding this zone off to stay under the peak budget
         self.peak_reason = "off"
+        # Hydraulic minimum flow (opt-in): the house needs a minimum total
+        # weight of demanding zones before any valve opens (water velocity).
+        self.hydro_enabled = False
+        self.hydro_hold = False         # holding this zone until enough weight demands
+        self.hydro_reason = "off"
+        self.hydro_total = 0.0          # total demanded weight (observability)
         # F25: multiple emitters per zone (primary + staged support). Empty list
         # keeps the legacy single-device path. emitter_commands: id -> command dict.
         self._emitters: list[dict] = []
@@ -335,7 +341,8 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             # F09 full: hold by this emitter's own compressor channel.
             anti_off = self._channel_holds.get(em["compressor_id"],
                                                 self.anticycle_hold)
-            prot_hold = self.peak_hold or (anti_off and em_compressor)
+            prot_hold = (self.peak_hold or self.hydro_hold
+                         or (anti_off and em_compressor))
             # Does this emitter WANT to run this cycle (ignoring protective holds)?
             if em is primary:
                 wants_on, reason = not genuine_off, "primary"
@@ -622,6 +629,42 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             hold_s=0.0, now_ts=now_ts, max_units=max_units,
             stagger_s=cfg.peak_stagger_s, priority=max(dev, 0.0))
         self.peak_hold = demand and not allowed
+
+    def _hydro_step(self, cfg: DcConfig, decision, t_int, now_ts: float) -> None:
+        """Hydraulic minimum-flow gate: block a lone small circuit's valve.
+
+        The zone reports whether it *wants* to move water and with what weight;
+        the house-level hub only allows opening when the total demanded weight
+        reaches ``hydro_min_weight``. A blocked demand stays registered, so it
+        still counts toward the total and unlocks together with a partner.
+        """
+        hub = self.hass.data.get(const.DOMAIN, {}).get("_hydro_dc")
+        if hub is None or not self.hydro_enabled:
+            if hub is not None:
+                hub.clear(self.entry.entry_id)
+            self.hydro_hold = False
+            self.hydro_reason = "off"
+            self.hydro_total = 0.0
+            return
+        # A zone another guard (F03/F09) already holds off moves no water.
+        wants = (decision.action in ("heat", "cool")
+                 and not self.anticycle_hold and not self.peak_hold)
+        if wants:
+            if self.hydro_hold:
+                # We forced the valve shut last cycle, so the real demand signal
+                # (F27) reads OUR hold, not the room: infer from t_int vs target
+                # or the zone would deregister itself and deadlock closed.
+                wants = (t_int is not None and decision.target is not None
+                         and (t_int < decision.target
+                              if decision.action == "heat"
+                              else t_int > decision.target))
+            else:
+                wants = self._valve_demand(cfg, decision.action, t_int,
+                                           decision.target)
+        allowed, self.hydro_reason = hub.evaluate(
+            self.entry.entry_id, wants, cfg.hydro_weight, cfg.hydro_min_weight)
+        self.hydro_hold = wants and not allowed
+        self.hydro_total = hub.total()
 
     def _accumulate_energy(self, cfg: DcConfig, now_ts: float) -> None:
         """Integrate energy (F06): real meter if configured, else est. while ON."""
@@ -1095,6 +1138,7 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         decision = decide_climate(cfg, ins)
         self._anticycle_step(cfg, decision, now_ts)
         self._peak_step(cfg, decision, t_int, now_ts)
+        self._hydro_step(cfg, decision, t_int, now_ts)
         self._build_emitter_commands(cfg, decision, t_int, now_ts)
         self._shared_emitter_step(cfg, decision, t_int, now_ts)
 

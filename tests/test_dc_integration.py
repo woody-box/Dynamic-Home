@@ -996,6 +996,94 @@ async def test_peak_gated_off_for_non_electric(hass: HomeAssistant) -> None:
     assert entry.entry_id not in hass.data[const.DOMAIN]["_peak_dc"].state.active
 
 
+# --- Hydraulic minimum flow (weights per zone) ---
+async def test_hydro_small_zone_alone_is_held(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")     # cold -> demands heat
+    entry = await _add_opts(hass, CLIMATE, "Bano", {
+        "hydro_weight": 0.5, "hydro_min_weight": 2.0})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.hydro_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # A lone bathroom (0.5 < 2.0) is blocked, but its demand stays registered.
+    assert co.hydro_hold is True
+    assert co.hydro_reason == "hydro_min_weight"
+    assert co.hydro_total == 0.5
+
+
+async def test_hydro_partner_weight_unlocks_and_reblocks(
+        hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")
+    hass.states.async_set("sensor.b_temp", "18")
+    bath = await _add_opts(hass, CLIMATE, "Bano", {
+        "hydro_weight": 0.5, "hydro_min_weight": 2.0})
+    salon = await _add_opts(hass, {**CLIMATE, const.CONF_NAME: "Salon2",
+                                   const.CONF_DC_T_INT: "sensor.b_temp"},
+                            "Salon2", {"hydro_weight": 4.0,
+                                       "hydro_min_weight": 2.0})
+    cb = hass.data[const.DOMAIN][bath.entry_id]
+    cs = hass.data[const.DOMAIN][salon.entry_id]
+    cb.hvac_mode = cs.hvac_mode = "heat"
+    cb.hydro_enabled = cs.hydro_enabled = True
+    await cb.async_refresh()
+    await hass.async_block_till_done()
+    assert cb.hydro_hold is True                       # 0.5 alone: blocked
+    await cs.async_refresh()
+    await hass.async_block_till_done()
+    assert cs.hydro_hold is False                      # 4.0 already ≥ 2.0
+    await cb.async_refresh()
+    await hass.async_block_till_done()
+    assert cb.hydro_hold is False                      # total 4.5: both open
+    assert cb.hydro_total == 4.5
+    # The living room satisfies -> deregisters -> the bathroom re-blocks.
+    hass.states.async_set("sensor.b_temp", "25")
+    await cs.async_refresh()
+    await hass.async_block_till_done()
+    await cb.async_refresh()
+    await hass.async_block_till_done()
+    assert cb.hydro_hold is True
+    assert cb.hydro_total == 0.5
+
+
+async def test_hydro_held_zone_keeps_demanding_despite_closed_valve(
+        hass: HomeAssistant) -> None:
+    """While held, the real valve source (F27) reads OUR hold, not the room:
+    the demand falls back to t_int vs target so the zone stays registered."""
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")
+    hass.states.async_set("switch.valve", "on")        # thermostat calling
+    entry = await _add_opts(hass, {**CLIMATE, const.CONF_DC_VALVE: "switch.valve"},
+                            "Bano", {"hydro_weight": 0.5, "hydro_min_weight": 2.0})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    co.hydro_enabled = True
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hydro_hold is True
+    # The hold idled the thermostat -> the valve relay drops. Still registered.
+    hass.states.async_set("switch.valve", "off")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hydro_hold is True
+    assert co.hydro_total == 0.5
+
+
+async def test_hydro_disabled_zone_never_participates(hass: HomeAssistant) -> None:
+    _seed(hass)
+    hass.states.async_set("sensor.salon_temp", "18")
+    entry = await _add_opts(hass, CLIMATE, "Bano", {
+        "hydro_weight": 0.5, "hydro_min_weight": 2.0})
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"                              # switch left off (default)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hydro_hold is False
+    assert co.hydro_total == 0.0
+
+
 # --- F25 Phase A: multiple emitters + primary/support staging ---
 _EMITTERS = [
     {"name": "Radiant", "generator": "heatpump_air_water", "emission": "underfloor",

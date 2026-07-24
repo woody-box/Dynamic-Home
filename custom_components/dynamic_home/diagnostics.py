@@ -30,6 +30,7 @@ _SNAPSHOT_ATTRS = (
     "hvac_mode", "current_speed",
     "anticycle_enabled", "anticycle_hold", "anticycle_reason",
     "peak_enabled", "peak_hold", "peak_reason",
+    "hydro_enabled", "hydro_hold", "hydro_reason", "hydro_total",
     "house_kwh", "house_cost", "house_power_w", "context",
 )
 

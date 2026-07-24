@@ -139,6 +139,11 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
                 "anticycle_reason": self.coordinator.anticycle_reason,
                 "peak_hold": self.coordinator.peak_hold,
                 "peak_reason": self.coordinator.peak_reason,
+                # Hydraulic minimum flow: whether this zone waits for enough
+                # total weight, and the weight currently demanding house-wide.
+                "hydro_hold": self.coordinator.hydro_hold,
+                "hydro_reason": self.coordinator.hydro_reason,
+                "hydro_total_weight": self.coordinator.hydro_total,
                 # F37: the direction the zone really runs (community zones are
                 # gated by the building changeover) and whether the user's mode
                 # contradicts the water — the zone rests instead of inverting.
@@ -192,13 +197,15 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         if not real:
             return
         data = self.coordinator.data
-        # F09/F03: a protective hold (compressor anti-cycling / house peak budget)
+        # F09/F03/hydro: a protective hold (compressor anti-cycling / house peak
+        # budget / hydraulic minimum flow)
         # idles the thermostat IN mode — keep heat/cool but push the setpoint out
         # of reach — so a DS thermal-shield reference survives and the unit
         # re-engages on its own when the hold clears. Only a genuine off
         # (user/safety) drops the mode to OFF.
         held = (getattr(self.coordinator, "anticycle_hold", False)
-                or getattr(self.coordinator, "peak_hold", False))
+                or getattr(self.coordinator, "peak_hold", False)
+                or getattr(self.coordinator, "hydro_hold", False))
         mode = self.coordinator.hvac_mode
         if held and mode in ("heat", "cool"):
             target = self._idle_target(real, HVACMode(mode))
