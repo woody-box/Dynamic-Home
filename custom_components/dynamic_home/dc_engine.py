@@ -181,6 +181,15 @@ class DcConfig:
     # not by the pure decision pipeline.
     hydro_weight: float = 1.0
     hydro_min_weight: float = 2.0
+    # Setpoint dwell (anti-flapping): minimum minutes between APPLIED setpoint
+    # changes. The trend/brake anticipation biases feed back from the actuation
+    # itself (cooling drops the temp -> the biases raise the target -> the valve
+    # closes -> the temp rises -> they lower it again), which can cycle a zone
+    # valve every few minutes. Real steps pass immediately: a base change
+    # (schedule / day-night / vacation), a mode change or a manual override.
+    # 0 disables the dwell.
+    target_dwell_min: float = 10.0
+
     # Emitter staging (F25): a support emitter arms when the primary lags by more
     # than support_dev_on (°C) for support_confirm_min, and retires when the room
     # recovers under support_dev_off for support_release_min (hysteresis).
@@ -594,6 +603,50 @@ def publish_intent(action: str) -> str:
     if action == "cool":
         return INTENT_SOLAR_SHIELD
     return "none"
+
+
+@dataclass
+class TargetDwellState:
+    """Last APPLIED setpoint, carried between cycles for the anti-flap dwell."""
+
+    target: float | None = None
+    ts: float = 0.0          # when the target last changed
+    base: float | None = None
+    action: str = "off"
+
+
+def stabilize_target(state: TargetDwellState, cfg: DcConfig,
+                     decision: DcDecision, now_ts: float) -> DcDecision:
+    """Setpoint dwell: hold bias jitter, let real steps through. Mutates state.
+
+    A target change within ``target_dwell_min`` of the previous change keeps the
+    previous target (the trend/brake biases feed back from the actuation itself
+    and would cycle the zone valve every few minutes). Passes immediately: the
+    first target of a mode, a base change (schedule / day-night / vacation), a
+    mode change and a manual override (empty details -> no base -> step).
+    """
+    if (decision.action not in ("heat", "cool") or decision.target is None
+            or cfg.target_dwell_min <= 0):
+        state.target = None
+        state.base = None
+        state.action = decision.action
+        return decision
+    base = decision.details.get("base") if decision.details else None
+    step_change = (decision.action != state.action or base is None
+                   or state.base is None or base != state.base)
+    held = (not step_change and state.target is not None
+            and decision.target != state.target
+            and now_ts - state.ts < cfg.target_dwell_min * 60.0)
+    if held:
+        decision.target = state.target
+        decision.details["target_dwell_held"] = True
+    else:
+        if decision.target != state.target:
+            state.ts = now_ts
+        state.target = decision.target
+    state.base = base
+    state.action = decision.action
+    return decision
 
 
 def sunlit_facades(sun_azimuth: float | None, sun_elevation: float | None,

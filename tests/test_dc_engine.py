@@ -565,3 +565,79 @@ def test_anticycle_bounds_scales_and_clamps():
     assert anticycle_bounds(-1.0)[0] == ANTICYCLE_AUTOSIZE_FLOOR_S
     # Huge lag is capped (never strands comfort).
     assert anticycle_bounds(10.0)[0] == ANTICYCLE_AUTOSIZE_CEIL_S
+
+
+# --- Setpoint dwell (anti-flapping de consigna) ---
+def _dwell_decision(action="cool", target=26.5, base=26.5, reason=None):
+    from dc_engine import DcDecision
+    return DcDecision(action, target, reason or action, "none",
+                      details={"base": base} if base is not None else {})
+
+
+def test_dwell_first_target_passes_and_later_jitter_is_held():
+    from dc_engine import (
+        TargetDwellState,
+        stabilize_target,
+    )
+    cfg = DcConfig()                                # dwell default 10 min
+    st = TargetDwellState()
+    d = stabilize_target(st, cfg, _dwell_decision(target=26.5), now_ts=0)
+    assert d.target == 26.5                          # first: passes, recorded
+    # 3 minutes later the biases flip the quantized target -> held.
+    d = stabilize_target(st, cfg, _dwell_decision(target=25.5), now_ts=180)
+    assert d.target == 26.5
+    assert d.details.get("target_dwell_held") is True
+    # After the dwell window the change is applied.
+    d = stabilize_target(st, cfg, _dwell_decision(target=25.5), now_ts=601)
+    assert d.target == 25.5
+    assert "target_dwell_held" not in d.details
+
+
+def test_dwell_base_change_passes_immediately():
+    from dc_engine import (
+        TargetDwellState,
+        stabilize_target,
+    )
+    cfg = DcConfig()
+    st = TargetDwellState()
+    stabilize_target(st, cfg, _dwell_decision(target=26.5, base=26.5), 0)
+    # Night easing / schedule slot moves the BASE: a real step, not jitter.
+    d = stabilize_target(st, cfg, _dwell_decision(target=27.0, base=27.0), 60)
+    assert d.target == 27.0
+
+
+def test_dwell_mode_change_and_off_reset():
+    from dc_engine import (
+        TargetDwellState,
+        stabilize_target,
+    )
+    cfg = DcConfig()
+    st = TargetDwellState()
+    stabilize_target(st, cfg, _dwell_decision("cool", 26.5), 0)
+    # Mode flip is a real step.
+    d = stabilize_target(st, cfg, _dwell_decision("heat", 22.0), 60)
+    assert d.target == 22.0
+    # OFF resets the latch: the next mode's first target passes immediately.
+    stabilize_target(st, cfg, _dwell_decision("off", None, base=None), 120)
+    d = stabilize_target(st, cfg, _dwell_decision("heat", 21.5), 180)
+    assert d.target == 21.5
+
+
+def test_dwell_override_passes_and_zero_disables():
+    from dc_engine import (
+        TargetDwellState,
+        stabilize_target,
+    )
+    cfg = DcConfig()
+    st = TargetDwellState()
+    stabilize_target(st, cfg, _dwell_decision(target=26.5), 0)
+    # Manual override decisions carry no details/base -> real step, passes.
+    d = stabilize_target(st, cfg,
+                         _dwell_decision(target=24.0, base=None,
+                                         reason="override"), 60)
+    assert d.target == 24.0
+    cfg.target_dwell_min = 0
+    st2 = TargetDwellState()
+    stabilize_target(st2, cfg, _dwell_decision(target=26.5), 0)
+    d = stabilize_target(st2, cfg, _dwell_decision(target=25.5), 60)
+    assert d.target == 25.5                          # 0 = dwell off

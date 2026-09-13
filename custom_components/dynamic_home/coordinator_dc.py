@@ -39,6 +39,7 @@ from .dc_engine import (
     DcConfig,
     DcDecision,
     DcInputs,
+    TargetDwellState,
     adaptive_lead_target,
     adjacent_advice,
     anticycle_bounds,
@@ -48,6 +49,7 @@ from .dc_engine import (
     facade_bias,
     mold_index_step,
     on_rate_cph,
+    stabilize_target,
     step_toward,
     sunlit_facades,
     window_anomaly,
@@ -137,6 +139,8 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         self._prev_tint: float | None = None
         self._prev_ts: float | None = None
         self._cph: float = 0.0
+        # Setpoint dwell (anti-flapping): last applied target + timestamp.
+        self._dwell = TargetDwellState()
         # Adaptive lead (learned). Opt-in via the "Adaptive Lead" switch.
         self.adaptive_enabled = False
         self._module = const.MODULE_CLIMATE
@@ -1136,6 +1140,11 @@ class DcCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
             tariff_state=self._tariff_state(),
         )
         decision = decide_climate(cfg, ins)
+        # Setpoint dwell: the trend/brake biases feed back from the actuation
+        # itself and can hop the target across the room temp every few minutes,
+        # cycling the zone valve. Hold bias jitter; real steps pass (base/mode/
+        # override). Everything below sees the stabilized target.
+        decision = stabilize_target(self._dwell, cfg, decision, now_ts)
         self._anticycle_step(cfg, decision, now_ts)
         self._peak_step(cfg, decision, t_int, now_ts)
         self._hydro_step(cfg, decision, t_int, now_ts)

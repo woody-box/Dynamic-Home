@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.103.0] — 2026-09-13
+
+### Fixed
+- **DC · consigna estable: la electroválvula ya no abre y cierra cada pocos
+  minutos.** Los sesgos de anticipación (tendencia y freno) se realimentan de la
+  propia actuación: al enfriar, la temperatura baja → suben la consigna → la
+  válvula cierra → la sala se recalienta → la bajan otra vez, y con el paso de
+  cuantización de 0,5 °C la consigna saltaba de un lado a otro de la temperatura
+  de la sala (26 °C dentro, consigna 25,5 ↔ 26,5) ciclando la válvula cada 2–3
+  minutos todo el día. Nueva **permanencia de consigna** (`target_dwell_min`,
+  Opciones → Límites de consigna, default 10 min): un cambio de consigna
+  producido solo por el vaivén de los sesgos espera a que pasen esos minutos
+  desde el último cambio aplicado; los escalones reales pasan al momento
+  (cambio de base por horario/día-noche/vacaciones, cambio de modo y override
+  manual). 0 lo desactiva. Con la consigna quieta, el ciclado queda gobernado
+  por la histéresis natural del termostato, como debe ser.
+
 ## [0.102.0] — 2026-09-13
 
 ### Added

@@ -298,6 +298,8 @@ SPEC: dict[str, dict[str, list[Opt]]] = {
             _v("max_mods_heat", "Max heat bias (°C)", "Bias máx. calor (°C)"),
             _v("max_mods_cool", "Max cool bias (°C)", "Bias máx. frío (°C)"),
             _v("apply_min_delta", "Apply min delta (°C)", "Delta mín. aplicar (°C)"),
+            _v("target_dwell_min", "Setpoint dwell (min)",
+               "Permanencia de consigna (min)"),
             _v("vac_target_min_heat", "Vacation heat min (°C)",
                "Vacaciones calor mín. (°C)"),
             _v("vac_target_max_heat", "Vacation heat max (°C)",
