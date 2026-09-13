@@ -4,6 +4,23 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.101.1] — 2026-09-13
+
+### Fixed
+- **DC · apagar el termostato físico a mano ya no es anulado por el automático.**
+  Si apagabas el termostato real de una zona (en la pared o en su app) porque no
+  querías que esa zona funcionara, DC lo volvía a encender en el siguiente ciclo
+  (60 s): la entidad gestionada re-imponía su modo sin mirar si el aparato había
+  cambiado por fuera. Ahora un cambio de modo hecho en el termostato real se
+  **adopta** en vez de pelearlo — la misma regla de intención manual que el botón
+  de pared de las persianas (v0.99.3): lo apagas → la zona DH pasa a off; lo
+  enciendes o cambias calor/frío → DH adopta ese modo; lo pones en un modo que DH
+  no gestiona (auto/dry/…) → DH no toca el aparato hasta que tú lo cambies.
+  Protegido con el sello de tiempo del estado para que un termostato lento que
+  aún no ha confirmado nuestra orden no se malinterprete como acción del usuario.
+  Para volver al control automático basta seleccionar el modo en cualquiera de
+  los dos termostatos.
+
 ## [0.101.0] — 2026-07-24
 
 ### Added
