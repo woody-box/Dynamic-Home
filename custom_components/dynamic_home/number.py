@@ -18,6 +18,7 @@ from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import const
 from .coordinator import DsCoordinator, DvCoordinator
+from .dc_engine import DcConfig
 from .ds_engine import DsConfig
 from .dv_engine import DvConfig
 
@@ -137,6 +138,18 @@ _VMC_NUMBERS: tuple[CoordNumberDesc, ...] = (
 )
 
 
+_DC_DEFAULTS = DcConfig()
+
+# DC tunables edited from the dashboard (same Options backing as the menu).
+# The zone's hydraulic circuit weight is per-zone by nature (living room 4,
+# bedroom 1, bathroom 0.5), so it lives here; the house minimum stays in the
+# options menu (one value, set equal in every zone).
+_DC_OPTION_NUMBERS: tuple[OptionNumberDesc, ...] = (
+    OptionNumberDesc("hydro_weight", "mdi:water-pump", 0, 10, 0.1, "",
+                     precision=1),
+)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
                             async_add_entities: AddEntitiesCallback) -> None:
     coordinator = hass.data[const.DOMAIN][entry.entry_id]
@@ -145,6 +158,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry,
             CoordNumber(coordinator, entry, d) for d in _SHUTTER_NUMBERS]
         ents += [OptionNumber(entry, d) for d in _DS_OPTION_NUMBERS]
         async_add_entities(ents)
+    elif entry.data.get(const.CONF_MODULE) == const.MODULE_CLIMATE:
+        async_add_entities(OptionNumber(entry, d, _DC_DEFAULTS)
+                           for d in _DC_OPTION_NUMBERS)
     else:
         entities: list[NumberEntity] = [
             ThresholdNumber(coordinator, entry, d) for d in THRESHOLDS]

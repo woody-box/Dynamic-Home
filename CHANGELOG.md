@@ -4,6 +4,17 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.102.0] — 2026-09-13
+
+### Added
+- **DC · el peso hidráulico de cada zona ahora es un number editable.** El peso
+  del circuito (v0.101.0) se puede ajustar desde la página del dispositivo y el
+  dashboard — entidad **"Peso hidráulico"** (categoría Configuración) en cada
+  zona DC — además de en Opciones → Caudal mínimo hidráulico: ambos editores
+  escriben la misma opción y quedan sincronizados (mismo patrón de doble editor
+  que la histéresis térmica de DS, v0.100.0). El peso mínimo activo de la casa se
+  queda solo en Opciones (un valor, igual en todas las zonas).
+
 ## [0.101.1] — 2026-09-13
 
 ### Fixed

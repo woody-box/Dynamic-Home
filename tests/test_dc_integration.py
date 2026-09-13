@@ -1165,6 +1165,24 @@ async def test_hydro_disabled_zone_never_participates(hass: HomeAssistant) -> No
     assert co.hydro_total == 0.0
 
 
+async def test_hydro_weight_config_number(hass: HomeAssistant) -> None:
+    # The zone's hydraulic weight is a first-class CONFIG number on the device
+    # page/dashboard, backed by the same option the menu edits (in sync).
+    from homeassistant.helpers import entity_registry as er
+    _seed(hass)
+    entry = await _add(hass, CLIMATE, "Salon")
+    reg = er.async_get(hass)
+    eid = reg.async_get_entity_id("number", const.DOMAIN,
+                                  f"{entry.entry_id}_hydro_weight")
+    assert eid is not None
+    assert reg.async_get(eid).entity_category == er.EntityCategory.CONFIG
+    assert float(hass.states.get(eid).state) == 1.0     # DcConfig default
+    await hass.services.async_call(
+        "number", "set_value", {"entity_id": eid, "value": 4}, blocking=True)
+    await hass.async_block_till_done()
+    assert entry.options["hydro_weight"] == 4
+
+
 # --- F25 Phase A: multiple emitters + primary/support staging ---
 _EMITTERS = [
     {"name": "Radiant", "generator": "heatpump_air_water", "emission": "underfloor",

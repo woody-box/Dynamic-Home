@@ -1610,6 +1610,9 @@
       "freecool_delta": {
         "name": "Free-cool ΔT"
       },
+      "hydro_weight": {
+        "name": "Hydraulic weight"
+      },
       "temp_hyst_c": {
         "name": "Thermal hysteresis"
       },
