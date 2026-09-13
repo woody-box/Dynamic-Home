@@ -24,6 +24,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 from homeassistant.util import slugify
 
 from . import const
@@ -71,6 +72,7 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         # existing entities keep their registered id.
         self.entity_id = f"climate.{slugify(entry.title)}"
         self._applied: tuple | None = None  # last (mode, target) — legacy single device
+        self._applied_ts: float | None = None   # when we last drove the device
         self._applied_per: dict[str, tuple] = {}   # F25: per-emitter last (mode, target)
         # Serialize hardware drives: _apply awaits blocking service calls, so two
         # overlapping ticks could interleave mode/target on the real thermostat.
@@ -197,6 +199,29 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         if not real:
             return
         data = self.coordinator.data
+        # Manual intent on the REAL thermostat wins (same rule as the DS wall
+        # button): if its mode changed since we last commanded it — the user
+        # turned it off at the wall, or picked a mode by hand — ADOPT the change
+        # instead of overriding it on the next cycle. Guarded by the state's
+        # last_changed timestamp so a slow device still showing its pre-command
+        # state is never misread as a user action.
+        st = self.hass.states.get(real)
+        cur = st.state if st and st.state not in ("unknown", "unavailable") else None
+        prev_mode = self._applied[0] if self._applied else None
+        if (cur is not None and prev_mode is not None and cur != str(prev_mode)
+                and self._applied_ts is not None
+                and st.last_changed.timestamp() > self._applied_ts):
+            if cur in ("off", "heat", "cool"):
+                self.coordinator.follow_changeover = False
+                self.coordinator.hvac_mode = cur
+                if cur != "off":
+                    self.coordinator.override_active = False
+                self._applied = (HVACMode(cur), None)
+                self.async_write_ha_state()
+                await self.coordinator.async_request_refresh()
+            # A mode the engine can't run (auto/dry/fan_only…) is still the
+            # user's choice: leave the device alone until they change it back.
+            return
         # F09/F03/hydro: a protective hold (compressor anti-cycling / house peak
         # budget / hydraulic minimum flow)
         # idles the thermostat IN mode — keep heat/cool but push the setpoint out
@@ -232,6 +257,7 @@ class DcClimate(CoordinatorEntity[DcCoordinator], ClimateEntity, RestoreEntity):
         # Recorded only after the calls succeeded: a failed service must not
         # leave _applied claiming a state the device never reached.
         self._applied = (mode, target)
+        self._applied_ts = dt_util.utcnow().timestamp()
 
     async def _apply_emitters(self, cmds: dict) -> None:
         """F25: drive each emitter's device (climate and/or switch) by its command.

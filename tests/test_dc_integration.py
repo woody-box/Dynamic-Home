@@ -738,6 +738,87 @@ async def test_user_off_still_drives_thermostat_off(hass: HomeAssistant) -> None
     assert any(c.data.get(ATTR_HVAC_MODE) == HVACMode.OFF for c in mode_calls)
 
 
+async def test_external_thermostat_off_is_adopted(hass: HomeAssistant) -> None:
+    """Turning the REAL thermostat off by hand must NOT be overridden by DC.
+
+    The user switches the physical thermostat off because they don't want that
+    zone running; DC adopts the change (zone -> off) instead of re-enabling it
+    on the next cycle — the same manual-intent rule as the DS wall button.
+    """
+    from homeassistant.components.climate import ATTR_HVAC_MODE
+    _seed(hass)
+    hass.states.async_set("climate.real", "off")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_CLIMATE: "climate.real"},
+                       "Salon")
+    mode_calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "cool"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert any(c.data.get(ATTR_HVAC_MODE) == HVACMode.COOL for c in mode_calls)
+    # The device confirmed our command, then the user turns it off at the wall.
+    hass.states.async_set("climate.real", "cool")
+    hass.states.async_set("climate.real", "off")
+    n_before = len(mode_calls)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hvac_mode == "off"                       # adopted, not fought
+    assert len(mode_calls) == n_before                 # and never re-driven
+    # Later cycles keep respecting it.
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hvac_mode == "off"
+    assert not any(c.data.get(ATTR_HVAC_MODE) == HVACMode.COOL
+                   for c in mode_calls[n_before:])
+
+
+async def test_external_thermostat_mode_change_is_adopted(
+        hass: HomeAssistant) -> None:
+    # The symmetric case: the zone rests (off) and the user turns the physical
+    # thermostat on -> DC adopts heat instead of forcing it back OFF.
+    from homeassistant.components.climate import ATTR_HVAC_MODE
+    _seed(hass)
+    hass.states.async_set("climate.real", "heat")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_CLIMATE: "climate.real"},
+                       "Salon")
+    mode_calls = async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "off"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # The device confirmed OFF; later the user selects heat on the device.
+    hass.states.async_set("climate.real", "off")
+    hass.states.async_set("climate.real", "heat")
+    n_before = len(mode_calls)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hvac_mode == "heat"
+    assert not any(c.data.get(ATTR_HVAC_MODE) == HVACMode.OFF
+                   for c in mode_calls[n_before:])
+
+
+async def test_lagging_thermostat_is_not_misread_as_external(
+        hass: HomeAssistant) -> None:
+    # A slow device still showing its PRE-command state (it never confirmed our
+    # heat) must not be misread as "the user changed it" -> no false adoption.
+    _seed(hass)
+    hass.states.async_set("climate.real", "off")
+    entry = await _add(hass, {**CLIMATE, const.CONF_DC_CLIMATE: "climate.real"},
+                       "Salon")
+    async_mock_service(hass, "climate", "set_hvac_mode")
+    async_mock_service(hass, "climate", "set_temperature")
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    co.hvac_mode = "heat"
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    # State still "off" (set BEFORE our command): stale, not a user action.
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.hvac_mode == "heat"
+
+
 async def test_anticycle_disabled_does_not_hold(hass: HomeAssistant) -> None:
     from homeassistant.util import dt as dt_util
 
