@@ -92,6 +92,37 @@ async def test_external_cover_move_arms_override(hass: HomeAssistant) -> None:
     assert co.manual_pos is None                 # not re-armed when tracking is off
 
 
+async def test_reload_mid_travel_does_not_arm_false_override(
+        hass: HomeAssistant) -> None:
+    """A reload/restart while DH's OWN command is travelling is not "manual".
+
+    Real case: saving the hardware form reloads the shutter; the new entity saw
+    the cover already closing (the previous instance's command), treated it as
+    someone else's move and armed a 4 h manual hold at the settled position.
+    """
+    async_mock_service(hass, "cover", "set_cover_position")
+    hass.states.async_set("sun.sun", "below_horizon",
+                          {"azimuth": 180, "elevation": -10})
+    # The cover is already mid-travel when the entry (re)loads.
+    hass.states.async_set("cover.salon_real", "closing",
+                          {"current_position": 60, "supported_features": 15})
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    hass.states.async_set("cover.salon_real", "closing",
+                          {"current_position": 50, "supported_features": 15})
+    await hass.async_block_till_done()
+    # It settles where the previous instance sent it.
+    hass.states.async_set("cover.salon_real", "open",
+                          {"current_position": 40, "supported_features": 15})
+    await hass.async_block_till_done()
+    assert co.manual_pos is None
+    # Detection still works for a genuine external move afterwards.
+    hass.states.async_set("cover.salon_real", "open",
+                          {"current_position": 90, "supported_features": 15})
+    await hass.async_block_till_done()
+    assert co.manual_pos == 90
+
+
 async def test_external_move_in_progress_is_not_reversed(
         hass: HomeAssistant) -> None:
     """A wall-button move mid-travel must not be fought by the auto logic.
