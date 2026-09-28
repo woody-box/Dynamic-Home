@@ -160,6 +160,40 @@ async def test_own_drive_travel_does_not_gate_auto(hass: HomeAssistant) -> None:
     assert co.manual_pos is None
 
 
+async def test_weather_entity_in_rain_slot_closes_on_rainy(
+        hass: HomeAssistant) -> None:
+    """Regression lock: the "Lluvia" slot accepts a weather.* entity directly.
+
+    With no physical rain sensor, the provider entity (e.g. Google Weather via
+    DW) goes in the per-shutter rain slot: its condition state closes on
+    rainy/pouring/snowy-rainy regardless of intensity, and reopens when dry.
+    """
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    _seed(hass)
+    hass.states.async_set("weather.google", "rainy")
+    entry = MockConfigEntry(domain=const.DOMAIN,
+                            data={**SHUTTER, const.CONF_RAIN: "weather.google"},
+                            title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "meteo_rain"
+    assert co.data.pos == co._cfg().rain_close_pct
+    # Dry (or a non-rain condition) -> the rain branch releases.
+    hass.states.async_set("weather.google", "partlycloudy")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason != "meteo_rain"
+    # And a dead provider entity never reads as rain.
+    hass.states.async_set("weather.google", "unavailable")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason != "meteo_rain"
+
+
 async def test_dw_probabilities_and_gust_drive_ds(hass: HomeAssistant) -> None:
     """Dynamic Weather gust -> wind cap; storm/rain probability -> alert."""
     _seed(hass)
