@@ -57,3 +57,17 @@ def test_entity_name_parity_across_locales():
     for path in _FILES[1:]:
         for p in platforms:
             assert set(_names(path, p)) == ref[p], f"{path.name}: {p} keys differ"
+
+
+def test_every_option_field_has_a_label():
+    # An options-form field without a label renders its raw key (e.g. the
+    # "rain_mm_min" box in "Posiciones de persiana").
+    from custom_components.dynamic_home import options_spec as spec
+    for path in _FILES:
+        steps = json.loads(path.read_text(encoding="utf-8"))["options"]["step"]
+        missing = sorted(
+            f"cat_{cat}.{spec.option_key(o)}"
+            for cats in spec.SPEC.values() for cat, opts in cats.items()
+            for o in opts
+            if spec.option_key(o) not in steps.get(f"cat_{cat}", {}).get("data", {}))
+        assert not missing, f"{path.name}: {missing}"
