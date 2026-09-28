@@ -174,6 +174,9 @@ class DsState:
     # Thermal latches (see temp_hyst_c): enter at delta, release at delta - hyst.
     hot_out_active: bool = False        # summer "hotter outside" shield
     cold_shield_active: bool = False    # winter "genuinely colder outside" shield
+    # Weather-onset edges (see weather_onset); None = no reading seen yet.
+    onset_rain: bool | None = None
+    onset_wind: bool | None = None
 
 
 @dataclass
@@ -404,6 +407,37 @@ def update_wind_cap_active(state: DsState, cfg: DsConfig, ins: DsInputs) -> bool
         if w >= cfg.wind_limit_kmh:
             state.wind_cap_active = True
     return state.wind_cap_active
+
+
+def weather_onset(state: DsState, cfg: DsConfig, raining: bool,
+                  wind: float | None, gust: float | None,
+                  protect: bool) -> bool:
+    """True on the transition INTO rain or strong wind. Mutates ``state``.
+
+    The start of bad weather is a real transition that ends a manual hold, so a
+    shutter left open by hand closes with the rest instead of letting the rain in
+    for hours; a hold armed AFTER the onset (someone opens during the storm) is
+    respected. Strong wind = the worst of mean wind and gust at/above
+    ``wind_limit_kmh``, released below ``limit - wind_cap_hyst_kmh`` so wind
+    hovering at the limit never re-fires. The first reading only seeds the state
+    (a restart mid-storm must not wipe a restored hold) and a missing wind
+    reading keeps the latch (a dropout must not re-arm a new edge).
+    """
+    rain_now = bool(protect and raining)
+    vals = [v for v in (wind, gust) if v is not None]
+    w = max(vals) if vals else None
+    if not protect:
+        wind_now = False
+    elif w is None:
+        wind_now = bool(state.onset_wind)
+    elif state.onset_wind:
+        wind_now = w >= cfg.wind_limit_kmh - cfg.wind_cap_hyst_kmh
+    else:
+        wind_now = w >= cfg.wind_limit_kmh
+    fired = ((state.onset_rain is False and rain_now)
+             or (state.onset_wind is False and wind_now))
+    state.onset_rain, state.onset_wind = rain_now, wind_now
+    return fired
 
 
 # --------------------------------------------------------------------------- #

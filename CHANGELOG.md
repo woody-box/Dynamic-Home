@@ -4,6 +4,22 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.104.0] — 2026-09-28
+
+### Changed
+- **DS · el inicio de la lluvia o del viento fuerte anula la retención manual.**
+  Una persiana movida a mano queda retenida (por defecto 4 h) e ignoraba todo,
+  lluvia incluida: una persiana dejada entreabierta dejaba entrar el agua horas
+  mientras las demás se cerraban. Ahora el **comienzo** de la lluvia (el slot
+  «Lluvia») o del **viento fuerte** (viento o racha ≥ «Límite de viento») es una
+  transición real que termina la retención: la persiana pasa al instante a su
+  protección (cierre por lluvia / tope de viento) junto con las demás. Si alguien
+  la abre a mano **durante** la lluvia, se le respeta (solo cuenta el inicio). El
+  viento usa la misma histéresis que el tope de viento, para que rondar el límite
+  no lo dispare una y otra vez; un corte del sensor de viento no crea un falso
+  inicio, y tras un reinicio con la tormenta ya en marcha la retención restaurada
+  se mantiene. Requiere «Protección meteo» activada en la persiana.
+
 ## [0.103.0] — 2026-09-13
 
 ### Fixed

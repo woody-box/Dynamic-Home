@@ -28,6 +28,7 @@ from .ds_engine import (
     alert_active,
     decide_cover,
     solar_impact,
+    weather_onset,
 )
 from .options_spec import apply_options
 
@@ -612,6 +613,16 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
         wind = self._wind_with_ttl(now_ts)
         if wind is None:
             wind = wxv.get("wind")
+        # The START of rain or strong wind ends a manual hold (a real transition):
+        # a shutter left open by hand closes with the rest. A hold armed after
+        # the onset is respected.
+        if (weather_onset(self.ds_state, cfg, raining, wind, gust,
+                          self.weather_protect)
+                and self.manual_pos is not None):
+            _LOGGER.info("%s: weather onset (rain/strong wind) ended the manual "
+                         "hold at %s%%", self.entry.title, self.manual_pos)
+            self.manual_pos = None
+            self.manual_until = 0.0
         ins = DsInputs(
             hvac_mode=hvac,
             t_in=t_in,

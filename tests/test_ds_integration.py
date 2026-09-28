@@ -194,6 +194,58 @@ async def test_weather_entity_in_rain_slot_closes_on_rainy(
     assert co.data.reason != "meteo_rain"
 
 
+async def test_rain_onset_clears_manual_hold(hass: HomeAssistant) -> None:
+    """The start of rain ends a manual hold; a hold armed during rain stands.
+
+    Real case: a shutter left half-open by hand kept its 4 h hold and let the
+    rain in while the rest closed.
+    """
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    _seed(hass)
+    hass.states.async_set("sensor.condicion", "cloudy")
+    entry = MockConfigEntry(domain=const.DOMAIN,
+                            data={**SHUTTER, const.CONF_RAIN: "sensor.condicion"},
+                            title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()                        # seeds the onset state
+    co.arm_manual_override(40)
+    await co.async_refresh()
+    assert co.data.reason == "manual_hold"
+    # It starts raining -> the hold ends and the rain protection takes over.
+    hass.states.async_set("sensor.condicion", "rainy")
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.manual_pos is None
+    assert co.data.reason == "meteo_rain"
+    # Someone opens it by hand DURING the rain: respected (no new onset).
+    co.arm_manual_override(60)
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.data.reason == "manual_hold"
+    assert co.manual_pos == 60
+
+
+async def test_strong_wind_onset_clears_manual_hold(hass: HomeAssistant) -> None:
+    _seed(hass)
+    entry = await _setup(hass)
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    dw = const.DATA_WEATHER
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"wind": 10}}
+    await co.async_refresh()
+    co.arm_manual_override(100)
+    await co.async_refresh()
+    assert co.data.reason == "manual_hold"
+    # Wind crosses the limit (default 40 km/h) -> hold cleared, wind cap acts.
+    hass.data[const.DOMAIN][dw] = {"alert": False, "values": {"wind": 80}}
+    await co.async_refresh()
+    await hass.async_block_till_done()
+    assert co.manual_pos is None
+    assert co.data.reason == "meteo_wind_cap"
+
+
 async def test_dw_probabilities_and_gust_drive_ds(hass: HomeAssistant) -> None:
     """Dynamic Weather gust -> wind cap; storm/rain probability -> alert."""
     _seed(hass)
