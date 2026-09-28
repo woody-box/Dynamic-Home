@@ -156,10 +156,25 @@ class ZoneModeSelect(RestoreEntity, SelectEntity):
         self._co.zone_modes[self._zid] = (
             state if state in self._attr_options else modes.AUTO)
         self._co.publish_modes(notify=False)
+        # A sleep-schedule edge may hand this pick back to auto: reflect it. Also
+        # keeps the coordinator ticking (it only polls while it has listeners).
+        self.async_on_remove(self._co.async_add_listener(self.async_write_ha_state))
 
     @property
     def current_option(self) -> str:
         return self._co.zone_modes.get(self._zid, modes.AUTO)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        z = self._co.tree["zones"].get(self._zid, {})
+        if "sleep_start" not in z:
+            return {}
+
+        def hhmm(m: int) -> str:
+            return f"{m // 60:02d}:{m % 60:02d}"
+
+        return {"sleep_schedule": f"{hhmm(z['sleep_start'])}–{hhmm(z['sleep_end'])}",
+                "sleep_schedule_active": self._co.schedule_in.get(self._zid, False)}
 
     async def async_select_option(self, option: str) -> None:
         self._co.zone_modes[self._zid] = option

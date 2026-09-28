@@ -251,3 +251,87 @@ async def test_comfort_zone_override_and_eco_mode_link(hass: HomeAssistant) -> N
     await _select(hass, zentry, "comfort_salon", "auto")
     await _select(hass, zentry, "house_mode", "eco")
     assert dc_co._cfg().base_heat_day < DcConfig().base_heat_day
+
+
+# --- Per-zone sleep schedule -------------------------------------------------
+def test_in_window_wraps_midnight_and_empty_is_off():
+    assert modes.in_window(23 * 60, 22 * 60 + 30, 8 * 60) is True
+    assert modes.in_window(7 * 60, 22 * 60 + 30, 8 * 60) is True
+    assert modes.in_window(8 * 60, 22 * 60 + 30, 8 * 60) is False   # end excluded
+    assert modes.in_window(15 * 60, 22 * 60 + 30, 8 * 60) is False
+    assert modes.in_window(14 * 60, 13 * 60, 16 * 60) is True       # same-day
+    assert modes.in_window(0, 600, 600) is False                    # start == end
+    assert modes.in_window(0, None, 480) is False                   # no schedule
+
+
+def test_schedule_applies_only_while_zone_is_auto():
+    # auto + inside the window -> sleep; outside -> inherits (auto).
+    assert modes.schedule_step("auto", True, True) == ("auto", "sleep")
+    assert modes.schedule_step("auto", False, False) == ("auto", "auto")
+    # A manual pick wins while no window edge happens.
+    assert modes.schedule_step("home", True, True) == ("home", "home")
+    assert modes.schedule_step("sleep", False, False) == ("sleep", "sleep")
+
+
+def test_window_edge_clears_home_sleep_picks_only():
+    # Stayed up ("home") during the window: the morning edge hands back to auto.
+    assert modes.schedule_step("home", False, True) == ("auto", "auto")
+    # An afternoon nap ("sleep"): the evening edge hands it to the schedule.
+    assert modes.schedule_step("sleep", True, False) == ("auto", "sleep")
+    # Long-lived picks (away / eco / boost) survive the edges.
+    assert modes.schedule_step("away", True, False) == ("away", "away")
+    assert modes.schedule_step("eco", False, True) == ("eco", "eco")
+
+
+def test_first_reading_is_not_an_edge():
+    # A restart must never wipe a restored manual pick.
+    assert modes.schedule_step("home", True, None) == ("home", "home")
+
+
+def test_zone_tree_keeps_sleep_schedule():
+    tree = zones.normalize({"zones": {"h2": {
+        "name": "H2", "modules": ["e1"], "sleep_start": 1350, "sleep_end": 480}}})
+    z = tree["zones"]["h2"]
+    assert (z["sleep_start"], z["sleep_end"]) == (1350, 480)
+    # A half-configured schedule is dropped (both ends or nothing).
+    tree = zones.normalize({"zones": {"h2": {"name": "H2", "sleep_start": 1350}}})
+    assert "sleep_start" not in tree["zones"]["h2"]
+
+
+async def test_zone_sleep_schedule_drives_published_mode(
+        hass: HomeAssistant) -> None:
+    """Zone "h2" (22:30–08:00): auto sleeps in the window; a manual "home" at
+    night lasts until the morning edge; the house mode rules outside."""
+    from custom_components.dynamic_home import const
+    tree = {"zones": {"h2": {"name": "H2", "modules": ["ds1"],
+                             "sleep_start": 22 * 60 + 30, "sleep_end": 8 * 60}},
+            "groups": {}}
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, title="Zonas",
+        data={const.CONF_NAME: "Zonas", const.CONF_MODULE: const.MODULE_ZONES},
+        options={const.CONF_ZONES_TREE: tree})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    assert co.update_interval is not None           # a schedule needs polling
+
+    def mode_for_ds1():
+        return modes.effective_from_published(
+            hass.data[const.DOMAIN][const.DATA_MODE], "ds1")
+
+    co._schedule_tick(15 * 60)                       # afternoon: house mode
+    assert mode_for_ds1() == "home"
+    co._schedule_tick(23 * 60)                       # inside the window
+    assert mode_for_ds1() == "sleep"
+    assert co.zone_modes.get("h2", "auto") == "auto"  # the pick stays auto
+    # Staying up: a manual "home" wins for the rest of the night...
+    co.zone_modes["h2"] = "home"
+    co._schedule_tick(23 * 60 + 30)
+    assert mode_for_ds1() == "home"
+    # ...until the morning edge hands it back to the schedule (auto).
+    co._schedule_tick(8 * 60)
+    assert co.zone_modes["h2"] == "auto"
+    assert mode_for_ds1() == "home"                  # house mode again
+    co._schedule_tick(22 * 60 + 30)                  # next night: sleeps alone
+    assert mode_for_ds1() == "sleep"

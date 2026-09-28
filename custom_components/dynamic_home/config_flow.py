@@ -1034,13 +1034,31 @@ class ZonesOptionsFlow(OptionsFlow):
                 self._tree = zones.remove_zone(self._tree, self._sel)
             else:
                 z["name"] = user_input.get(const.CONF_NAME, z["name"])
+                # Sleep schedule: both ends or none (clearing either drops it).
+                start, end = user_input.get("sleep_start"), user_input.get("sleep_end")
+                if start and end:
+                    z["sleep_start"] = _hhmm_to_min(start, 0)
+                    z["sleep_end"] = _hhmm_to_min(end, 0)
+                else:
+                    z.pop("sleep_start", None)
+                    z.pop("sleep_end", None)
                 self._tree = zones.assign_modules(
                     self._tree, self._sel, user_input.get("modules", []))
             return self._save()
+
+        def _hhmm(key: str) -> dict:
+            m = z.get(key)
+            return ({"suggested_value": f"{m // 60:02d}:{m % 60:02d}:00"}
+                    if m is not None else {})
+
         schema = vol.Schema({
             vol.Optional(const.CONF_NAME, default=z["name"]): str,
             vol.Optional("modules", default=z["modules"]):
                 self._select(self._module_options(), multiple=True),
+            vol.Optional("sleep_start", description=_hhmm("sleep_start")):
+                selector.TimeSelector(),
+            vol.Optional("sleep_end", description=_hhmm("sleep_end")):
+                selector.TimeSelector(),
             vol.Optional("delete", default=False): bool,
         })
         return self.async_show_form(step_id="zone_detail", data_schema=schema)
