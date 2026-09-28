@@ -31,9 +31,13 @@ class ZonesCoordinator(DataUpdateCoordinator):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         # Poll only when presence or a changeover sensor is configured (for
         # per-source timeouts / water-temp tracking); otherwise config-time only.
+        # A per-zone sleep schedule also needs the tick to catch its edges.
+        tree = zones.normalize(entry.options.get(const.CONF_ZONES_TREE))
+        scheduled = any("sleep_start" in z for z in tree["zones"].values())
         configured = bool(entry.options.get(const.CONF_PRESENCE_SOURCES)
                           or entry.options.get(const.CONF_PRESENCE_PHONES)
-                          or entry.options.get(const.CONF_CHANGEOVER_SENSOR))
+                          or entry.options.get(const.CONF_CHANGEOVER_SENSOR)
+                          or scheduled)
         super().__init__(
             hass, _LOGGER, name=f"{const.DOMAIN}_zones",
             update_interval=(timedelta(seconds=const.UPDATE_INTERVAL_S)
@@ -42,6 +46,10 @@ class ZonesCoordinator(DataUpdateCoordinator):
         # F01: house mode + per-zone overrides (set/restored by the select entities).
         self.house_mode = "home"
         self.zone_modes: dict[str, str] = {}
+        # Per-zone sleep schedule: inside-the-window flag per zone this tick and
+        # last tick (None until the first reading, so a restart is not an edge).
+        self.schedule_in: dict[str, bool] = {}
+        self._schedule_prev: dict[str, bool] = {}
         # F23: comfort↔economy preset (global + per-zone overrides), same selects.
         self.comfort_global = "balanced"
         self.zone_comfort: dict[str, str] = {}
@@ -85,11 +93,46 @@ class ZonesCoordinator(DataUpdateCoordinator):
         return comfort.effective_level_for_entry(
             self.tree, self.comfort_global, self.zone_comfort, entry_id)
 
+    def _schedule_tick(self, minute_of_day: int) -> None:
+        """Advance every zone's sleep schedule and publish the result.
+
+        A window edge hands a home/sleep manual pick back to ``auto`` (the
+        schedule governs again); the select entities are refreshed so the UI
+        shows it. Zones without a schedule are untouched.
+        """
+        before = self._published_zone_modes()
+        for zid, z in self.tree["zones"].items():
+            if "sleep_start" not in z:
+                self.schedule_in.pop(zid, None)
+                self._schedule_prev.pop(zid, None)
+                continue
+            in_now = modes.in_window(minute_of_day, z["sleep_start"], z["sleep_end"])
+            manual = self.zone_modes.get(zid, modes.AUTO)
+            new_manual, _ = modes.schedule_step(
+                manual, in_now, self._schedule_prev.get(zid))
+            if new_manual != manual:
+                self.zone_modes[zid] = new_manual
+            self.schedule_in[zid] = in_now
+            self._schedule_prev[zid] = in_now
+        # A window edge re-evaluates the modules right away (not on their tick).
+        self.publish_modes(notify=self._published_zone_modes() != before)
+        self.async_update_listeners()
+
+    def _published_zone_modes(self) -> dict[str, str]:
+        """Zone modes as consumers see them: the manual pick, or the schedule's
+        ``sleep`` while an ``auto`` zone is inside its window."""
+        out = dict(self.zone_modes)
+        for zid, in_now in self.schedule_in.items():
+            out[zid] = modes.schedule_step(
+                self.zone_modes.get(zid, modes.AUTO), in_now, None)[1]
+        return out
+
     def publish_modes(self, notify: bool = True) -> None:
         """Publish the resolved modes + comfort for consumers, and nudge modules."""
         data = self.hass.data.setdefault(const.DOMAIN, {})
+        published = self._published_zone_modes()
         data[const.DATA_MODE] = {"house": self.house_mode,
-                                 "zones": dict(self.zone_modes),
+                                 "zones": published,
                                  "caps": self.mode_caps, "tree": self.tree,
                                  "comfort": self.comfort_global,
                                  "zone_comfort": dict(self.zone_comfort),
@@ -261,7 +304,8 @@ class ZonesCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         tree = self.tree
         self.hass.data.setdefault(const.DOMAIN, {})[const.DATA_ZONES] = tree
-        self.publish_modes(notify=False)
+        now = dt_util.now()                         # local time for the schedules
+        self._schedule_tick(now.hour * 60 + now.minute)
         if (self.entry.options.get(const.CONF_PRESENCE_SOURCES)
                 or self.entry.options.get(const.CONF_PRESENCE_PHONES)):
             self._recompute_presence(dt_util.utcnow().timestamp())

@@ -94,3 +94,31 @@ async def test_zones_options_tree_edit_persists(hass: HomeAssistant) -> None:
     # Persisted in options (survives restarts) and re-published after reload.
     assert "dormitorio" in entry.options[const.CONF_ZONES_TREE]["zones"]
     assert "dormitorio" in hass.data[const.DOMAIN][const.DATA_ZONES]["zones"]
+
+
+async def test_zone_detail_sets_and_clears_sleep_schedule(
+        hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(
+        domain=const.DOMAIN, title="Zonas",
+        data={const.CONF_NAME: "Zonas", const.CONF_MODULE: const.MODULE_ZONES},
+        options={const.CONF_ZONES_TREE: {
+            "zones": {"h2": {"name": "H2", "modules": []}}, "groups": {}}})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    async def edit(extra: dict) -> None:
+        flow = await hass.config_entries.options.async_init(entry.entry_id)
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {"next_step_id": "zone_edit"})
+        flow = await hass.config_entries.options.async_configure(
+            flow["flow_id"], {"zone": "h2"})
+        await hass.config_entries.options.async_configure(
+            flow["flow_id"], {const.CONF_NAME: "H2", "modules": [], **extra})
+        await hass.async_block_till_done()
+
+    await edit({"sleep_start": "22:30:00", "sleep_end": "08:00:00"})
+    z = entry.options[const.CONF_ZONES_TREE]["zones"]["h2"]
+    assert (z["sleep_start"], z["sleep_end"]) == (22 * 60 + 30, 8 * 60)
+    await edit({})                                   # both cleared -> no schedule
+    assert "sleep_start" not in entry.options[const.CONF_ZONES_TREE]["zones"]["h2"]

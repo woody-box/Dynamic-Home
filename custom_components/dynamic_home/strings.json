@@ -1217,7 +1217,13 @@
         "data": {
           "name": "Name",
           "modules": "Modules",
-          "delete": "Delete this zone"
+          "delete": "Delete this zone",
+          "sleep_start": "Sleep from",
+          "sleep_end": "Sleep until"
+        },
+        "data_description": {
+          "sleep_start": "Sleep schedule for this zone: while the zone mode is Auto, the zone is in Sleep (shutters at their Sleep close, VMC capped) inside this window. A manual pick wins until the next start or end of the window. Leave both empty for no schedule.",
+          "sleep_end": "End of the sleep window (may wrap past midnight, e.g. 22:30 → 08:00)."
         }
       },
       "group_detail": {

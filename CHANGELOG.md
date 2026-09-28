@@ -4,6 +4,25 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.105.0] — 2026-09-28
+
+### Added
+- **Zonas · horario de sueño por zona.** Hasta ahora el modo «Dormir» era un
+  interruptor sin hora: activo desde que lo elegías hasta que lo cambiabas, así
+  que para dormir solo de noche hacía falta una automatización. Ahora cada zona
+  puede tener su **franja de sueño** (Zonas → Configurar → Editar zona → «Dormir
+  desde» / «Dormir hasta»; puede cruzar la medianoche, p. ej. 22:30 → 08:00).
+  Mientras el selector «Modo <zona>» está en **Auto**, la zona entra sola en
+  Dormir dentro de la franja (persianas a su «Cierre en Sleep», VMC limitada) y
+  fuera de ella sigue el modo de la casa. **No se pierde nada**: elegir a mano
+  Dormir (una siesta) o En casa (trasnochar) sigue funcionando al momento y
+  manda **hasta el siguiente inicio o fin de la franja**, cuando la zona vuelve
+  a Auto y el horario retoma el control; «Fuera», «Eco» y «Refuerzo» elegidos a
+  mano no los toca el horario. Un reinicio no cuenta como cambio de franja, así
+  que se conserva lo que hubieras elegido. El selector muestra la franja y si
+  está activa (atributos `sleep_schedule`, `sleep_schedule_active`). Dejar ambas
+  horas vacías = sin horario.
+
 ## [0.104.2] — 2026-09-28
 
 ### Fixed

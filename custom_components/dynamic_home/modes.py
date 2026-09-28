@@ -34,6 +34,40 @@ def effective_mode_for_entry(tree: dict, house: str, zone_modes: dict,
     return effective_mode(house, zone_modes.get(zid) if zid else None)
 
 
+def in_window(minute_of_day: int, start: int | None, end: int | None) -> bool:
+    """Whether ``minute_of_day`` is inside [start, end) (wraps midnight).
+
+    No schedule (either end None) or start == end -> never inside.
+    """
+    if start is None or end is None or start == end:
+        return False
+    if start < end:
+        return start <= minute_of_day < end
+    return minute_of_day >= start or minute_of_day < end
+
+
+# Manual picks a sleep-schedule edge hands back to the schedule. Long-lived
+# choices (away / eco / boost) are left alone.
+SCHEDULE_AXIS = ("home", "sleep")
+
+
+def schedule_step(manual: str, in_now: bool,
+                  prev_in: bool | None) -> tuple[str, str]:
+    """One tick of a zone's sleep schedule -> ``(manual, published)``.
+
+    The zone's manual pick wins until the next window edge; the edge (entering
+    or leaving the window) returns a home/sleep pick to ``auto`` so the schedule
+    governs again. While ``auto``, inside the window publishes ``sleep``,
+    outside inherits the house (``auto``). ``prev_in`` None = first reading
+    (a restart): never an edge, so a restored manual pick survives.
+    """
+    if prev_in is not None and prev_in != in_now and manual in SCHEDULE_AXIS:
+        manual = AUTO
+    if manual != AUTO:
+        return manual, manual
+    return manual, ("sleep" if in_now else AUTO)
+
+
 def effective_from_published(data: dict | None, entry_id: str) -> str:
     """Resolve a module's mode from the published DATA_MODE blob (or 'home')."""
     if not data:

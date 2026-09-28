@@ -1217,7 +1217,13 @@
         "data": {
           "name": "Nombre",
           "modules": "Módulos",
-          "delete": "Eliminar esta zona"
+          "delete": "Eliminar esta zona",
+          "sleep_start": "Dormir desde",
+          "sleep_end": "Dormir hasta"
+        },
+        "data_description": {
+          "sleep_start": "Horario de sueño de esta zona: mientras el modo de la zona está en Auto, la zona entra en Dormir dentro de esta franja (persianas a su «Cierre en Sleep», VMC limitada). Lo que elijas a mano en el selector manda hasta el siguiente inicio o fin de la franja. Deja ambos vacíos para no usar horario.",
+          "sleep_end": "Fin de la franja de sueño (puede cruzar la medianoche, p. ej. 22:30 → 08:00)."
         }
       },
       "group_detail": {

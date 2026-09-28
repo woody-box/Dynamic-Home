@@ -30,6 +30,10 @@ def normalize(tree: dict | None) -> dict:
         z = z or {}
         zones[zid] = {"name": z.get("name", zid),
                       "modules": list(dict.fromkeys(z.get("modules") or []))}
+        # Optional sleep schedule (minutes from midnight): both ends or nothing.
+        start, end = z.get("sleep_start"), z.get("sleep_end")
+        if isinstance(start, int) and isinstance(end, int):
+            zones[zid]["sleep_start"], zones[zid]["sleep_end"] = start, end
     for gid, g in (tree.get("groups") or {}).items():
         g = g or {}
         groups[gid] = {"name": g.get("name", gid),
