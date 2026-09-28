@@ -327,12 +327,16 @@
         "data": {
           "freecool_t_ext_min": "Temp. ext. mínima (°C)",
           "freecool_delta_on": "ΔT activación (°C)",
-          "freecool_delta_off": "ΔT desactivación (°C)"
+          "freecool_delta_off": "ΔT desactivación (°C)",
+          "freecool_t_in_min": "Temp. int. mínima (°C)",
+          "freecool_quiet_cap": "Tope nocturno en sleep/silencio (V)"
         },
         "data_description": {
           "freecool_t_ext_min": "No hacer free-cooling por debajo de esta temp. exterior (demasiado frío).",
           "freecool_delta_on": "ΔT interior−exterior que inicia el free-cooling. (↓ = arranca con menos diferencia)",
-          "freecool_delta_off": "ΔT que detiene el free-cooling (histéresis). (↓ = se mantiene con menos diferencia)"
+          "freecool_delta_off": "ΔT que detiene el free-cooling (histéresis). (↓ = se mantiene con menos diferencia)",
+          "freecool_t_in_min": "El free-cooling solo actúa con la temperatura interior igual o superior a este valor, para no enfriar de más la casa. (↑ = enfría menos)",
+          "freecool_quiet_cap": "Velocidad máxima de la VMC que puede usar el free-cooling de noche en modo sleep u horas de silencio. (↓ = más silencioso)"
         }
       },
       "cat_hostile": {
@@ -428,7 +432,8 @@
           "summer_min_open_pct": "Verano mín. (%)",
           "winter_night_pct": "Noche invierno (%)",
           "weather_max_open_pct": "Meteo máx. (%)",
-          "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)"
+          "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)",
+          "rain_mm_min": "Umbral sensor lluvia (mm)"
         },
         "data_description": {
           "rain_close_pct": "Posición de la persiana cuando llueve (protección). (↓ = más cerrada, más protección)",
@@ -438,7 +443,8 @@
           "summer_min_open_pct": "Apertura mínima que se mantiene en verano. (↑ = no cierra tanto en verano)",
           "winter_night_pct": "Posición en noches de invierno (cerrar para aislar). (↓ = cierra más para aislar)",
           "weather_max_open_pct": "Apertura máx. bajo una alerta meteo.",
-          "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración). (↓ = sombrea más al pedir escudo)"
+          "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración). (↓ = sombrea más al pedir escudo)",
+          "rain_mm_min": "Para un sensor de lluvia NUMÉRICO (precipitación en mm): por encima de este valor cuenta como lluvia. Los sensores on/off y las entidades de condición meteorológica lo ignoran."
         }
       },
       "cat_thermal": {
@@ -446,11 +452,13 @@
         "description": "Deltas de temperatura que activan free-cooling / el escudo solar (cuánto más caliente fuera que dentro).",
         "data": {
           "freecool_delta": "ΔT free-cool (°C)",
-          "hot_delta": "ΔT calor (°C)"
+          "hot_delta": "ΔT calor (°C)",
+          "temp_hyst_c": "Histéresis térmica (°C)"
         },
         "data_description": {
           "freecool_delta": "ΔT interior−exterior que justifica abrir para free-cooling. (↓ = abre para purgar con menos diferencia)",
-          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo). (↓ = cuenta como caliente con menos)"
+          "hot_delta": "ΔT por encima del cual la estancia cuenta como caliente (lógica de sombreo). (↓ = cuenta como caliente con menos)",
+          "temp_hyst_c": "Los escudos térmicos entran al superar el ΔT calor/frío y solo se sueltan cuando la diferencia baja esta cantidad por debajo, para que las pequeñas oscilaciones alrededor del umbral no muevan la persiana. (↑ = más estable, reacciona más tarde)"
         }
       },
       "cat_shield": {
@@ -713,10 +721,12 @@
         "title": "Condensación",
         "description": "Margen al punto de rocío antes de cortar en frío (anti-condensación).",
         "data": {
-          "dew_spread_min": "Margen punto rocío (°C)"
+          "dew_spread_min": "Margen punto rocío (°C)",
+          "cond_margin_c": "Margen de seguridad superficie (°C)"
         },
         "data_description": {
-          "dew_spread_min": "Riesgo de condensación cuando la temp. interior está a este margen del punto de rocío (seguridad de suelo refrescante). (↑ = corta antes, más conservador)"
+          "dew_spread_min": "Riesgo de condensación cuando la temp. interior está a este margen del punto de rocío (seguridad de suelo refrescante). (↑ = corta antes, más conservador)",
+          "cond_margin_c": "Con temperatura de suelo/agua: la zona deja de refrigerar cuando (superficie − punto de rocío) baja de este margen. Absorbe el error de la fórmula y del sensor. (↑ = para antes, más seguro)"
         }
       },
       "cat_facade": {
@@ -919,13 +929,21 @@
           "alert_pct": "Protección alerta (%)",
           "alert_hail_pct": "Protección granizo (%)",
           "alert_wind_pct": "Protección viento (%)",
-          "alert_hold_min": "Hold alerta (min)"
+          "alert_hold_min": "Hold alerta (min)",
+          "storm_prob_alert": "Aviso prob. tormenta (%)",
+          "precip_prob_alert": "Aviso prob. lluvia (%)",
+          "alert_gust_kmh": "Umbral alerta viento (km/h)",
+          "alert_prob_pct": "Umbral sensor alerta (%)"
         },
         "data_description": {
           "alert_pct": "Posición de protección para la alerta meteo genérica. (↓ = más cerrada, más protección)",
           "alert_hail_pct": "Posición de protección para alerta de granizo/tormenta (cerrar del todo protege mejor). (↓ = más cerrada, más protección)",
           "alert_wind_pct": "Posición de protección para alerta de viento (una posición media puede proteger las lamas). (↓ = más cerrada, más protección)",
-          "alert_hold_min": "Minutos que se mantiene la protección tras levantarse la alerta. (↑ = protege más tiempo tras la alerta)"
+          "alert_hold_min": "Minutos que se mantiene la protección tras levantarse la alerta. (↑ = protege más tiempo tras la alerta)",
+          "storm_prob_alert": "Sin sensor de alerta local, una probabilidad de tormenta de Dynamic Weather igual o superior lleva a la posición de alerta por adelantado. 0 lo desactiva. (↓ = protege antes)",
+          "precip_prob_alert": "Sin sensor de alerta local, una probabilidad de lluvia de Dynamic Weather igual o superior lleva a la posición de lluvia por adelantado. 0 lo desactiva. (↓ = cierra antes)",
+          "alert_gust_kmh": "Para un sensor de alerta de viento NUMÉRICO (racha en km/h): a partir de este valor salta la alerta de viento. (↓ = protege con menos viento)",
+          "alert_prob_pct": "Para un sensor de alerta genérica/granizo NUMÉRICO (probabilidad %): a partir de este valor salta la alerta. (↓ = protege antes)"
         }
       },
       "cat_hood": {

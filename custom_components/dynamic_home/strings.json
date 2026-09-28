@@ -327,12 +327,16 @@
         "data": {
           "freecool_t_ext_min": "Min outdoor temp (°C)",
           "freecool_delta_on": "ΔT on (°C)",
-          "freecool_delta_off": "ΔT off (°C)"
+          "freecool_delta_off": "ΔT off (°C)",
+          "freecool_t_in_min": "Min indoor temp (°C)",
+          "freecool_quiet_cap": "Night cap during sleep/quiet (V)"
         },
         "data_description": {
           "freecool_t_ext_min": "Do not free-cool below this outdoor temp (too cold).",
           "freecool_delta_on": "Indoor−outdoor ΔT that starts free-cooling. (↓ = starts with less difference)",
-          "freecool_delta_off": "ΔT that stops free-cooling (hysteresis). (↓ = holds with less difference)"
+          "freecool_delta_off": "ΔT that stops free-cooling (hysteresis). (↓ = holds with less difference)",
+          "freecool_t_in_min": "Free-cooling only runs while the indoor temperature is at/above this, so it never overcools the house. (↑ = cools less)",
+          "freecool_quiet_cap": "Maximum VMC speed free-cooling may use at night during sleep or quiet hours. (↓ = quieter)"
         }
       },
       "cat_hostile": {
@@ -428,7 +432,8 @@
           "summer_min_open_pct": "Summer min open (%)",
           "winter_night_pct": "Winter night (%)",
           "weather_max_open_pct": "Weather max open (%)",
-          "sdhb_solar_shield_max_open_pct": "Solar shield max (%)"
+          "sdhb_solar_shield_max_open_pct": "Solar shield max (%)",
+          "rain_mm_min": "Rain sensor threshold (mm)"
         },
         "data_description": {
           "rain_close_pct": "Shutter position when it rains (protection). (↓ = more closed, more protection)",
@@ -438,7 +443,8 @@
           "summer_min_open_pct": "Minimum opening kept in summer. (↑ = keeps it more open in summer)",
           "winter_night_pct": "Position on winter nights (close to insulate). (↓ = closes more to insulate)",
           "weather_max_open_pct": "Max opening under a weather alert.",
-          "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling). (↓ = shades more on shield)"
+          "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling). (↓ = shades more on shield)",
+          "rain_mm_min": "For a NUMERIC rain sensor (precipitation in mm): above this it counts as raining. On/off sensors and weather-condition entities ignore it."
         }
       },
       "cat_thermal": {
@@ -446,11 +452,13 @@
         "description": "Temperature deltas that trigger free-cooling / the solar shield (how much warmer outside than inside).",
         "data": {
           "freecool_delta": "Free-cool ΔT (°C)",
-          "hot_delta": "Hot ΔT (°C)"
+          "hot_delta": "Hot ΔT (°C)",
+          "temp_hyst_c": "Thermal hysteresis (°C)"
         },
         "data_description": {
           "freecool_delta": "Indoor−outdoor ΔT that justifies opening for free-cooling. (↓ = opens to purge with less difference)",
-          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)"
+          "hot_delta": "ΔT above which the room counts as hot (shading logic). (↓ = counts as hot sooner)",
+          "temp_hyst_c": "The thermal shields engage at ΔT hot/cold and only release once the difference drops this much below it, so small swings around the threshold don't move the shutter. (↑ = steadier, reacts later)"
         }
       },
       "cat_shield": {
@@ -713,10 +721,12 @@
         "title": "Condensation",
         "description": "Margin to the dew point before cutting cooling (anti-condensation).",
         "data": {
-          "dew_spread_min": "Dew-point margin (°C)"
+          "dew_spread_min": "Dew-point margin (°C)",
+          "cond_margin_c": "Cold-surface safety margin (°C)"
         },
         "data_description": {
-          "dew_spread_min": "Condensation risk when indoor temp is within this margin of the dew point (radiant-cooling safety). (↑ = cuts sooner, more conservative)"
+          "dew_spread_min": "Condensation risk when indoor temp is within this margin of the dew point (radiant-cooling safety). (↑ = cuts sooner, more conservative)",
+          "cond_margin_c": "With a floor/water temperature: the zone stops cooling when (surface − dew point) drops below this margin. Absorbs formula and sensor error. (↑ = stops earlier, safer)"
         }
       },
       "cat_facade": {
@@ -919,13 +929,21 @@
           "alert_pct": "Alert protect (%)",
           "alert_hail_pct": "Hail protect (%)",
           "alert_wind_pct": "Wind protect (%)",
-          "alert_hold_min": "Alert hold (min)"
+          "alert_hold_min": "Alert hold (min)",
+          "storm_prob_alert": "Storm probability alert (%)",
+          "precip_prob_alert": "Rain probability alert (%)",
+          "alert_gust_kmh": "Wind-alert threshold (km/h)",
+          "alert_prob_pct": "Alert sensor threshold (%)"
         },
         "data_description": {
           "alert_pct": "Protection position for the generic weather alert. (↓ = more closed, more protection)",
           "alert_hail_pct": "Protection position for a hail/storm alert (fully closed protects best). (↓ = more closed, more protection)",
           "alert_wind_pct": "Protection position for a wind alert (a mid position can protect the slats). (↓ = more closed, more protection)",
-          "alert_hold_min": "Minutes the protection is held after the alert clears. (↑ = protects longer after the alert)"
+          "alert_hold_min": "Minutes the protection is held after the alert clears. (↑ = protects longer after the alert)",
+          "storm_prob_alert": "With no local alert sensor, a storm probability from Dynamic Weather at/above this takes the alert position in advance. 0 disables it. (↓ = protects earlier)",
+          "precip_prob_alert": "With no local alert sensor, a rain probability from Dynamic Weather at/above this takes the rain position in advance. 0 disables it. (↓ = closes earlier)",
+          "alert_gust_kmh": "For a NUMERIC wind-alert sensor (gust in km/h): at/above this the wind alert fires. (↓ = protects with less wind)",
+          "alert_prob_pct": "For a NUMERIC generic/hail alert sensor (probability %): at/above this the alert fires. (↓ = protects earlier)"
         }
       },
       "cat_hood": {

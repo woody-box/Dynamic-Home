@@ -4,6 +4,20 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.104.1] — 2026-09-28
+
+### Fixed
+- **Opciones · 9 campos salían sin traducir (con su nombre interno).** En los
+  formularios de Opciones aparecían claves crudas como `rain_mm_min` en
+  «Posiciones de persiana». Afectaba a: umbral del sensor de lluvia numérico
+  (`rain_mm_min`), histéresis térmica (`temp_hyst_c`), avisos por probabilidad de
+  tormenta/lluvia y umbrales de sensores de alerta numéricos (`storm_prob_alert`,
+  `precip_prob_alert`, `alert_gust_kmh`, `alert_prob_pct`), margen de seguridad de
+  superficie en condensación (`cond_margin_c`) y los dos ajustes de free-cooling
+  de la VMC (`freecool_t_in_min`, `freecool_quiet_cap`). Ahora todos tienen
+  etiqueta y descripción en español e inglés, y un test impide que vuelva a
+  aparecer un campo de Opciones sin etiqueta.
+
 ## [0.104.0] — 2026-09-28
 
 ### Changed
