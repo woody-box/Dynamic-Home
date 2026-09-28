@@ -4,6 +4,19 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.104.2] — 2026-09-28
+
+### Fixed
+- **DS · recargar la persiana en pleno movimiento armaba una retención manual
+  falsa.** Al guardar «Editar entidades / hardware» (o al reiniciar), la persiana
+  se recarga; si la persiana física seguía moviéndose por una orden de la
+  instancia anterior, la nueva la tomaba por un movimiento ajeno y, al parar,
+  armaba una retención manual de 4 h en esa posición — la persiana quedaba
+  «Manual (override)» sin que nadie la tocara e ignoraba la lluvia. Ahora un
+  recorrido que ya estaba en curso al arrancar se trata como de origen
+  desconocido: se espera a que pare y su posición solo sirve de referencia, sin
+  armar nada. Los movimientos externos posteriores se siguen detectando igual.
+
 ## [0.104.1] — 2026-09-28
 
 ### Fixed

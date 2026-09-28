@@ -73,6 +73,13 @@ class DsCover(CoordinatorEntity[DsCoordinator], CoverEntity):
         if target:
             # Baseline so the first external move has a reference to compare against.
             self._last_pos = self._real_position()
+            st = self.hass.states.get(target)
+            if st is not None and st.state in ("opening", "closing"):
+                # Already travelling at (re)load — usually the previous instance's
+                # own command. Its origin is unknown: don't fight it, and let the
+                # settled position seed the baseline instead of arming a hold.
+                self._last_pos = None
+                self._external_moving = True
             self.async_on_remove(
                 async_track_state_change_event(
                     self.hass, [target], self._on_real_cover_change))
