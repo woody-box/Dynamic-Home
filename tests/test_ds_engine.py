@@ -770,3 +770,52 @@ def test_cold_shield_latch_no_flapping():
     assert d.reason == "winter_cold_shield"                           # holds
     d = decide_cover(cfg, st, DsInputs(t_in=21, t_out=20.6, **day))  # released
     assert d.reason == "winter_mild_open" and d.pos == 100
+
+
+# --- Weather onset (the start of rain / strong wind clears a manual hold) ---
+def test_onset_first_reading_never_fires():
+    from ds_engine import DsConfig, DsState, weather_onset
+    # A restart mid-rain must not wipe a restored manual hold: no transition seen.
+    st = DsState()
+    assert weather_onset(st, DsConfig(), True, None, None, True) is False
+
+
+def test_onset_rain_fires_once_on_the_transition():
+    from ds_engine import DsConfig, DsState, weather_onset
+    cfg, st = DsConfig(), DsState()
+    weather_onset(st, cfg, False, None, None, True)
+    assert weather_onset(st, cfg, True, None, None, True) is True   # starts
+    assert weather_onset(st, cfg, True, None, None, True) is False  # sustained
+    weather_onset(st, cfg, False, None, None, True)                 # stops
+    assert weather_onset(st, cfg, True, None, None, True) is True   # new shower
+
+
+def test_onset_strong_wind_uses_limit_with_hysteresis():
+    from ds_engine import DsConfig, DsState, weather_onset
+    cfg, st = DsConfig(), DsState()          # limit 40, release band 40 - hyst
+    weather_onset(st, cfg, False, 20, None, True)
+    assert weather_onset(st, cfg, False, 45, None, True) is True     # crosses
+    # Hovering around the limit inside the band must not re-fire.
+    assert weather_onset(st, cfg, False, 39, None, True) is False
+    assert weather_onset(st, cfg, False, 41, None, True) is False
+    # A strong GUST alone counts (the worst of mean wind and gust).
+    st2 = DsState()
+    weather_onset(st2, cfg, False, 10, None, True)
+    assert weather_onset(st2, cfg, False, 10, 70, True) is True
+
+
+def test_onset_wind_dropout_keeps_the_latch():
+    from ds_engine import DsConfig, DsState, weather_onset
+    cfg, st = DsConfig(), DsState()
+    weather_onset(st, cfg, False, 20, None, True)
+    assert weather_onset(st, cfg, False, 50, None, True) is True
+    # Sensor dropout during the storm: no reading must not re-arm a new edge.
+    assert weather_onset(st, cfg, False, None, None, True) is False
+    assert weather_onset(st, cfg, False, 50, None, True) is False
+
+
+def test_onset_needs_weather_protection():
+    from ds_engine import DsConfig, DsState, weather_onset
+    cfg, st = DsConfig(), DsState()
+    weather_onset(st, cfg, False, 10, None, False)
+    assert weather_onset(st, cfg, False, 80, None, False) is False
