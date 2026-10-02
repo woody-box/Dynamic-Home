@@ -259,6 +259,31 @@ async def test_rain_onset_clears_manual_hold(hass: HomeAssistant) -> None:
     assert co.manual_pos == 60
 
 
+async def test_rain_stop_waits_before_reopening(hass: HomeAssistant) -> None:
+    """Rain -> normal: the shutter stays closed for rain_release_min (15)."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+    _seed(hass)
+    hass.states.async_set("sensor.condicion", "rainy")
+    entry = MockConfigEntry(domain=const.DOMAIN,
+                            data={**SHUTTER, const.CONF_RAIN: "sensor.condicion"},
+                            title="Salon")
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    co = hass.data[const.DOMAIN][entry.entry_id]
+    await co.async_refresh()
+    assert co.data.reason == "meteo_rain"
+    # The rain stops: still closed, now waiting.
+    hass.states.async_set("sensor.condicion", "cloudy")
+    await co.async_refresh()
+    assert co.data.reason == "meteo_rain_release"
+    assert co.data.pos == co._cfg().rain_close_pct
+    # 16 minutes later with no rain: released to the normal cascade.
+    co.ds_state.rain_dry_since -= 16 * 60
+    await co.async_refresh()
+    assert co.data.reason not in ("meteo_rain", "meteo_rain_release")
+
+
 async def test_strong_wind_onset_clears_manual_hold(hass: HomeAssistant) -> None:
     _seed(hass)
     entry = await _setup(hass)

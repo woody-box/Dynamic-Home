@@ -27,6 +27,7 @@ from .ds_engine import (
     DsState,
     alert_active,
     decide_cover,
+    rain_release,
     solar_impact,
     weather_onset,
 )
@@ -595,6 +596,10 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                        and self._purge_active)
         raining = (self.weather_protect
                    and self._alert_on(const.CONF_RAIN, "rain", cfg))
+        # After the rain stops, keep protecting for rain_release_min: a lull
+        # between showers must not open the shutter. Everything downstream
+        # (alerts, onset, cascade) sees this effective "raining".
+        raining, rain_releasing = rain_release(self.ds_state, cfg, raining, now_ts)
         alert_pos = self._weather_alert(cfg, now_ts, raining=raining)
         sim_pos = self._sim_step(cfg, sun_above, now_ts)
         sleep_pos = self._sleep_pos(cfg)
@@ -634,6 +639,7 @@ class DsCoordinator(repairs.DegradedTracker, DataUpdateCoordinator):
                 self._hw(const.CONF_WIND) or self._hw(const.CONF_RAIN)
                 or gust is not None or wind is not None)),
             raining=raining,
+            rain_releasing=rain_releasing,
             wind=wind,
             gust=gust,
             current_pos=current_pos,

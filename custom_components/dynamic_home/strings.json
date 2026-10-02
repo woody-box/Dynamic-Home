@@ -433,7 +433,8 @@
           "winter_night_pct": "Winter night (%)",
           "weather_max_open_pct": "Weather max open (%)",
           "sdhb_solar_shield_max_open_pct": "Solar shield max (%)",
-          "rain_mm_min": "Rain sensor threshold (mm)"
+          "rain_mm_min": "Rain sensor threshold (mm)",
+          "rain_release_min": "Wait after rain (min)"
         },
         "data_description": {
           "rain_close_pct": "Shutter position when it rains (protection). (↓ = more closed, more protection)",
@@ -444,7 +445,8 @@
           "winter_night_pct": "Position on winter nights (close to insulate). (↓ = closes more to insulate)",
           "weather_max_open_pct": "Max opening under a weather alert.",
           "sdhb_solar_shield_max_open_pct": "Max opening when DC asks for solar shielding (cooling). (↓ = shades more on shield)",
-          "rain_mm_min": "For a NUMERIC rain sensor (precipitation in mm): above this it counts as raining. On/off sensors and weather-condition entities ignore it."
+          "rain_mm_min": "For a NUMERIC rain sensor (precipitation in mm): above this it counts as raining. On/off sensors and weather-condition entities ignore it.",
+          "rain_release_min": "After the rain stops, the shutter keeps its rain position this long before it may reopen, so a lull between showers doesn't open it. A new shower restarts the wait. 0 = reopen at once. (↑ = waits longer)"
         }
       },
       "cat_thermal": {

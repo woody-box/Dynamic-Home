@@ -13,7 +13,7 @@ import math
 from dataclasses import dataclass, field
 
 # Reasons that must not be overridden by the soft caps (wind/SDHB/slew).
-PROTECTED = {"ov_lock", "ov_hold", "ov_ttl", "meteo_rain",
+PROTECTED = {"ov_lock", "ov_hold", "ov_ttl", "meteo_rain", "meteo_rain_release",
              "meteo_wind_cap", "meteo_alert", "privacy_time", "manual_hold"}
 
 # Weather-condition vocabulary (HA standard, lowercased) that counts as an alert
@@ -71,6 +71,9 @@ class DsConfig:
     """Tunables. Defaults mirror the YAML ``initial:`` values."""
 
     rain_close_pct: int = 0
+    # Minutes the rain protection lingers after the rain stops before the shutter
+    # may reopen (a lull between showers must not open it). 0 = reopen at once.
+    rain_release_min: float = 15.0
     # Presence simulation (Away): day open / night close, capped low to spare the
     # motor; the jitter window lives in the coordinator.
     sim_open_pct: int = 50
@@ -177,6 +180,10 @@ class DsState:
     # Weather-onset edges (see weather_onset); None = no reading seen yet.
     onset_rain: bool | None = None
     onset_wind: bool | None = None
+    # Rain release (see rain_release): rain seen and not yet released, and when
+    # the current dry spell started.
+    rain_seen: bool = False
+    rain_dry_since: float | None = None
 
 
 @dataclass
@@ -198,6 +205,7 @@ class DsInputs:
     # Weather protect
     weather_protect_enabled: bool = False
     raining: bool = False
+    rain_releasing: bool = False   # rain stopped, still waiting rain_release_min
     wind: float | None = None
     gust: float | None = None           # wind gust (e.g. from Dynamic Weather)
 
@@ -409,6 +417,29 @@ def update_wind_cap_active(state: DsState, cfg: DsConfig, ins: DsInputs) -> bool
     return state.wind_cap_active
 
 
+def rain_release(state: DsState, cfg: DsConfig, raining: bool,
+                 now_ts: float) -> tuple[bool, bool]:
+    """Keep the rain protection ``rain_release_min`` after the rain stops.
+
+    Returns ``(protect, releasing)``: ``protect`` is the effective "raining" the
+    cascade should use; ``releasing`` is True while only the wait holds it. A new
+    shower during the wait restarts it from the end of that shower. Mutates
+    ``state``.
+    """
+    if raining:
+        state.rain_seen, state.rain_dry_since = True, None
+        return True, False
+    if not state.rain_seen:
+        return False, False
+    if state.rain_dry_since is None:
+        state.rain_dry_since = now_ts
+    if (cfg.rain_release_min > 0
+            and now_ts - state.rain_dry_since < cfg.rain_release_min * 60.0):
+        return True, True
+    state.rain_seen, state.rain_dry_since = False, None
+    return False, False
+
+
 def weather_onset(state: DsState, cfg: DsConfig, raining: bool,
                   wind: float | None, gust: float | None,
                   protect: bool) -> bool:
@@ -509,7 +540,8 @@ def decide_cover(cfg: DsConfig, state: DsState, ins: DsInputs) -> DsDecision:
         pos, reason = ins.alert_pos, "meteo_alert"
     # 2) Meteo rain
     elif ins.weather_protect_enabled and ins.raining:
-        pos, reason = cfg.rain_close_pct, "meteo_rain"
+        pos = cfg.rain_close_pct
+        reason = "meteo_rain_release" if ins.rain_releasing else "meteo_rain"
     # 2c) Presence simulation (Away): mimic an occupant (day open / night close,
     # jittered). Below the safety/manual layers (weather still protects), above
     # the comfort layers it replaces while away.
