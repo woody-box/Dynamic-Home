@@ -819,3 +819,44 @@ def test_onset_needs_weather_protection():
     cfg, st = DsConfig(), DsState()
     weather_onset(st, cfg, False, 10, None, False)
     assert weather_onset(st, cfg, False, 80, None, False) is False
+
+
+# --- Rain release: wait after the rain stops before reopening ---------------
+def test_rain_release_holds_then_releases():
+    from ds_engine import DsConfig, DsState, rain_release
+    cfg, st = DsConfig(), DsState()                 # default 15 min
+    assert rain_release(st, cfg, True, 0) == (True, False)       # raining
+    assert rain_release(st, cfg, False, 60) == (True, True)      # just stopped
+    assert rain_release(st, cfg, False, 60 + 14 * 60) == (True, True)
+    assert rain_release(st, cfg, False, 60 + 15 * 60) == (False, False)
+    assert rain_release(st, cfg, False, 60 + 16 * 60) == (False, False)
+
+
+def test_rain_release_restarts_if_it_rains_again():
+    from ds_engine import DsConfig, DsState, rain_release
+    cfg, st = DsConfig(), DsState()
+    rain_release(st, cfg, True, 0)
+    rain_release(st, cfg, False, 60)                 # dry since t=60
+    rain_release(st, cfg, True, 10 * 60)             # a new shower
+    # The wait counts again from the end of the NEW shower.
+    assert rain_release(st, cfg, False, 11 * 60) == (True, True)
+    assert rain_release(st, cfg, False, 11 * 60 + 14 * 60) == (True, True)
+    assert rain_release(st, cfg, False, 11 * 60 + 15 * 60) == (False, False)
+
+
+def test_rain_release_zero_and_never_rained():
+    from ds_engine import DsConfig, DsState, rain_release
+    cfg, st = DsConfig(), DsState()
+    assert rain_release(st, cfg, False, 0) == (False, False)     # never rained
+    cfg.rain_release_min = 0
+    rain_release(st, cfg, True, 0)
+    assert rain_release(st, cfg, False, 60) == (False, False)    # 0 = no wait
+
+
+def test_rain_release_branch_keeps_the_rain_position():
+    from ds_engine import DsConfig, DsInputs, DsState, decide_cover
+    cfg = DsConfig()
+    ins = DsInputs(weather_protect_enabled=True, raining=True,
+                   rain_releasing=True, current_pos=0)
+    d = decide_cover(cfg, DsState(), ins)
+    assert (d.pos, d.reason) == (cfg.rain_close_pct, "meteo_rain_release")

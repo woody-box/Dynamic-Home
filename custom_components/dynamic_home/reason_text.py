@@ -27,6 +27,7 @@ _DS: dict[str, str] = {
     "ov_ttl": "Retención temporal",
     "meteo_alert": "Protección por alerta meteo",
     "meteo_rain": "Protección por lluvia",
+    "meteo_rain_release": "Esperando tras la lluvia",
     "manual_hold": "Movimiento manual (respetado)",
     "presence_sim": "Simulación de presencia",
     "mode_sleep": "Modo noche / descanso",

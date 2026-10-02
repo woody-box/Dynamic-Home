@@ -433,7 +433,8 @@
           "winter_night_pct": "Noche invierno (%)",
           "weather_max_open_pct": "Meteo máx. (%)",
           "sdhb_solar_shield_max_open_pct": "Protección solar máx. (%)",
-          "rain_mm_min": "Umbral sensor lluvia (mm)"
+          "rain_mm_min": "Umbral sensor lluvia (mm)",
+          "rain_release_min": "Espera tras la lluvia (min)"
         },
         "data_description": {
           "rain_close_pct": "Posición de la persiana cuando llueve (protección). (↓ = más cerrada, más protección)",
@@ -444,7 +445,8 @@
           "winter_night_pct": "Posición en noches de invierno (cerrar para aislar). (↓ = cierra más para aislar)",
           "weather_max_open_pct": "Apertura máx. bajo una alerta meteo.",
           "sdhb_solar_shield_max_open_pct": "Apertura máx. cuando DC pide protección solar (refrigeración). (↓ = sombrea más al pedir escudo)",
-          "rain_mm_min": "Para un sensor de lluvia NUMÉRICO (precipitación en mm): por encima de este valor cuenta como lluvia. Los sensores on/off y las entidades de condición meteorológica lo ignoran."
+          "rain_mm_min": "Para un sensor de lluvia NUMÉRICO (precipitación en mm): por encima de este valor cuenta como lluvia. Los sensores on/off y las entidades de condición meteorológica lo ignoran.",
+          "rain_release_min": "Cuando deja de llover, la persiana mantiene su posición de lluvia este tiempo antes de poder abrir, para que una pausa entre chubascos no la abra. Si vuelve a llover, la espera empieza de nuevo. 0 = abre al momento. (↑ = espera más)"
         }
       },
       "cat_thermal": {

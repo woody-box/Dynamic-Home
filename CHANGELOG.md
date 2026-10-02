@@ -4,6 +4,21 @@ Todas las versiones notables de la integración `custom_components/dynamic_home`
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/) y
 [SemVer](https://semver.org/lang/es/).
 
+## [0.106.0] — 2026-10-02
+
+### Added
+- **DS · espera tras la lluvia antes de volver a abrir.** Hasta ahora, en cuanto
+  la condición pasaba de lluvia a «normal», la persiana volvía al instante a su
+  posición de confort: una pausa entre chubascos la abría y el siguiente la
+  cerraba otra vez. Ahora, cuando deja de llover, la persiana **mantiene su
+  posición de lluvia 15 minutos** (nuevo ajuste **«Espera tras la lluvia (min)»**
+  en Opciones → Posiciones de persiana; 0 = abrir al momento) y solo después
+  vuelve a lo que toque. Si vuelve a llover durante la espera, la cuenta empieza
+  de nuevo al terminar ese chubasco. Durante la espera el «Motivo» muestra
+  **«Esperando tras la lluvia»**, que, como la lluvia, no lo relajan ni el tope
+  de viento ni el movimiento progresivo. La espera también evita que una pausa
+  corta cuente como «inicio de lluvia» y vuelva a anular una retención manual.
+
 ## [0.105.0] — 2026-09-28
 
 ### Added
